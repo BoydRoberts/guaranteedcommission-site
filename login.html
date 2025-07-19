@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login | GuaranteedCommission.com</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: 40px auto; }
+    input, button { display: block; width: 100%; margin: 10px 0; padding: 10px; }
+    .divider { text-align: center; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <h2>Login or Sign Up</h2>
+
+  <div id="email-section">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="signUp()">Sign Up</button>
+    <button onclick="signIn()">Login</button>
+  </div>
+
+  <div class="divider">— or —</div>
+
+  <div id="phone-section">
+    <input type="tel" id="phone" placeholder="+1 555-555-1234" />
+    <div id="recaptcha-container"></div>
+    <button onclick="sendCode()">Send Code</button>
+    <input type="text" id="code" placeholder="Enter code" />
+    <button onclick="verifyCode()">Verify Code</button>
+  </div>
+
+  <p id="status"></p>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyB2ajOd_C8rfjOogqnGo-bZrD8kvjQ8XT4",
+      authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
+      projectId: "guaranteedcommission-d4d91",
+      storageBucket: "guaranteedcommission-d4d91.firebasestorage.app",
+      messagingSenderId: "900066461936",
+      appId: "1:900066461936:web:80b909f6c62acaf84b9a35"
+    };
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    // Email sign-up and login
+    async function signUp() {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      try {
+        await auth.createUserWithEmailAndPassword(email, password);
+        status.innerText = "Signed up successfully!";
+      } catch (e) {
+        status.innerText = e.message;
+      }
+    }
+
+    async function signIn() {
+      const email = emailInput.value;
+      const password = passwordInput.value;
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        status.innerText = "Logged in!";
+      } catch (e) {
+        status.innerText = e.message;
+      }
+    }
+
+    // Phone number login
+    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+      size: 'normal',
+      callback: (response) => {}
+    });
+
+    async function sendCode() {
+      const phoneNumber = document.getElementById("phone").value;
+      try {
+        window.confirmationResult = await auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier);
+        status.innerText = "Code sent!";
+      } catch (e) {
+        status.innerText = e.message;
+      }
+    }
+
+    async function verifyCode() {
+      const code = document.getElementById("code").value;
+      try {
+        await window.confirmationResult.confirm(code);
+        status.innerText = "Phone verified and logged in!";
+      } catch (e) {
+        status.innerText = e.message;
+      }
+    }
+  </script>
+</body>
+</html>
