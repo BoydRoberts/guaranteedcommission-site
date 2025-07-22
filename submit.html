@@ -4,38 +4,47 @@
   <meta charset="UTF-8" />
   <title>Submit a Property | GuaranteedCommission.com</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-storage.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; }
-    input, select, button, textarea { width: 100%; margin: 10px 0; padding: 10px; }
+    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; padding: 10px; }
+    input, select, button { width: 100%; margin: 10px 0; padding: 10px; font-size: 16px; }
+    label { font-weight: bold; display: block; margin-top: 20px; }
+    .success { color: green; margin-top: 20px; }
   </style>
 </head>
 <body>
   <h2>Submit a Property</h2>
 
-  <form id="propertyForm">
-    <input type="text" id="ownerName" placeholder="Your Name or Entity" required />
-    <input type="text" id="address" placeholder="Property Address" required />
-    <input type="text" id="commission" placeholder="Buyer Agent Commission (e.g. 2.5%)" required />
-    
-    <label>Seller Type</label>
+  <form id="listingForm">
+    <label for="name">Your Name or Entity</label>
+    <input type="text" id="name" required />
+
+    <label for="address">Property Address</label>
+    <input type="text" id="address" required />
+
+    <label for="commission">Buyer Agent Commission (e.g. 2.5%)</label>
+    <input type="text" id="commission" required />
+
+    <label for="sellerType">Seller Type</label>
     <select id="sellerType" required>
-      <option value="listed">Listed with an Agent</option>
-      <option value="fsbo">For Sale By Owner</option>
+      <option value="">Select</option>
+      <option value="Listed with Agent">Listed with an Agent</option>
+      <option value="For Sale By Owner">For Sale By Owner</option>
     </select>
 
-    <input type="email" id="email" placeholder="Contact Email (not shown publicly)" required />
-    <input type="file" id="photo" accept="image/*" required />
+    <label for="email">Contact Email (not shown publicly)</label>
+    <input type="email" id="email" required />
+
+    <label for="photo">Photo Upload (optional)</label>
+    <input type="file" id="photo" />
 
     <button type="submit">Submit Listing</button>
-    <p id="status"></p>
   </form>
 
+  <p id="successMessage" class="success"></p>
+
   <script>
-    // Firebase setup
     const firebaseConfig = {
       apiKey: "AIzaSyB2ajOd_C8rfjOogqnGo-bZrD8kvjQ8XT4",
       authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
@@ -44,59 +53,41 @@
       messagingSenderId: "900066461936",
       appId: "1:900066461936:web:80b909f6c62acaf84b9a35"
     };
-    const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const storage = firebase.storage();
 
-    // Ensure user is logged in
-    auth.onAuthStateChanged(user => {
-      if (!user) {
-        window.location.href = "/login";
-      }
-    });
+    const form = document.getElementById('listingForm');
+    const successMessage = document.getElementById('successMessage');
 
-    document.getElementById("propertyForm").addEventListener("submit", async (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const status = document.getElementById("status");
 
-      const ownerName = document.getElementById("ownerName").value;
-      const address = document.getElementById("address").value;
-      const commission = document.getElementById("commission").value;
-      const sellerType = document.getElementById("sellerType").value;
-      const email = document.getElementById("email").value;
-      const photoFile = document.getElementById("photo").files[0];
-
-      if (!photoFile) {
-        status.innerText = "Please select a photo.";
-        return;
-      }
+      const name = document.getElementById('name').value;
+      const address = document.getElementById('address').value;
+      const commission = document.getElementById('commission').value;
+      const sellerType = document.getElementById('sellerType').value;
+      const email = document.getElementById('email').value;
 
       try {
-        // Upload photo
-        const photoRef = storage.ref().child(`property_photos/${Date.now()}_${photoFile.name}`);
-        await photoRef.put(photoFile);
-        const photoURL = await photoRef.getDownloadURL();
-
-        // Save listing
-        await db.collection("listings").add({
-          ownerName,
+        await db.collection('listings').add({
+          name,
           address,
           commission,
           sellerType,
           email,
-          photoURL,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          createdAt: new Date()
         });
 
-        status.innerText = "Property submitted successfully!";
-        document.getElementById("propertyForm").reset();
-      } catch (err) {
-        console.error(err);
-        status.innerText = "Error: " + err.message;
+        successMessage.textContent = "Your listing has been submitted successfully!";
+        form.reset();
+      } catch (error) {
+        successMessage.textContent = "Error: " + error.message;
+        successMessage.style.color = "red";
       }
     });
   </script>
 </body>
 </html>
-<!-- Force redeploy -->
+
