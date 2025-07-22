@@ -1,7 +1,7 @@
 {
   "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/submit", "destination": "/submit.html" },
     { "source": "/login", "destination": "/login.html" }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false
+  ]
 }
