@@ -2,11 +2,147 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GuaranteedCommission.com</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
+    header {
+      background: #fff;
+      padding: 20px 0;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    header h1 { margin: 0; font-size: 28px; }
+    header p { color: red; font-size: 14px; margin: 5px 0 0; }
+    .search-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px;
+      background: #fff;
+    }
+    .search-bar select, .search-bar button {
+      padding: 10px;
+      font-size: 14px;
+    }
+    .strip1 {
+      display: flex;
+      justify-content: center;
+      padding: 30px 10px;
+      gap: 20px;
+    }
+    .block {
+      width: 300px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .block h3 { margin-top: 0; }
+    .form input, .form textarea, .form select {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    .document {
+      white-space: pre-wrap;
+      background: #f1f1f1;
+      padding: 10px;
+      font-family: monospace;
+    }
+  </style>
 </head>
 <body>
-  <h1>Welcome to GuaranteedCommission.com</h1>
-  <p>This is your working homepage.</p>
+
+<header>
+  <h1>GuaranteedCommission.com</h1>
+  <p>FREE *** First 2,000,000 Commission Communications - Listed Property Basic *** FREE</p>
+</header>
+
+<div class="search-bar">
+  <select id="navSelect" onchange="navigate(this.value)">
+    <option value="">-- Select --</option>
+    <option value="submit.html">Communicate Guaranteed Commission</option>
+    <option value="search.html">Search Guaranteed Commission</option>
+    <option value="login.html">Log In</option>
+  </select>
+  <button onclick="navigate(document.getElementById('navSelect').value)">Go</button>
+</div>
+
+<div class="strip1">
+  <!-- Block 1 -->
+  <div class="block">
+    <h3>Listed Property Basic | FREE</h3>
+    <p>Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
+    <h3>Listed Property Plus | $20</h3>
+    <p>Listed Property Basic plus 20 photos and full property description.</p>
+    <h3>FSBO Plus | $100</h3>
+    <p>Listed Property Plus minus the listing agency. Includes showing instructions.</p>
+  </div>
+
+  <!-- Block 2 -->
+  <div class="block form">
+    <h3>Listed Property Communication Form</h3>
+    <input type="text" id="name" placeholder="Name"/>
+    <input type="text" id="address" placeholder="Property Address"/>
+    <input type="text" id="apn" placeholder="APN/ID#"/>
+    <input type="text" id="commission" placeholder="Commission % or $"/>
+    <input type="email" id="email" placeholder="Email (Confidential)"/>
+    <input type="tel" id="phone" placeholder="Phone (Confidential)"/>
+    <input type="text" id="brokerage" placeholder="Listing Brokerage"/>
+    <input type="text" id="agent" placeholder="Listing Agent"/>
+    <input type="tel" id="agentPhone" placeholder="Agent Phone"/>
+    <input type="email" id="agentEmail" placeholder="Agent Email"/>
+    <button onclick="fillLetter()">Preview Letter</button>
+  </div>
+
+  <!-- Block 3 -->
+  <div class="block">
+    <h3>Irrevocable Seller Communication</h3>
+    <div class="document" id="letterPreview">
+      To the escrow holder/closing agent,
+      I, ________, am the owner or authorized seller of ________, APN/ID# ________.
+      ________ is listed for sale by ________, ________, ________.
+      Let it be known: if a buyer’s agent/broker facilitates the sale of ________,
+      you are irrevocably instructed to credit/compensate the buyer’s broker –
+      first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation)
+      and second by debiting me, the seller – a commission not to exceed ________ of the purchase price.
+
+      Seller Electronic Signature     Date
+      Print this document free
+    </div>
+  </div>
+</div>
+
+<script>
+  function navigate(val) {
+    if (val) window.location.href = val;
+  }
+
+  function fillLetter() {
+    const name = document.getElementById('name').value;
+    const address = document.getElementById('address').value;
+    const apn = document.getElementById('apn').value;
+    const commission = document.getElementById('commission').value;
+    const brokerage = document.getElementById('brokerage').value;
+    const agent = document.getElementById('agent').value;
+    const agentPhone = document.getElementById('agentPhone').value;
+
+    const text = `To the escrow holder/closing agent,
+I, ${name}, am the owner or authorized seller of ${address}, APN/ID# ${apn}.
+${address} is listed for sale by ${brokerage}, ${agent}, ${agentPhone}.
+Let it be known: if a buyer’s agent/broker facilitates the sale of ${address},
+you are irrevocably instructed to credit/compensate the buyer’s broker –
+first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation)
+and second by debiting me, the seller – a commission not to exceed ${commission} of the purchase price.
+
+Seller Electronic Signature     Date
+Print this document free`;
+
+    document.getElementById('letterPreview').innerText = text;
+  }
+</script>
+
 </body>
 </html>
