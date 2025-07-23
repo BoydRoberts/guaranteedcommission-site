@@ -2,147 +2,139 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GuaranteedCommission.com</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+    }
     header {
-      background: #fff;
-      padding: 20px 0;
       text-align: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    header h1 { margin: 0; font-size: 28px; }
-    header p { color: red; font-size: 14px; margin: 5px 0 0; }
-    .search-bar {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      padding: 15px;
-      background: #fff;
-    }
-    .search-bar select, .search-bar button {
       padding: 10px;
-      font-size: 14px;
+      background-color: #fff;
     }
-    .strip1 {
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    header h2 {
+      margin: 5px 0;
+      font-size: 14px;
+      color: red;
+    }
+    nav {
       display: flex;
       justify-content: center;
-      padding: 30px 10px;
       gap: 20px;
+      background: #eee;
+      padding: 10px;
+    }
+    nav a {
+      text-decoration: none;
+      font-weight: bold;
+      color: #333;
+    }
+    .strip {
+      display: flex;
+      justify-content: space-around;
+      padding: 20px;
+      background: #fff;
+      border-bottom: 1px solid #ccc;
     }
     .block {
-      width: 300px;
-      background: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      width: 30%;
+      background: #fdfdfd;
+      padding: 15px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
-    .block h3 { margin-top: 0; }
-    .form input, .form textarea, .form select {
+    .block h3 {
+      margin-top: 0;
+    }
+    input, select, textarea {
       width: 100%;
-      margin-bottom: 10px;
       padding: 8px;
-      box-sizing: border-box;
+      margin: 8px 0;
     }
-    .document {
+    .letter {
       white-space: pre-wrap;
-      background: #f1f1f1;
+      background: #fff;
       padding: 10px;
-      font-family: monospace;
+      border: 1px solid #ccc;
+      height: 500px;
+      overflow-y: auto;
     }
   </style>
 </head>
 <body>
+  <header>
+    <h1>GuaranteedCommission.com</h1>
+    <h2>FREE *** First 2,000,000 Commission Communications - Listed Property Basic *** FREE</h2>
+  </header>
+  <nav>
+    <a href="#">Communicate Guaranteed Commission</a>
+    <a href="#">Search Guaranteed Commission</a>
+    <a href="login.html">Log In</a>
+  </nav>
 
-<header>
-  <h1>GuaranteedCommission.com</h1>
-  <p>FREE *** First 2,000,000 Commission Communications - Listed Property Basic *** FREE</p>
-</header>
+  <div class="strip">
+    <!-- Block 1 -->
+    <div class="block">
+      <h3>Services</h3>
+      <p><strong>Listed Property Basic | FREE:</strong><br>Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
+      <p><strong>Listed Property Plus | $20:</strong><br>Listed Property Basic plus 20 photos and full property description.</p>
+      <p><strong>FSBO Plus | $100:</strong><br>Listed Property Plus minus the listing agency. Includes showing instructions.</p>
+    </div>
 
-<div class="search-bar">
-  <select id="navSelect" onchange="navigate(this.value)">
-    <option value="">-- Select --</option>
-    <option value="submit.html">Communicate Guaranteed Commission</option>
-    <option value="search.html">Search Guaranteed Commission</option>
-    <option value="login.html">Log In</option>
-  </select>
-  <button onclick="navigate(document.getElementById('navSelect').value)">Go</button>
-</div>
+    <!-- Block 2 -->
+    <div class="block">
+      <h3>Listed Property Communication Form</h3>
+      <input type="text" id="name" placeholder="Name" oninput="updateLetter()" />
+      <input type="text" id="address" placeholder="Property Address" oninput="updateLetter()" />
+      <input type="text" id="apn" placeholder="APN/ID#" oninput="updateLetter()" />
+      <input type="text" id="commission" placeholder="Commission (e.g. 2.5%)" oninput="updateLetter()" />
+      <input type="email" placeholder="Email (confidential)" />
+      <input type="tel" placeholder="Phone (confidential)" />
+      <input type="text" id="brokerage" placeholder="Listing Brokerage" oninput="updateLetter()" />
+      <input type="text" id="agent" placeholder="Listing Agent" oninput="updateLetter()" />
+      <input type="text" id="agentPhone" placeholder="Agent Phone" oninput="updateLetter()" />
+    </div>
 
-<div class="strip1">
-  <!-- Block 1 -->
-  <div class="block">
-    <h3>Listed Property Basic | FREE</h3>
-    <p>Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
-    <h3>Listed Property Plus | $20</h3>
-    <p>Listed Property Basic plus 20 photos and full property description.</p>
-    <h3>FSBO Plus | $100</h3>
-    <p>Listed Property Plus minus the listing agency. Includes showing instructions.</p>
-  </div>
-
-  <!-- Block 2 -->
-  <div class="block form">
-    <h3>Listed Property Communication Form</h3>
-    <input type="text" id="name" placeholder="Name"/>
-    <input type="text" id="address" placeholder="Property Address"/>
-    <input type="text" id="apn" placeholder="APN/ID#"/>
-    <input type="text" id="commission" placeholder="Commission % or $"/>
-    <input type="email" id="email" placeholder="Email (Confidential)"/>
-    <input type="tel" id="phone" placeholder="Phone (Confidential)"/>
-    <input type="text" id="brokerage" placeholder="Listing Brokerage"/>
-    <input type="text" id="agent" placeholder="Listing Agent"/>
-    <input type="tel" id="agentPhone" placeholder="Agent Phone"/>
-    <input type="email" id="agentEmail" placeholder="Agent Email"/>
-    <button onclick="fillLetter()">Preview Letter</button>
-  </div>
-
-  <!-- Block 3 -->
-  <div class="block">
-    <h3>Irrevocable Seller Communication</h3>
-    <div class="document" id="letterPreview">
-      To the escrow holder/closing agent,
-      I, ________, am the owner or authorized seller of ________, APN/ID# ________.
-      ________ is listed for sale by ________, ________, ________.
-      Let it be known: if a buyer’s agent/broker facilitates the sale of ________,
-      you are irrevocably instructed to credit/compensate the buyer’s broker –
-      first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation)
-      and second by debiting me, the seller – a commission not to exceed ________ of the purchase price.
-
-      Seller Electronic Signature     Date
-      Print this document free
+    <!-- Block 3 -->
+    <div class="block">
+      <h3>Irrevocable Seller Communication</h3>
+      <div class="letter" id="letterOutput">
+        To the escrow holder/closing agent,
+        I, ____________, am the owner or authorized seller of ____________, ____________.
+        ____________ is listed for sale by ____________, ____________, ____________.
+        Let it be known: if a buyer’s agent/broker facilitates the sale of ____________, you are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ___%___ of the purchase price.
+        
+        Seller Electronic Signature     Date
+        Print this document free
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-  function navigate(val) {
-    if (val) window.location.href = val;
-  }
+  <script>
+    function updateLetter() {
+      const name = document.getElementById('name').value;
+      const address = document.getElementById('address').value;
+      const apn = document.getElementById('apn').value;
+      const commission = document.getElementById('commission').value;
+      const brokerage = document.getElementById('brokerage').value;
+      const agent = document.getElementById('agent').value;
+      const agentPhone = document.getElementById('agentPhone').value;
 
-  function fillLetter() {
-    const name = document.getElementById('name').value;
-    const address = document.getElementById('address').value;
-    const apn = document.getElementById('apn').value;
-    const commission = document.getElementById('commission').value;
-    const brokerage = document.getElementById('brokerage').value;
-    const agent = document.getElementById('agent').value;
-    const agentPhone = document.getElementById('agentPhone').value;
-
-    const text = `To the escrow holder/closing agent,
-I, ${name}, am the owner or authorized seller of ${address}, APN/ID# ${apn}.
-${address} is listed for sale by ${brokerage}, ${agent}, ${agentPhone}.
-Let it be known: if a buyer’s agent/broker facilitates the sale of ${address},
-you are irrevocably instructed to credit/compensate the buyer’s broker –
-first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation)
-and second by debiting me, the seller – a commission not to exceed ${commission} of the purchase price.
+      document.getElementById('letterOutput').innerText =
+        `To the escrow holder/closing agent,
+I, ${name || '____________'}, am the owner or authorized seller of ${address || '____________'}, ${apn || '____________'}.
+${address || '____________'} is listed for sale by ${brokerage || '____________'}, ${agent || '____________'}, ${agentPhone || '____________'}.
+Let it be known: if a buyer’s agent/broker facilitates the sale of ${address || '____________'}, you are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commission || '___%___'} of the purchase price.
 
 Seller Electronic Signature     Date
 Print this document free`;
-
-    document.getElementById('letterPreview').innerText = text;
-  }
-</script>
-
+    }
+  </script>
 </body>
 </html>
