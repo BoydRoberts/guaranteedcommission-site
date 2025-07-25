@@ -1,124 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-white text-gray-900">
+<body class="bg-gray-50 text-gray-900">
+
   <!-- Header -->
-  <header class="text-center py-4 border-b border-gray-300">
+  <header class="text-center py-4 bg-white shadow">
     <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
-    <p class="text-sm text-red-600 mt-1">
-      FREE *** First 2,000,000 Commission Communications - Listed Property Basic *** FREE
-    </p>
+    <p class="text-sm text-red-600 mt-1">FREE *** First 2,000,000 Commission Communications - Listed Property Basic *** FREE</p>
   </header>
 
   <!-- Navigation -->
-  <nav class="flex justify-center space-x-6 py-4 border-b border-gray-200">
+  <nav class="flex justify-center space-x-6 mt-4 text-blue-700 font-semibold relative z-10">
     <div class="relative group">
-      <button class="font-semibold text-blue-700">Communicate Guaranteed Commission</button>
-      <div class="absolute hidden group-hover:block bg-white border mt-2 shadow-lg">
-        <ul>
-          <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" onclick="selectForm('listed')">Listed Property Basic</li>
-          <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" onclick="selectForm('listedPlus')">Listed Property Plus</li>
-          <li class="px-4 py-2 hover:bg-gray-100 cursor-pointer" onclick="selectForm('fsbo')">FSBO Plus</li>
-        </ul>
+      <button id="communicateBtn">Communicate Guaranteed Commission</button>
+      <div id="dropdownMenu" class="hidden absolute mt-2 w-56 bg-white border rounded shadow-lg group-hover:block">
+        <a href="#" onclick="setFormType('listed')" class="block px-4 py-2 hover:bg-blue-100">Listed Property Basic</a>
+        <a href="#" onclick="setFormType('listedPlus')" class="block px-4 py-2 hover:bg-blue-100">Listed Property Plus</a>
+        <a href="#" onclick="setFormType('fsbo')" class="block px-4 py-2 hover:bg-blue-100">FSBO Plus</a>
       </div>
     </div>
-    <button class="nav-search font-semibold text-blue-700">Search Guaranteed Commission</button>
-    <a href="/login.html" class="font-semibold text-blue-700">Log In</a>
+    <a href="#searchBar">Search Guaranteed Commission</a>
+    <a href="login.html">Log In</a>
   </nav>
 
-  <!-- Strip 1 -->
-  <section class="flex justify-around items-start py-6 px-4">
-    <!-- Block 1: Menu -->
-    <div class="w-1/4 border p-4 rounded shadow">
-      <h2 class="font-bold mb-2">Services</h2>
-      <ul class="text-sm space-y-2">
+  <!-- Strip 1: Blocks 1, 2, 3 -->
+  <div class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 bg-gray-100">
+
+    <!-- Block 1: Menu of Services -->
+    <div class="w-full md:w-1/3 bg-white p-6 rounded shadow">
+      <h2 class="text-xl font-bold mb-4 text-center">Service Menu</h2>
+      <ul class="space-y-2">
         <li><strong>Listed Property Basic</strong> | FREE</li>
         <li><strong>Listed Property Plus</strong> | $20</li>
         <li><strong>FSBO Plus</strong> | $100</li>
       </ul>
     </div>
 
-    <!-- Block 2: Form -->
-    <div class="w-1/3 border p-4 rounded shadow" id="formBlock">
-      <!-- Dynamic Form will be injected here -->
+    <!-- Block 2: Communication Form -->
+    <div class="w-full md:w-1/3 bg-white p-6 rounded shadow">
+      <h2 class="text-xl font-bold mb-4 text-center">Listed Property Communication Form</h2>
+      <form id="listingForm" class="space-y-3">
+        <input type="text" id="name" placeholder="Name" required class="w-full border p-2 rounded">
+        <input type="text" id="address" placeholder="Property Address" required class="w-full border p-2 rounded">
+        <input type="text" id="apn" placeholder="APN/ID#" class="w-full border p-2 rounded">
+        <input type="text" id="commission" placeholder="Commission (e.g. 2.5%)" required class="w-full border p-2 rounded">
+        <input type="email" id="email" placeholder="Email*" required class="w-full border p-2 rounded">
+        <input type="tel" id="phone" placeholder="Phone*" required class="w-full border p-2 rounded">
+        <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-2 rounded">
+        <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-2 rounded">
+        <input type="tel" id="agentPhone" placeholder="Agent Phone Number" class="w-full border p-2 rounded">
+        <input type="email" id="agentEmail" placeholder="Agent Email" class="w-full border p-2 rounded">
+      </form>
     </div>
 
-    <!-- Block 3: Irrevocable Letter -->
-    <div class="w-1/3 border p-4 rounded shadow text-sm whitespace-pre-wrap" id="letterBlock">
-      <!-- Dynamic Letter will be injected here -->
-    </div>
-  </section>
+    <!-- Block 3: Irrevocable Seller Communication -->
+    <div class="w-full md:w-1/3 bg-white p-6 rounded shadow">
+      <h2 class="text-xl font-bold mb-4 text-center">Irrevocable Seller Communication</h2>
+      <div id="irrevocableLetter" class="whitespace-pre-wrap text-sm leading-relaxed">
+        To the escrow holder/closing agent,
 
-  <!-- Strip 2 -->
-  <section id="strip2" class="bg-gray-100 py-6 px-4">
-    <div class="max-w-4xl mx-auto">
-      <input id="searchInput" type="text" placeholder="Search Guaranteed Commission..." class="w-full p-2 border rounded mb-6" />
+        I, <span id="letterName" class="font-semibold"></span>, am the owner or authorized seller of <span id="letterAddress" class="font-semibold"></span>, APN/ID# <span id="letterAPN" class="font-semibold"></span>.
 
-      <div class="grid grid-cols-3 gap-4">
-        <!-- Sample Listing Tiles -->
-        <div class="bg-white rounded shadow overflow-hidden">
-          <div class="relative h-40 bg-gray-200">
-            <div class="absolute top-2 left-2 bg-red-700 text-white px-2 text-sm">Open House Sunday 1-4</div>
-          </div>
-          <div class="p-2 text-sm">
-            <div class="font-bold text-base">$2,395,000 Commission 2.5% | $59,875</div>
-            <div>3 bds | 2 ba | 1,334 sqft | Active</div>
-            <div>251 Viejo St, Laguna Beach, CA 92651</div>
-            <div>Coldwell Banker Realty, Brian Johnson, agent 949-734-6262</div>
-          </div>
-        </div>
+        <span id="letterAddressRepeat" class="font-semibold"></span> is listed for sale by <span id="letterBrokerage" class="font-semibold"></span>, <span id="letterAgent" class="font-semibold"></span>, <span id="letterAgentPhone" class="font-semibold"></span>.
 
-        <div class="bg-white rounded shadow overflow-hidden">
-          <div class="relative h-40 bg-gray-200">
-            <div class="absolute top-2 left-2 bg-red-700 text-white px-2 text-sm">Oceanfront Estate</div>
-          </div>
-          <div class="p-2 text-sm">
-            <div class="font-bold text-base">$55,000,000 Commission 2.5% | $1,375,000</div>
-            <div>4 bds | 7 ba | 7,800 sqft | Active</div>
-            <div>2526 Riviera Drive, Laguna Beach, CA 92651</div>
-            <div>Compass, Michael Carpenter, agent 949-922-1092</div>
-          </div>
-        </div>
+        Let it be known: if a buyer’s agent/broker facilitates the sale of <span id="letterAddressRepeat2" class="font-semibold"></span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed <span id="letterCommission" class="font-semibold"></span> of the purchase price.
 
-        <div class="bg-white rounded shadow overflow-hidden">
-          <div class="relative h-40 bg-gray-200">
-            <div class="absolute top-2 left-2 bg-red-700 text-white px-2 text-sm">Charming Beach Condo</div>
-          </div>
-          <div class="p-2 text-sm">
-            <div class="font-bold text-base">$849,900 Commission 2% | $16,998</div>
-            <div>1 bd | 1 ba | 500 sqft | Active</div>
-            <div>387 Cypress Drive Unit#7, Laguna Beach, CA 92651</div>
-            <div>Rise Realty, Kelli Walters, agent 949-677-7740</div>
-          </div>
-        </div>
+        Seller Electronic Signature: _____________________  
+        Date: _____________________
+
+        <button onclick="window.print()" class="mt-4 bg-blue-600 text-white px-3 py-1 rounded">Print this document free</button>
       </div>
     </div>
-  </section>
+  </div>
 
   <script>
-    // Scroll to Strip 2 + restore last search
-    document.querySelector('.nav-search').addEventListener('click', (e) => {
-      e.preventDefault();
-      const strip2 = document.getElementById('strip2');
-      if (strip2) {
-        strip2.scrollIntoView({ behavior: 'smooth' });
-        const lastSearch = localStorage.getItem('lastSearch');
-        const input = document.getElementById('searchInput');
-        if (lastSearch && input) input.value = lastSearch;
-      }
+    const formFields = ["name", "address", "apn", "commission", "brokerage", "agent", "agentPhone"];
+    const fieldMap = {
+      name: "letterName",
+      address: ["letterAddress", "letterAddressRepeat", "letterAddressRepeat2"],
+      apn: "letterAPN",
+      commission: "letterCommission",
+      brokerage: "letterBrokerage",
+      agent: "letterAgent",
+      agentPhone: "letterAgentPhone"
+    };
+
+    formFields.forEach(id => {
+      document.getElementById(id).addEventListener("input", () => {
+        const val = document.getElementById(id).value;
+        const targets = fieldMap[id];
+        if (Array.isArray(targets)) {
+          targets.forEach(target => document.getElementById(target).innerText = val);
+        } else {
+          document.getElementById(targets).innerText = val;
+        }
+      });
     });
 
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-      searchInput.addEventListener('input', () => {
-        localStorage.setItem('lastSearch', searchInput.value);
-      });
+    function setFormType(type) {
+      if (type === 'fsbo') {
+        alert("FSBO Form placeholder - coming soon");
+        // Future: switch to FSBO form
+      } else {
+        alert("Listed Property Form loaded");
+      }
     }
   </script>
+
 </body>
 </html>
