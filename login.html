@@ -6,52 +6,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js"></script>
-  <style>
-    body { font-family: sans-serif; max-width: 400px; margin: 40px auto; }
-    input, button { display: block; width: 100%; margin: 10px 0; padding: 10px; }
-    .divider { text-align: center; margin: 20px 0; }
-  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h2>Login or Sign Up</h2>
+<body class="bg-gray-100 text-gray-900">
+  <div class="max-w-md mx-auto mt-10 p-6 bg-white rounded shadow">
+    <h2 class="text-xl font-bold mb-4">Login or Sign Up</h2>
 
-  <div id="email-section">
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <button onclick="signUp()">Sign Up</button>
-    <button onclick="signIn()">Login</button>
+    <label class="block mb-2">User Type</label>
+    <select id="userType" class="w-full p-2 border rounded mb-4">
+      <option value="">Select...</option>
+      <option value="seller">Seller</option>
+      <option value="listing_agent">Listing Agent</option>
+      <option value="other">Other</option>
+    </select>
+
+    <input type="email" id="email" placeholder="Email" class="w-full p-2 border rounded mb-2" />
+    <input type="password" id="password" placeholder="Password" class="w-full p-2 border rounded mb-4" />
+    <button onclick="signUp()" class="w-full bg-blue-600 text-white py-2 rounded mb-2">Sign Up</button>
+    <button onclick="signIn()" class="w-full bg-green-600 text-white py-2 rounded">Login</button>
+
+    <p class="text-sm text-center my-4">— or —</p>
+
+    <input type="tel" id="phone" placeholder="+1 555-555-1234" class="w-full p-2 border rounded mb-2" />
+    <div id="recaptcha-container" class="mb-2"></div>
+    <button onclick="sendCode()" class="w-full bg-purple-600 text-white py-2 rounded mb-2">Send Code</button>
+    <input type="text" id="code" placeholder="Enter code" class="w-full p-2 border rounded mb-2" />
+    <button onclick="verifyCode()" class="w-full bg-indigo-600 text-white py-2 rounded">Verify Code</button>
+
+    <p id="status" class="mt-4 text-sm text-center text-red-500"></p>
   </div>
-
-  <div class="divider">— or —</div>
-
-  <div id="phone-section">
-    <input type="tel" id="phone" placeholder="+1 555-555-1234" />
-    <div id="recaptcha-container"></div>
-    <button onclick="sendCode()">Send Code</button>
-    <input type="text" id="code" placeholder="Enter code" />
-    <button onclick="verifyCode()">Verify Code</button>
-  </div>
-
-  <p id="status"></p>
 
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyB2ajOd_C8rfjOogqnGo-bZrD8kvjQ8XT4",
       authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
       projectId: "guaranteedcommission-d4d91",
-      storageBucket: "guaranteedcommission-d4d91.firebasestorage.app",
+      storageBucket: "guaranteedcommission-d4d91.appspot.com",
       messagingSenderId: "900066461936",
       appId: "1:900066461936:web:80b909f6c62acaf84b9a35"
     };
-    const app = firebase.initializeApp(firebaseConfig);
+
+    firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    // Email sign-up and login
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        status.innerText = `Welcome back! Logged in as ${user.email || user.phoneNumber}`;
+        // You can redirect or show user-specific content here
+      }
+    });
+
     async function signUp() {
       const email = emailInput.value;
       const password = passwordInput.value;
+      const userType = userTypeInput.value;
+      if (!userType) return status.innerText = "Please select a user type.";
       try {
         await auth.createUserWithEmailAndPassword(email, password);
+        localStorage.setItem('userType', userType);
         status.innerText = "Signed up successfully!";
       } catch (e) {
         status.innerText = e.message;
@@ -61,15 +73,17 @@
     async function signIn() {
       const email = emailInput.value;
       const password = passwordInput.value;
+      const userType = userTypeInput.value;
+      if (!userType) return status.innerText = "Please select a user type.";
       try {
         await auth.signInWithEmailAndPassword(email, password);
+        localStorage.setItem('userType', userType);
         status.innerText = "Logged in!";
       } catch (e) {
         status.innerText = e.message;
       }
     }
 
-    // Phone number login
     window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
       size: 'normal',
       callback: (response) => {}
@@ -88,12 +102,17 @@
     async function verifyCode() {
       const code = document.getElementById("code").value;
       try {
-        await window.confirmationResult.confirm(code);
-        status.innerText = "Phone verified and logged in!";
+        const result = await window.confirmationResult.confirm(code);
+        status.innerText = `Phone verified and logged in as ${result.user.phoneNumber}`;
       } catch (e) {
         status.innerText = e.message;
       }
     }
+
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const userTypeInput = document.getElementById('userType');
+    const status = document.getElementById('status');
   </script>
 </body>
 </html>
