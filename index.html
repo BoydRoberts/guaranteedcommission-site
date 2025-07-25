@@ -2,268 +2,210 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GuaranteedCommission.com</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 0;
     }
 
     header {
       text-align: center;
-      padding: 20px;
-      background-color: #f5f5f5;
+      background: #f4f4f4;
+      padding: 10px 0;
     }
 
     header h1 {
-      font-size: 32px;
       margin: 0;
+      font-size: 24px;
     }
 
     header p {
-      font-size: 16px;
+      margin: 5px 0 0;
       color: red;
-      margin: 5px 0 0 0;
+      font-size: 14px;
     }
 
     nav {
       display: flex;
       justify-content: center;
-      gap: 20px;
+      background: #eaeaea;
       padding: 10px;
-      background-color: #e9e9e9;
+      gap: 20px;
+      position: relative;
     }
 
-    nav a {
-      text-decoration: none;
-      color: #333;
-      font-weight: bold;
+    nav div {
+      cursor: pointer;
+      position: relative;
     }
 
-    .strip1 {
+    #dropdown {
+      display: none;
+      position: absolute;
+      top: 40px;
+      background: white;
+      border: 1px solid #ccc;
+      width: 200px;
+      z-index: 1000;
+    }
+
+    #dropdown div {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    #dropdown div:hover {
+      background: #f4f4f4;
+    }
+
+    .strip {
       display: flex;
       justify-content: space-around;
-      padding: 30px;
-      background-color: #f8f8f8;
+      padding: 20px;
     }
 
     .block {
       width: 30%;
       border: 1px solid #ccc;
-      border-radius: 8px;
       padding: 15px;
-      background-color: #fff;
+      box-sizing: border-box;
+      background: #f9f9f9;
     }
 
-    .block h3 {
-      margin-top: 0;
-    }
-
-    .block pre {
-      font-family: inherit;
-      white-space: pre-wrap;
-    }
-
-    .strip2 {
-      padding: 20px;
-      background-color: #ffffff;
-    }
-
-    .search-container {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-
-    .search-container input[type="text"] {
-      width: 60%;
-      padding: 12px;
-      font-size: 16px;
-    }
-
-    .tiles-container {
-      display: flex;
-      overflow-x: auto;
-      padding: 10px;
-      gap: 20px;
-    }
-
-    .tile {
-      flex: 0 0 30%;
-      background-color: #fff;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      overflow: hidden;
-      min-width: 300px;
-      max-width: 300px;
-    }
-
-    .tile img {
+    textarea {
       width: 100%;
-      height: 180px;
-      object-fit: cover;
-      position: relative;
+      height: 300px;
     }
 
-    .banner {
-      position: absolute;
-      background-color: darkred;
-      color: white;
-      font-weight: bold;
-      padding: 5px 10px;
-      font-size: 14px;
-      top: 10px;
-      left: 10px;
-      border-radius: 3px;
-    }
-
-    .tile-details {
-      padding: 10px;
-      background-color: #fff;
-    }
-
-    .tile-details .line1 {
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
-
-    .tile-details .line2,
-    .tile-details .line3,
-    .tile-details .line4 {
-      font-size: 14px;
-      margin-bottom: 4px;
+    input, select {
+      width: 100%;
+      margin: 5px 0;
+      padding: 5px;
+      box-sizing: border-box;
     }
   </style>
 </head>
 <body>
+
   <header>
     <h1>GuaranteedCommission.com</h1>
     <p>FREE *** First 2,000,000 Commission Communications - Listed Property Basic *** FREE</p>
   </header>
 
   <nav>
-    <a href="#">Communicate Guaranteed Commission</a>
-    <a href="#">Search Guaranteed Commission</a>
-    <a href="login.html">Log In</a>
+    <div id="commMenu">Communicate Guaranteed Commission</div>
+    <div>Search Guaranteed Commission</div>
+    <div>Log In</div>
+    <div id="dropdown">
+      <div data-type="listed">Listed Property Basic</div>
+      <div data-type="listed">Listed Property Plus</div>
+      <div data-type="fsbo">FSBO Plus</div>
+    </div>
   </nav>
 
-  <div class="strip1">
-    <div class="block">
-      <h3>Listed Property Basic | FREE</h3>
-      <pre>Printable commission letter, map search, listing
-price, main photo, address, square footage,
-bedrooms, bathrooms, listing brokerage, listing
-agent, listing agent phone number.</pre>
-
-      <h3>Listed Property Plus | $20</h3>
-      <pre>Listed Property Basic plus 20 photos and full
-property description.</pre>
-
-      <h3>FSBO Plus | $100</h3>
-      <pre>Listed Property Plus minus the listing agency.
-Includes showing instructions.</pre>
+  <div class="strip">
+    <div class="block" id="block1">
+      <strong>Services</strong>
+      <ul>
+        <li>Listed Property Basic | FREE</li>
+        <li>Listed Property Plus | $20</li>
+        <li>FSBO Plus | $100</li>
+      </ul>
     </div>
 
-    <div class="block">
-      <h3>Listed Property Communication Form</h3>
-      <pre>
-Name: ______________________
-Property Address: ___________
-APN/ID#: ___________________
-Commission: ________________
-Email*: _____________________
-Phone*: _____________________
-Listing Brokerage: ___________
-Listing Agent: _______________
-Agent Phone: ________________
-Agent Email: _________________
+    <div class="block" id="block2">
+      <!-- Communication Form (dynamic) -->
+      <div id="form-listed">
+        <label>Name:</label><input type="text" />
+        <label>Property Address:</label><input type="text" />
+        <label>APN/ID#:</label><input type="text" />
+        <label>Commission:</label><input type="text" />
+        <label>Email*:</label><input type="email" />
+        <label>Phone*:</label><input type="tel" />
+        <label>Listing Brokerage:</label><input type="text" />
+        <label>Listing Agent:</label><input type="text" />
+        <label>Agent Phone:</label><input type="tel" />
+        <label>Agent Email:</label><input type="email" />
+      </div>
 
-*Required | Not Displayed Publicly | Used for escrow/closing
-agent and identification only | Not sold to 3rd parties | Not
-used for solicitation purposes.
-      </pre>
+      <div id="form-fsbo" style="display: none;">
+        <label>Name:</label><input type="text" />
+        <label>Property Address:</label><input type="text" />
+        <label>APN/ID#:</label><input type="text" />
+        <label>Commission:</label><input type="text" />
+        <label>Email*:</label><input type="email" />
+        <label>Phone*:</label><input type="tel" />
+      </div>
     </div>
 
-    <div class="block">
-      <h3>Irrevocable Seller Communication</h3>
-      <pre>
+    <div class="block" id="block3">
+      <!-- Irrevocable Seller Communication Letter (dynamic) -->
+      <textarea id="letter" readonly>
 To the escrow holder/closing agent,
-I, [Name], am the owner or authorized seller of
-[Address], APN/ID# [ID].
-[Address] is listed for sale by [Brokerage],
-[Agent], [Phone].
-Let it be known: if a buyer’s agent/broker facilitates the sale,
-you are irrevocably instructed to credit/compensate the buyer’s
-broker – first by debiting the listing brokerage and second
-by debiting me, the seller – a commission not to exceed
-[X%] of the purchase price.
+I, __________, am the owner or authorized seller of __________, APN/ID# __________.
+This property is listed for sale by __________, __________, __________.
+Let it be known: if a buyer’s agent/broker facilitates the sale of __________,
+you (the escrow holder/closing agent) are irrevocably instructed to
+credit/compensate the buyer’s broker a commission not to exceed ___X%___ of the purchase price.
 
-     Seller Electronic Signature     Date
-     Print this document free
-      </pre>
+     Seller Electronic Signature     Date       
+          Print this document free
+      </textarea>
     </div>
   </div>
 
-  <div class="strip2">
-    <div class="search-container">
-      <input type="text" placeholder="Search Guaranteed Commission by city, zip, school, agent, etc." />
-    </div>
+  <script>
+    const commMenu = document.getElementById('commMenu');
+    const dropdown = document.getElementById('dropdown');
+    const formListed = document.getElementById('form-listed');
+    const formFsbo = document.getElementById('form-fsbo');
+    const letter = document.getElementById('letter');
 
-    <div class="tiles-container">
-      <div class="tile">
-        <div style="position: relative;">
-          <img src="https://via.placeholder.com/300x180?text=251+Viejo+St" />
-          <div class="banner">Open House Sunday 1–4pm</div>
-        </div>
-        <div class="tile-details">
-          <div class="line1">$2,395,000 Commission 2.5% | $59,875</div>
-          <div class="line2">3 bds | 2 ba | 1,334 sqft | Active</div>
-          <div class="line3">251 Viejo St, Laguna Beach, CA 92651</div>
-          <div class="line4">Coldwell Banker Realty, Brian Johnson, 949-734-6262</div>
-        </div>
-      </div>
+    commMenu.addEventListener('click', () => {
+      dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    });
 
-      <div class="tile">
-        <div style="position: relative;">
-          <img src="https://via.placeholder.com/300x180?text=2526+Riviera" />
-          <div class="banner">Oceanfront Masterpiece</div>
-        </div>
-        <div class="tile-details">
-          <div class="line1">$55,000,000 Commission 2.5% | $1,375,000</div>
-          <div class="line2">4 bds | 7 ba | 7,800 sqft | Active</div>
-          <div class="line3">2526 Riviera Drive, Laguna Beach, CA 92651</div>
-          <div class="line4">Compass, Michael Carpenter, 949-922-1092</div>
-        </div>
-      </div>
+    dropdown.querySelectorAll('div').forEach(option => {
+      option.addEventListener('click', () => {
+        dropdown.style.display = 'none';
+        if (option.dataset.type === 'fsbo') {
+          formListed.style.display = 'none';
+          formFsbo.style.display = 'block';
+          letter.value =
+`To the escrow holder/closing agent,
+I, __________, am the owner or authorized seller of __________, APN/ID# __________.
+This property is for sale by owner.
+Let it be known: if a buyer’s agent/broker facilitates the sale of __________,
+you (the escrow holder/closing agent) are irrevocably instructed to
+credit/compensate the buyer’s broker a commission not to exceed ___X%___ of the purchase price.
 
-      <div class="tile">
-        <div style="position: relative;">
-          <img src="https://via.placeholder.com/300x180?text=387+Cypress+Unit+7" />
-          <div class="banner">Updated & Walk to Beach</div>
-        </div>
-        <div class="tile-details">
-          <div class="line1">$849,900 Commission 2% | $16,998</div>
-          <div class="line2">1 bds | 1 ba | 500 sqft | Active</div>
-          <div class="line3">387 Cypress Drive Unit#7, Laguna Beach, CA 92651</div>
-          <div class="line4">Rise Realty, Kelli Walters, 949-677-7740</div>
-        </div>
-      </div>
+     Seller Electronic Signature     Date       
+          Print this document free`;
+        } else {
+          formListed.style.display = 'block';
+          formFsbo.style.display = 'none';
+          letter.value =
+`To the escrow holder/closing agent,
+I, __________, am the owner or authorized seller of __________, APN/ID# __________.
+This property is listed for sale by __________, __________, __________.
+Let it be known: if a buyer’s agent/broker facilitates the sale of __________,
+you (the escrow holder/closing agent) are irrevocably instructed to
+credit/compensate the buyer’s broker a commission not to exceed ___X%___ of the purchase price.
 
-      <div class="tile">
-        <div style="position: relative;">
-          <img src="https://via.placeholder.com/300x180?text=1041+Marine+Dr" />
-          <div class="banner">Oceanfront FSBO Opportunity</div>
-        </div>
-        <div class="tile-details">
-          <div class="line1">$18,800,000 Commission 3% | $564,000</div>
-          <div class="line2">0 bds | 1 ba | 432 sqft | Active</div>
-          <div class="line3">1041 Marine Drive, Laguna Beach, CA 92651</div>
-          <div class="line4">FSBO, Seller, 949-123-1234</div>
-        </div>
-      </div>
-    </div>
-  </div>
+     Seller Electronic Signature     Date       
+          Print this document free`;
+        }
+      });
+    });
+
+    window.addEventListener('click', function(e) {
+      if (!commMenu.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
+  </script>
 </body>
 </html>
+
