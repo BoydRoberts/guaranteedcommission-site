@@ -6,42 +6,62 @@
   <title>GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .dropdown:hover .dropdown-menu {
-      display: block;
+    .cursive {
+      font-family: "Brush Script MT", cursive;
     }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
   <!-- Header -->
-  <header class="bg-white shadow py-4 relative">
-    <div class="flex justify-between items-center max-w-7xl mx-auto px-4">
-      <div class="text-left">
-        <button class="bg-yellow-300 text-black font-semibold text-sm px-3 py-1 rounded hover:bg-yellow-400">
-          Accredited Investors Only
-        </button>
-      </div>
-      <div class="text-center flex-grow">
-        <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
-        <p class="text-sm text-red-600 mt-1">A Real Estate Communication Platform That Matters</p>
-      </div>
-      <div class="w-[135px]"></div> <!-- spacer for balance -->
+  <header class="text-center py-4 bg-white shadow relative">
+    <div class="absolute left-4 top-4">
+      <button onclick="toggleInvestorForm()" class="bg-red-600 text-white text-xs px-3 py-1 rounded">
+        Accredited Investors Only
+      </button>
     </div>
+    <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
+    <p class="text-sm text-red-600 mt-1">A Real Estate Communication Platform That Matters</p>
   </header>
+
+  <!-- Investor Form Modal -->
+  <div id="investorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-50">
+    <div class="bg-white p-6 rounded shadow max-w-md w-full">
+      <h2 class="text-xl font-bold mb-4">Investor Certification</h2>
+      <form class="space-y-3">
+        <label><input type="checkbox" required> I certify that I am an accredited investor.</label>
+        <label><input type="checkbox" required> My income exceeds $200,000 (or $300,000 with spouse).</label>
+        <label><input type="checkbox" required> My net worth exceeds $1,000,000 (excluding primary residence).</label>
+        <input type="text" placeholder="Name" class="w-full border p-2 rounded" required>
+        <input type="tel" placeholder="Phone" class="w-full border p-2 rounded">
+        <input type="email" placeholder="Email" class="w-full border p-2 rounded" required>
+        <select class="w-full border p-2 rounded">
+          <option>Preferred Contact Method</option>
+          <option>Email</option>
+          <option>Phone</option>
+          <option>Text</option>
+        </select>
+        <div class="flex justify-between">
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Submit</button>
+          <button type="button" onclick="toggleInvestorForm()" class="text-red-600">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Navigation Bar -->
   <nav class="bg-gray-200 py-2">
-    <ul class="flex justify-center space-x-8 font-semibold relative">
-      <li class="dropdown relative">
-        <a href="#" class="hover:underline">Communicate Guaranteed Commission</a>
-        <ul class="dropdown-menu absolute left-0 mt-2 bg-white shadow rounded hidden w-72 text-sm text-gray-800 z-10">
-          <li><a href="#" onclick="showForm('listed')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Basic</a></li>
-          <li><a href="#" onclick="showForm('plus')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Plus</a></li>
-          <li><a href="#" onclick="showForm('fsbo')" class="block px-4 py-2 hover:bg-gray-100">FSBO Plus</a></li>
+    <ul class="flex justify-center space-x-8 font-semibold">
+      <li class="relative group">
+        <a href="#" class="cursor-pointer">Communicate Guaranteed Commission</a>
+        <ul class="absolute hidden group-hover:block bg-white shadow p-2 text-sm">
+          <li><a href="#" onclick="showForm('listed')">Listed Property Basic</a></li>
+          <li><a href="#" onclick="showForm('plus')">Listed Property Plus</a></li>
+          <li><a href="#" onclick="showForm('fsbo')">FSBO Plus</a></li>
         </ul>
       </li>
-      <li><a href="#strip2Search" class="hover:underline">Search Guaranteed Commission</a></li>
-      <li><a href="/login.html" class="hover:underline">Log In</a></li>
+      <li><a href="#strip2Search">Search Guaranteed Commission</a></li>
+      <li><a href="/login.html">Log In</a></li>
     </ul>
   </nav>
 
@@ -55,25 +75,19 @@
         <li>
           <a href="#" onclick="showForm('listed')" class="block">
             <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
-            <p class="text-gray-600 pl-5">
-              Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.
-            </p>
+            <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
           </a>
         </li>
         <li>
           <a href="#" onclick="showForm('plus')" class="block">
             <p class="text-base font-semibold">Listed Property Plus | $20</p>
-            <p class="text-gray-600 pl-5">
-              Listed Property Basic plus 20 photos and full property description.
-            </p>
+            <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description.</p>
           </a>
         </li>
         <li>
           <a href="#" onclick="showForm('fsbo')" class="block">
             <p class="text-base font-semibold">FSBO Plus | $100</p>
-            <p class="text-gray-600 pl-5">
-              Listed Property Plus minus the listing agency. Includes showing instructions.
-            </p>
+            <p class="text-gray-600 pl-5">Listed Property Plus minus the listing agency. Includes showing instructions.</p>
           </a>
         </li>
       </ul>
@@ -111,17 +125,22 @@
         <span id="letterAddress3" class="text-blue-700 opacity-80">[property address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed 
         <span id="letterCommission" class="text-blue-700 opacity-80">[commission]</span>.
       </p>
-      <p class="mt-2">Electronic Signature _____________________</p>
-      <p>Date Signed _____________________</p>
-      <div class="flex justify-center mt-4">
+      <p class="mt-2"><span class="cursive pl-5">Electronic Signature</span> &nbsp; &nbsp; date</p>
+      <div class="text-center mt-4">
         <button onclick="window.print()" class="bg-blue-600 text-white px-3 py-1 rounded">Print this document free</button>
       </div>
     </div>
 
   </section>
 
-  <!-- Sync Script -->
+  <!-- Scripts -->
   <script>
+    function toggleInvestorForm() {
+      const modal = document.getElementById("investorModal");
+      modal.classList.toggle("hidden");
+      modal.classList.toggle("flex");
+    }
+
     const fieldMap = {
       name: "letterName",
       address: ["letterAddress", "letterAddress2", "letterAddress3"],
@@ -137,7 +156,7 @@
         const value = document.getElementById(id).value;
         const targets = fieldMap[id];
         if (Array.isArray(targets)) {
-          targets.forEach(target => document.getElementById(target).textContent = value);
+          targets.forEach(t => document.getElementById(t).textContent = value);
         } else {
           document.getElementById(targets).textContent = value;
         }
@@ -146,7 +165,7 @@
 
     function showForm(type) {
       const title = document.querySelector("#formBlock h2");
-      title.textContent = "Listed Property Communication Form"; // Always use the same title
+      title.textContent = "Listed Property Communication Form";
     }
   </script>
 
