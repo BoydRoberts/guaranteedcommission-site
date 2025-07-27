@@ -6,10 +6,8 @@
   <title>GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .signature {
-      font-family: 'Brush Script MT', cursive;
-      margin-left: 2.5rem;
-      display: inline-block;
+    .cursive {
+      font-family: cursive;
     }
   </style>
 </head>
@@ -18,7 +16,7 @@
   <!-- Header -->
   <header class="text-center py-4 bg-white shadow relative">
     <div class="absolute left-4 top-4">
-      <button onclick="document.getElementById('investorModal').classList.remove('hidden')" class="bg-blue-700 text-white px-3 py-1 rounded text-xs">
+      <button onclick="document.getElementById('investorModal').classList.remove('hidden')" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm font-semibold">
         Accredited Investors Only
       </button>
     </div>
@@ -28,13 +26,13 @@
 
   <!-- Navigation Bar -->
   <nav class="bg-gray-200 py-2">
-    <ul class="flex justify-center space-x-8 font-semibold">
+    <ul class="flex justify-center space-x-8 font-semibold relative group">
       <li class="relative group">
-        <a href="#" class="hover:cursor-pointer">Communicate Guaranteed Commission</a>
-        <ul class="absolute left-0 mt-2 bg-white shadow rounded hidden group-hover:block z-10">
-          <li><a href="#" onclick="showForm('listed')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Basic</a></li>
-          <li><a href="#" onclick="showForm('plus')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Plus</a></li>
-          <li><a href="#" onclick="showForm('fsbo')" class="block px-4 py-2 hover:bg-gray-100">FSBO Plus</a></li>
+        <a href="#" class="peer">Communicate Guaranteed Commission</a>
+        <ul class="absolute left-0 hidden peer-hover:block group-hover:block bg-white border px-4 py-2 z-10 text-sm font-normal">
+          <li><a href="#" onclick="showForm('listed')">Listed Property Basic</a></li>
+          <li><a href="#" onclick="showForm('plus')">Listed Property Plus</a></li>
+          <li><a href="#" onclick="showForm('fsbo')">FSBO Plus</a></li>
         </ul>
       </li>
       <li><a href="#strip2Search">Search Guaranteed Commission</a></li>
@@ -45,7 +43,7 @@
   <!-- Strip 1 -->
   <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
 
-    <!-- Block 1 -->
+    <!-- Box 1 -->
     <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
       <h2 class="text-lg font-bold mb-4 text-center">Commission Communication Menu</h2>
       <ul class="space-y-3">
@@ -76,22 +74,29 @@
       </ul>
     </div>
 
-    <!-- Block 2 -->
+    <!-- Box 2 -->
     <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
       <h2 class="text-lg font-bold mb-4 text-center">Listed Property Communication Form</h2>
-      <form id="listingForm" class="space-y-2">
+      <form id="listingForm" class="space-y-2" onsubmit="handleSubmit(event)">
         <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded">
         <input type="text" id="address" placeholder="Property Address" class="w-full border p-1 rounded">
         <input type="text" id="apn" placeholder="APN/ID#" class="w-full border p-1 rounded">
-        <input type="text" id="commission" placeholder="Commission (e.g. 2.5%)" class="w-full border p-1 rounded">
+        <div class="flex space-x-2">
+          <select id="commissionType" class="w-1/3 border p-1 rounded">
+            <option value="%">%</option>
+            <option value="$">$</option>
+          </select>
+          <input type="text" id="commission" placeholder="Commission" class="w-2/3 border p-1 rounded">
+        </div>
         <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
         <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
         <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
+        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded">Submit Communication</button>
       </form>
     </div>
 
-    <!-- Block 3 -->
-    <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm text-justify">
+    <!-- Box 3 -->
+    <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
       <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
       <p><strong>To the escrow holder/closing agent,</strong></p>
       <p>
@@ -106,37 +111,41 @@
       <p>
         Let it be known: if a buyer’s agent/broker facilitates the sale of 
         <span id="letterAddress3" class="text-blue-700 opacity-80">[property address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed 
-        <span id="letterCommission" class="text-blue-700 opacity-80">[commission]</span>.
+        <span id="letterCommission" class="text-blue-700 opacity-80">[commission]</span><span id="letterType" class="text-blue-700 opacity-80">[%]</span>.
       </p>
-      <p class="mt-2"><span class="signature">Electronic Signature</span>  date</p>
-      <div class="flex justify-center mt-3">
+      <p class="mt-2 pl-5"><span class="cursive">Electronic Signature</span> <span class="ml-10">date</span></p>
+      <div class="flex justify-center mt-2">
         <button onclick="window.print()" class="bg-blue-600 text-white px-3 py-1 rounded">Print this document free</button>
       </div>
     </div>
+
   </section>
 
-  <!-- Modal for Accredited Investors -->
-  <div id="investorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-    <div class="bg-white p-6 rounded max-w-md w-full shadow">
-      <h2 class="text-lg font-bold mb-4 text-center">Accredited Investor Certification</h2>
-      <form class="space-y-2">
-        <label><input type="checkbox" required> I certify that I am an accredited investor.</label><br>
-        <label><input type="checkbox" required> I have income exceeding $200,000 ($300,000 with spouse).</label><br>
-        <label><input type="checkbox" required> I have assets exceeding $1 million (excluding primary residence).</label>
-        <hr class="my-2">
-        <input type="text" placeholder="Name" class="w-full border p-1 rounded">
-        <input type="tel" placeholder="Phone" class="w-full border p-1 rounded">
-        <input type="email" placeholder="Email" class="w-full border p-1 rounded">
-        <input type="text" placeholder="Preferred method of communication" class="w-full border p-1 rounded">
-        <div class="flex justify-between pt-2">
-          <button type="button" onclick="document.getElementById('investorModal').classList.add('hidden')" class="bg-gray-500 text-white px-3 py-1 rounded">Cancel</button>
-          <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded">Submit</button>
-        </div>
-      </form>
+  <!-- Investor Modal (Placeholder) -->
+  <div id="investorModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded shadow-lg w-80">
+      <h3 class="text-lg font-bold mb-2">Investor Certification</h3>
+      <p class="text-sm mb-2">To proceed, please confirm the following:</p>
+      <label class="block"><input type="checkbox" /> I am an accredited investor</label>
+      <label class="block"><input type="checkbox" /> My income exceeds $200k/year</label>
+      <label class="block"><input type="checkbox" /> My net worth exceeds $1M</label>
+      <input type="text" placeholder="Name" class="w-full border p-1 rounded mt-2">
+      <input type="email" placeholder="Email" class="w-full border p-1 rounded mt-2">
+      <input type="tel" placeholder="Phone" class="w-full border p-1 rounded mt-2">
+      <select class="w-full border p-1 rounded mt-2">
+        <option>Preferred contact method</option>
+        <option>Email</option>
+        <option>Phone</option>
+        <option>Text</option>
+      </select>
+      <div class="flex justify-between mt-4">
+        <button onclick="document.getElementById('investorModal').classList.add('hidden')" class="bg-gray-500 text-white px-3 py-1 rounded">Cancel</button>
+        <button class="bg-blue-600 text-white px-3 py-1 rounded">Submit</button>
+      </div>
     </div>
   </div>
 
-  <!-- Script for Sync -->
+  <!-- JavaScript -->
   <script>
     const fieldMap = {
       name: "letterName",
@@ -160,6 +169,10 @@
       });
     });
 
+    document.getElementById("commissionType").addEventListener("change", () => {
+      document.getElementById("letterType").textContent = document.getElementById("commissionType").value;
+    });
+
     function showForm(type) {
       const title = document.querySelector("#formBlock h2");
       if (type === "fsbo") {
@@ -167,6 +180,11 @@
       } else {
         title.textContent = "Listed Property Communication Form";
       }
+    }
+
+    function handleSubmit(e) {
+      e.preventDefault();
+      window.location.href = "/login.html";
     }
   </script>
 
