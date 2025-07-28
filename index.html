@@ -9,27 +9,34 @@
 <body class="bg-gray-100 text-gray-800">
 
   <!-- Header -->
-  <header class="text-center py-4 bg-white shadow relative">
-    <button class="absolute left-4 top-4 bg-yellow-200 text-black px-3 py-1 text-xs font-semibold rounded">
-      Accredited Investors Only
-    </button>
-    <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
-    <p class="text-sm text-red-600 mt-1">A Real Estate Communication Platform That Matters</p>
+  <header class="text-center py-4 bg-white shadow">
+    <div class="flex justify-between items-center max-w-7xl mx-auto px-4">
+      <div class="text-left">
+        <button class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">Accredited Investors Only</button>
+      </div>
+      <div class="flex-1 text-center">
+        <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
+        <p class="text-sm text-red-600 mt-1">
+          Because a home will sell quicker at a higher price, if the buyer’s agent’s commission is communicated clearly prior to the showing
+        </p>
+      </div>
+      <div class="w-24"></div>
+    </div>
   </header>
 
   <!-- Navigation Bar -->
   <nav class="bg-gray-200 py-2">
     <ul class="flex justify-center space-x-8 font-semibold">
       <li class="relative group">
-        <a href="#">Communicate Guaranteed Commission</a>
-        <ul class="absolute left-0 mt-2 bg-white border rounded shadow-lg text-sm hidden group-hover:block z-10">
+        <a href="#" class="hover:underline">Communicate Guaranteed Commission</a>
+        <ul class="absolute left-0 mt-2 w-64 bg-white border shadow hidden group-hover:block text-sm text-gray-700">
           <li><a href="#" onclick="showForm('listed')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Basic</a></li>
           <li><a href="#" onclick="showForm('plus')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Plus</a></li>
           <li><a href="#" onclick="showForm('fsbo')" class="block px-4 py-2 hover:bg-gray-100">FSBO Plus</a></li>
         </ul>
       </li>
-      <li><a href="#strip2Search">Search Guaranteed Commission</a></li>
-      <li><a href="/login.html">Log In</a></li>
+      <li><a href="#strip2Search" class="hover:underline">Search Guaranteed Commission</a></li>
+      <li><a href="/login.html" class="hover:underline">Log In</a></li>
     </ul>
   </nav>
 
@@ -68,7 +75,7 @@
         <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded">
         <input type="text" id="address" placeholder="Property Address" class="w-full border p-1 rounded">
         <input type="text" id="apn" placeholder="Parcel / PIN / Tax ID / Folio / APN #" class="w-full border p-1 rounded">
-        <div class="flex space-x-2">
+        <div class="flex gap-2">
           <input type="text" id="commission" placeholder="Commission" class="w-full border p-1 rounded">
           <select id="commissionType" class="border p-1 rounded">
             <option value="%">%</option>
@@ -88,29 +95,30 @@
       <p>
         I, <span id="letterName" class="text-blue-700 opacity-80">[name]</span>, am the owner/seller of 
         <span id="letterAddress" class="text-blue-700 opacity-80">[property address]</span>, 
-        Parcel / PIN / Tax ID / Folio / APN <span id="letterAPN" class="text-blue-700 opacity-80">[number]</span>. 
-        <span id="letterAddress2" class="text-blue-700 opacity-80">[property address]</span> is listed for sale by 
+        APN <span id="letterAPN" class="text-blue-700 opacity-80">[APN number]</span>.
+        <span id="letterAddressShort" class="text-blue-700 opacity-80">[address short]</span> is listed for sale by 
         <span id="letterBrokerage" class="text-blue-700 opacity-80">[listing brokerage]</span>, 
         <span id="letterAgent" class="text-blue-700 opacity-80">[listing agent]</span>, 
-        <span id="letterAgentPhone" class="text-blue-700 opacity-80">[agent phone number]</span>.
+        <span id="letterAgentPhone" class="text-blue-700 opacity-80">[agent phone]</span>.
       </p>
       <p>
         Let it be known: if a buyer’s agent/broker facilitates the sale of 
         <span id="letterAddress3" class="text-blue-700 opacity-80">[property address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed 
         <span id="letterCommission" class="text-blue-700 opacity-80">[commission]</span><span id="letterCommissionType" class="text-blue-700 opacity-80">[%]</span>.
       </p>
-      <p class="mt-2 pl-5 font-cursive inline">Electronic Signature</p>
-      <span class="pl-10">date</span>
-      <div class="text-center">
-        <button onclick="window.print()" class="mt-4 bg-blue-600 text-white px-3 py-1 rounded">Print this document free</button>
+      <p class="mt-2"><span class="pl-5 font-cursive">Electronic Signature</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; date</p>
+      <div class="text-center mt-3">
+        <button onclick="window.print()" class="bg-blue-600 text-white px-3 py-1 rounded">Print this document free</button>
       </div>
     </div>
+
   </section>
 
+  <!-- Scripts -->
   <script>
     const fieldMap = {
       name: "letterName",
-      address: ["letterAddress", "letterAddress2", "letterAddress3"],
+      address: ["letterAddress", "letterAddress3"],
       apn: "letterAPN",
       commission: "letterCommission",
       brokerage: "letterBrokerage",
@@ -118,20 +126,39 @@
       agentPhone: "letterAgentPhone"
     };
 
+    document.getElementById("address").addEventListener("input", () => {
+      const full = document.getElementById("address").value;
+      document.getElementById("letterAddress").textContent = full;
+      document.getElementById("letterAddress3").textContent = full;
+      const short = full.split(",")[0];
+      document.getElementById("letterAddressShort").textContent = short;
+    });
+
     Object.keys(fieldMap).forEach(id => {
       document.getElementById(id).addEventListener("input", () => {
-        const value = document.getElementById(id).value;
+        const val = document.getElementById(id).value;
         const targets = fieldMap[id];
         if (Array.isArray(targets)) {
-          targets.forEach(target => document.getElementById(target).textContent = value);
+          targets.forEach(target => document.getElementById(target).textContent = val);
         } else {
-          document.getElementById(targets).textContent = value;
+          document.getElementById(targets).textContent = val;
         }
       });
     });
 
     document.getElementById("commissionType").addEventListener("change", () => {
-      document.getElementById("letterCommissionType").textContent = document.getElementById("commissionType").value;
+      const val = document.getElementById("commissionType").value;
+      document.getElementById("letterCommissionType").textContent = val;
+    });
+
+    document.getElementById("agentPhone").addEventListener("input", function () {
+      let val = this.value.replace(/\D/g, '');
+      if (val.length >= 4 && val.length <= 6) {
+        val = val.replace(/(\d{3})(\d+)/, '$1-$2');
+      } else if (val.length > 6) {
+        val = val.replace(/(\d{3})(\d{3})(\d+)/, '$1-$2-$3');
+      }
+      this.value = val;
     });
 
     function showForm(type) {
@@ -143,5 +170,12 @@
       }
     }
   </script>
+
+  <style>
+    .font-cursive {
+      font-family: 'Brush Script MT', cursive;
+    }
+  </style>
+
 </body>
 </html>
