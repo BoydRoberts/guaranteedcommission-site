@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upsell Options</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <div class="max-w-2xl mx-auto mt-10 bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold text-center mb-4">Upgrade Your Listing</h1>
+
+    <!-- Banner -->
+    <div class="flex items-center justify-between border-b py-3">
+      <label class="flex items-center space-x-2">
+        <input type="checkbox" id="bannerOption" class="form-checkbox">
+        <span class="text-sm">Add 30-character banner to listing ($10)</span>
+      </label>
+    </div>
+
+    <!-- Premium Placement -->
+    <div class="flex items-center justify-between border-b py-3">
+      <label class="flex items-center space-x-2">
+        <input type="checkbox" id="premiumOption" class="form-checkbox">
+        <span id="premiumLabel" class="text-sm">Premium tile placement ($10)</span>
+      </label>
+    </div>
+
+    <!-- Pin Placement -->
+    <div class="flex items-center justify-between border-b py-3">
+      <label class="flex items-center space-x-2">
+        <input type="checkbox" id="pinOption" class="form-checkbox" onchange="handlePinSelect()">
+        <span class="text-sm">Pin placement ($50 — includes premium)</span>
+      </label>
+    </div>
+
+    <!-- Continue -->
+    <div class="mt-6 text-center">
+      <button onclick="goToCheckout()" class="bg-green-600 text-white px-6 py-2 rounded">Continue to Checkout</button>
+    </div>
+  </div>
+
+  <script>
+    function handlePinSelect() {
+      const pinChecked = document.getElementById('pinOption').checked;
+      const premiumOption = document.getElementById('premiumOption');
+      const premiumLabel = document.getElementById('premiumLabel');
+
+      if (pinChecked) {
+        premiumOption.checked = true;
+        premiumOption.disabled = true;
+        premiumLabel.textContent = "Premium tile placement (Included with Pin)";
+      } else {
+        premiumOption.disabled = false;
+        premiumLabel.textContent = "Premium tile placement ($10)";
+      }
+    }
+
+    function goToCheckout() {
+      const banner = document.getElementById('bannerOption').checked;
+      const premium = document.getElementById('premiumOption').checked;
+      const pin = document.getElementById('pinOption').checked;
+
+      localStorage.setItem('banner', banner);
+      localStorage.setItem('premium', premium);
+      localStorage.setItem('pin', pin);
+
+      window.location.href = '/checkout.html';
+    }
+  </script>
+
+</body>
+</html>
