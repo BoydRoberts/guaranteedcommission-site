@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seller Privacy Disclosure</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <div class="max-w-2xl mx-auto mt-10 bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold text-center mb-4">Privacy & Information Disclosure</h1>
+    
+    <!-- Listed Seller Disclosure -->
+    <div class="mb-6">
+      <h2 class="text-xl font-semibold mb-2">Listed Sellers</h2>
+      <p class="text-gray-700 text-sm">
+        Your personal information (phone number and email) will:
+        <ul class="list-disc ml-6 text-sm">
+          <li>Not be displayed publicly</li>
+          <li>Only be used for escrow and identification purposes</li>
+          <li>Not be sold to third parties</li>
+          <li>Not be used for solicitation purposes</li>
+        </ul>
+      </p>
+    </div>
+
+    <!-- FSBO Seller Disclosure -->
+    <div>
+      <h2 class="text-xl font-semibold mb-2">FSBO Sellers</h2>
+      <p class="text-gray-700 text-sm">
+        Your personal information (phone number and email) will:
+        <ul class="list-disc ml-6 text-sm">
+          <li>Be displayed publicly</li>
+          <li>Be used for escrow and identification purposes</li>
+          <li>Be sold to third parties</li>
+          <li>Be used for solicitation purposes</li>
+        </ul>
+      </p>
+      <div class="mt-4 border p-3 rounded">
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" id="fsboOptOut" class="form-checkbox">
+          <span class="text-sm">Opt out of information sale for $100 (only showing instructions will display as provided)</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Continue -->
+    <div class="mt-6 text-center">
+      <button onclick="goToUpsell()" class="bg-blue-600 text-white px-6 py-2 rounded">Continue</button>
+    </div>
+  </div>
+
+  <script>
+    function goToUpsell() {
+      const fsboOptOut = document.getElementById('fsboOptOut').checked;
+      localStorage.setItem('fsboOptOut', fsboOptOut);
+      window.location.href = '/upsell.html';
+    }
+  </script>
+
+</body>
+</html>
