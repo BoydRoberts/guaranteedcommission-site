@@ -92,6 +92,7 @@
         <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
         <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
         <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
+        <input type="email" id="agentEmail" placeholder="Listing Agent Email" class="w-full border p-1 rounded">
         <button type="submit" class="w-full bg-blue-600 text-white py-1 rounded mt-2">Submit</button>
       </form>
     </div>
@@ -141,11 +142,14 @@
       const title = document.querySelector("#formBlock h2");
       const iscText = document.getElementById("iscText");
 
+      const agentEmailField = document.getElementById("agentEmail");
+
       if (type === "fsbo") {
         title.textContent = "FSBO Communication Form";
         document.getElementById("agentPhone").placeholder = "Seller phone number";
         document.getElementById("brokerage").placeholder = "Seller email";
-        document.getElementById("agent").style.display = "none"; // Hide last field
+        document.getElementById("agent").style.display = "none";
+        agentEmailField.style.display = "none";
 
         iscText.innerHTML = `
           I, <span id="letterName" class="text-blue-700 opacity-80">[name]</span> am the owner/seller of 
@@ -160,11 +164,11 @@
         title.textContent = "Listed Property Communication Form";
         document.getElementById("agentPhone").placeholder = "Agent’s direct phone only – NOT your number";
         document.getElementById("brokerage").placeholder = "Listing Brokerage";
-        document.getElementById("agent").style.display = "block"; // Show last field
+        document.getElementById("agent").style.display = "block";
+        agentEmailField.style.display = "block";
       }
     }
 
-    // Field Mapping
     const fieldMap = {
       name: "letterName",
       address: ["letterAddress"],
@@ -210,7 +214,6 @@
       });
     });
 
-    // Investor Modal Logic
     const investorBtn = document.getElementById("investorBtn");
     const investorModal = document.getElementById("investorModal");
     const closeInvestorModal = document.getElementById("closeInvestorModal");
