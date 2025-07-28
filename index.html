@@ -108,10 +108,7 @@
         <span id="letterBrokerage" class="text-blue-700 opacity-80">[listing brokerage]</span>, 
         <span id="letterAgent" class="text-blue-700 opacity-80">[listing agent]</span>, listing agent, 
         <span id="letterAgentPhone" class="text-blue-700 opacity-80">[agent phone]</span>.
-      </p>
-      <p>
-        Let it be known: if a buyer’s agent/broker facilitates the sale of 
-        <span id="letterAddress3" class="text-blue-700 opacity-80">[full address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if applicable) and second by debiting me, the seller – a commission not to exceed 
+        Let it be known: if a buyer’s agent/broker facilitates the sale of this property, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if applicable) and second by debiting me, the seller – a commission not to exceed 
         <span id="letterCommission" class="text-blue-700 opacity-80">[commission]</span><span id="letterCommissionType" class="text-blue-700 opacity-80">[%]</span>.
       </p>
       <p class="mt-2"><span class="pl-5 font-cursive">Electronic Signature</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; date</p>
@@ -155,8 +152,7 @@
           <span id="letterAddress" class="text-blue-700 opacity-80">[full address]</span>, 
           <span id="letterAPN" class="text-blue-700 opacity-80">[ID#]</span>.
           <span id="letterAddressShort" class="text-blue-700 opacity-80">[short address]</span> is for sale by owner.
-          Let it be known: if a buyer’s agent/broker facilitates the sale of 
-          <span id="letterAddress3" class="text-blue-700 opacity-80">[full address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – and debit me the seller – a commission not to exceed 
+          Let it be known: if a buyer’s agent/broker facilitates the sale of this property, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – and debit me the seller – a commission not to exceed 
           <span id="letterCommission" class="text-blue-700 opacity-80">[commission]</span>
           <span id="letterCommissionType" class="text-blue-700 opacity-80">[%]</span>.
         `;
@@ -171,7 +167,7 @@
     // Field Mapping
     const fieldMap = {
       name: "letterName",
-      address: ["letterAddress", "letterAddress3"],
+      address: ["letterAddress"],
       apn: "letterAPN",
       commission: "letterCommission",
       brokerage: "letterBrokerage",
@@ -182,7 +178,6 @@
     document.getElementById("address").addEventListener("input", () => {
       const full = document.getElementById("address").value;
       document.getElementById("letterAddress").textContent = full;
-      document.getElementById("letterAddress3").textContent = full;
       const short = full.split(",")[0];
       document.getElementById("letterAddressShort").textContent = short;
     });
