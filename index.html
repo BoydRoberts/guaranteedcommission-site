@@ -5,6 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .font-cursive {
+      font-family: 'Brush Script MT', cursive;
+    }
+    /* Match all block heights */
+    .equal-height {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .form-hidden {
+      display: none;
+    }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
@@ -51,7 +65,7 @@
   <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
 
     <!-- Block 1 -->
-    <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
+    <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm equal-height">
       <h2 class="text-lg font-bold mb-4 text-center">Commission Communication Menu</h2>
       <ul class="space-y-3">
         <li>
@@ -76,9 +90,9 @@
     </div>
 
     <!-- Block 2 -->
-    <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
+    <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm equal-height">
       <h2 class="text-lg font-bold mb-4 text-center" id="formTitle">Listed Property Communication Form</h2>
-      <form id="listingForm" class="space-y-2">
+      <form id="listingForm" class="space-y-2 flex-grow">
         <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded">
         <input type="text" id="address" placeholder="Property Address" class="w-full border p-1 rounded">
         <input type="text" id="apn" placeholder="Parcel / PIN / Tax ID / Folio / APN #" class="w-full border p-1 rounded">
@@ -98,7 +112,7 @@
     </div>
 
     <!-- Block 3 -->
-    <div id="iscBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm text-justify">
+    <div id="iscBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm text-justify equal-height">
       <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
       <p><strong>To the escrow holder/closing agent,</strong></p>
       <p id="iscText">
@@ -141,7 +155,6 @@
     function showForm(type) {
       const title = document.querySelector("#formBlock h2");
       const iscText = document.getElementById("iscText");
-
       const agentEmailField = document.getElementById("agentEmail");
 
       if (type === "fsbo") {
@@ -150,16 +163,6 @@
         document.getElementById("brokerage").placeholder = "Seller email";
         document.getElementById("agent").style.display = "none";
         agentEmailField.style.display = "none";
-
-        iscText.innerHTML = `
-          I, <span id="letterName" class="text-blue-700 opacity-80">[name]</span> am the owner/seller of 
-          <span id="letterAddress" class="text-blue-700 opacity-80">[full address]</span>, 
-          <span id="letterAPN" class="text-blue-700 opacity-80">[ID#]</span>.
-          <span id="letterAddressShort" class="text-blue-700 opacity-80">[short address]</span> is for sale by owner.
-          Let it be known: if a buyer’s agent/broker facilitates the sale of this property, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – and debit me the seller – a commission not to exceed 
-          <span id="letterCommission" class="text-blue-700 opacity-80">[commission]</span>
-          <span id="letterCommissionType" class="text-blue-700 opacity-80">[%]</span>.
-        `;
       } else {
         title.textContent = "Listed Property Communication Form";
         document.getElementById("agentPhone").placeholder = "Agent’s direct phone only – NOT your number";
@@ -226,12 +229,6 @@
       investorModal.classList.add("hidden");
     });
   </script>
-
-  <style>
-    .font-cursive {
-      font-family: 'Brush Script MT', cursive;
-    }
-  </style>
 
 </body>
 </html>
