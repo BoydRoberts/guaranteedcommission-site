@@ -5,27 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .font-cursive { font-family: 'Brush Script MT', cursive; }
-    .modal-bg {
-      background-color: rgba(0, 0, 0, 0.5);
-    }
-  </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
   <!-- Header -->
-  <header class="py-4 bg-white shadow">
+  <header class="bg-white shadow py-4">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4">
-      <div class="text-left">
-        <button onclick="openModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
+      <div class="flex flex-col justify-center">
+        <button 
+          id="investorBtn" 
+          class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
           Accredited Investors Only
         </button>
       </div>
       <div class="flex-1 text-center">
         <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
         <p class="text-sm text-red-600 mt-1">
-          Because a home will sell quicker at a higher price, if the buyer’s agent’s commission is communicated clearly prior to the showing
+          Commission communication in a place that matters because –
+        </p>
+        <p class="text-sm text-red-600">
+          if the buyer’s agent’s commission is communicated clearly prior to the showing – the home will sell quicker at a higher price.
         </p>
       </div>
       <div class="w-24"></div>
@@ -37,7 +36,7 @@
     <ul class="flex justify-center space-x-8 font-semibold">
       <li class="relative group">
         <a href="#" class="hover:underline">Communicate Guaranteed Commission</a>
-        <ul class="absolute left-0 mt-2 w-64 bg-white border shadow hidden group-hover:block text-sm text-gray-700 z-10">
+        <ul class="absolute left-0 mt-2 w-64 bg-white border shadow hidden group-hover:block text-sm text-gray-700">
           <li><a href="#" onclick="showForm('listed')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Basic</a></li>
           <li><a href="#" onclick="showForm('plus')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Plus</a></li>
           <li><a href="#" onclick="showForm('fsbo')" class="block px-4 py-2 hover:bg-gray-100">FSBO Plus</a></li>
@@ -93,6 +92,7 @@
         <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
         <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
         <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
+        <button type="submit" class="w-full bg-blue-600 text-white py-1 rounded mt-2">Submit</button>
       </form>
     </div>
 
@@ -103,10 +103,10 @@
       <p>
         I, <span id="letterName" class="text-blue-700 opacity-80">[name]</span>, am the owner/seller of 
         <span id="letterAddress" class="text-blue-700 opacity-80">[property address]</span>, 
-        APN <span id="letterAPN" class="text-blue-700 opacity-80">[APN number]</span>.
+        # <span id="letterAPN" class="text-blue-700 opacity-80">[ID number]</span>.
         <span id="letterAddressShort" class="text-blue-700 opacity-80">[address short]</span> is listed for sale by 
         <span id="letterBrokerage" class="text-blue-700 opacity-80">[listing brokerage]</span>, 
-        <span id="letterAgent" class="text-blue-700 opacity-80">[listing agent]</span>, 
+        <span id="letterAgent" class="text-blue-700 opacity-80">[listing agent]</span>, listing agent, 
         <span id="letterAgentPhone" class="text-blue-700 opacity-80">[agent phone]</span>.
       </p>
       <p>
@@ -115,29 +115,28 @@
         <span id="letterCommission" class="text-blue-700 opacity-80">[commission]</span><span id="letterCommissionType" class="text-blue-700 opacity-80">[%]</span>.
       </p>
       <p class="mt-2"><span class="pl-5 font-cursive">Electronic Signature</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; date</p>
-      <div class="text-center mt-3">
-        <button onclick="window.print()" class="bg-blue-600 text-white px-3 py-1 rounded">Print this document free</button>
-      </div>
     </div>
 
   </section>
 
-  <!-- Accredited Investors Modal -->
-  <div id="investorModal" class="fixed inset-0 hidden modal-bg z-20 flex items-center justify-center">
-    <div class="bg-white p-6 rounded shadow-xl w-96">
-      <h2 class="text-lg font-bold mb-2">Investor Verification</h2>
-      <p class="mb-2 text-sm">Please confirm you are an accredited investor:</p>
-      <form id="investorForm" class="text-sm space-y-2">
-        <label><input type="checkbox" required> I certify I am an accredited investor.</label><br>
-        <label><input type="checkbox" required> My annual income exceeds $200,000 (or $300,000 with spouse).</label><br>
-        <label><input type="checkbox" required> My net worth exceeds $1 million (excluding primary residence).</label><br>
-        <hr class="my-2">
-        <input type="text" placeholder="Name" class="w-full border p-1 rounded">
-        <input type="tel" placeholder="Phone" class="w-full border p-1 rounded">
-        <input type="email" placeholder="Email" class="w-full border p-1 rounded">
-        <input type="text" placeholder="Preferred contact method" class="w-full border p-1 rounded">
-        <div class="flex justify-end space-x-2 pt-2">
-          <button type="button" onclick="closeModal()" class="px-3 py-1 rounded border">Cancel</button>
+  <!-- Investor Modal -->
+  <div id="investorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded shadow-lg w-96">
+      <h2 class="text-lg font-bold mb-4 text-center">Accredited Investor Verification</h2>
+      <form id="investorForm" class="space-y-3">
+        <label><input type="checkbox" required> I confirm I am an Accredited Investor</label>
+        <label><input type="checkbox" required> My income exceeds $200,000 ($300,000 joint)</label>
+        <label><input type="checkbox" required> My net worth exceeds $1,000,000 (excluding primary residence)</label>
+        <input type="text" placeholder="Full Name" class="w-full border p-2 rounded" required>
+        <input type="tel" placeholder="Phone" class="w-full border p-2 rounded" required>
+        <input type="email" placeholder="Email" class="w-full border p-2 rounded" required>
+        <select class="w-full border p-2 rounded" required>
+          <option value="">Preferred Communication Method</option>
+          <option value="phone">Phone</option>
+          <option value="email">Email</option>
+        </select>
+        <div class="flex justify-between mt-4">
+          <button type="button" id="closeInvestorModal" class="bg-gray-400 px-3 py-1 rounded">Cancel</button>
           <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded">Submit</button>
         </div>
       </form>
@@ -146,6 +145,7 @@
 
   <!-- Scripts -->
   <script>
+    // Field Mapping for Form → Letter
     const fieldMap = {
       name: "letterName",
       address: ["letterAddress", "letterAddress3"],
@@ -164,23 +164,6 @@
       document.getElementById("letterAddressShort").textContent = short;
     });
 
-    Object.keys(fieldMap).forEach(id => {
-      document.getElementById(id).addEventListener("input", () => {
-        const val = document.getElementById(id).value;
-        const targets = fieldMap[id];
-        if (Array.isArray(targets)) {
-          targets.forEach(t => document.getElementById(t).textContent = val);
-        } else {
-          document.getElementById(targets).textContent = val;
-        }
-      });
-    });
-
-    document.getElementById("commissionType").addEventListener("change", () => {
-      const val = document.getElementById("commissionType").value;
-      document.getElementById("letterCommissionType").textContent = val;
-    });
-
     document.getElementById("agentPhone").addEventListener("input", function () {
       let val = this.value.replace(/\D/g, '');
       if (val.length >= 4 && val.length <= 6) {
@@ -189,6 +172,24 @@
         val = val.replace(/(\d{3})(\d{3})(\d+)/, '$1-$2-$3');
       }
       this.value = val;
+      document.getElementById("letterAgentPhone").textContent = this.value;
+    });
+
+    document.getElementById("commissionType").addEventListener("change", () => {
+      const val = document.getElementById("commissionType").value;
+      document.getElementById("letterCommissionType").textContent = val;
+    });
+
+    Object.keys(fieldMap).forEach(id => {
+      document.getElementById(id).addEventListener("input", () => {
+        const val = document.getElementById(id).value;
+        const targets = fieldMap[id];
+        if (Array.isArray(targets)) {
+          targets.forEach(target => document.getElementById(target).textContent = val);
+        } else {
+          document.getElementById(targets).textContent = val;
+        }
+      });
     });
 
     function showForm(type) {
@@ -200,14 +201,25 @@
       }
     }
 
-    function openModal() {
-      document.getElementById("investorModal").classList.remove("hidden");
-    }
+    // Investor Modal Logic
+    const investorBtn = document.getElementById("investorBtn");
+    const investorModal = document.getElementById("investorModal");
+    const closeInvestorModal = document.getElementById("closeInvestorModal");
 
-    function closeModal() {
-      document.getElementById("investorModal").classList.add("hidden");
-    }
+    investorBtn.addEventListener("click", () => {
+      investorModal.classList.remove("hidden");
+    });
+
+    closeInvestorModal.addEventListener("click", () => {
+      investorModal.classList.add("hidden");
+    });
   </script>
+
+  <style>
+    .font-cursive {
+      font-family: 'Brush Script MT', cursive;
+    }
+  </style>
 
 </body>
 </html>
