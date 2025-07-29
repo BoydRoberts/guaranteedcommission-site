@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electronic Signature - GuaranteedCommission.com</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+
+<div class="max-w-2xl mx-auto bg-white shadow p-6 mt-10">
+  <h2 class="text-xl font-bold text-center mb-4">Electronic Signature</h2>
+  <p class="text-sm mb-4">
+    Please review your Irrevocable Seller Communication letter below and sign to confirm.
+  </p>
+
+  <div class="bg-gray-50 p-4 rounded border mb-4">
+    <!-- Placeholder for ISC preview -->
+    <p><strong>To the escrow holder/closing agent,</strong></p>
+    <p id="iscContent">[ISC details loaded from previous step]</p>
+  </div>
+
+  <label class="block mb-2 font-semibold">Electronic Signature</label>
+  <input type="text" id="signature" placeholder="Type your full name" class="w-full border p-2 rounded mb-4">
+
+  <button id="signBtn" class="bg-blue-600 text-white px-4 py-2 rounded w-full">Sign Document</button>
+</div>
+
+<script>
+document.getElementById('signBtn').addEventListener('click', function(){
+  const sig = document.getElementById('signature').value.trim();
+  if(sig.length < 3){
+    alert('Please enter a valid signature.');
+    return;
+  }
+  alert('Document signed electronically!');
+  window.location.href = '/dashboard.html';
+});
+</script>
+
+</body>
+</html>
