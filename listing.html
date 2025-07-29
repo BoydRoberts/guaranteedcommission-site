@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Listing Detail | GuaranteedCommission.com</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <!-- Header -->
+  <header class="text-center py-4 bg-white shadow">
+    <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
+  </header>
+
+  <!-- Main Layout -->
+  <main class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 p-4">
+    
+    <!-- Left Column: Photo -->
+    <div class="relative bg-white rounded shadow overflow-hidden">
+      <!-- Ribbon for Banner -->
+      <div id="bannerRibbon" class="absolute top-2 left-2 bg-red-600 text-white px-3 py-1 rounded text-sm hidden"></div>
+      <!-- Main Photo -->
+      <img id="mainPhoto" src="https://via.placeholder.com/600x400" alt="Property Photo" class="w-full h-auto">
+      <!-- Basic Listing Info -->
+      <div class="p-4">
+        <h2 id="price" class="text-2xl font-bold">$Price</h2>
+        <p id="details" class="text-sm text-gray-700">Bedrooms | Bathrooms | Sqft | Status</p>
+        <p id="address" class="text-sm text-gray-500">Full Address</p>
+        <p id="agentInfo" class="text-sm text-gray-500">Brokerage, Agent Name, Agent Phone</p>
+      </div>
+    </div>
+
+    <!-- Middle Column: Map -->
+    <div class="bg-white rounded shadow">
+      <h3 class="text-center font-semibold p-2 border-b">Map</h3>
+      <div class="w-full h-96 bg-gray-200 flex items-center justify-center">
+        <span class="text-gray-500">Map Placeholder</span>
+      </div>
+    </div>
+
+    <!-- Right Column: ISC -->
+    <div class="bg-white rounded shadow p-4 text-sm text-justify">
+      <h3 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h3>
+      <div id="iscContent" class="whitespace-pre-wrap leading-relaxed">
+        Loading ISC...
+      </div>
+      <div class="text-center mt-3">
+        <button onclick="window.print()" class="bg-blue-600 text-white px-3 py-1 rounded">Print this document</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Firebase & Script -->
+  <script>
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyB2ajOd_C8rfjOogqnGo-bZrD8kvjQ8XT4",
+      authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
+      projectId: "guaranteedcommission-d4d91",
+      storageBucket: "guaranteedcommission-d4d91.appspot.com",
+      messagingSenderId: "900066461936",
+      appId: "1:900066461936:web:80b909f6c62acaf84b9a35"
+    };
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Extract listing ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const listingId = urlParams.get('id');
+
+    if (listingId) {
+      const docRef = db.collection("listings").doc(listingId);
+      docRef.get().then((doc) => {
+        if (doc.exists) {
+          const data = doc.data();
+          // Fill in details
+          document.getElementById('price').textContent = `$${data.price || 'Price'}`;
+          document.getElementById('details').textContent = `${data.bedrooms || '?'} bds | ${data.bathrooms || '?'} ba | ${data.sqft || '?'} sqft | ${data.status || 'Status'}`;
+          document.getElementById('address').textContent = data.address || 'Address';
+          document.getElementById('agentInfo').textContent = `${data.brokerage || 'Brokerage'}, ${data.agent || 'Agent'}, ${data.agentPhone || 'Phone'}`;
+          document.getElementById('mainPhoto').src = data.mainPhoto || "https://via.placeholder.com/600x400";
+          
+          // Banner
+          if (data.bannerText) {
+            document.getElementById('bannerRibbon').textContent = data.bannerText;
+            document.getElementById('bannerRibbon').classList.remove('hidden');
+          }
+
+          // ISC
+          document.getElementById('iscContent').textContent = data.iscText || 'ISC not available.';
+        } else {
+          document.getElementById('iscContent').textContent = 'Listing not found.';
+        }
+      }).catch((error) => {
+        document.getElementById('iscContent').textContent = 'Error loading listing.';
+        console.error(error);
+      });
+    } else {
+      document.getElementById('iscContent').textContent = 'No listing ID provided.';
+    }
+  </script>
+
+</body>
+</html>
