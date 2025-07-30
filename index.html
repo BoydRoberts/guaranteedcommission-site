@@ -154,38 +154,74 @@
   </div>
 </section>
 
-<!-- Investor Modal -->
-<div id="investorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-  <div class="bg-white p-6 rounded shadow-lg w-96 relative">
-    <button onclick="closeInvestorModal()" class="absolute top-2 right-2 text-gray-500">&times;</button>
-    <h2 class="text-lg font-bold mb-4">Accredited Investor Certification</h2>
-    <p class="text-sm mb-4">You must certify you are an accredited investor:</p>
-    <label class="block mb-2"><input type="checkbox"> I have income exceeding $200,000 annually ($300,000 with spouse)</label>
-    <label class="block mb-2"><input type="checkbox"> I have net worth exceeding $1,000,000 excluding primary residence</label>
-    <label class="block mb-4"><input type="checkbox"> I represent an entity with assets exceeding $5,000,000</label>
-    <input type="text" placeholder="Full Name" class="w-full border p-2 rounded mb-2">
-    <input type="email" placeholder="Email" class="w-full border p-2 rounded mb-2">
-    <input type="tel" placeholder="Phone" class="w-full border p-2 rounded mb-4">
-    <button onclick="submitInvestorForm()" class="bg-blue-600 text-white px-3 py-1 rounded w-full">Submit</button>
-  </div>
-</div>
-
 <!-- Script -->
 <script>
-  function openInvestorModal() {
-    document.getElementById('investorModal').classList.remove('hidden');
-  }
-  function closeInvestorModal() {
-    document.getElementById('investorModal').classList.add('hidden');
-  }
-  function submitInvestorForm() {
-    alert('Thank you for your interest! We will contact you soon.');
-    closeInvestorModal();
+  const fieldMap = {
+    name: "letterName",
+    address: ["letterAddress", "letterAddress3"],
+    apn: "letterAPN",
+    commission: "letterCommission",
+    brokerage: "letterBrokerage",
+    agent: "letterAgent",
+    agentPhone: "letterAgentPhone"
+  };
+
+  document.getElementById("address").addEventListener("input", () => {
+    const full = document.getElementById("address").value;
+    document.getElementById("letterAddress").textContent = full;
+    document.getElementById("letterAddress3").textContent = full;
+    const short = full.split(",")[0];
+    document.getElementById("letterAddressShort").textContent = short;
+  });
+
+  Object.keys(fieldMap).forEach(id => {
+    document.getElementById(id).addEventListener("input", () => {
+      const val = document.getElementById(id).value;
+      const targets = fieldMap[id];
+      if (Array.isArray(targets)) {
+        targets.forEach(target => document.getElementById(target).textContent = val);
+      } else {
+        document.getElementById(targets).textContent = val;
+      }
+    });
+  });
+
+  document.getElementById("commissionType").addEventListener("change", () => {
+    const val = document.getElementById("commissionType").value;
+    document.getElementById("letterCommissionType").textContent = val;
+  });
+
+  document.getElementById("agentPhone").addEventListener("input", function () {
+    let val = this.value.replace(/\D/g, '');
+    if (val.length >= 4 && val.length <= 6) {
+      val = val.replace(/(\d{3})(\d+)/, '$1-$2');
+    } else if (val.length > 6) {
+      val = val.replace(/(\d{3})(\d{3})(\d+)/, '$1-$2-$3');
+    }
+    this.value = val;
+    document.getElementById("letterAgentPhone").textContent = this.value;
+  });
+
+  function showForm(type) {
+    const title = document.querySelector("#formBlock h2");
+    if (type === "fsbo") {
+      title.textContent = "FSBO Communication Form";
+      document.getElementById("agentPhone").placeholder = "Seller phone number";
+      document.getElementById("brokerage").placeholder = "Seller email";
+      document.getElementById("agent").style.display = "none";
+    } else {
+      title.textContent = "Listed Property Communication Form";
+      document.getElementById("agentPhone").placeholder = "Agent’s direct phone only – NOT your number";
+      document.getElementById("brokerage").placeholder = "Listing Brokerage";
+      document.getElementById("agent").style.display = "block";
+    }
   }
 </script>
 
 <style>
-  .font-cursive { font-family: 'Brush Script MT', cursive; }
+  .font-cursive {
+    font-family: 'Brush Script MT', cursive;
+  }
 </style>
 
 </body>
