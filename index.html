@@ -24,6 +24,28 @@
   </div>
 </header>
 
+<!-- Accredited Investor Modal -->
+<div id="investorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+  <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
+    <button onclick="closeInvestorModal()" class="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
+    <h2 class="text-lg font-bold mb-4">Accredited Investor Certification</h2>
+    <p class="text-sm mb-2">Please confirm your accredited investor status:</p>
+    <label class="block mb-2"><input type="checkbox" class="mr-2"> My net worth exceeds $1M (excluding primary residence)</label>
+    <label class="block mb-2"><input type="checkbox" class="mr-2"> My annual income exceeds $200K ($300K with spouse)</label>
+    <p class="text-sm mt-4 mb-2">Contact Information:</p>
+    <input type="text" placeholder="Full Name" class="w-full border p-1 mb-2 rounded">
+    <input type="tel" placeholder="Phone Number" class="w-full border p-1 mb-2 rounded">
+    <input type="email" placeholder="Email Address" class="w-full border p-1 mb-2 rounded">
+    <select class="w-full border p-1 mb-4 rounded">
+      <option value="">Preferred Contact Method</option>
+      <option value="phone">Phone</option>
+      <option value="email">Email</option>
+    </select>
+    <button class="w-full bg-blue-600 text-white py-2 rounded mb-2">Submit</button>
+    <button onclick="closeInvestorModal()" class="w-full bg-gray-300 text-gray-700 py-2 rounded">Close</button>
+  </div>
+</div>
+
 <!-- Navigation Bar -->
 <nav class="bg-gray-200 py-2">
   <ul class="flex justify-center space-x-8 font-semibold">
@@ -109,7 +131,6 @@
     </p>
     <p class="mt-2"><span class="pl-5 font-cursive">Electronic Signature</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; date</p>
   </div>
-
 </section>
 
 <!-- Strip 2 -->
@@ -215,6 +236,13 @@
       document.getElementById("brokerage").placeholder = "Listing Brokerage";
       document.getElementById("agent").style.display = "block";
     }
+  }
+
+  function openInvestorModal() {
+    document.getElementById('investorModal').classList.remove('hidden');
+  }
+  function closeInvestorModal() {
+    document.getElementById('investorModal').classList.add('hidden');
   }
 </script>
 
