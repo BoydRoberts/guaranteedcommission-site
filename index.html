@@ -25,23 +25,6 @@
   </div>
 </header>
 
-<!-- Accredited Investor Modal -->
-<div id="investorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-  <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
-    <button onclick="closeInvestorModal()" class="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
-    <h2 class="text-lg font-bold mb-4">Accredited Investor Certification</h2>
-    <p class="text-sm mb-2">Please confirm your accredited investor status:</p>
-    <label class="block mb-2"><input type="checkbox" class="mr-2"> My net worth exceeds $1M (excluding primary residence)</label>
-    <label class="block mb-2"><input type="checkbox" class="mr-2"> My annual income exceeds $200K ($300K with spouse)</label>
-    <p class="text-sm mt-4 mb-2">Contact Information:</p>
-    <input type="text" placeholder="Full Name" class="w-full border p-1 mb-2 rounded">
-    <input type="tel" placeholder="Phone Number" class="w-full border p-1 mb-2 rounded">
-    <input type="email" placeholder="Email Address" class="w-full border p-1 mb-4 rounded">
-    <button class="w-full bg-blue-600 text-white py-2 rounded mb-2">Submit</button>
-    <button onclick="closeInvestorModal()" class="w-full bg-gray-300 text-gray-700 py-2 rounded">Close</button>
-  </div>
-</div>
-
 <!-- Navigation Bar -->
 <nav class="bg-gray-200 py-2">
   <ul class="flex justify-center space-x-8 font-semibold">
@@ -61,49 +44,27 @@
 <!-- Strip 1 -->
 <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
 
-  <!-- Block 1 -->
-  <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
-    <h2 class="text-lg font-bold mb-4 text-center">Commission Communication Menu</h2>
-    <ul class="space-y-3">
-      <li>
-        <a href="#" onclick="showForm('listed')" class="block">
-          <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
-          <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
-        </a>
-      </li>
-      <li>
-        <a href="#" onclick="showForm('plus')" class="block">
-          <p class="text-base font-semibold">Listed Property Plus | $20</p>
-          <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description.</p>
-        </a>
-      </li>
-      <li>
-        <a href="#" onclick="showForm('fsbo')" class="block">
-          <p class="text-base font-semibold">FSBO Plus | $100</p>
-          <p class="text-gray-600 pl-5">Listed Property Plus minus the listing agency. Includes showing instructions.</p>
-        </a>
-      </li>
-    </ul>
-  </div>
-
   <!-- Block 2 -->
   <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
     <h2 class="text-lg font-bold mb-4 text-center">Listed Property Communication Form</h2>
-    <form id="listingForm" class="space-y-2">
-      <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded">
-      <input type="text" id="address" placeholder="Property Address" class="w-full border p-1 rounded">
+    <form id="listingForm" class="space-y-2" autocomplete="off">
+      <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded" required>
+      <input type="text" id="address" placeholder="Full Property Address" class="w-full border p-1 rounded" required>
       <input type="text" id="apn" placeholder="Parcel / PIN / Tax ID / Folio / APN #" class="w-full border p-1 rounded">
       <div class="flex gap-2">
-        <input type="text" id="commission" placeholder="Commission" class="w-full border p-1 rounded">
+        <input type="text" id="commission" placeholder="Commission" class="w-full border p-1 rounded" required>
         <select id="commissionType" class="border p-1 rounded">
           <option value="%">%</option>
           <option value="$">$</option>
         </select>
       </div>
-      <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
+      <div class="relative">
+        <input type="tel" id="agentPhone" inputmode="numeric" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded" autocomplete="off" required>
+        <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (123-456-7890)</span>
+      </div>
       <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
       <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
-      <button type="button" onclick="handleSubmit()" class="w-full bg-blue-600 text-white py-2 rounded mt-2">Submit</button>
+      <button type="button" onclick="validateAndSubmit()" class="w-full bg-blue-600 text-white py-2 rounded mt-2">Submit</button>
     </form>
   </div>
 
@@ -113,7 +74,7 @@
     <p><strong>To the escrow holder/closing agent,</strong></p>
     <p>
       I <span id="letterName" class="text-blue-700 opacity-80">[name]</span> am the owner/seller of 
-      <span id="letterAddress" class="text-blue-700 opacity-80">[property address]</span>, 
+      <span id="letterAddress" class="text-blue-700 opacity-80">[full address]</span>, 
       #<span id="letterAPN" class="text-blue-700 opacity-80">[ID#]</span>.
       <span id="letterAddressShort" class="text-blue-700 opacity-80">[short address]</span> is listed for sale by 
       <span id="letterBrokerage" class="text-blue-700 opacity-80">[listing brokerage]</span>, 
@@ -122,111 +83,59 @@
     </p>
     <p>
       Let it be known: if a buyer’s agent/broker facilitates the sale of 
-      <span id="letterAddress3" class="text-blue-700 opacity-80">[property address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if applicable) and second by debiting me, the seller – a commission not to exceed 
-      <span id="letterCommission" class="text-blue-700 opacity-80">[commission]</span><span id="letterCommissionType" class="text-blue-700 opacity-80">[%]</span>.
+      <span id="letterAddressShort2" class="text-blue-700 opacity-80">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if applicable) and second by debiting me, the seller – a commission not to exceed 
+      <span id="letterCommissionDisplay" class="text-blue-700 opacity-80">[commission with symbol]</span>.
     </p>
     <p class="mt-2"><span class="pl-5 font-cursive">Electronic Signature - <span id="signatureDate"></span></span></p>
   </div>
 </section>
 
-<!-- Upsell Modal -->
-<div id="upsellModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-  <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
-    <button onclick="closeUpsellModal()" class="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
-    <h2 class="text-lg font-bold mb-4">Upgrade for More Exposure</h2>
-    <p class="mb-4">Upgrade to Listed Property Plus for $20 or FSBO Plus for $100 for maximum exposure and extra features.</p>
-    <button onclick="processStripePayment()" class="w-full bg-blue-600 text-white py-2 rounded mb-2">Upgrade Now</button>
-    <button onclick="closeUpsellModal()" class="w-full bg-gray-300 text-gray-700 py-2 rounded">No Thanks</button>
-  </div>
-</div>
-
 <!-- Script -->
 <script>
-  const fieldMap = {
-    name: "letterName",
-    address: ["letterAddress", "letterAddress3"],
-    apn: "letterAPN",
-    commission: "letterCommission",
-    brokerage: "letterBrokerage",
-    agent: "letterAgent",
-    agentPhone: "letterAgentPhone"
-  };
+  const phoneInput = document.getElementById("agentPhone");
+  const phoneError = document.getElementById("phoneError");
 
-  document.getElementById("address").addEventListener("input", () => {
-    const full = document.getElementById("address").value;
-    document.getElementById("letterAddress").textContent = full;
-    document.getElementById("letterAddress3").textContent = full;
-    const short = full.split(",")[0];
-    document.getElementById("letterAddressShort").textContent = short;
-  });
-
-  Object.keys(fieldMap).forEach(id => {
-    document.getElementById(id).addEventListener("input", () => {
-      const val = document.getElementById(id).value;
-      const targets = fieldMap[id];
-      if (Array.isArray(targets)) {
-        targets.forEach(target => document.getElementById(target).textContent = val);
-      } else {
-        document.getElementById(targets).textContent = val;
-      }
-    });
-  });
-
-  document.getElementById("commissionType").addEventListener("change", () => {
-    const val = document.getElementById("commissionType").value;
-    document.getElementById("letterCommissionType").textContent = val;
-  });
-
-  document.getElementById("agentPhone").addEventListener("input", function () {
-    let val = this.value.replace(/\D/g, '');
-    if (val.length >= 4 && val.length <= 6) {
-      val = val.replace(/(\d{3})(\d+)/, '$1-$2');
+  phoneInput.addEventListener("input", function () {
+    let val = this.value.replace(/\D/g, "");
+    if (val.length > 3 && val.length <= 6) {
+      val = val.replace(/(\d{3})(\d+)/, "$1-$2");
     } else if (val.length > 6) {
-      val = val.replace(/(\d{3})(\d{3})(\d+)/, '$1-$2-$3');
+      val = val.replace(/(\d{3})(\d{3})(\d+)/, "$1-$2-$3");
     }
     this.value = val;
-    document.getElementById("letterAgentPhone").textContent = this.value;
+    validatePhoneLive();
   });
 
-  function showForm(type) {
-    const title = document.querySelector("#formBlock h2");
-    if (type === "fsbo") {
-      title.textContent = "FSBO Communication Form";
-      document.getElementById("agentPhone").placeholder = "Seller phone number";
-      document.getElementById("brokerage").placeholder = "Seller email";
-      document.getElementById("agent").style.display = "none";
+  function validatePhoneLive() {
+    const phonePattern = /^\d{3}-\d{3}-\d{4}$/;
+    if (!phonePattern.test(phoneInput.value)) {
+      phoneInput.classList.add("border-red-500");
+      phoneError.classList.remove("hidden");
     } else {
-      title.textContent = "Listed Property Communication Form";
-      document.getElementById("agentPhone").placeholder = "Agent’s direct phone only – NOT your number";
-      document.getElementById("brokerage").placeholder = "Listing Brokerage";
-      document.getElementById("agent").style.display = "block";
+      phoneInput.classList.remove("border-red-500");
+      phoneError.classList.add("hidden");
     }
   }
 
-  function handleSubmit() {
-    const selectedForm = document.querySelector("#formBlock h2").textContent;
-    document.getElementById("signatureDate").textContent = new Date().toLocaleDateString();
-    if (selectedForm.includes("Plus")) {
-      document.getElementById('upsellModal').classList.remove('hidden');
-    } else {
-      alert("Form submitted successfully without payment.");
+  function validateAndSubmit() {
+    const address = document.getElementById("address").value.trim();
+    const phone = phoneInput.value.trim();
+    const phonePattern = /^\d{3}-\d{3}-\d{4}$/;
+
+    if (!address) {
+      alert("Please enter the full property address.");
+      return;
     }
-  }
+    if (!phonePattern.test(phone)) {
+      alert("Please enter a valid agent phone number in the format 123-456-7890.");
+      return;
+    }
 
-  function processStripePayment() {
-    alert("Stripe Test Payment Initiated.");
-    closeUpsellModal();
-  }
-
-  function closeUpsellModal() {
-    document.getElementById('upsellModal').classList.add('hidden');
-  }
-
-  function openInvestorModal() {
-    document.getElementById('investorModal').classList.remove('hidden');
-  }
-  function closeInvestorModal() {
-    document.getElementById('investorModal').classList.add('hidden');
+    if (document.querySelector("#formBlock h2").textContent.includes("Plus")) {
+      alert("Stripe Test Checkout Initiated (Placeholder)");
+    } else {
+      alert("Form validated and submitted successfully.");
+    }
   }
 </script>
 
