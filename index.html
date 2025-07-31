@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
@@ -102,7 +103,7 @@
       <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
       <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
       <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
-      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded mt-2">Submit</button>
+      <button type="button" onclick="handleSubmit()" class="w-full bg-blue-600 text-white py-2 rounded mt-2">Submit</button>
     </form>
   </div>
 
@@ -124,51 +125,20 @@
       <span id="letterAddress3" class="text-blue-700 opacity-80">[property address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if applicable) and second by debiting me, the seller – a commission not to exceed 
       <span id="letterCommission" class="text-blue-700 opacity-80">[commission]</span><span id="letterCommissionType" class="text-blue-700 opacity-80">[%]</span>.
     </p>
-    <p class="mt-2"><span class="pl-5 font-cursive">Electronic Signature</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; date</p>
+    <p class="mt-2"><span class="pl-5 font-cursive">Electronic Signature - <span id="signatureDate"></span></span></p>
   </div>
 </section>
 
-<!-- Strip 2 -->
-<section id="strip2Search" class="max-w-7xl mx-auto px-4 py-8">
-  <div class="mb-6">
-    <input type="text" placeholder="Search by address, city, zip, place, neighborhood, school, or agent" class="w-full p-3 border border-gray-300 rounded" />
+<!-- Upsell Modal -->
+<div id="upsellModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+  <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
+    <button onclick="closeUpsellModal()" class="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
+    <h2 class="text-lg font-bold mb-4">Upgrade for More Exposure</h2>
+    <p class="mb-4">Upgrade to Listed Property Plus for $20 or FSBO Plus for $100 for maximum exposure and extra features.</p>
+    <button onclick="processStripePayment()" class="w-full bg-blue-600 text-white py-2 rounded mb-2">Upgrade Now</button>
+    <button onclick="closeUpsellModal()" class="w-full bg-gray-300 text-gray-700 py-2 rounded">No Thanks</button>
   </div>
-  <div class="flex space-x-4 overflow-x-auto">
-    <div class="min-w-[30%] bg-white shadow rounded overflow-hidden">
-      <div class="h-40 bg-gray-300 relative">
-        <div class="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">Open Sunday 1–4pm</div>
-      </div>
-      <div class="p-3 text-sm">
-        <p class="font-bold">$2,395,000 Commission 2.5% | $59,875</p>
-        <p>3 bds | 2 ba | 1,334 sqft | Active</p>
-        <p>251 Viejo St, Laguna Beach, CA 92651</p>
-        <p>Coldwell Banker Realty, Brian Johnson, 949-734-6262</p>
-      </div>
-    </div>
-    <div class="min-w-[30%] bg-white shadow rounded overflow-hidden">
-      <div class="h-40 bg-gray-300 relative">
-        <div class="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">Oceanfront</div>
-      </div>
-      <div class="p-3 text-sm">
-        <p class="font-bold">$55,000,000 Commission 2.5% | $1,375,000</p>
-        <p>4 bds | 7 ba | 7,800 sqft | Active</p>
-        <p>2526 Riviera Drive, Laguna Beach, CA 92651</p>
-        <p>Compass, Michael Carpenter, 949-922-1092</p>
-      </div>
-    </div>
-    <div class="min-w-[30%] bg-white shadow rounded overflow-hidden">
-      <div class="h-40 bg-gray-300 relative">
-        <div class="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">Great for Investors</div>
-      </div>
-      <div class="p-3 text-sm">
-        <p class="font-bold">$849,900 Commission 2% | $16,998</p>
-        <p>1 bds | 1 ba | 500 sqft | Active</p>
-        <p>387 Cypress Drive Unit#7, Laguna Beach, CA 92651</p>
-        <p>Rise Realty, Kelli Walters, 949-677-7740</p>
-      </div>
-    </div>
-  </div>
-</section>
+</div>
 
 <!-- Script -->
 <script>
@@ -231,6 +201,25 @@
       document.getElementById("brokerage").placeholder = "Listing Brokerage";
       document.getElementById("agent").style.display = "block";
     }
+  }
+
+  function handleSubmit() {
+    const selectedForm = document.querySelector("#formBlock h2").textContent;
+    document.getElementById("signatureDate").textContent = new Date().toLocaleDateString();
+    if (selectedForm.includes("Plus")) {
+      document.getElementById('upsellModal').classList.remove('hidden');
+    } else {
+      alert("Form submitted successfully without payment.");
+    }
+  }
+
+  function processStripePayment() {
+    alert("Stripe Test Payment Initiated.");
+    closeUpsellModal();
+  }
+
+  function closeUpsellModal() {
+    document.getElementById('upsellModal').classList.add('hidden');
   }
 
   function openInvestorModal() {
