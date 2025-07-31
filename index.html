@@ -126,6 +126,17 @@
   </div>
 </section>
 
+<!-- Upsell Modal -->
+<div id="upsellModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+  <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
+    <button onclick="closeUpsellModal()" class="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
+    <h2 class="text-lg font-bold mb-4">Upgrade for More Exposure</h2>
+    <p class="mb-4">Upgrade to Listed Property Plus for $20 or FSBO Plus for $100 for maximum exposure and extra features.</p>
+    <button onclick="processStripePayment()" class="w-full bg-blue-600 text-white py-2 rounded mb-2">Upgrade Now</button>
+    <button onclick="closeUpsellModal()" class="w-full bg-gray-300 text-gray-700 py-2 rounded">No Thanks</button>
+  </div>
+</div>
+
 <script>
 function openInvestorModal() {
   document.getElementById('investorModal').classList.remove('hidden');
@@ -134,7 +145,18 @@ function closeInvestorModal() {
   document.getElementById('investorModal').classList.add('hidden');
 }
 function validateAndSubmit() {
-  alert("Form submitted.");
+  if (document.querySelector('#formBlock h2').textContent.includes('Plus')) {
+    document.getElementById('upsellModal').classList.remove('hidden');
+  } else {
+    alert('Form submitted successfully.');
+  }
+}
+function processStripePayment() {
+  alert('Stripe Test Checkout Initiated');
+  closeUpsellModal();
+}
+function closeUpsellModal() {
+  document.getElementById('upsellModal').classList.add('hidden');
 }
 </script>
 
