@@ -43,8 +43,8 @@
 <nav class="bg-gray-200 py-2">
   <ul class="flex justify-center space-x-8 font-semibold">
     <li class="relative group">
-      <a href="#" class="hover:underline">Communicate Guaranteed Commission</a>
-      <ul class="absolute left-0 mt-2 w-64 bg-white border shadow hidden group-hover:block text-sm text-gray-700">
+      <a href="#" onclick="toggleMenu()" class="hover:underline">Communicate Guaranteed Commission</a>
+      <ul id="commissionMenu" class="absolute left-0 mt-2 w-64 bg-white border shadow hidden text-sm text-gray-700">
         <li><a href="#" onclick="showForm('listed')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Basic</a></li>
         <li><a href="#" onclick="showForm('plus')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Plus</a></li>
         <li><a href="#" onclick="showForm('fsbo')" class="block px-4 py-2 hover:bg-gray-100">FSBO Plus</a></li>
@@ -62,16 +62,22 @@
     <h2 class="text-lg font-bold mb-4 text-center">Commission Communication Menu</h2>
     <ul class="space-y-3">
       <li>
-        <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
-        <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
+        <a href="#" onclick="showForm('listed')">
+          <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
+          <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
+        </a>
       </li>
       <li>
-        <p class="text-base font-semibold">Listed Property Plus | $20</p>
-        <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description.</p>
+        <a href="#" onclick="showForm('plus')">
+          <p class="text-base font-semibold">Listed Property Plus | $20</p>
+          <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description.</p>
+        </a>
       </li>
       <li>
-        <p class="text-base font-semibold">FSBO Plus | $100</p>
-        <p class="text-gray-600 pl-5">Listed Property Plus minus the listing agency. Includes showing instructions.</p>
+        <a href="#" onclick="showForm('fsbo')">
+          <p class="text-base font-semibold">FSBO Plus | $100</p>
+          <p class="text-gray-600 pl-5">Listed Property Plus minus the listing agency. Includes showing instructions.</p>
+        </a>
       </li>
     </ul>
   </div>
@@ -176,7 +182,17 @@
 <script>
 function openInvestorModal(){document.getElementById('investorModal').classList.remove('hidden');}
 function closeInvestorModal(){document.getElementById('investorModal').classList.add('hidden');}
-function showForm(type){const title=document.querySelector("#formBlock h2");if(type==='fsbo'){title.textContent='FSBO Communication Form';}else{title.textContent='Listed Property Communication Form';}}
+function toggleMenu(){document.getElementById('commissionMenu').classList.toggle('hidden');}
+function showForm(type){
+  const title=document.querySelector("#formBlock h2");
+  if(type==='fsbo'){
+    title.textContent='FSBO Communication Form';
+  } else if(type==='plus'){
+    title.textContent='Listed Property Plus Communication Form';
+  } else {
+    title.textContent='Listed Property Communication Form';
+  }
+}
 
 const phoneInput=document.getElementById('agentPhone');
 const phoneError=document.getElementById('phoneError');
