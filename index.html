@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GuaranteedCommission.com</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://js.stripe.com/v3/"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GuaranteedCommission.com</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://js.stripe.com/v3/"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
@@ -30,11 +30,11 @@
   <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
     <button onclick="closeInvestorModal()" class="absolute top-2 right-2">&times;</button>
     <h2 class="text-lg font-bold mb-4">Accredited Investor Certification</h2>
-    <label class="block mb-2"><input type="checkbox"> Net worth exceeds $1M</label>
-    <label class="block mb-2"><input type="checkbox"> Annual income exceeds $200K</label>
-    <input type="text" placeholder="Full Name" id="investorName" class="w-full border p-1 mb-2 rounded">
-    <input type="tel" placeholder="Phone Number" id="investorPhone" class="w-full border p-1 mb-2 rounded">
-    <input type="email" placeholder="Email Address" id="investorEmail" class="w-full border p-1 mb-4 rounded">
+    <label class="block mb-2"><input type="checkbox" /> Net worth exceeds $1M</label>
+    <label class="block mb-2"><input type="checkbox" /> Annual income exceeds $200K</label>
+    <input type="text" placeholder="Full Name" id="investorName" class="w-full border p-1 mb-2 rounded" />
+    <input type="tel" placeholder="Phone Number" id="investorPhone" class="w-full border p-1 mb-2 rounded"/>
+    <input type="email" placeholder="Email" id="investorEmail" class="w-full border p-1 mb-4 rounded"/>
     <button onclick="closeInvestorModal()" class="w-full bg-blue-600 text-white py-2 rounded">Submit</button>
   </div>
 </div>
@@ -44,28 +44,30 @@
   <ul class="flex justify-center space-x-8 font-semibold">
     <li class="relative group">
       <a href="#" class="hover:underline">Communicate Guaranteed Commission</a>
-      <ul class="absolute left-0 mt-2 w-64 bg-white border shadow hidden group-hover:block text-sm text-gray-700">
+      <ul class="absolute left-0 mt-2 w-64 bg-white border shadow hidden group-hover:block text-sm text-gray-700" id="menuList">
         <li><a href="#" onclick="toggleMenu()" class="block px-4 py-2 hover:bg-gray-100">Open Menu</a></li>
-        <!-- More menu items if needed -->
       </ul>
     </li>
   </ul>
 </nav>
 
-<!-- Main content -->
+<!-- Main Content -->
 <div class="max-w-7xl mx-auto p-4">
 
-  <!-- Commission Communication Menu -->
-  <div class="bg-white p-4 rounded shadow mb-4" id="formBlock">
-    <h2 class="text-lg font-bold mb-4 text-center">Commission Communication Menu</h2>
-    <ul class="space-y-3">
-      <li>
-        <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
-        <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
-        <a href="#" onclick="showForm('listed')">
-          <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
-          <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
-        </a>
-      </li>
-      <li>
-        <p class="text-base font-semibold">Listed Property Plus | $20
+<!-- Communication Menu -->
+<div class="bg-white p-4 rounded shadow mb-4" id="formBlock">
+<h2 class="text-lg font-bold mb-4 text-center">Communication Menu</h2>
+<ul class="space-y-3">
+<li>
+<h3 class="font-semibold mb-1">Listed Property Basic | <span class="text-red-600">FREE</span></h3>
+<p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
+<a href="#" onclick="showForm('listed')"><p class="font-semibold mb-1">Choose Listed Property Basic</p></a>
+</li>
+<li>
+<h3 class="font-semibold mb-1">Listed Property Plus | $20</h3>
+<p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description</p>
+<a href="#" onclick="showForm('plus')"><p class="font-semibold mb-1">Choose Listed Property Plus</p></a>
+</li>
+<li>
+<h3 class="font-semibold mb-1">FSBO Plus | $100</h3>
+<p class="text-gray-600 pl-5">Listed Property Plus minus the listing agency
