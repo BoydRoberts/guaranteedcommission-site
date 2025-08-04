@@ -1,28 +1,35 @@
 document.addEventListener("DOMContentLoaded", async () => {
-  const stripe = Stripe("pk_test_YOUR_PUBLIC_KEY"); // Replace with your Stripe public key
+  const stripe = Stripe("pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD");
 
   const plan = localStorage.getItem('selectedPlan');
   const banner = localStorage.getItem('banner') === 'true';
   const premium = localStorage.getItem('premium') === 'true';
   const pin = localStorage.getItem('pin') === 'true';
+  const confidential = localStorage.getItem('confidential') === 'true';
 
   let priceId = null;
-  let addons = [];
+  const addons = [];
 
-  // Set base priceId for selected plan
-  if (plan === 'Listed Property Plus') priceId = 'price_XXXXXXXX'; // Replace with Stripe price ID
-  if (plan === 'FSBO Plus') priceId = 'price_YYYYYYYY'; // Replace with Stripe price ID
-  if (plan === 'Listed Property Basic') priceId = 'price_FREE'; // Optional: or redirect around checkout
+  // Set base plan price
+  if (plan === 'Listed Property Plus') priceId = 'price_1RsQFlPTiT2zuxx0414nGtTu';
+  if (plan === 'FSBO Plus') priceId = 'price_1RsQJbPTiT2zuxx0w3GUIdxJ';
 
-  // Add-on price IDs (replace with your actual Stripe Price IDs)
-  if (banner) addons.push('price_BANNER');
-  if (premium && !pin) addons.push('price_PREMIUM');
-  if (pin) addons.push('price_PIN'); // includes premium
+  // Add optional upgrades
+  if (banner) addons.push('price_1RsQTOPTiT2zuxx0TLCwAthR');
+  if (premium && !pin) addons.push('price_1RsQbjPTiT2zuxx0hA6p5H4h');
+  if (pin) addons.push('price_1RsQknPTiT2zuxx0Av9skJyW');
+  if (plan === 'FSBO Plus' && confidential) addons.push('price_1RsRP4PTiT2zuxx0eoOGEDvm');
 
   document.querySelector("button").addEventListener("click", async () => {
+    // If plan is free, skip payment
+    if (plan === 'Listed Property Basic') {
+      window.location.href = '/submit.html';
+      return;
+    }
+
     const lineItems = [];
 
-    if (priceId && priceId !== 'price_FREE') {
+    if (priceId) {
       lineItems.push({ price: priceId, quantity: 1 });
     }
 
