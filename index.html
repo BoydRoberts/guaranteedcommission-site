@@ -157,6 +157,11 @@ function selectPlan(planName) {
   // your other scripts remain unchanged...
   // [ ... existing JS for forms, phone, etc. ]
 </script>
+window.addEventListener('DOMContentLoaded', () => {
+  const selectedPlan = localStorage.getItem('selectedPlan');
+  if (selectedPlan === 'FSBO Plus') showForm('fsbo');
+  if (selectedPlan === 'Listed Property Plus' || selectedPlan === 'Listed Property Basic') showForm('listed');
+});
 
 <style>
 .font-cursive {font-family: 'Brush Script MT', cursive;}
