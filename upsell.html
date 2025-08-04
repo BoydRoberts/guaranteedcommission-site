@@ -40,6 +40,14 @@
       </label>
     </div>
 
+    <!-- Confidential FSBO Upgrade -->
+    <div class="flex items-center justify-between border-b py-3 hidden" id="confidentialRow">
+      <label class="flex items-center space-x-2">
+        <input type="checkbox" id="confidentialOption" class="form-checkbox">
+        <span class="text-sm">Confidential FSBO Upgrade ($100)</span>
+      </label>
+    </div>
+
     <!-- Continue -->
     <div class="mt-6 text-center">
       <button onclick="goToCheckout()" class="bg-green-600 text-white px-6 py-2 rounded">Continue to Checkout</button>
@@ -47,11 +55,15 @@
   </div>
 
   <script>
-    // Display selected plan
     const plan = localStorage.getItem('selectedPlan');
     document.getElementById('planDisplay').innerText = plan 
       ? `You selected: ${plan}` 
       : `No plan selected`;
+
+    // Show confidential option only if FSBO Plus is selected
+    if (plan === 'FSBO Plus') {
+      document.getElementById('confidentialRow').classList.remove('hidden');
+    }
 
     function handlePinSelect() {
       const pinChecked = document.getElementById('pinOption').checked;
@@ -72,10 +84,12 @@
       const banner = document.getElementById('bannerOption').checked;
       const premium = document.getElementById('premiumOption').checked;
       const pin = document.getElementById('pinOption').checked;
+      const confidential = document.getElementById('confidentialOption')?.checked || false;
 
       localStorage.setItem('banner', banner);
       localStorage.setItem('premium', premium);
       localStorage.setItem('pin', pin);
+      localStorage.setItem('confidential', confidential);
 
       window.location.href = '/checkout.html';
     }
