@@ -210,10 +210,12 @@ document.getElementById('commissionType').addEventListener('change', updateCommi
 function updateCommissionDisplay() {
   const amount = document.getElementById('commission').value;
   const type = document.getElementById('commissionType').value;
-  const suffix = type === '%' ? 'of the total purchase price.' : '';
+  const suffix = type === '%' ? 'of the total purchase price' : '';
   const display = (type === '$') ? "$" + amount : amount + "%";
+
   document.getElementById('letterCommissionDisplay').textContent = display;
   document.getElementById('commissionSuffix').textContent = suffix;
+}
 }
 function submitForm() {
   const requiredFields = ['name', 'address', 'agentPhone'];
