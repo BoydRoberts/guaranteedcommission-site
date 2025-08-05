@@ -152,7 +152,12 @@ function toggleMenu() {
 }
 function selectPlan(planName) {
   localStorage.setItem("selectedPlan", planName);
-  window.location.href = "upsell.html";
+
+  // Just update the form, do not redirect
+  if (planName === "FSBO Plus") showForm("fsbo");
+  else showForm("listed");
+}
+
 }
 function showForm(type) {
   const title = document.querySelector("#formBlock h2");
