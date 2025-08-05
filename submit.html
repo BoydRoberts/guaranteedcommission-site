@@ -2,92 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Submit a Property | GuaranteedCommission.com</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
-  <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; padding: 10px; }
-    input, select, button { width: 100%; margin: 10px 0; padding: 10px; font-size: 16px; }
-    label { font-weight: bold; display: block; margin-top: 20px; }
-    .success { color: green; margin-top: 20px; }
-  </style>
+  <title>Submission Complete</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h2>Submit a Property</h2>
+<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen">
 
-  <form id="listingForm">
-    <label for="name">Your Name or Entity</label>
-    <input type="text" id="name" required />
+  <div class="bg-white p-8 rounded shadow max-w-md text-center">
+    <h1 class="text-2xl font-bold mb-4 text-green-600">Thank You!</h1>
+    <p class="text-gray-700 mb-4">Your Irrevocable Seller Communication has been submitted and signed.</p>
+    <p class="text-sm text-gray-600 mb-6">
+      If you selected “Listed Property Plus”, your listing agent will now be invited to upload photos and manage your account.
+    </p>
 
-    <label for="address">Property Address</label>
-    <input type="text" id="address" required />
+    <a href="/" class="text-blue-600 underline">Return to Homepage</a>
+  </div>
 
-    <label for="commission">Buyer Agent Commission (e.g. 2.5%)</label>
-    <input type="text" id="commission" required />
-
-    <label for="sellerType">Seller Type</label>
-    <select id="sellerType" required>
-      <option value="">Select</option>
-      <option value="Listed with Agent">Listed with an Agent</option>
-      <option value="For Sale By Owner">For Sale By Owner</option>
-    </select>
-
-    <label for="email">Contact Email (not shown publicly)</label>
-    <input type="email" id="email" required />
-
-    <label for="photo">Photo Upload (optional)</label>
-    <input type="file" id="photo" />
-
-    <button type="submit">Submit Listing</button>
-  </form>
-
-  <p id="successMessage" class="success"></p>
-
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyB2ajOd_C8rfjOogqnGo-bZrD8kvjQ8XT4",
-      authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
-      projectId: "guaranteedcommission-d4d91",
-      storageBucket: "guaranteedcommission-d4d91.appspot.com",
-      messagingSenderId: "900066461936",
-      appId: "1:900066461936:web:80b909f6c62acaf84b9a35"
-    };
-
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    const form = document.getElementById('listingForm');
-    const successMessage = document.getElementById('successMessage');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const name = document.getElementById('name').value;
-      const address = document.getElementById('address').value;
-      const commission = document.getElementById('commission').value;
-      const sellerType = document.getElementById('sellerType').value;
-      const email = document.getElementById('email').value;
-
-      try {
-        await db.collection('listings').add({
-          name,
-          address,
-          commission,
-          sellerType,
-          email,
-          createdAt: new Date()
-        });
-
-        successMessage.textContent = "Your listing has been submitted successfully!";
-        form.reset();
-      } catch (error) {
-        successMessage.textContent = "Error: " + error.message;
-        successMessage.style.color = "red";
-      }
-    });
-  </script>
 </body>
 </html>
-
