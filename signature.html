@@ -69,7 +69,21 @@
     // Show today's date
     document.getElementById("todayDate").textContent = new Date().toLocaleDateString();
 
-    function submitSignature() {
+ function submitSignature() {
+  const sig = document.getElementById("signature").value.trim();
+  if (!sig) {
+    alert("Please type your name to sign.");
+    return;
+  }
+
+  const shortAddress = document.getElementById("letterAddressShort1").textContent || "[short address]";
+
+  const message = `You have successfully signed the Irrevocable Seller Communication (ISC) for ${shortAddress}.\n\nClick OK to view your signed ISC now.`;
+
+  alert(message);
+  window.location.href = "/submit.html";
+}
+   function submitSignature() {
   const sig = document.getElementById("signature").value.trim();
   if (!sig) {
     alert("Please type your name to sign.");
