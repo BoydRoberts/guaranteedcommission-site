@@ -70,11 +70,22 @@
     document.getElementById("todayDate").textContent = new Date().toLocaleDateString();
 
     function submitSignature() {
-      const sig = document.getElementById("signature").value.trim();
-      if (!sig) {
-        alert("Please type your name to sign.");
-        return;
-      }
+  const sig = document.getElementById("signature").value.trim();
+  if (!sig) {
+    alert("Please type your name to sign.");
+    return;
+  }
+
+  const shortAddress = document.getElementById("letterAddressShort1").textContent || "[short address]";
+
+  const message = `
+    You have successfully signed the Irrevocable Seller Communication (ISC) for ${shortAddress}.\n\n
+    Click OK to view your signed ISC now.
+  `;
+
+  if (confirm(message)) {
+    window.location.href = "/submit.html";
+        }
 
       alert("Thank you. Your ISC has been signed and saved.");
       // You can redirect or clear data here
