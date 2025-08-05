@@ -153,9 +153,13 @@ function toggleMenu() {
 function selectPlan(planName) {
   localStorage.setItem("selectedPlan", planName);
 
-  // Just update the form, do not redirect
-  if (planName === "FSBO Plus") showForm("fsbo");
-  else showForm("listed");
+  if (planName === "FSBO Plus") {
+    showForm("fsbo");
+  } else {
+    showForm("listed");
+  }
+}
+
 }
 
 function showForm(type) {
