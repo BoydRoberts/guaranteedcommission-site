@@ -1,99 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Upsell Options</title>
+  <title>Upgrade Options</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <div class="max-w-2xl mx-auto mt-10 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold text-center mb-4">Upgrade Your Listing</h1>
+  <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded shadow text-center">
+    <h1 class="text-2xl font-bold mb-6">Upgrade Your Listing</h1>
 
-    <!-- Selected Plan Display -->
-    <div class="text-center text-lg font-semibold text-blue-700 mb-6" id="planDisplay">
-      <!-- Populated by JavaScript -->
-    </div>
+    <h2 id="upsellTitle" class="text-lg font-semibold mb-4"></h2>
+    <p id="upsellDescription" class="text-sm text-gray-700 mb-6"></p>
 
-    <!-- Banner -->
-    <div class="flex items-center justify-between border-b py-3">
-      <label class="flex items-center space-x-2">
-        <input type="checkbox" id="bannerOption" class="form-checkbox">
-        <span class="text-sm">Add 30-character banner to listing ($10)</span>
-      </label>
-    </div>
-
-    <!-- Premium Placement -->
-    <div class="flex items-center justify-between border-b py-3">
-      <label class="flex items-center space-x-2">
-        <input type="checkbox" id="premiumOption" class="form-checkbox">
-        <span id="premiumLabel" class="text-sm">Premium tile placement ($10)</span>
-      </label>
-    </div>
-
-    <!-- Pin Placement -->
-    <div class="flex items-center justify-between border-b py-3">
-      <label class="flex items-center space-x-2">
-        <input type="checkbox" id="pinOption" class="form-checkbox" onchange="handlePinSelect()">
-        <span class="text-sm">Pin placement ($50 — includes premium)</span>
-      </label>
-    </div>
-
-    <!-- Confidential FSBO Upgrade -->
-    <div class="flex items-center justify-between border-b py-3 hidden" id="confidentialRow">
-      <label class="flex items-center space-x-2">
-        <input type="checkbox" id="confidentialOption" class="form-checkbox">
-        <span class="text-sm">Confidential FSBO Upgrade ($100)</span>
-      </label>
-    </div>
-
-    <!-- Continue -->
-    <div class="mt-6 text-center">
-      <button onclick="goToCheckout()" class="bg-green-600 text-white px-6 py-2 rounded">Continue to Checkout</button>
+    <div class="flex justify-center gap-4">
+      <button onclick="acceptUpsell()" class="bg-green-600 text-white px-6 py-2 rounded">Yes</button>
+      <button onclick="skipUpsell()" class="bg-gray-400 text-white px-6 py-2 rounded">Skip</button>
     </div>
   </div>
 
   <script>
-    const plan = localStorage.getItem('selectedPlan');
-    document.getElementById('planDisplay').innerText = plan 
-      ? `You selected: ${plan}` 
-      : `No plan selected`;
+    const selectedPlan = localStorage.getItem("selectedPlan") || "";
+    const upsells = [];
 
-    // Show confidential option only if FSBO Plus is selected
-    if (plan === 'FSBO Plus') {
-      document.getElementById('confidentialRow').classList.remove('hidden');
+    // Build upsell list based on plan
+    if (selectedPlan === "Listed Property Basic") {
+      upsells.push({
+        id: "upgradeToPlus",
+        title: "Upgrade to Listed Property Plus ($20)",
+        desc: "Add 20 photos and a full property description to your listing.",
+        storageKey: "upgradeToPlus"
+      });
     }
 
-    function handlePinSelect() {
-      const pinChecked = document.getElementById('pinOption').checked;
-      const premiumOption = document.getElementById('premiumOption');
-      const premiumLabel = document.getElementById('premiumLabel');
+    if (selectedPlan === "Listed Property Plus" || selectedPlan === "Listed Property Basic") {
+      upsells.push(
+        {
+          id: "banner",
+          title: "Add Banner ($10)",
+          desc: "Add a 30-character banner to highlight features like 'Open Sunday' or 'Ocean View'.",
+          storageKey: "banner"
+        },
+        {
+          id: "premium",
+          title: "Add Premium Placement ($10)",
+          desc: "Appear above non-premium listings in your search area.",
+          storageKey: "premium"
+        },
+        {
+          id: "pin",
+          title: "Add Pin Placement ($50)",
+          desc: "Pinned at the top of listings. Includes Premium Placement for free.",
+          storageKey: "pin"
+        }
+      );
+    }
 
-      if (pinChecked) {
-        premiumOption.checked = true;
-        premiumOption.disabled = true;
-        premiumLabel.textContent = "Premium tile placement (Included with Pin)";
-      } else {
-        premiumOption.disabled = false;
-        premiumLabel.textContent = "Premium tile placement ($10)";
+    if (selectedPlan === "FSBO Plus") {
+      upsells.push(
+        {
+          id: "confidential",
+          title: "Confidential FSBO Upgrade ($100)",
+          desc: "Keep your contact information private and avoid solicitation.",
+          storageKey: "confidential"
+        },
+        {
+          id: "banner",
+          title: "Add Banner ($10)",
+          desc: "Add a 30-character banner to highlight features like 'Open Sunday' or 'Ocean View'.",
+          storageKey: "banner"
+        },
+        {
+          id: "premium",
+          title: "Add Premium Placement ($10)",
+          desc: "Appear above non-premium listings in your search area.",
+          storageKey: "premium"
+        },
+        {
+          id: "pin",
+          title: "Add Pin Placement ($50)",
+          desc: "Pinned at the top of listings. Includes Premium Placement for free.",
+          storageKey: "pin"
+        }
+      );
+    }
+
+    let currentIndex = 0;
+
+    function showCurrentUpsell() {
+      const upsell = upsells[currentIndex];
+      if (!upsell) {
+        // No more upsells — go to checkout
+        window.location.href = "/checkout.html";
+        return;
       }
+
+      document.getElementById("upsellTitle").textContent = upsell.title;
+      document.getElementById("upsellDescription").textContent = upsell.desc;
     }
 
-    function goToCheckout() {
-      const banner = document.getElementById('bannerOption').checked;
-      const premium = document.getElementById('premiumOption').checked;
-      const pin = document.getElementById('pinOption').checked;
-      const confidential = document.getElementById('confidentialOption')?.checked || false;
+    function acceptUpsell() {
+      const upsell = upsells[currentIndex];
+      localStorage.setItem(upsell.storageKey, "true");
 
-      localStorage.setItem('banner', banner);
-      localStorage.setItem('premium', premium);
-      localStorage.setItem('pin', pin);
-      localStorage.setItem('confidential', confidential);
+      if (upsell.id === "pin") {
+        // Automatically include premium with pin
+        localStorage.setItem("premium", "true");
+      }
 
-      window.location.href = '/checkout.html';
+      currentIndex++;
+      showCurrentUpsell();
     }
+
+    function skipUpsell() {
+      currentIndex++;
+      showCurrentUpsell();
+    }
+
+    window.addEventListener("DOMContentLoaded", showCurrentUpsell);
   </script>
 
 </body>
 </html>
+
