@@ -102,6 +102,9 @@
       </div>
       <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
       <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
+   <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-4">
+  Submit Listing
+</button>
     </form>
   </div>
 
@@ -212,6 +215,41 @@ function updateCommissionDisplay() {
   document.getElementById('letterCommissionDisplay').textContent = display;
   document.getElementById('commissionSuffix').textContent = suffix;
 }
+function submitForm() {
+  const requiredFields = ['name', 'address', 'agentPhone'];
+  let valid = true;
+
+  requiredFields.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el.value.trim()) {
+      el.classList.add('border-red-500');
+      valid = false;
+    } else {
+      el.classList.remove('border-red-500');
+    }
+  });
+
+  if (!valid) {
+    alert("Please complete all required fields.");
+    return;
+  }
+
+  // Save form data to localStorage
+  const formData = {
+    name: document.getElementById('name').value,
+    address: document.getElementById('address').value,
+    apn: document.getElementById('apn').value,
+    commission: document.getElementById('commission').value,
+    commissionType: document.getElementById('commissionType').value,
+    phone: document.getElementById('agentPhone').value,
+    brokerage: document.getElementById('brokerage').value,
+    agent: document.getElementById('agent').value
+  };
+  localStorage.setItem("formData", JSON.stringify(formData));
+
+  window.location.href = "/verify.html";
+}
+
 </script>
 
 <style>
