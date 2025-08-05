@@ -170,6 +170,9 @@ function showForm(type) {
     phoneInput.placeholder = 'Owner/Seller phone number';
     brokerageInput.placeholder = 'Owner/Seller email';
     agentInput.style.display = 'none';
+    document.getElementById('iscTextListed').classList.add('hidden');
+document.getElementById('iscTextFSBO').classList.remove('hidden');
+
   } else {
     title.textContent = 'Listed Property Communication Form';
     phoneInput.placeholder = 'Agent’s direct phone only – NOT your number';
