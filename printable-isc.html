@@ -25,7 +25,6 @@
   </div>
 
   <script>
-    // Load and fill dynamic data
     const data = JSON.parse(localStorage.getItem("formData") || "{}");
     document.getElementById("sellerName").textContent = data.name || "[seller name]";
     document.getElementById("propertyAddress").textContent = data.address || "[full address]";
@@ -41,12 +40,10 @@
     document.getElementById("commissionAmount").textContent = data.commissionType === "$" ? "$" + commission : commission + "%";
     document.getElementById("commissionSuffix").textContent = suffix;
 
-    // Print timestamp
     const now = new Date();
     const timestamp = now.toLocaleString();
     document.getElementById("printDate").textContent = timestamp;
 
-    // View and print counters
     const views = parseInt(localStorage.getItem("iscViews") || "0");
     const prints = parseInt(localStorage.getItem("iscPrints") || "0") + 1;
     localStorage.setItem("iscPrints", prints);
