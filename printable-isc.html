@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Printable ISC</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-white text-black p-8">
+
+  <div class="max-w-3xl mx-auto border p-6 rounded shadow">
+    <h1 class="text-xl font-bold text-center mb-4">Irrevocable Seller Communication (ISC)</h1>
+
+    <div id="iscContent" class="text-sm space-y-4">
+      <p>To the escrow holder/closing agent,</p>
+
+      <p>I, <span id="sellerName">[seller name]</span>, am the owner/seller of <span id="propertyAddress">[full address]</span>, #<span id="propertyAPN">[APN]</span>. <span id="shortAddress">[short address]</span> is listed for sale by <span id="listingBrokerage">[listing brokerage]</span>, <span id="listingAgent">[listing agent]</span>, listing agent, <span id="agentPhone">[agent phone]</span>.</p>
+
+      <p>Let it be known: if a buyer’s agent/broker facilitates the sale of <span id="shortAddress2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed <span id="commissionAmount">[commission]</span> <span id="commissionSuffix">[suffix]</span>.</p>
+
+      <p><span class="font-cursive">Electronic Signature</span>       <span id="printDate">[date]</span></p>
+
+      <p class="text-xs text-gray-500 mt-8" id="counters"></p>
+    </div>
+  </div>
+
+  <script>
+    // Load and fill dynamic data
+    const data = JSON.parse(localStorage.getItem("formData") || "{}");
+    document.getElementById("sellerName").textContent = data.name || "[seller name]";
+    document.getElementById("propertyAddress").textContent = data.address || "[full address]";
+    document.getElementById("propertyAPN").textContent = data.apn || "[APN]";
+    const short = data.address ? data.address.split(",")[0] : "[short address]";
+    document.getElementById("shortAddress").textContent = short;
+    document.getElementById("shortAddress2").textContent = short;
+    document.getElementById("listingBrokerage").textContent = data.brokerage || "[listing brokerage]";
+    document.getElementById("listingAgent").textContent = data.agent || "[listing agent]";
+    document.getElementById("agentPhone").textContent = data.phone || "[agent phone]";
+    const commission = data.commission || "[commission]";
+    const suffix = data.commissionType === "%" ? "of the total purchase price" : "";
+    document.getElementById("commissionAmount").textContent = data.commissionType === "$" ? "$" + commission : commission + "%";
+    document.getElementById("commissionSuffix").textContent = suffix;
+
+    // Print timestamp
+    const now = new Date();
+    const timestamp = now.toLocaleString();
+    document.getElementById("printDate").textContent = timestamp;
+
+    // View and print counters
+    const views = parseInt(localStorage.getItem("iscViews") || "0");
+    const prints = parseInt(localStorage.getItem("iscPrints") || "0") + 1;
+    localStorage.setItem("iscPrints", prints);
+
+    document.getElementById("counters").textContent = `This Irrevocable Seller Communication has been viewed ${views} time(s) and printed ${prints} time(s). Printed on ${timestamp}.`;
+  </script>
+
+  <style>
+    .font-cursive { font-family: 'Brush Script MT', cursive; }
+  </style>
+
+</body>
+</html>
