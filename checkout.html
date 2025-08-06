@@ -75,6 +75,20 @@
       // Track that user completed checkout and set flag for post-signature options
       localStorage.setItem("postSignatureOptions", finalPlan === "FSBO Plus" ? "fsbo" : "listed");
 
+      // Store short address for agent invite
+      const formData = JSON.parse(localStorage.getItem("formData") || "{}");
+      if (formData.address) {
+        const short = formData.address.split(',')[0];
+        localStorage.setItem("shortAddress", short);
+      }
+
+      // Flag login flow for agent invite prompt
+      const loginIntent = localStorage.getItem("loginIntent");
+      if (loginIntent === "agent-complete-listing") {
+        const agentPrompt = localStorage.getItem("shortAddress");
+        if (agentPrompt) localStorage.setItem("agentPromptMsg", `Would you like to complete the listing detail page for ${agentPrompt}?`);
+      }
+
       window.location.href = "/signature.html";
     }
 
