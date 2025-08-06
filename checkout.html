@@ -71,6 +71,10 @@
       };
 
       localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
+
+      // Track that user completed checkout and set flag for post-signature options
+      localStorage.setItem("postSignatureOptions", finalPlan === "FSBO Plus" ? "fsbo" : "listed");
+
       window.location.href = "/signature.html";
     }
 
