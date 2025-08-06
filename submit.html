@@ -1,31 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ISC Submitted</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submission Complete</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen">
+<body class="bg-gray-100 text-gray-800">
 
-  <div class="bg-white p-8 rounded shadow max-w-md text-center">
-    <h1 class="text-2xl font-bold text-green-600 mb-4">Submission Complete</h1>
+  <div class="max-w-2xl mx-auto mt-12 bg-white p-8 rounded shadow text-center">
+    <h1 class="text-2xl font-bold mb-6">Submission Complete</h1>
+    <p class="mb-6 text-sm">You have successfully signed the Irrevocable Seller Communication (ISC) for <strong id="shortAddress">[short address]</strong>.</p>
 
-    <p id="confirmationMessage" class="text-gray-700 text-sm mb-6">
-      <!-- Filled by script -->
-    </p>
+    <div id="listedOptions" class="space-y-4 hidden">
+      <button onclick="viewISC()" class="w-full bg-blue-600 text-white py-2 rounded">View Irrevocable Seller Communication</button>
+      <button onclick="inviteAgent()" class="w-full bg-yellow-500 text-white py-2 rounded">Invite Listing Agent to Complete Listing Details</button>
+      <button onclick="completeListing()" class="w-full bg-green-600 text-white py-2 rounded">Complete Listing Details</button>
+    </div>
 
-    <a href="/" class="inline-block mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-      Return to Homepage
-    </a>
+    <div id="fsboOptions" class="space-y-4 hidden">
+      <button onclick="viewISC()" class="w-full bg-blue-600 text-white py-2 rounded">View Irrevocable Seller Communication</button>
+      <button onclick="completeListing()" class="w-full bg-green-600 text-white py-2 rounded">Complete Listing Details</button>
+    </div>
   </div>
 
   <script>
-    const data = JSON.parse(localStorage.getItem("formData") || "{}");
-    const short = data.address ? data.address.split(",")[0] : "[your property]";
+    const planType = localStorage.getItem("postSignatureOptions");
+    const shortAddress = localStorage.getItem("shortAddress") || "[short address]";
+    const sellerName = JSON.parse(localStorage.getItem("formData") || "{}").name || "[seller name]";
+    const commission = JSON.parse(localStorage.getItem("formData") || "{}").commission || "[commission]";
+    const agentName = JSON.parse(localStorage.getItem("formData") || "{}").agent || "[listing agent]";
+    const agentEmail = JSON.parse(localStorage.getItem("formData") || "{}").brokerage || "agent@example.com";
 
-    document.getElementById("confirmationMessage").textContent =
-      `You have successfully signed the Irrevocable Seller Communication (ISC) for ${short}. Your listing is now active.`;
+    document.getElementById("shortAddress").textContent = shortAddress;
+
+    if (planType === "fsbo") {
+      document.getElementById("fsboOptions").classList.remove("hidden");
+    } else {
+      document.getElementById("listedOptions").classList.remove("hidden");
+    }
+
+    function viewISC() {
+      window.open("/printable-isc.html", "_blank");
+    }
+
+    function inviteAgent() {
+      alert(`${agentName}, your seller ${sellerName} has signed an Irrevocable Seller Communication (ISC) through GuaranteedCommission.com pertaining to ${shortAddress} guaranteeing to pay the buyer’s agent ${commission} and invites you to complete the listing details at [insert link to listing detail page] to better inform interested buyers and buyer’s agents. To view the ISC, visit [insert link to seller ISC]. Thank you, GuaranteedCommission.com.`);
+      // Ideally trigger email + SMS from backend service here.
+    }
+
+    function completeListing() {
+      window.location.href = "/listing-intake.html";
+    }
   </script>
 
 </body>
