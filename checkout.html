@@ -1,80 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Checkout</title>
+  <title>Review Cart and Checkout</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
-
   <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold text-center mb-6">Review & Checkout</h1>
+    <h1 class="text-2xl font-bold text-center mb-4">Review Cart and Checkout</h1>
 
-    <div class="text-sm space-y-2">
-      <p><strong>Selected Plan:</strong> <span id="planSummary"></span></p>
-      <p><strong>Upgrades:</strong></p>
-      <ul id="upgradeList" class="list-disc list-inside text-gray-700"></ul>
-      <p class="mt-4 text-lg font-bold">Total: $<span id="totalAmount">0</span></p>
-    </div>
+    <div class="space-y-4">
+      <p><strong>Selected Plan:</strong> <span id="selectedPlan">...</span></p>
+      <p><strong>Cost of Selected Plan:</strong> <span id="planCost">...</span></p>
 
-    <div class="mt-6 text-center">
-      <button onclick="submitCheckout()" class="bg-blue-600 text-white px-6 py-2 rounded">
-        Pay with Stripe
-      </button>
+      <div>
+        <p class="font-semibold mb-2">Upgrades:</p>
+        <label class="block"><input type="checkbox" id="upgradePlus" onchange="updateCart()"> Upgrade to Listed Property Plus ($20)</label>
+        <label class="block"><input type="checkbox" id="upgradeBanner" onchange="updateCart()"> Banner ($10)</label>
+        <label class="block"><input type="checkbox" id="upgradePin" onchange="updateCart()"> Pin Placement ($50)</label>
+      </div>
+
+      <p><strong>Total:</strong> $<span id="totalAmount">0</span></p>
+
+      <button onclick="checkout()" class="w-full bg-green-600 text-white py-2 rounded mt-4">Pay Now</button>
     </div>
   </div>
 
   <script>
-    const plan = localStorage.getItem("selectedPlan") || "";
-    const upgradeToPlus = localStorage.getItem("upgradeToPlus") === "true";
-    const banner = localStorage.getItem("banner") === "true";
-    const premium = localStorage.getItem("premium") === "true";
-    const pin = localStorage.getItem("pin") === "true";
-    const confidential = localStorage.getItem("confidential") === "true";
+    let baseCost = 0;
 
-    let total = 0;
-    const upgrades = [];
+    function updateCart() {
+      const plus = document.getElementById("upgradePlus").checked;
+      const banner = document.getElementById("upgradeBanner").checked;
+      const pin = document.getElementById("upgradePin").checked;
 
-    // Base plan cost
-    if (plan === "Listed Property Plus") {
-      total += 20;
-    } else if (plan === "FSBO Plus") {
-      total += 100;
-    } else if (plan === "Listed Property Basic" && upgradeToPlus) {
-      total += 20;
-      upgrades.push("Upgrade to Listed Property Plus ($20)");
+      let total = baseCost;
+      if (plus) total += 20;
+      if (banner) total += 10;
+      if (pin) total += 50;
+
+      const selectedPlanLabel = document.getElementById("selectedPlan");
+      const planLabel = plus ? "Listed Property Plus" : localStorage.getItem("selectedPlan") || "...";
+      selectedPlanLabel.textContent = planLabel;
+
+      document.getElementById("totalAmount").textContent = total;
     }
 
-    // Add-ons
-    if (confidential) {
-      upgrades.push("Confidential FSBO Upgrade ($100)");
-      total += 100;
-    }
-    if (banner) {
-      upgrades.push("Banner ($10)");
-      total += 10;
-    }
-    if (pin) {
-      upgrades.push("Pin Placement ($50)");
-      total += 50;
-    } else if (premium) {
-      upgrades.push("Premium Placement ($10)");
-      total += 10;
-    }
-
-    // Update display
-    document.getElementById("planSummary").textContent = plan || "None selected";
-    document.getElementById("upgradeList").innerHTML =
-      upgrades.length ? upgrades.map(up => `<li>${up}</li>`).join("") : "<li>None</li>";
-    document.getElementById("totalAmount").textContent = total;
-
-    function submitCheckout() {
-      alert(`This would now connect to Stripe. Total: $${total}`);
-      // Simulated flow:
+    function checkout() {
+      alert("Proceeding to payment...");
       window.location.href = "/signature.html";
     }
-  </script>
 
+    window.addEventListener("DOMContentLoaded", () => {
+      const plan = localStorage.getItem("selectedPlan") || "...";
+      const planCostMap = {
+        "Listed Property Basic": 0,
+        "Listed Property Plus": 20,
+        "FSBO Plus": 100
+      };
+
+      baseCost = planCostMap[plan] || 0;
+
+      document.getElementById("selectedPlan").textContent = plan;
+      document.getElementById("planCost").textContent = `$${baseCost}`;
+      updateCart();
+    });
+  </script>
 </body>
 </html>
