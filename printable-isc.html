@@ -14,7 +14,7 @@
     <div id="iscContent" class="text-sm space-y-4">
       <p>To the escrow holder/closing agent,</p>
 
-      <p>I, <span id="sellerName">[seller name]</span>, am the owner/seller of <span id="propertyAddress">[full address]</span>, #<span id="propertyAPN">[APN]</span>. <span id="shortAddress">[short address]</span> is listed for sale by <span id="listingBrokerage">[listing brokerage]</span>, <span id="listingAgent">[listing agent]</span>, listing agent, <span id="agentPhone">[agent phone]</span>.</p>
+      <p>I, <span id="sellerName">[seller name]</span>, am the owner/seller of <span id="propertyAddress">[full address]</span>, #<span id="propertyAPN">[Parcel / Pin /Tax ID # / Folio / APN]</span>. <span id="shortAddress">[short address]</span> is listed for sale by <span id="listingLabel">[listing label]</span> <span id="listingBrokerage">[listing brokerage]</span><span id="ownerSelfLabel"></span><span id="listingAgent">[listing agent]</span>, listing agent, <span id="agentPhone">[agent phone]</span>.</p>
 
       <p>Let it be known: if a buyer’s agent/broker facilitates the sale of <span id="shortAddress2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed <span id="commissionAmount">[commission]</span> <span id="commissionSuffix">[suffix]</span>.</p>
 
@@ -26,28 +26,35 @@
 
   <script>
     const data = JSON.parse(localStorage.getItem("formData") || "{}");
+    const plan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
+
     document.getElementById("sellerName").textContent = data.name || "[seller name]";
     document.getElementById("propertyAddress").textContent = data.address || "[full address]";
-    document.getElementById("propertyAPN").textContent = data.apn || "[APN]";
+    document.getElementById("propertyAPN").textContent = data.apn || "[Parcel / Pin /Tax ID # / Folio / APN]";
+
     const short = data.address ? data.address.split(",")[0] : "[short address]";
     document.getElementById("shortAddress").textContent = short;
     document.getElementById("shortAddress2").textContent = short;
-    document.getElementById("listingBrokerage").textContent = data.brokerage || "[listing brokerage]";
-    document.getElementById("listingAgent").textContent = data.agent || "[listing agent]";
-    document.getElementById("agentPhone").textContent = data.phone || "[agent phone]";
-    const commission = data.commission || "[commission]";
-    const suffix = data.commissionType === "%" ? "of the total purchase price" : "";
-    document.getElementById("commissionAmount").textContent = data.commissionType === "$" ? "$" + commission : commission + "%";
-    document.getElementById("commissionSuffix").textContent = suffix;
 
-    const now = new Date();
-    const timestamp = now.toLocaleString();
-    document.getElementById("printDate").textContent = timestamp;
+    document.getElementById("commissionAmount").textContent = data.commissionType === "$" ? "$" + data.commission : data.commission + "%";
+    document.getElementById("commissionSuffix").textContent = data.commissionType === "%" ? "of the total purchase price" : "";
+
+    document.getElementById("agentPhone").textContent = data.phone || "[agent phone]";
+    document.getElementById("printDate").textContent = new Date().toLocaleString();
+
+    // FSBO conditional formatting
+    if (plan.includes("FSBO")) {
+      document.getElementById("listingLabel").textContent = "owner (Me).";
+      document.getElementById("ownerSelfLabel").textContent = ` My phone number is ${data.phone || '[owner/seller phone number]'}. My email address is ${data.brokerage || '[owner/seller email]'}.`;
+      document.getElementById("listingBrokerage").remove();
+      document.getElementById("listingAgent").remove();
+    } else {
+      document.getElementById("listingLabel").textContent = "sale by";
+      document.getElementById("listingBrokerage").textContent = data.brokerage || "[listing brokerage]";
+      document.getElementById("listingAgent").textContent = data.agent || "[listing agent]";
+    }
 
     const views = parseInt(localStorage.getItem("iscViews") || "0");
-    const prints = parseInt(localStorage.getItem("iscPrints") || "0") + 1;
-    localStorage.setItem("iscPrints", prints);
-
     document.getElementById("counters").textContent = `This Irrevocable Seller Communication has been viewed ${views} time(s).`;
   </script>
 
