@@ -54,7 +54,8 @@
       document.getElementById("listingAgent").textContent = data.agent || "[listing agent]";
     }
 
-    const views = parseInt(localStorage.getItem("iscViews") || "0");
+    const views = parseInt(localStorage.getItem("iscViews") || "0") + 1;
+    localStorage.setItem("iscViews", views);
     document.getElementById("counters").textContent = `This Irrevocable Seller Communication has been viewed ${views} time(s).`;
   </script>
 
