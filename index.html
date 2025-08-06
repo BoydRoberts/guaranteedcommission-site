@@ -102,9 +102,9 @@
       </div>
       <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
       <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
-   <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-4">
-  Submit Listing
-</button>
+      <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-4">
+        Submit Listing
+      </button>
     </form>
   </div>
 
@@ -114,22 +114,20 @@
     <p>To the escrow holder/closing agent,</p>
     <br>
     <p>I, <span id="letterName">[name]</span>, am the owner/seller of <span id="letterAddressFull">[full address]</span>, #<span id="letterAPN">[APN]</span>. <span id="letterAddressShort1">[short address]</span> is listed for sale by <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent, <span id="letterAgentPhone">[agent phone]</span>.</p>
-<p id="iscTextListed" class="hidden">
-  Let it be known: if a buyer’s agent/broker facilitates the sale of 
-  <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) 
-  are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed 
-  <span id="letterCommissionDisplay">[commission]</span> 
-  <span id="commissionSuffix"></span>.
-</p>
-
-<p id="iscTextFSBO" class="hidden">
-  Let it be known: if a buyer’s agent/broker facilitates the sale of 
-  <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) 
-  are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed 
-  <span id="letterCommissionDisplay">[commission]</span> 
-  <span id="commissionSuffix"></span>.
-</p>
-
+    <p id="iscTextListed" class="hidden">
+      Let it be known: if a buyer’s agent/broker facilitates the sale of 
+      <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) 
+      are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed 
+      <span id="letterCommissionDisplay">[commission]</span> 
+      <span id="commissionSuffix"></span>.
+    </p>
+    <p id="iscTextFSBO" class="hidden">
+      Let it be known: if a buyer’s agent/broker facilitates the sale of 
+      <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) 
+      are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed 
+      <span id="letterCommissionDisplay">[commission]</span> 
+      <span id="commissionSuffix"></span>.
+    </p>
     <p class="mt-2"><span class="pl-5 font-cursive">Electronic Signature</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; date</p>
   </div>
 </section>
@@ -152,15 +150,12 @@ function toggleMenu() {
 }
 function selectPlan(planName) {
   localStorage.setItem("selectedPlan", planName);
-
   if (planName === "FSBO Plus") {
     showForm("fsbo");
   } else {
     showForm("listed");
   }
-
 }
-
 function showForm(type) {
   const title = document.querySelector("#formBlock h2");
   const phoneInput = document.getElementById('agentPhone');
@@ -173,18 +168,16 @@ function showForm(type) {
     brokerageInput.placeholder = 'Owner/Seller email';
     agentInput.style.display = 'none';
     document.getElementById('iscTextListed').classList.add('hidden');
-document.getElementById('iscTextFSBO').classList.remove('hidden');
-
+    document.getElementById('iscTextFSBO').classList.remove('hidden');
   } else {
     title.textContent = 'Listed Property Communication Form';
     phoneInput.placeholder = 'Agent’s direct phone only – NOT your number';
     brokerageInput.placeholder = 'Listing Brokerage';
     agentInput.style.display = 'block';
     document.getElementById('iscTextListed').classList.remove('hidden');
-document.getElementById('iscTextFSBO').classList.add('hidden');
+    document.getElementById('iscTextFSBO').classList.add('hidden');
+  }
 }
-
-// Run correct form display when returning to index.html
 window.addEventListener('DOMContentLoaded', () => {
   const selectedPlan = localStorage.getItem('selectedPlan');
   if (selectedPlan === 'FSBO Plus') showForm('fsbo');
@@ -217,7 +210,6 @@ phoneInput.addEventListener('input', function () {
     document.getElementById('letterAddressShort1').textContent = short;
     document.getElementById('letterAddressShort2').textContent = short;
     document.getElementById('letterAPN').textContent = document.getElementById('apn').value;
-
     if (document.querySelector("#formBlock h2").textContent.includes("FSBO")) {
       document.getElementById('letterBrokerage').textContent = "";
       document.getElementById('letterAgent').textContent = "";
@@ -242,6 +234,7 @@ function updateCommissionDisplay() {
   document.getElementById('letterCommissionDisplay').textContent = display;
   document.getElementById('commissionSuffix').textContent = suffix;
 }
+
 function submitForm() {
   const requiredFields = ['name', 'address', 'agentPhone'];
   let valid = true;
@@ -261,7 +254,6 @@ function submitForm() {
     return;
   }
 
-  // Save form data to localStorage
   const formData = {
     name: document.getElementById('name').value,
     address: document.getElementById('address').value,
@@ -274,8 +266,8 @@ function submitForm() {
   };
   localStorage.setItem("formData", JSON.stringify(formData));
 
+  window.location.href = "/verify.html";
 }
-
 </script>
 
 <style>
