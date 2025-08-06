@@ -57,8 +57,14 @@
       if (upgradeBanner.checked) selectedUpgrades.push("Banner");
       if (upgradePin.checked) selectedUpgrades.push("Pin Placement");
 
+      // Update selected plan if upgrading to Listed Property Plus
+      let finalPlan = selectedPlan;
+      if (selectedPlan === "Listed Property Basic" && selectedUpgrades.includes("Banner") && selectedUpgrades.includes("Pin Placement")) {
+        finalPlan = "Listed Property Plus";
+      }
+
       const checkoutData = {
-        plan: selectedPlan,
+        plan: finalPlan,
         planCost: basePlanCost,
         upgrades: selectedUpgrades,
         totalCost: parseInt(document.getElementById("totalCost").textContent)
