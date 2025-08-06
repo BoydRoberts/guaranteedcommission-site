@@ -36,6 +36,7 @@
     const commission = formData.commission || "[commission]";
     const agentName = formData.agent || "[listing agent]";
     const agentEmail = formData.brokerage || "agent@example.com";
+    const loginIntent = localStorage.getItem("loginIntent");
 
     document.getElementById("shortAddress").textContent = shortAddress;
 
@@ -52,6 +53,7 @@
     function inviteAgent() {
       alert(`${agentName}, your seller ${sellerName} has signed an Irrevocable Seller Communication (ISC) through GuaranteedCommission.com pertaining to ${shortAddress} guaranteeing to pay the buyer’s agent ${commission} and invites you to complete the listing details at [insert link to listing detail page] to better inform interested buyers and buyer’s agents. To view the ISC, visit [insert link to seller ISC]. Thank you, GuaranteedCommission.com.`);
       // Ideally trigger email + SMS from backend service here.
+      localStorage.setItem("loginIntent", "agent-complete-listing");
     }
 
     function completeListing() {
