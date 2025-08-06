@@ -93,7 +93,7 @@
     <form id="listingForm" class="space-y-2" autocomplete="off">
       <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded" required>
       <input type="text" id="address" placeholder="Full Property Address" class="w-full border p-1 rounded" required>
-      <input type="text" id="apn" placeholder="Parcel / PIN / Tax ID / Folio / APN #" class="w-full border p-1 rounded">
+      <input type="text" id="apn" placeholder="Parcel # / Pin # /Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
       <div class="flex gap-2">
         <input type="text" id="commission" placeholder="Commission" class="w-full border p-1 rounded">
         <select id="commissionType" class="border p-1 rounded">
@@ -118,25 +118,25 @@
     <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
     <p>To the escrow holder/closing agent,</p>
     <br>
-    <p>I, <span id="letterName">[name]</span>, am the owner/seller of <span id="letterAddressFull">[full address]</span>, #<span id="letterAPN">[APN]</span>. <span id="letterAddressShort1">[short address]</span> is listed for sale by <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent, <span id="letterAgentPhone">[agent phone]</span>.</p>
+    <p id="iscTextListed">
+      I, <span id="letterName">[name]</span>, am the owner/seller of <span id="letterAddressFull">[full address]</span>, #<span id="letterAPN">[Parcel # / Pin # /Tax ID # / Folio # / APN #]</span>. <span id="letterAddressShort1">[short address]</span> is listed for sale by <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent, <span id="letterAgentPhone">[agent phone]</span>.
 
-    <p id="iscTextListed" class="hidden">
       Let it be known: if a buyer’s agent/broker facilitates the sale of 
       <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) 
       are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed 
-      <span id="letterCommissionDisplay">[commission]</span> 
-      <span id="commissionSuffix"></span>.
+      <span id="letterCommissionDisplay">[commission]</span>.
     </p>
 
     <p id="iscTextFSBO" class="hidden">
+      I, <span id="letterName">[name]</span>, am the owner/seller of <span id="letterAddressFull">[full address]</span>, #<span id="letterAPN">[Parcel # / Pin # /Tax ID # / Folio # / APN #]</span>. <span id="letterAddressShort1">[short address]</span> is listed for sale by owner (Me). My phone number is <span id="fsboPhone"></span>. My email address is <span id="fsboEmail"></span>.
+
       Let it be known: if a buyer’s agent/broker facilitates the sale of 
       <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) 
       are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed 
-      <span id="letterCommissionDisplay">[commission]</span> 
-      <span id="commissionSuffix"></span>.
+      <span id="letterCommissionDisplay">[commission]</span>.
     </p>
 
-    <p class="mt-2"><span class="pl-5 font-cursive">Electronic Signature</span>       date</p>
+    <p class="mt-2"><span class="pl-5 font-cursive">Seller Electronic Signature</span>       	date</p>
   </div>
 </section>
 
@@ -208,16 +208,17 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById(id).addEventListener('input', () => {
       const fullAddr = document.getElementById('address').value;
       const short = fullAddr.split(',')[0];
+      const isFSBO = document.querySelector("#formBlock h2").textContent.includes("FSBO");
+
       document.getElementById('letterName').textContent = document.getElementById('name').value;
       document.getElementById('letterAddressFull').textContent = fullAddr;
       document.getElementById('letterAddressShort1').textContent = short;
       document.getElementById('letterAddressShort2').textContent = short;
       document.getElementById('letterAPN').textContent = document.getElementById('apn').value;
 
-      if (document.querySelector("#formBlock h2").textContent.includes("FSBO")) {
-        document.getElementById('letterBrokerage').textContent = "";
-        document.getElementById('letterAgent').textContent = "";
-        document.getElementById('letterAgentPhone').textContent = "for sale by owner: " + document.getElementById('agentPhone').value + " " + document.getElementById('brokerage').value + ".";
+      if (isFSBO) {
+        document.getElementById('fsboPhone').textContent = document.getElementById('agentPhone').value;
+        document.getElementById('fsboEmail').textContent = document.getElementById('brokerage').value;
       } else {
         document.getElementById('letterBrokerage').textContent = document.getElementById('brokerage').value;
         document.getElementById('letterAgent').textContent = document.getElementById('agent').value;
@@ -239,6 +240,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('commissionSuffix').textContent = suffix;
   }
 });
+
 function submitForm() {
   const requiredFields = ['name', 'address', 'agentPhone'];
   let valid = true;
