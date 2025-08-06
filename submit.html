@@ -22,15 +22,20 @@
       <button onclick="viewISC()" class="w-full bg-blue-600 text-white py-2 rounded">View Irrevocable Seller Communication</button>
       <button onclick="completeListing()" class="w-full bg-green-600 text-white py-2 rounded">Complete Listing Details</button>
     </div>
+
+    <div id="investorResponse" class="mt-10 text-sm text-green-600 font-semibold hidden">
+      We will be in touch.
+    </div>
   </div>
 
   <script>
     const planType = localStorage.getItem("postSignatureOptions");
     const shortAddress = localStorage.getItem("shortAddress") || "[short address]";
-    const sellerName = JSON.parse(localStorage.getItem("formData") || "{}").name || "[seller name]";
-    const commission = JSON.parse(localStorage.getItem("formData") || "{}").commission || "[commission]";
-    const agentName = JSON.parse(localStorage.getItem("formData") || "{}").agent || "[listing agent]";
-    const agentEmail = JSON.parse(localStorage.getItem("formData") || "{}").brokerage || "agent@example.com";
+    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
+    const sellerName = formData.name || "[seller name]";
+    const commission = formData.commission || "[commission]";
+    const agentName = formData.agent || "[listing agent]";
+    const agentEmail = formData.brokerage || "agent@example.com";
 
     document.getElementById("shortAddress").textContent = shortAddress;
 
@@ -51,6 +56,12 @@
 
     function completeListing() {
       window.location.href = "/listing-intake.html";
+    }
+
+    // Accredited investor form response
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("investor") === "submitted") {
+      document.getElementById("investorResponse").classList.remove("hidden");
     }
   </script>
 
