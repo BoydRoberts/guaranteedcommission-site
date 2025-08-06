@@ -17,8 +17,16 @@
       <div>
         <strong>Upgrades:</strong>
         <div class="ml-4 space-y-2">
-          <label><input type="checkbox" id="upgradeBanner" class="mr-1"> Banner ($10)</label><br>
-          <label><input type="checkbox" id="upgradePin" class="mr-1"> Pin Placement ($50)</label>
+          <label class="flex items-center">
+            <input type="checkbox" id="upgradeBanner" class="mr-1">
+            Banner ($10)
+            <span class="ml-2 text-xs text-gray-500" title="Adds a banner promotion to your listing to boost visibility.">[?]</span>
+          </label><br>
+          <label class="flex items-center">
+            <input type="checkbox" id="upgradePin" class="mr-1">
+            Pin Placement ($50)
+            <span class="ml-2 text-xs text-gray-500" title="Places your listing at the top of search results with a pin marker.">[?]</span>
+          </label>
         </div>
       </div>
 
@@ -30,6 +38,8 @@
 
   <script>
     const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
+    localStorage.setItem("activePlan", selectedPlan);
+
     const basePlanCost = {
       "Listed Property Basic": 0,
       "Listed Property Plus": 20,
@@ -57,10 +67,13 @@
       if (upgradeBanner.checked) selectedUpgrades.push("Banner");
       if (upgradePin.checked) selectedUpgrades.push("Pin Placement");
 
-      // Update selected plan if upgrading to Listed Property Plus
       let finalPlan = selectedPlan;
       if (selectedPlan === "Listed Property Basic" && selectedUpgrades.includes("Banner") && selectedUpgrades.includes("Pin Placement")) {
         finalPlan = "Listed Property Plus";
+        localStorage.setItem("selectedPlan", finalPlan);
+        localStorage.setItem("activePlan", finalPlan);
+        document.getElementById("selectedPlan").textContent = finalPlan;
+        document.getElementById("planCost").textContent = 20;
       }
 
       const checkoutData = {
@@ -71,18 +84,14 @@
       };
 
       localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
+      localStorage.setItem("postSignatureOptions", finalPlan.includes("FSBO") ? "fsbo" : "listed");
 
-      // Track that user completed checkout and set flag for post-signature options
-      localStorage.setItem("postSignatureOptions", finalPlan === "FSBO Plus" ? "fsbo" : "listed");
-
-      // Store short address for agent invite
       const formData = JSON.parse(localStorage.getItem("formData") || "{}");
       if (formData.address) {
         const short = formData.address.split(',')[0];
         localStorage.setItem("shortAddress", short);
       }
 
-      // Flag login flow for agent invite prompt
       const loginIntent = localStorage.getItem("loginIntent");
       if (loginIntent === "agent-complete-listing") {
         const agentPrompt = localStorage.getItem("shortAddress");
@@ -92,7 +101,6 @@
       window.location.href = "/signature.html";
     }
 
-    // Initial total calculation
     calculateTotal();
   </script>
 
