@@ -33,14 +33,14 @@
       <p><strong>Total:</strong> $<span id="totalCost">0</span></p>
     </div>
 
-    <button onclick="handleCheckout()" class="w-full bg-green-600 text-white py-2 rounded mt-6">Proceed to Payment</button>
+    <button id="proceedPaymentBtn" class="w-full bg-green-600 text-white py-2 rounded mt-6">Proceed to Payment</button>
   </div>
 
   <script>
     const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
     localStorage.setItem("activePlan", selectedPlan);
 
-    const basePlanCost = {
+    let basePlanCost = {
       "Listed Property Basic": 0,
       "Listed Property Plus": 20,
       "FSBO Plus": 100
@@ -62,25 +62,31 @@
     upgradeBanner.addEventListener("change", calculateTotal);
     upgradePin.addEventListener("change", calculateTotal);
 
-    function handleCheckout() {
+    document.getElementById("proceedPaymentBtn").addEventListener("click", () => {
       const selectedUpgrades = [];
       if (upgradeBanner.checked) selectedUpgrades.push("Banner");
       if (upgradePin.checked) selectedUpgrades.push("Pin Placement");
 
       let finalPlan = selectedPlan;
-      if (selectedPlan === "Listed Property Basic" && selectedUpgrades.includes("Banner") && selectedUpgrades.includes("Pin Placement")) {
+      let updatedBaseCost = basePlanCost;
+
+      if (selectedPlan === "Listed Property Basic" && selectedUpgrades.length > 0) {
         finalPlan = "Listed Property Plus";
+        updatedBaseCost = 20;
         localStorage.setItem("selectedPlan", finalPlan);
         localStorage.setItem("activePlan", finalPlan);
-        document.getElementById("selectedPlan").textContent = finalPlan;
-        document.getElementById("planCost").textContent = 20;
       }
+
+      const total = updatedBaseCost + (upgradeBanner.checked ? 10 : 0) + (upgradePin.checked ? 50 : 0);
+      document.getElementById("selectedPlan").textContent = finalPlan;
+      document.getElementById("planCost").textContent = updatedBaseCost;
+      document.getElementById("totalCost").textContent = total;
 
       const checkoutData = {
         plan: finalPlan,
-        planCost: basePlanCost,
+        planCost: updatedBaseCost,
         upgrades: selectedUpgrades,
-        totalCost: parseInt(document.getElementById("totalCost").textContent)
+        totalCost: total
       };
 
       localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
@@ -99,7 +105,7 @@
       }
 
       window.location.href = "/signature.html";
-    }
+    });
 
     calculateTotal();
   </script>
