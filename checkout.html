@@ -18,14 +18,12 @@
         <strong>Upgrades:</strong>
         <div class="ml-4 space-y-2">
           <label class="flex items-center">
-            <input type="checkbox" id="upgradeBanner" class="mr-1">
+            <input type="checkbox" id="upgradeBanner" class="mr-2">
             Banner ($10)
-            <span class="ml-2 text-xs text-gray-500" title="Adds a banner promotion to your listing to boost visibility.">[?]</span>
-          </label><br>
+          </label>
           <label class="flex items-center">
-            <input type="checkbox" id="upgradePin" class="mr-1">
+            <input type="checkbox" id="upgradePin" class="mr-2">
             Pin Placement ($50)
-            <span class="ml-2 text-xs text-gray-500" title="Places your listing at the top of search results with a pin marker.">[?]</span>
           </label>
         </div>
       </div>
@@ -33,77 +31,84 @@
       <p><strong>Total:</strong> $<span id="totalCost">0</span></p>
     </div>
 
-    <button id="proceedPaymentBtn" class="w-full bg-green-600 text-white py-2 rounded mt-6">Proceed to Payment</button>
+    <button id="proceedPaymentBtn" class="w-full bg-green-600 text-white py-2 rounded mt-6">
+      Proceed to Payment
+    </button>
   </div>
 
   <script>
     const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
+    const originalPlan = selectedPlan;
     localStorage.setItem("activePlan", selectedPlan);
 
-    let basePlanCost = {
+    let baseCost = {
       "Listed Property Basic": 0,
       "Listed Property Plus": 20,
       "FSBO Plus": 100
     }[selectedPlan] || 0;
 
     document.getElementById("selectedPlan").textContent = selectedPlan;
-    document.getElementById("planCost").textContent = basePlanCost;
+    document.getElementById("planCost").textContent = baseCost;
 
-    const upgradeBanner = document.getElementById("upgradeBanner");
-    const upgradePin = document.getElementById("upgradePin");
+    const bannerCheckbox = document.getElementById("upgradeBanner");
+    const pinCheckbox = document.getElementById("upgradePin");
 
     function calculateTotal() {
-      let total = basePlanCost;
-      if (upgradeBanner.checked) total += 10;
-      if (upgradePin.checked) total += 50;
+      let total = baseCost;
+      if (bannerCheckbox.checked) total += 10;
+      if (pinCheckbox.checked) total += 50;
       document.getElementById("totalCost").textContent = total;
     }
 
-    upgradeBanner.addEventListener("change", calculateTotal);
-    upgradePin.addEventListener("change", calculateTotal);
+    bannerCheckbox.addEventListener("change", calculateTotal);
+    pinCheckbox.addEventListener("change", calculateTotal);
 
     document.getElementById("proceedPaymentBtn").addEventListener("click", () => {
-      const selectedUpgrades = [];
-      if (upgradeBanner.checked) selectedUpgrades.push("Banner");
-      if (upgradePin.checked) selectedUpgrades.push("Pin Placement");
+      let finalPlan = originalPlan;
+      let planCost = baseCost;
 
-      let finalPlan = selectedPlan;
-      let updatedBaseCost = basePlanCost;
+      const upgrades = [];
+      if (bannerCheckbox.checked) upgrades.push("Banner");
+      if (pinCheckbox.checked) upgrades.push("Pin Placement");
 
-      if (selectedPlan === "Listed Property Basic" && selectedUpgrades.length > 0) {
+      // Upgrade to Plus if Basic + any upgrade
+      if (originalPlan === "Listed Property Basic" && upgrades.length > 0) {
         finalPlan = "Listed Property Plus";
-        updatedBaseCost = 20;
+        planCost = 20;
         localStorage.setItem("selectedPlan", finalPlan);
         localStorage.setItem("activePlan", finalPlan);
       }
 
-      const total = updatedBaseCost + (upgradeBanner.checked ? 10 : 0) + (upgradePin.checked ? 50 : 0);
+      const total = planCost + (bannerCheckbox.checked ? 10 : 0) + (pinCheckbox.checked ? 50 : 0);
       document.getElementById("selectedPlan").textContent = finalPlan;
-      document.getElementById("planCost").textContent = updatedBaseCost;
+      document.getElementById("planCost").textContent = planCost;
       document.getElementById("totalCost").textContent = total;
 
+      // Save full checkout data
       const checkoutData = {
         plan: finalPlan,
-        planCost: updatedBaseCost,
-        upgrades: selectedUpgrades,
+        planCost: planCost,
+        upgrades: upgrades,
         totalCost: total
       };
-
       localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
       localStorage.setItem("postSignatureOptions", finalPlan.includes("FSBO") ? "fsbo" : "listed");
 
+      // Save short address for agent prompt
       const formData = JSON.parse(localStorage.getItem("formData") || "{}");
       if (formData.address) {
         const short = formData.address.split(',')[0];
         localStorage.setItem("shortAddress", short);
       }
 
+      // Agent login intent
       const loginIntent = localStorage.getItem("loginIntent");
       if (loginIntent === "agent-complete-listing") {
-        const agentPrompt = localStorage.getItem("shortAddress");
-        if (agentPrompt) localStorage.setItem("agentPromptMsg", `Would you like to complete the listing detail page for ${agentPrompt}?`);
+        const short = localStorage.getItem("shortAddress");
+        if (short) localStorage.setItem("agentPromptMsg", `Would you like to complete the listing detail page for ${short}?`);
       }
 
+      // Redirect to next step
       window.location.href = "/signature.html";
     });
 
