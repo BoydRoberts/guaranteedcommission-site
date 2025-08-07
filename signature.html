@@ -3,9 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Review Cart and Checkout</title>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sign Irrevocable Seller Communication</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -16,44 +13,23 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold text-center mb-6">Review Cart and Checkout</h1>
-  <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold text-center mb-6">Irrevocable Seller Communication</h1>
+  <div class="max-w-2xl mx-auto mt-20 bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold text-center mb-6">Sign the Irrevocable Seller Communication</h1>
 
-    <div class="space-y-4 text-sm">
-      <p><strong>Selected Plan:</strong> <span id="selectedPlan">Loading...</span> - $<span id="planCost">0</span></p>
-    <div id="iscText" class="text-sm leading-relaxed whitespace-pre-line">
+    <div id="iscText" class="text-sm leading-relaxed whitespace-pre-line border p-4 rounded mb-6 bg-gray-50">
       Loading ISC...
     </div>
 
-      <div>
-        <strong>Upgrades:</strong>
-        <div class="ml-4 space-y-2">
-          <label class="flex items-center">
-            <input type="checkbox" id="upgradeBanner" class="mr-1">
-            Banner ($10)
-            <span class="ml-2 text-xs text-gray-500" title="Adds a banner promotion to your listing to boost visibility.">[?]</span>
-          </label><br>
-          <label class="flex items-center">
-            <input type="checkbox" id="upgradePin" class="mr-1">
-            Pin Placement ($50)
-            <span class="ml-2 text-xs text-gray-500" title="Places your listing at the top of search results with a pin marker.">[?]</span>
-          </label>
-        </div>
-      </div>
     <div class="mt-6">
       <label class="block mb-2 text-sm font-semibold">Electronic Signature:</label>
       <input type="text" id="signature" placeholder="Type your full name here" class="font-cursive w-full border p-2 rounded" required>
     </div>
 
-      <p><strong>Total:</strong> $<span id="totalCost">0</span></p>
     <div class="mt-4">
       <label class="block text-sm font-semibold">Date:</label>
       <p id="date" class="text-sm"></p>
     </div>
 
-    <button onclick="handleCheckout()" class="w-full bg-green-600 text-white py-2 rounded mt-6">Proceed to Payment</button>
     <div class="flex justify-between mt-6">
       <button onclick="window.location.href='/printable-isc.html'" class="bg-gray-600 text-white px-4 py-2 rounded">
         View / Print ISC
@@ -65,51 +41,14 @@
   </div>
 
   <script>
-    const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
-    localStorage.setItem("activePlan", selectedPlan);
-
-    const basePlanCost = {
-      "Listed Property Basic": 0,
-      "Listed Property Plus": 20,
-      "FSBO Plus": 100
-    }[selectedPlan] || 0;
-
-    document.getElementById("selectedPlan").textContent = selectedPlan;
-    document.getElementById("planCost").textContent = basePlanCost;
-
-    const upgradeBanner = document.getElementById("upgradeBanner");
-    const upgradePin = document.getElementById("upgradePin");
-
-    function calculateTotal() {
-      let total = basePlanCost;
-      if (upgradeBanner.checked) total += 10;
-      if (upgradePin.checked) total += 50;
-      document.getElementById("totalCost").textContent = total;
-    }
-
-    upgradeBanner.addEventListener("change", calculateTotal);
-    upgradePin.addEventListener("change", calculateTotal);
-
-    function handleCheckout() {
-      const selectedUpgrades = [];
-      if (upgradeBanner.checked) selectedUpgrades.push("Banner");
-      if (upgradePin.checked) selectedUpgrades.push("Pin Placement");
-
-      let finalPlan = selectedPlan;
-      if (selectedPlan === "Listed Property Basic" && selectedUpgrades.includes("Banner") && selectedUpgrades.includes("Pin Placement")) {
-        finalPlan = "Listed Property Plus";
-        localStorage.setItem("selectedPlan", finalPlan);
-        localStorage.setItem("activePlan", finalPlan);
-        document.getElementById("selectedPlan").textContent = finalPlan;
-        document.getElementById("planCost").textContent = 20;
     function fillISC() {
       const planType = localStorage.getItem("postSignatureOptions") || "listed";
       const data = JSON.parse(localStorage.getItem("formData") || "{}");
-      const commissionType = localStorage.getItem("commissionType") || "%";
+      const commissionType = data.commissionType || "%";
       const commission = data.commission || "";
       const fullAddress = data.address || "";
       const shortAddress = fullAddress.split(",")[0];
-      const apn = data.apn || "[Parcel # / Pin # /Tax ID # / Folio # / APN #]";
+      const apn = data.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
       const name = data.name || "[name]";
       const agentPhone = data.agentPhone || "";
       const brokerage = data.brokerage || "";
@@ -127,30 +66,11 @@
         text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${suffix}.`;
       }
 
-      const checkoutData = {
-        plan: finalPlan,
-        planCost: basePlanCost,
-        upgrades: selectedUpgrades,
-        totalCost: parseInt(document.getElementById("totalCost").textContent)
-      };
-      text += `\n\n\n`;
-      text += `        Seller Electronic Signature                                date`;
+      text += `\n\n\n        ${name} Electronic Signature                                  date`;
 
-      localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
-      localStorage.setItem("postSignatureOptions", finalPlan.includes("FSBO") ? "fsbo" : "listed");
-
-      const formData = JSON.parse(localStorage.getItem("formData") || "{}");
-      if (formData.address) {
-        const short = formData.address.split(',')[0];
-        localStorage.setItem("shortAddress", short);
-      }
       document.getElementById("iscText").textContent = text;
     }
 
-      const loginIntent = localStorage.getItem("loginIntent");
-      if (loginIntent === "agent-complete-listing") {
-        const agentPrompt = localStorage.getItem("shortAddress");
-        if (agentPrompt) localStorage.setItem("agentPromptMsg", `Would you like to complete the listing detail page for ${agentPrompt}?`);
     function continueFlow() {
       const signature = document.getElementById("signature").value.trim();
       if (!signature) {
@@ -158,12 +78,10 @@
         return;
       }
 
-      window.location.href = "/signature.html";
       localStorage.setItem("signature", signature);
-      window.location.href = "/agent-invite.html"; // or seller-portal.html for FSBO
+      window.location.href = "/agent-invite.html"; // or seller-portal.html later
     }
 
-    calculateTotal();
     document.getElementById("date").textContent = new Date().toLocaleDateString();
     window.addEventListener("DOMContentLoaded", fillISC);
   </script>
