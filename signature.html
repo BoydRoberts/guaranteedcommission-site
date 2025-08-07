@@ -1,122 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign ISC</title>
+  <title>Review Cart and Checkout</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign Irrevocable Seller Communication</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .font-cursive {
+      font-family: "Brush Script MT", cursive;
+    }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
+  <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold text-center mb-6">Review Cart and Checkout</h1>
   <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold text-center mb-6">Electronic Signature</h1>
+    <h1 class="text-2xl font-bold text-center mb-6">Irrevocable Seller Communication</h1>
 
-    <div class="text-sm text-justify space-y-4 leading-relaxed">
-      <p>To the escrow holder/closing agent,</p>
-      <p>
-        I, <span id="letterName">[name]</span>, am the owner/seller of
-        <span id="letterAddressFull">[full address]</span>, #<span id="letterAPN">[APN]</span>.
-        <span id="letterAddressShort1">[short address]</span> is listed for sale by
-        <span id="letterBrokerage">[listing brokerage]</span>,
-        <span id="letterAgent">[listing agent]</span>, listing agent,
-        <span id="letterAgentPhone">[agent phone]</span>.
-      </p>
-      <p>
-        Let it be known: if a buyer’s agent/broker facilitates the sale of
-        <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent)
-        are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed
-        <span id="letterCommissionDisplay">[commission]</span>
-        <span id="commissionSuffix"></span>.
-      </p>
+    <div class="space-y-4 text-sm">
+      <p><strong>Selected Plan:</strong> <span id="selectedPlan">Loading...</span> - $<span id="planCost">0</span></p>
+    <div id="iscText" class="text-sm leading-relaxed whitespace-pre-line">
+      Loading ISC...
     </div>
 
-    <div class="mt-8">
-      <label for="signature" class="block text-sm font-medium mb-1">Electronic Signature</label>
-      <input type="text" id="signature" placeholder="Your Full Name" class="w-full border p-2 rounded" />
+      <div>
+        <strong>Upgrades:</strong>
+        <div class="ml-4 space-y-2">
+          <label class="flex items-center">
+            <input type="checkbox" id="upgradeBanner" class="mr-1">
+            Banner ($10)
+            <span class="ml-2 text-xs text-gray-500" title="Adds a banner promotion to your listing to boost visibility.">[?]</span>
+          </label><br>
+          <label class="flex items-center">
+            <input type="checkbox" id="upgradePin" class="mr-1">
+            Pin Placement ($50)
+            <span class="ml-2 text-xs text-gray-500" title="Places your listing at the top of search results with a pin marker.">[?]</span>
+          </label>
+        </div>
+      </div>
+    <div class="mt-6">
+      <label class="block mb-2 text-sm font-semibold">Electronic Signature:</label>
+      <input type="text" id="signature" placeholder="Type your full name here" class="font-cursive w-full border p-2 rounded" required>
     </div>
 
-    <p class="mt-4 text-sm text-gray-600">
-      Date: <span id="todayDate"></span>
-    </p>
+      <p><strong>Total:</strong> $<span id="totalCost">0</span></p>
+    <div class="mt-4">
+      <label class="block text-sm font-semibold">Date:</label>
+      <p id="date" class="text-sm"></p>
+    </div>
 
-    <div class="mt-6 text-center">
-      <button onclick="submitSignature()" class="bg-green-600 text-white px-6 py-2 rounded">
-        Sign & Finish
+    <button onclick="handleCheckout()" class="w-full bg-green-600 text-white py-2 rounded mt-6">Proceed to Payment</button>
+    <div class="flex justify-between mt-6">
+      <button onclick="window.location.href='/printable-isc.html'" class="bg-gray-600 text-white px-4 py-2 rounded">
+        View / Print ISC
+      </button>
+      <button onclick="continueFlow()" class="bg-blue-600 text-white px-6 py-2 rounded">
+        Continue
       </button>
     </div>
   </div>
 
   <script>
-    // Fill ISC from localStorage data
-    const data = JSON.parse(localStorage.getItem("formData") || "{}");
-    const commissionDisplay = data.commissionType === "$"
-      ? `$${data.commission}` : `${data.commission}%`;
-    const suffix = data.commissionType === "%" ? "of the total purchase price." : "";
+    const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
+    localStorage.setItem("activePlan", selectedPlan);
 
-    const shortAddr = data.address ? data.address.split(",")[0] : "";
+    const basePlanCost = {
+      "Listed Property Basic": 0,
+      "Listed Property Plus": 20,
+      "FSBO Plus": 100
+    }[selectedPlan] || 0;
 
-    document.getElementById("letterName").textContent = data.name || "[name]";
-    document.getElementById("letterAddressFull").textContent = data.address || "[full address]";
-    document.getElementById("letterAddressShort1").textContent = shortAddr || "[short address]";
-    document.getElementById("letterAddressShort2").textContent = shortAddr || "[short address]";
-    document.getElementById("letterAPN").textContent = data.apn || "[APN]";
-    document.getElementById("letterBrokerage").textContent = data.brokerage || "[listing brokerage]";
-    document.getElementById("letterAgent").textContent = data.agent || "[listing agent]";
-    document.getElementById("letterAgentPhone").textContent = data.phone || "[agent phone]";
-    document.getElementById("letterCommissionDisplay").textContent = commissionDisplay;
-    document.getElementById("commissionSuffix").textContent = suffix;
+    document.getElementById("selectedPlan").textContent = selectedPlan;
+    document.getElementById("planCost").textContent = basePlanCost;
 
-    // Show today's date
-    document.getElementById("todayDate").textContent = new Date().toLocaleDateString();
+    const upgradeBanner = document.getElementById("upgradeBanner");
+    const upgradePin = document.getElementById("upgradePin");
 
- function submitSignature() {
-  const sig = document.getElementById("signature").value.trim();
-  if (!sig) {
-    alert("Please type your name to sign.");
-    return;
-  }
+    function calculateTotal() {
+      let total = basePlanCost;
+      if (upgradeBanner.checked) total += 10;
+      if (upgradePin.checked) total += 50;
+      document.getElementById("totalCost").textContent = total;
+    }
 
-  const shortAddress = document.getElementById("letterAddressShort1").textContent || "[short address]";
+    upgradeBanner.addEventListener("change", calculateTotal);
+    upgradePin.addEventListener("change", calculateTotal);
 
-  const message = `You have successfully signed the Irrevocable Seller Communication (ISC) for ${shortAddress}.\n\nClick OK to view your signed ISC now.`;
+    function handleCheckout() {
+      const selectedUpgrades = [];
+      if (upgradeBanner.checked) selectedUpgrades.push("Banner");
+      if (upgradePin.checked) selectedUpgrades.push("Pin Placement");
 
-  alert(message);
-  window.location.href = "/submit.html";
-}
-   function submitSignature() {
-  const sig = document.getElementById("signature").value.trim();
-  if (!sig) {
-    alert("Please type your name to sign.");
-    return;
-  }
+      let finalPlan = selectedPlan;
+      if (selectedPlan === "Listed Property Basic" && selectedUpgrades.includes("Banner") && selectedUpgrades.includes("Pin Placement")) {
+        finalPlan = "Listed Property Plus";
+        localStorage.setItem("selectedPlan", finalPlan);
+        localStorage.setItem("activePlan", finalPlan);
+        document.getElementById("selectedPlan").textContent = finalPlan;
+        document.getElementById("planCost").textContent = 20;
+    function fillISC() {
+      const planType = localStorage.getItem("postSignatureOptions") || "listed";
+      const data = JSON.parse(localStorage.getItem("formData") || "{}");
+      const commissionType = localStorage.getItem("commissionType") || "%";
+      const commission = data.commission || "";
+      const fullAddress = data.address || "";
+      const shortAddress = fullAddress.split(",")[0];
+      const apn = data.apn || "[Parcel # / Pin # /Tax ID # / Folio # / APN #]";
+      const name = data.name || "[name]";
+      const agentPhone = data.agentPhone || "";
+      const brokerage = data.brokerage || "";
+      const agent = data.agent || "";
+      const suffix = commissionType === "%" ? " of the total purchase price" : "";
+      const commissionDisplay = commissionType === "$" ? `$${commission}` : `${commission}%`;
 
-  const shortAddress = document.getElementById("letterAddressShort1").textContent || "[short address]";
+      let text = `To the escrow holder/closing agent,\n\n`;
 
-  const message = `
-    You have successfully signed the Irrevocable Seller Communication (ISC) for ${shortAddress}.\n\n
-    Click OK to view your signed ISC now.
-  `;
+      if (planType === "fsbo") {
+        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by owner (Me). My phone number is ${agentPhone}. My email address is ${brokerage}.\n\n`;
+        text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${suffix}.`;
+      } else {
+        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by ${brokerage}, ${agent}, listing agent, ${agentPhone}.\n\n`;
+        text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${suffix}.`;
+      }
 
-  if (confirm(message)) {
-    window.location.href = "/submit.html";
-        }
+      const checkoutData = {
+        plan: finalPlan,
+        planCost: basePlanCost,
+        upgrades: selectedUpgrades,
+        totalCost: parseInt(document.getElementById("totalCost").textContent)
+      };
+      text += `\n\n\n`;
+      text += `        Seller Electronic Signature                                date`;
 
-      alert("Thank you. Your ISC has been signed and saved.");
-      // You can redirect or clear data here
-      window.location.href = "/submit.html"; // optional "Thank you" page
-    function submitSignature() {
-      const sig = document.getElementById("signature").value.trim();
-      if (!sig) {
-        alert("Please type your name to sign.");
+      localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
+      localStorage.setItem("postSignatureOptions", finalPlan.includes("FSBO") ? "fsbo" : "listed");
+
+      const formData = JSON.parse(localStorage.getItem("formData") || "{}");
+      if (formData.address) {
+        const short = formData.address.split(',')[0];
+        localStorage.setItem("shortAddress", short);
+      }
+      document.getElementById("iscText").textContent = text;
+    }
+
+      const loginIntent = localStorage.getItem("loginIntent");
+      if (loginIntent === "agent-complete-listing") {
+        const agentPrompt = localStorage.getItem("shortAddress");
+        if (agentPrompt) localStorage.setItem("agentPromptMsg", `Would you like to complete the listing detail page for ${agentPrompt}?`);
+    function continueFlow() {
+      const signature = document.getElementById("signature").value.trim();
+      if (!signature) {
+        alert("Please type your full name to sign the ISC.");
         return;
       }
 
-      const shortAddress = document.getElementById("letterAddressShort1").textContent || "[short address]";
-      const message = `You have successfully signed the Irrevocable Seller Communication (ISC) for ${shortAddress}.\n\nClick OK to view your signed ISC now.`;
-
-      alert(message);
-      window.location.href = "/submit.html";
+      window.location.href = "/signature.html";
+      localStorage.setItem("signature", signature);
+      window.location.href = "/agent-invite.html"; // or seller-portal.html for FSBO
     }
+
+    calculateTotal();
+    document.getElementById("date").textContent = new Date().toLocaleDateString();
+    window.addEventListener("DOMContentLoaded", fillISC);
   </script>
 
 </body>
