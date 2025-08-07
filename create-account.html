@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create Your Account</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .strength-bar { height: 6px; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <div class="max-w-md mx-auto mt-12 bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold text-center mb-2">Create Your Account</h1>
+    <p class="text-center text-sm text-gray-600 mb-6">State-of-the-art security & verification</p>
+
+    <form id="createForm" class="space-y-3" autocomplete="off" novalidate>
+      <!-- Name -->
+      <div>
+        <label class="block text-sm font-semibold mb-1" for="name">Full Name</label>
+        <input id="name" type="text" class="w-full border p-2 rounded" placeholder="Jane Seller" required>
+      </div>
+
+      <!-- Phone -->
+      <div>
+        <label class="block text-sm font-semibold mb-1" for="phone">Phone</label>
+        <input id="phone" type="tel" class="w-full border p-2 rounded" placeholder="123-456-7890" required>
+        <p id="phoneErr" class="text-xs text-red-600 mt-1 hidden">Use format 123-456-7890</p>
+      </div>
+
+      <!-- Email -->
+      <div>
+        <label class="block text-sm font-semibold mb-1" for="email">Email</label>
+        <input id="email" type="email" class="w-full border p-2 rounded" placeholder="you@example.com" required>
+        <p id="emailErr" class="text-xs text-red-600 mt-1 hidden">Enter a valid email.</p>
+      </div>
+
+      <!-- Password -->
+      <div>
+        <label class="block text-sm font-semibold mb-1" for="password">Password</label>
+        <div class="flex">
+          <input id="password" type="password" class="w-full border p-2 rounded-l" placeholder="Create a strong password" required>
+          <button type="button" id="togglePass" class="px-3 border rounded-r text-sm">Show</button>
+        </div>
+        <!-- Strength meter -->
+        <div class="mt-2">
+          <div class="w-full bg-gray-200 rounded strength-bar">
+            <div id="strengthFill" class="bg-red-500 rounded strength-bar" style="width:0%"></div>
+          </div>
+          <div class="flex justify-between text-xs mt-1">
+            <span id="strengthLabel" class="text-gray-600">Strength: —</span>
+            <span id="strengthTips" class="text-gray-500"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Confirm Password -->
+      <div>
+        <label class="block text-sm font-semibold mb-1" for="confirm">Confirm Password</label>
+        <div class="flex">
+          <input id="confirm" type="password" class="w-full border p-2 rounded-l" placeholder="Re-enter your password" required>
+          <button type="button" id="toggleConfirm" class="px-3 border rounded-r text-sm">Show</button>
+        </div>
+        <p id="matchErr" class="text-xs text-red-600 mt-1 hidden">Passwords don’t match.</p>
+      </div>
+
+      <!-- Verification Method -->
+      <div class="text-sm text-gray-700 mt-3">
+        <p class="font-semibold mb-1">Preferred verification method:</p>
+        <label class="inline-flex items-center mr-4">
+          <input type="radio" name="verifyMethod" value="phone" class="mr-2" checked> Phone (text)
+        </label>
+        <label class="inline-flex items-center">
+          <input type="radio" name="verifyMethod" value="email" class="mr-2"> Email
+        </label>
+      </div>
+
+      <!-- Fine print (varies FSBO vs Listed) -->
+      <p id="finePrint" class="text-xs text-gray-500 mt-3"></p>
+
+      <!-- Submit -->
+      <button type="button" id="submitBtn" class="w-full bg-blue-600 text-white py-2 rounded mt-2">
+        Create Account & Send Code
+      </button>
+
+      <!-- Already have account -->
+      <p class="text-center text-sm mt-4">
+        Already have an account?
+        <a href="/login.html" class="text-blue-600 underline">Log in</a>
+      </p>
+    </form>
+  </div>
+
+  <script>
+    // Prefill from previous steps
+    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
+    const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
+    const isFSBO = selectedPlan.includes("FSBO");
+
+    // Name always
+    if (formData.name) document.getElementById("name").value = formData.name;
+
+    // FSBO autofill (phone/email came from earlier page: phone=agentPhone, brokerage=email)
+    if (isFSBO) {
+      if (formData.phone) document.getElementById("phone").value = formData.phone;
+      if (formData.brokerage) document.getElementById("email").value = formData.brokerage;
+    }
+
+    // Fine print by plan
+    const fine = document.getElementById("finePrint");
+    if (isFSBO) {
+      fine.textContent = "GuaranteedCommission.com displays FSBO seller information on the Irrevocable Seller Communication and on the listing detail page. Unless you select the optional Confidential FSBO Upgrade ($100) your information may be sold to third parties and used for solicitation purposes.";
+    } else {
+      fine.textContent = "GuaranteedCommission.com only uses your information for escrow and identification. Your information will not be sold to third parties or used for solicitation purposes.";
+    }
+
+    // Phone mask/validation
+    const phoneInput = document.getElementById("phone");
+    const phoneErr = document.getElementById("phoneErr");
+    phoneInput.addEventListener("input", function() {
+      let v = this.value.replace(/\D/g, "");
+      if (v.length > 3 && v.length <= 6) v = v.replace(/(\d{3})(\d+)/, "$1-$2");
+      else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d+)/, "$1-$2-$3");
+      this.value = v;
+      const ok = /^\d{3}-\d{3}-\d{4}$/.test(this.value);
+      phoneErr.classList.toggle("hidden", ok || this.value.trim() === "");
+    });
+
+    // Email validation
+    const emailInput = document.getElementById("email");
+    const emailErr = document.getElementById("emailErr");
+    emailInput.addEventListener("input", function() {
+      const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value);
+      emailErr.classList.toggle("hidden", ok || this.value.trim() === "");
+    });
+
+    // Show/hide password toggles
+    const togglePass = document.getElementById("togglePass");
+    const toggleConfirm = document.getElementById("toggleConfirm");
+    const pass = document.getElementById("password");
+    const confirm = document.getElementById("confirm");
+    togglePass.addEventListener("click", () => {
+      pass.type = pass.type === "password" ? "text" : "password";
+      togglePass.textContent = pass.type === "password" ? "Show" : "Hide";
+    });
+    toggleConfirm.addEventListener("click", () => {
+      confirm.type = confirm.type === "password" ? "text" : "password";
+      toggleConfirm.textContent = confirm.type === "password" ? "Show" : "Hide";
+    });
+
+    // Password strength meter
+    const strengthFill = document.getElementById("strengthFill");
+    const strengthLabel = document.getElementById("strengthLabel");
+    const strengthTips = document.getElementById("strengthTips");
+
+    function scorePassword(pw) {
+      let score = 0;
+      if (pw.length >= 12) score += 2;
+      else if (pw.length >= 8) score += 1;
+      if (/[a-z]/.test(pw)) score += 1;
+      if (/[A-Z]/.test(pw)) score += 1;
+      if (/\d/.test(pw)) score += 1;
+      if (/[^A-Za-z0-9]/.test(pw)) score += 1;
+      return Math.min(score, 6);
+    }
+
+    function renderStrength(score, pw) {
+      const pct = [0, 20, 35, 55, 75, 90, 100][score];
+      strengthFill.style.width = pct + "%";
+      const colors = ["bg-red-500","bg-orange-500","bg-yellow-500","bg-yellow-500","bg-green-500","bg-green-600","bg-green-700"];
+      strengthFill.className = "rounded strength-bar " + colors[score];
+
+      const labels = ["—","Very Weak","Weak","Fair","Good","Strong","Very Strong"];
+      strengthLabel.textContent = "Strength: " + labels[score];
+
+      const tips = [];
+      if (pw.length < 12) tips.push("12+ chars");
+      if (!/[A-Z]/.test(pw)) tips.push("uppercase");
+      if (!/[a-z]/.test(pw)) tips.push("lowercase");
+      if (!/\d/.test(pw)) tips.push("number");
+      if (!/[^A-Za-z0-9]/.test(pw)) tips.push("symbol");
+      strengthTips.textContent = tips.length ? "Add: " + tips.join(", ") : "";
+    }
+
+    pass.addEventListener("input", () => {
+      const s = scorePassword(pass.value);
+      renderStrength(s, pass.value);
+      // live check confirm match too
+      checkMatch();
+    });
+
+    // Confirm match validation
+    const matchErr = document.getElementById("matchErr");
+    function checkMatch() {
+      const mismatch = confirm.value && pass.value !== confirm.value;
+      matchErr.classList.toggle("hidden", !mismatch);
+      return !mismatch;
+    }
+    confirm.addEventListener("input", checkMatch);
+
+    // Submit handler
+    document.getElementById("submitBtn").addEventListener("click", () => {
+      const name = document.getElementById("name").value.trim();
+      const phone = phoneInput.value.trim();
+      const email = emailInput.value.trim();
+      const password = pass.value;
+      const confirmPw = confirm.value;
+      const verifyMethod = (document.querySelector('input[name="verifyMethod"]:checked') || {}).value || "phone";
+
+      // Basic validations
+      if (!name || !phone || !email || !password || !confirmPw) {
+        alert("Please complete all fields.");
+        return;
+      }
+      if (!/^\d{3}-\d{3}-\d{4}$/.test(phone)) {
+        alert("Please enter a valid phone number (123-456-7890).");
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+      if (password !== confirmPw) {
+        alert("Passwords do not match.");
+        return;
+      }
+      // Enforce minimum strength (>= 4 = Good)
+      const s = scorePassword(password);
+      if (s < 4) {
+        alert("Please choose a stronger password (aim for Good/Strong).");
+        return;
+      }
+
+      // Save to localStorage (demo). In production, send to backend & hash server-side.
+      const verifyData = { name, phone, email, password, verifyMethod, plan: selectedPlan };
+      localStorage.setItem("verifyData", JSON.stringify(verifyData));
+
+      // Create and store 6-digit verification code (demo)
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      localStorage.setItem("verificationCode", code);
+
+      // Simulated send (for dev: reveal code)
+      console.log("Verification code sent to", verifyMethod, ":", code);
+
+      // Go to code entry
+      window.location.href = "/verify-code.html";
+    });
+  </script>
+
+</body>
+</html>
