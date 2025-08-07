@@ -80,10 +80,6 @@
   </ul>
 </nav>
 
-
-<!-- Restore remaining HTML here -->
-<!-- (everything after nav stays the same) -->
-
 <!-- Strip 1 -->
 <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
   <!-- Box 1 -->
@@ -166,9 +162,9 @@
   </div>
 </section>
 
-<!-- Strip 2 -->
+<!-- Placeholder for Strip 2 -->
 <section id="strip2Search" class="max-w-7xl mx-auto px-4 py-8">
-  <!-- Strip 2 coming soon -->
+  <!-- Strip 2 content coming soon -->
 </section>
 
 <!-- Scripts -->
@@ -191,7 +187,11 @@ function closePressModal() {
 }
 function submitPressForm() {
   document.getElementById('pressConfirmation').classList.remove('hidden');
-  // Simulated backend call placeholder
+}
+
+function toggleMenu() {
+  const group = document.querySelector('.group');
+  group.classList.toggle('open');
 }
 
 function selectPlan(planName) {
@@ -314,6 +314,5 @@ function submitForm() {
   window.location.href = "/verify.html";
 }
 </script>
-
 </body>
 </html>
