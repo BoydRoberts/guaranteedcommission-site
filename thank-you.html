@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thank You</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <div class="max-w-lg mx-auto mt-32 bg-white p-8 rounded shadow text-center">
+    <h1 class="text-3xl font-bold text-green-700 mb-4">Thank You!</h1>
+    <p class="text-lg mb-6">
+      Your listing has been submitted successfully.<br/>
+      We will review it and notify you shortly.
+    </p>
+
+    <p class="text-sm text-gray-600 mb-8">
+      You may return to the homepage or close this tab.
+    </p>
+
+    <button onclick="goHome()" class="bg-blue-600 text-white px-6 py-2 rounded font-semibold">
+      Back to Homepage
+    </button>
+  </div>
+
+  <script>
+    function goHome() {
+      window.location.href = "/";
+    }
+  </script>
+
+</body>
+</html>
