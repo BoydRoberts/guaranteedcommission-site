@@ -1,69 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Printable ISC</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .font-cursive { font-family: 'Brush Script MT', cursive; }
+  </style>
 </head>
 <body class="bg-white text-black p-8">
 
   <div class="max-w-3xl mx-auto border p-6 rounded shadow">
-    <h1 class="text-xl font-bold text-center mb-4">Irrevocable Seller Communication (ISC)</h1>
+    <h1 class="text-xl font-bold text-center mb-6">Irrevocable Seller Communication (ISC)</h1>
 
-    <div id="iscContent" class="text-sm space-y-4">
-      <p>To the escrow holder/closing agent,</p>
-
-      <p>I, <span id="sellerName">[seller name]</span>, am the owner/seller of <span id="propertyAddress">[full address]</span>, #<span id="propertyAPN">[Parcel / Pin /Tax ID # / Folio / APN]</span>. <span id="shortAddress">[short address]</span> is listed for sale by <span id="listingLabel">[listing label]</span> <span id="listingBrokerage">[listing brokerage]</span><span id="ownerSelfLabel"></span><span id="listingAgent">[listing agent]</span>, listing agent, <span id="agentPhone">[agent phone]</span>.</p>
-      <p>I, <span id="sellerName">[seller name]</span>, am the owner/seller of <span id="propertyAddress">[full address]</span>, #<span id="propertyAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN#]</span>. <span id="shortAddress">[short address]</span> is listed for sale by <span id="listingLabel">[listing label]</span> <span id="listingBrokerage">[listing brokerage]</span><span id="ownerSelfLabel"></span><span id="listingAgent">[listing agent]</span>, listing agent, <span id="agentPhone">[agent phone]</span>.</p>
-
-      <p>Let it be known: if a buyer’s agent/broker facilitates the sale of <span id="shortAddress2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed <span id="commissionAmount">[commission]</span> <span id="commissionSuffix">[suffix]</span>.</p>
-
-      <p><span class="font-cursive">Electronic Signature</span>       <span id="printDate">[date]</span></p>
-
-      <p class="text-xs text-gray-500 mt-8" id="counters"></p>
+    <div id="iscContent" class="text-sm space-y-4 leading-relaxed whitespace-pre-line">
+      Loading ISC...
     </div>
+
+    <p class="text-xs text-gray-500 mt-8 text-center" id="counters"></p>
   </div>
 
   <script>
     const data = JSON.parse(localStorage.getItem("formData") || "{}");
     const plan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
+    const signature = localStorage.getItem("signature") || "[Name]";
+    const commissionType = data.commissionType || "%";
+    const commission = data.commission || "";
+    const suffix = commissionType === "%" ? " of the total purchase price" : "";
+    const commissionDisplay = commissionType === "$" ? `$${commission}` : `${commission}%`;
+    const apn = data.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
+    const fullAddress = data.address || "[Full Address]";
+    const shortAddress = fullAddress.split(',')[0] || "[Short Address]";
+    const name = data.name || "[Name]";
+    const date = new Date().toLocaleDateString();
+    const isFSBO = plan.includes("FSBO");
 
-    document.getElementById("sellerName").textContent = data.name || "[seller name]";
-    document.getElementById("propertyAddress").textContent = data.address || "[full address]";
-    document.getElementById("propertyAPN").textContent = data.apn || "[Parcel / Pin /Tax ID # / Folio / APN]";
-    document.getElementById("propertyAPN").textContent = data.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN#]";
+    let text = `To the escrow holder/closing agent,\n\n`;
 
-    const short = data.address ? data.address.split(",")[0] : "[short address]";
-    document.getElementById("shortAddress").textContent = short;
-    document.getElementById("shortAddress2").textContent = short;
-
-    document.getElementById("commissionAmount").textContent = data.commissionType === "$" ? "$" + data.commission : data.commission + "%";
-    document.getElementById("commissionSuffix").textContent = data.commissionType === "%" ? "of the total purchase price" : "";
-
-    document.getElementById("agentPhone").textContent = data.phone || "[agent phone]";
-    document.getElementById("printDate").textContent = new Date().toLocaleString();
-
-    // FSBO conditional formatting
-    if (plan.includes("FSBO")) {
-      document.getElementById("listingLabel").textContent = "owner (Me).";
-      document.getElementById("ownerSelfLabel").textContent = ` My phone number is ${data.phone || '[owner/seller phone number]'}. My email address is ${data.brokerage || '[owner/seller email]'}.`;
-      document.getElementById("listingBrokerage").remove();
-      document.getElementById("listingAgent").remove();
+    if (isFSBO) {
+      text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by owner (Me). My phone number is ${data.agentPhone || "[Phone]"}. My email address is ${data.brokerage || "[Email]"}.\n\n`;
+      text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${suffix}.`;
     } else {
-      document.getElementById("listingLabel").textContent = "sale by";
-      document.getElementById("listingBrokerage").textContent = data.brokerage || "[listing brokerage]";
-      document.getElementById("listingAgent").textContent = data.agent || "[listing agent]";
+      text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by ${data.brokerage || "[Listing Brokerage]"}, ${data.agent || "[Listing Agent]"}, listing agent, ${data.agentPhone || "[Phone]"}.\n\n`;
+      text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${suffix}.`;
     }
 
-    const views = parseInt(localStorage.getItem("iscViews") || "0") + 1;
-    localStorage.setItem("iscViews", views);
+    text += `\n\n\n        ${signature} Electronic Signature                                  ${date}`;
+
+    document.getElementById("iscContent").textContent = text;
+
+    // Count views
+    const viewKey = "iscViews";
+    let views = parseInt(localStorage.getItem(viewKey) || "0") + 1;
+    localStorage.setItem(viewKey, views);
     document.getElementById("counters").textContent = `This Irrevocable Seller Communication has been viewed ${views} time(s).`;
   </script>
-
-  <style>
-    .font-cursive { font-family: 'Brush Script MT', cursive; }
-  </style>
 
 </body>
 </html>
