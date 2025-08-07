@@ -7,10 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
-    #commissionMenu { display: none; }
     .group:hover #commissionMenu,
-    .group:focus-within #commissionMenu,
-    .group.open #commissionMenu {
+    .group:focus-within #commissionMenu {
       display: block;
     }
   </style>
@@ -68,8 +66,8 @@
 <nav class="bg-gray-200 py-2">
   <ul class="flex justify-center space-x-8 font-semibold">
     <li class="relative group">
-      <button onclick="toggleMenu()" class="hover:underline focus:outline-none">Communicate Guaranteed Commission</button>
-      <ul id="commissionMenu" class="absolute left-0 mt-2 w-64 bg-white border shadow text-sm text-gray-700 z-10 hidden group-hover:block group-focus-within:block">
+      <span class="hover:underline cursor-pointer">Communicate Guaranteed Commission</span>
+      <ul id="commissionMenu" class="absolute left-0 mt-2 w-64 bg-white border shadow text-sm text-gray-700 z-10 hidden">
         <li><a href="#" onclick="showForm('listed')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Basic</a></li>
         <li><a href="#" onclick="showForm('plus')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Plus</a></li>
         <li><a href="#" onclick="showForm('fsbo')" class="block px-4 py-2 hover:bg-gray-100">FSBO Plus</a></li>
@@ -133,7 +131,7 @@
     </form>
   </div>
 
-   <!-- Box 3 -->
+     <!-- Box 3 -->
   <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm text-justify">
     <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
 
@@ -141,8 +139,7 @@
     <div id="iscTextListed" class="">
       <p>To the escrow holder/closing agent,</p>
       <br>
-      <p>
-        I, <span id="letterName">[name]</span>, am the owner/seller of 
+      <p>I, <span id="letterName">[name]</span>, am the owner/seller of 
         <span id="letterAddressFull">[full address]</span>, #
         <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>. 
         <span id="letterAddressShort1">[short address]</span> is listed for sale by 
@@ -151,8 +148,7 @@
         <span id="letterAgentPhone">[agent phone]</span>.
       </p>
       <br>
-      <p>
-        Let it be known: if a buyer’s agent/broker facilitates the sale of 
+      <p>Let it be known: if a buyer’s agent/broker facilitates the sale of 
         <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) 
         are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the 
         listing brokerage (if there is an agreement for broker-to-broker compensation) and second by 
@@ -167,8 +163,7 @@
     <div id="iscTextFSBO" class="hidden mt-8">
       <p>To the escrow holder/closing agent,</p>
       <br>
-      <p>
-        I, <span id="letterName">[name]</span>, am the owner/seller of 
+      <p>I, <span id="letterName">[name]</span>, am the owner/seller of 
         <span id="letterAddressFull">[full address]</span>, #
         <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>. 
         <span id="letterAddressShort1">[short address]</span> is listed for sale by owner (Me). 
@@ -176,8 +171,7 @@
         My email address is <span id="fsboEmail"></span>.
       </p>
       <br>
-      <p>
-        Let it be known: if a buyer’s agent/broker facilitates the sale of 
+      <p>Let it be known: if a buyer’s agent/broker facilitates the sale of 
         <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) 
         are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed 
         <span id="letterCommissionDisplay">[commission]</span>.
@@ -188,7 +182,7 @@
   </div>
 </section>
 
-<!-- Strip 2 Placeholder -->
+<!-- Strip 2 -->
 <section id="strip2Search" class="max-w-7xl mx-auto px-4 py-8">
   <!-- Coming soon -->
 </section>
@@ -213,11 +207,6 @@ function closePressModal() {
 }
 function submitPressForm() {
   document.getElementById('pressConfirmation').classList.remove('hidden');
-}
-
-function toggleMenu() {
-  const group = document.querySelector('.group');
-  group.classList.toggle('open');
 }
 
 function selectPlan(planName) {
@@ -275,8 +264,8 @@ window.addEventListener('DOMContentLoaded', () => {
       const fullAddr = document.getElementById('address').value;
       const short = fullAddr.split(',')[0];
       const isFSBO = document.querySelector("#formBlock h2").textContent.includes("FSBO");
-
       const nameVal = document.getElementById('name').value;
+
       document.getElementById('letterName').textContent = nameVal;
       document.getElementById('signatureName').textContent = nameVal;
       document.getElementById('signatureNameFSBO').textContent = nameVal;
