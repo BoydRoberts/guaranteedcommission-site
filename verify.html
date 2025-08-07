@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify Your Listing</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login/Create New Account</title>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -9,34 +11,32 @@
 <body class="bg-gray-100 text-gray-800">
 
   <div class="max-w-md mx-auto mt-10 bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold text-center mb-4">Verify Your Identity</h1>
     <h1 class="text-2xl font-bold text-center mb-6">Login/Create New Account</h1>
 
     <form id="verifyForm" class="space-y-3" autocomplete="off">
+      <input type="tel" id="phone" placeholder="Phone Number" class="w-full border p-2 rounded" required />
+      <input type="email" id="email" placeholder="Email Address" class="w-full border p-2 rounded" required />
       <input type="text" id="name" placeholder="Owner/Seller Name" class="w-full border p-2 rounded" required />
       <input type="tel" id="phone" placeholder="Owner/Seller Phone" class="w-full border p-2 rounded" required />
       <input type="email" id="email" placeholder="Owner/Seller Email" class="w-full border p-2 rounded" required />
       <input type="password" id="password" placeholder="Create Password" class="w-full border p-2 rounded" required />
 
       <div class="text-sm text-gray-600 mt-2">
+        <label class="block mb-2">Preferred verification method:</label>
         <label class="block mb-2 font-semibold">Preferred verification method:</label>
         <label><input type="radio" name="verifyMethod" value="phone" checked> Phone</label><br>
         <label><input type="radio" name="verifyMethod" value="email"> Email</label>
       </div>
-
-      <p class="text-xs text-gray-500 mt-4">
-        GuaranteedCommission.com only uses your information for escrow and identification only.
-        Your information will not be sold to third parties or used for solicitation purposes.
-      </p>
-
-      <button type="button" onclick="submitVerification()" class="w-full bg-blue-600 text-white py-2 rounded mt-4">
-        Submit
-      </button>
-    </form>
+@@ -34,37 +35,46 @@
   </div>
 
   <script>
+    // Autofill if available
     window.addEventListener("DOMContentLoaded", () => {
       const data = JSON.parse(localStorage.getItem("formData") || "{}");
+      if (data.phone) document.getElementById("phone").value = data.phone;
+      if (data.brokerage) document.getElementById("email").value = data.brokerage;
 
       if (data.name) document.getElementById("name").value = data.name;
 
@@ -58,21 +58,28 @@
       const password = document.getElementById('password').value.trim();
       const verifyMethod = document.querySelector('input[name="verifyMethod"]:checked').value;
 
+      if (!phone || !email || !password) {
       if (!name || !phone || !email || !password) {
         alert("Please complete all fields.");
         return;
       }
 
+      // Save to localStorage (optional for future pages)
+      const verifyData = { phone, email, password, verifyMethod };
       // Save to localStorage
       const verifyData = { name, phone, email, password, verifyMethod };
       localStorage.setItem("verifyData", JSON.stringify(verifyData));
 
+      // Simulate sending a 6-digit code
       // Simulate verification code
       const code = Math.floor(100000 + Math.random() * 900000);
       localStorage.setItem("verificationCode", code);
 
+      alert(`Verification code sent to your ${verifyMethod}: ${code}`); // In real site, you'd send it
+
+      window.location.href = "/upsell.html"; // Move to next step
       alert(`Verification code sent to your ${verifyMethod}: ${code}`);
-      window.location.href = "/verify-code.html";
+      window.location.href = "/upsell.html";
     }
   </script>
 
