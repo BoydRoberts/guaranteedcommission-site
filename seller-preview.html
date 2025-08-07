@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Listing Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <div class="max-w-2xl mx-auto mt-16 bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold mb-6 text-center">Preview Your Listing</h1>
+
+    <div class="space-y-4 text-sm leading-relaxed">
+      <p><strong>Property Address:</strong> <span id="address">Loading...</span></p>
+      <p><strong>Description:</strong> <span id="description"></span></p>
+      <p><strong>Bedrooms:</strong> <span id="bedrooms"></span></p>
+      <p><strong>Bathrooms:</strong> <span id="bathrooms"></span></p>
+      <p><strong>Square Feet:</strong> <span id="sqft"></span></p>
+      <p><strong>Listing Price:</strong> $<span id="price"></span></p>
+
+      <div id="bannerSection" class="hidden">
+        <p><strong>Banner:</strong> <span id="banner"></span></p>
+      </div>
+
+      <div>
+        <p><strong>Photos:</strong></p>
+        <ul id="photoList" class="list-disc list-inside ml-4"></ul>
+      </div>
+    </div>
+
+    <div class="flex justify-center gap-4 mt-8">
+      <button onclick="editListing()" class="bg-gray-600 text-white px-6 py-2 rounded">Edit Listing</button>
+      <button onclick="publishListing()" class="bg-green-600 text-white px-6 py-2 rounded">Submit to Publish</button>
+    </div>
+  </div>
+
+  <script>
+    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
+    const details = JSON.parse(localStorage.getItem("listingDetails") || "{}");
+    const hasBanner = localStorage.getItem("banner") === "true";
+
+    document.getElementById("address").textContent = formData.address || "[Address]";
+    document.getElementById("description").textContent = details.description || "[Description]";
+    document.getElementById("bedrooms").textContent = details.bedrooms || "-";
+    document.getElementById("bathrooms").textContent = details.bathrooms || "-";
+    document.getElementById("sqft").textContent = details.sqft || "-";
+    document.getElementById("price").textContent = details.price || "-";
+
+    if (hasBanner && details.banner) {
+      document.getElementById("banner").textContent = details.banner;
+      document.getElementById("bannerSection").classList.remove("hidden");
+    }
+
+    const photoList = document.getElementById("photoList");
+    if (details.photos && details.photos.length > 0) {
+      photoList.innerHTML = details.photos.map(name => `<li>${name}</li>`).join("");
+    } else {
+      photoList.innerHTML = "<li>No photos uploaded.</li>";
+    }
+
+    function editListing() {
+      window.location.href = "/seller-detail.html";
+    }
+
+    function publishListing() {
+      alert("Listing submitted! (Future: save to Firestore)");
+      window.location.href = "/thank-you.html";
+    }
+  </script>
+
+</body>
+</html>
