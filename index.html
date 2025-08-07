@@ -148,7 +148,71 @@
   </div>
 </section>
 
-@@ -208,69 +208,71 @@
+<!-- Strip 2 -->
+<section id="strip2Search" class="max-w-7xl mx-auto px-4 py-8">
+  <!-- Strip 2 coming soon -->
+</section>
+
+<!-- Scripts -->
+<script>
+function openInvestorModal() {
+  document.getElementById('investorModal').classList.remove('hidden');
+}
+function closeInvestorModal() {
+  document.getElementById('investorModal').classList.add('hidden');
+}
+function submitInvestorForm() {
+  document.getElementById('investorConfirmation').classList.remove('hidden');
+}
+function selectPlan(planName) {
+  localStorage.setItem("selectedPlan", planName);
+  showForm(planName === "FSBO Plus" ? "fsbo" : "listed");
+}
+function showForm(type) {
+  const title = document.querySelector("#formBlock h2");
+  const phoneInput = document.getElementById('agentPhone');
+  const brokerageInput = document.getElementById('brokerage');
+  const agentInput = document.getElementById('agent');
+
+  if (type === 'fsbo') {
+    title.textContent = 'FSBO Communication Form';
+    phoneInput.placeholder = 'Owner/Seller phone number';
+    brokerageInput.placeholder = 'Owner/Seller email';
+    agentInput.style.display = 'none';
+    document.getElementById('iscTextListed').classList.add('hidden');
+    document.getElementById('iscTextFSBO').classList.remove('hidden');
+  } else {
+    title.textContent = 'Listed Property Communication Form';
+    phoneInput.placeholder = 'Agent’s direct phone only – NOT your number';
+    brokerageInput.placeholder = 'Listing Brokerage';
+    agentInput.style.display = 'block';
+    document.getElementById('iscTextListed').classList.remove('hidden');
+    document.getElementById('iscTextFSBO').classList.add('hidden');
+  }
+}
+window.addEventListener('DOMContentLoaded', () => {
+  const selectedPlan = localStorage.getItem('selectedPlan');
+  if (selectedPlan === 'FSBO Plus') showForm('fsbo');
+  else showForm('listed');
+
+  const phoneInput = document.getElementById('agentPhone');
+  const phoneError = document.getElementById('phoneError');
+  phoneInput.addEventListener('input', function () {
+    let val = this.value.replace(/\D/g, '');
+    if (val.length > 3 && val.length <= 6) val = val.replace(/(\d{3})(\d+)/, '$1-$2');
+    else if (val.length > 6) val = val.replace(/(\d{3})(\d{3})(\d+)/, '$1-$2-$3');
+    this.value = val;
+    const phonePattern = /^\d{3}-\d{3}-\d{4}$/;
+    if (!phonePattern.test(this.value)) {
+      phoneInput.classList.add('border-red-500');
+      phoneError.classList.remove('hidden');
+    } else {
+      phoneInput.classList.remove('border-red-500');
+      phoneError.classList.add('hidden');
+    }
+  });
+
+  ['name','address','apn','brokerage','agent','agentPhone'].forEach(id => {
     document.getElementById(id).addEventListener('input', () => {
       const fullAddr = document.getElementById('address').value;
       const short = fullAddr.split(',')[0];
