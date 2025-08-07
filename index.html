@@ -8,7 +8,11 @@
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
     #commissionMenu { display: none; }
-    li.relative:hover #commissionMenu { display: block; }
+    .group:hover #commissionMenu,
+    .group:focus-within #commissionMenu,
+    .group.open #commissionMenu {
+      display: block;
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -31,40 +35,11 @@
   </div>
 </header>
 
-<!-- Investor Modal -->
-<div id="investorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-  <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
-    <button onclick="closeInvestorModal()" class="absolute top-2 right-2">&times;</button>
-    <h2 class="text-lg font-bold mb-4">Accredited Investor Certification</h2>
-    <label class="block mb-2"><input type="checkbox"> Net worth exceeds $1M</label>
-    <label class="block mb-2"><input type="checkbox"> Annual income exceeds $200K</label>
-    <input type="text" id="investorName" placeholder="Full Name" class="w-full border p-1 mb-2 rounded">
-    <input type="tel" id="investorPhone" placeholder="Phone Number" class="w-full border p-1 mb-2 rounded">
-    <input type="email" id="investorEmail" placeholder="Email Address" class="w-full border p-1 mb-4 rounded">
-    <button onclick="submitInvestorForm()" class="w-full bg-blue-600 text-white py-2 rounded">Submit</button>
-    <p id="investorConfirmation" class="mt-4 text-green-600 font-semibold text-center hidden">We will be in touch.</p>
-  </div>
-</div>
-
-<!-- Press Inquiry Modal -->
-<div id="pressModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-  <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
-    <button onclick="closePressModal()" class="absolute top-2 right-2">&times;</button>
-    <h2 class="text-lg font-bold mb-4">Press Inquiry Form</h2>
-    <input type="text" id="pressName" placeholder="Full Name" class="w-full border p-1 mb-2 rounded">
-    <input type="text" id="pressOrg" placeholder="Organization" class="w-full border p-1 mb-2 rounded">
-    <input type="tel" id="pressPhone" placeholder="Phone Number" class="w-full border p-1 mb-2 rounded">
-    <input type="email" id="pressEmail" placeholder="Email Address" class="w-full border p-1 mb-4 rounded">
-    <button onclick="submitPressForm()" class="w-full bg-blue-600 text-white py-2 rounded">Submit</button>
-    <p id="pressConfirmation" class="mt-4 text-green-600 font-semibold text-center hidden">We will be in touch.</p>
-  </div>
-</div>
-
 <!-- Navigation -->
 <nav class="bg-gray-200 py-2">
   <ul class="flex justify-center space-x-8 font-semibold">
     <li class="relative group">
-      <a href="#" class="hover:underline">Communicate Guaranteed Commission</a>
+      <button onclick="toggleMenu()" class="hover:underline focus:outline-none">Communicate Guaranteed Commission</button>
       <ul id="commissionMenu" class="absolute left-0 mt-2 w-64 bg-white border shadow text-sm text-gray-700 z-10">
         <li><a href="#" onclick="showForm('listed')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Basic</a></li>
         <li><a href="#" onclick="showForm('plus')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Plus</a></li>
@@ -75,6 +50,9 @@
     <li><a href="/login.html" class="hover:underline">Log In</a></li>
   </ul>
 </nav>
+
+<!-- Restore remaining HTML here -->
+<!-- (everything after nav stays the same) -->
 
 <!-- Strip 1 -->
 <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
