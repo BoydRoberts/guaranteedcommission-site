@@ -88,18 +88,18 @@
     }
 
     document.getElementById('selectedPlan').innerText = plan || 'None selected';
-    document.getElementById('addonsList').innerHTML = addons.length ? addons.map(a => <li>${a}</li>).join('') : '<li>None</li>';
+    document.getElementById('addonsList').innerHTML = addons.length ? addons.map(a => `<li>${a}</li>`).join('') : '<li>None</li>';
     document.getElementById('totalAmount').innerText = total;
     // Update display
     document.getElementById("planSummary").textContent = plan || "None selected";
     document.getElementById("upgradeList").innerHTML =
-      upgrades.length ? upgrades.map(up => <li>${up}</li>).join("") : "<li>None</li>";
+      upgrades.length ? upgrades.map(up => `<li>${up}</li>`).join("") : "<li>None</li>";
     document.getElementById("totalAmount").textContent = total;
 
     function submitOrder() {
       alert('Stripe checkout coming soon...\nTotal: $' + total);
     function submitCheckout() {
-      alert(This would now connect to Stripe. Total: $${total});
+      alert(`This would now connect to Stripe. Total: $${total}`);
       // Simulated flow:
       window.location.href = "/signature.html";
     }
