@@ -1,118 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Review Cart and Checkout</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Checkout</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
   <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold text-center mb-6">Review Cart and Checkout</h1>
+    <h1 class="text-2xl font-bold text-center mb-6">Review & Checkout</h1>
 
     <div class="space-y-4 text-sm">
-      <p><strong>Selected Plan:</strong> <span id="selectedPlan">Loading...</span> - $<span id="planCost">0</span></p>
+      <p><strong>Plan:</strong> <span id="selectedPlan"></span></p>
 
-      <div>
-        <strong>Upgrades:</strong>
-        <div class="ml-4 space-y-2">
-          <label class="flex items-center">
-            <input type="checkbox" id="upgradeBanner" class="mr-2">
-            Banner ($10)
-          </label>
-          <label class="flex items-center">
-            <input type="checkbox" id="upgradePin" class="mr-2">
-            Pin Placement ($50)
-          </label>
-        </div>
-      </div>
+      <p><strong>Add-ons:</strong></p>
+      <ul class="list-disc list-inside ml-4" id="addonsList"></ul>
 
-      <p><strong>Total:</strong> $<span id="totalCost">0</span></p>
+      <p class="text-lg font-semibold mt-4">Total: $<span id="totalAmount">0</span></p>
+
+      <hr class="my-4" />
+
+      <p><strong>Selected Plan:</strong> <span id="planSummary"></span></p>
+      <p><strong>Upgrades:</strong></p>
+      <ul id="upgradeList" class="list-disc list-inside text-gray-700"></ul>
+      <p class="mt-4 text-lg font-bold">Total: $<span id="totalAmountConfirm">0</span></p>
     </div>
 
-    <button id="proceedPaymentBtn" class="w-full bg-green-600 text-white py-2 rounded mt-6">
-      Proceed to Payment
-    </button>
+    <div class="mt-6 text-center">
+      <button onclick="submitCheckout()" class="bg-blue-600 text-white px-6 py-2 rounded">
+        Pay with Stripe
+      </button>
+    </div>
   </div>
 
   <script>
-    const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
-    const originalPlan = selectedPlan;
-    localStorage.setItem("activePlan", selectedPlan);
+    const plan = localStorage.getItem("selectedPlan") || "";
+    const upgradeToPlus = localStorage.getItem("upgradeToPlus") === "true";
+    const banner = localStorage.getItem("banner") === "true";
+    const premium = localStorage.getItem("premium") === "true";
+    const pin = localStorage.getItem("pin") === "true";
+    const confidential = localStorage.getItem("confidential") === "true";
 
-    let baseCost = {
-      "Listed Property Basic": 0,
-      "Listed Property Plus": 20,
-      "FSBO Plus": 100
-    }[selectedPlan] || 0;
+    let total = 0;
+    const addons = [];
+    const upgrades = [];
 
-    document.getElementById("selectedPlan").textContent = selectedPlan;
-    document.getElementById("planCost").textContent = baseCost;
-
-    const bannerCheckbox = document.getElementById("upgradeBanner");
-    const pinCheckbox = document.getElementById("upgradePin");
-
-    function calculateTotal() {
-      let total = baseCost;
-      if (bannerCheckbox.checked) total += 10;
-      if (pinCheckbox.checked) total += 50;
-      document.getElementById("totalCost").textContent = total;
+    // Base Plan Cost
+    if (plan === "Listed Property Plus") {
+      total += 20;
+    } else if (plan === "FSBO Plus") {
+      total += 100;
+    } else if (plan === "Listed Property Basic" && upgradeToPlus) {
+      total += 20;
+      upgrades.push("Upgrade to Listed Property Plus ($20)");
     }
 
-    bannerCheckbox.addEventListener("change", calculateTotal);
-    pinCheckbox.addEventListener("change", calculateTotal);
+    // Upgrades
+    if (banner) {
+      addons.push("Banner ($10)");
+      upgrades.push("Banner ($10)");
+      total += 10;
+    }
 
-    document.getElementById("proceedPaymentBtn").addEventListener("click", () => {
-      let finalPlan = originalPlan;
-      let planCost = baseCost;
+    if (pin) {
+      addons.push("Pin Placement ($50, includes Premium)");
+      upgrades.push("Pin Placement ($50)");
+      total += 50;
+    } else if (premium) {
+      addons.push("Premium Placement ($10)");
+      upgrades.push("Premium Placement ($10)");
+      total += 10;
+    }
 
-      const upgrades = [];
-      if (bannerCheckbox.checked) upgrades.push("Banner");
-      if (pinCheckbox.checked) upgrades.push("Pin Placement");
+    if (confidential) {
+      addons.push("Confidential FSBO Upgrade ($100)");
+      upgrades.push("Confidential FSBO Upgrade ($100)");
+      total += 100;
+    }
 
-      // Upgrade to Plus if Basic + any upgrade
-      if (originalPlan === "Listed Property Basic" && upgrades.length > 0) {
-        finalPlan = "Listed Property Plus";
-        planCost = 20;
-        localStorage.setItem("selectedPlan", finalPlan);
-        localStorage.setItem("activePlan", finalPlan);
-      }
+    // Update display
+    document.getElementById("selectedPlan").innerText = plan || "None selected";
+    document.getElementById("planSummary").textContent = plan || "None selected";
+    document.getElementById("addonsList").innerHTML = addons.length
+      ? addons.map(a => `<li>${a}</li>`).join("")
+      : "<li>None</li>";
+    document.getElementById("upgradeList").innerHTML = upgrades.length
+      ? upgrades.map(up => `<li>${up}</li>`).join("")
+      : "<li>None</li>";
+    document.getElementById("totalAmount").textContent = total;
+    document.getElementById("totalAmountConfirm").textContent = total;
 
-      const total = planCost + (bannerCheckbox.checked ? 10 : 0) + (pinCheckbox.checked ? 50 : 0);
-      document.getElementById("selectedPlan").textContent = finalPlan;
-      document.getElementById("planCost").textContent = planCost;
-      document.getElementById("totalCost").textContent = total;
-
-      // Save full checkout data
-      const checkoutData = {
-        plan: finalPlan,
-        planCost: planCost,
-        upgrades: upgrades,
-        totalCost: total
-      };
-      localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
-      localStorage.setItem("postSignatureOptions", finalPlan.includes("FSBO") ? "fsbo" : "listed");
-
-      // Save short address for agent prompt
-      const formData = JSON.parse(localStorage.getItem("formData") || "{}");
-      if (formData.address) {
-        const short = formData.address.split(',')[0];
-        localStorage.setItem("shortAddress", short);
-      }
-
-      // Agent login intent
-      const loginIntent = localStorage.getItem("loginIntent");
-      if (loginIntent === "agent-complete-listing") {
-        const short = localStorage.getItem("shortAddress");
-        if (short) localStorage.setItem("agentPromptMsg", `Would you like to complete the listing detail page for ${short}?`);
-      }
-
-      // Redirect to next step
+    function submitCheckout() {
+      alert(`This would now connect to Stripe. Total: $${total}`);
       window.location.href = "/signature.html";
-    });
-
-    calculateTotal();
+    }
   </script>
 
 </body>
