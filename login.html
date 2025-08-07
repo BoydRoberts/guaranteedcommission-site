@@ -1,26 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-900">
+
   <div class="max-w-md mx-auto mt-20 bg-white p-8 rounded shadow">
-    <h2 class="text-2xl font-bold mb-4 text-center">Login or Sign Up</h2>
+    <h2 class="text-2xl font-bold mb-4 text-center">Log In to Your Account</h2>
+
     <form id="loginForm" class="space-y-4">
-      <input type="email" name="email" placeholder="Email" required class="w-full border p-2 rounded" />
-      <input type="password" name="password" placeholder="Password" required class="w-full border p-2 rounded" />
-      <select name="role" required class="w-full border p-2 rounded">
-        <option value="">I am a...</option>
-        <option value="seller">Seller</option>
-        <option value="agent">Listing Agent</option>
-        <option value="other">Other / Buyer’s Agent</option>
-      </select>
-      <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded">Login</button>
+      <!-- Email -->
+      <div>
+        <label for="email" class="block text-sm font-semibold mb-1">Email</label>
+        <input type="email" id="email" name="email" required class="w-full border p-2 rounded" placeholder="you@example.com">
+      </div>
+
+      <!-- Password + Show toggle -->
+      <div>
+        <label for="password" class="block text-sm font-semibold mb-1">Password</label>
+        <div class="flex">
+          <input type="password" id="password" name="password" required class="w-full border p-2 rounded-l" placeholder="Enter your password">
+          <button type="button" id="togglePassword" class="px-3 border rounded-r text-sm">Show</button>
+        </div>
+      </div>
+
+      <!-- Role selection -->
+      <div>
+        <label for="role" class="block text-sm font-semibold mb-1">I am a...</label>
+        <select name="role" id="role" required class="w-full border p-2 rounded">
+          <option value="">Select role</option>
+          <option value="seller">Seller</option>
+          <option value="agent">Listing Agent</option>
+          <option value="other">Other / Buyer’s Agent</option>
+        </select>
+      </div>
+
+      <!-- Actions -->
+      <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded font-semibold">Login</button>
+
+      <div class="flex justify-between text-sm mt-3">
+        <a href="/forgot-password.html" class="text-blue-600 hover:underline">Forgot password?</a>
+        <a href="/create-account.html" class="text-blue-600 hover:underline">Create an account</a>
+      </div>
+
+      <p id="status" class="mt-4 text-center text-sm text-red-600"></p>
     </form>
-    <p id="status" class="mt-4 text-center text-sm text-red-600"></p>
   </div>
 
   <script type="module">
@@ -39,17 +66,37 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
+    // Show/hide password
+    document.getElementById("togglePassword").addEventListener("click", () => {
+      const pw = document.getElementById("password");
+      const isHidden = pw.type === "password";
+      pw.type = isHidden ? "text" : "password";
+      document.getElementById("togglePassword").textContent = isHidden ? "Hide" : "Show";
+    });
+
+    // Login form submit
     const form = document.getElementById("loginForm");
     form.addEventListener("submit", (e) => {
       e.preventDefault();
-      const email = form.email.value;
-      const password = form.password.value;
+      const email = form.email.value.trim();
+      const password = form.password.value.trim();
       const role = form.role.value;
 
+      if (!email || !password || !role) {
+        document.getElementById("status").innerText = "Please complete all fields.";
+        return;
+      }
+
       signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-          if (role === 'seller' || role === 'agent') {
-            window.location.href = "/dashboard.html";
+        .then(() => {
+          // Store role for future logic
+          localStorage.setItem("userRole", role);
+
+          // Redirect based on role
+          if (role === "seller") {
+            window.location.href = "/seller-dashboard.html";
+          } else if (role === "agent") {
+            window.location.href = "/agent-dashboard.html";
           } else {
             window.location.href = "/";
           }
@@ -59,5 +106,6 @@
         });
     });
   </script>
+
 </body>
 </html>
