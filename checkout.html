@@ -13,7 +13,7 @@
     <h1 class="text-2xl font-bold text-center mb-6">Review Cart and Checkout</h1>
 
     <div class="space-y-4 text-sm">
-      <p><strong>Selected Plan:</strong> <span id="selectedPlan">Loading...</span></p>
+      <p><strong>Selected Plan:</strong> <span id="planName">Loading...</span></p>
 
       <div>
         <strong>Upgrades:</strong>
@@ -39,50 +39,62 @@
     const confidential = localStorage.getItem("confidential") === "true";
 
     let baseCost = 0;
-    if (plan === "Listed Property Plus") baseCost = 20;
-    if (plan === "FSBO Plus") baseCost = 100;
-    if (plan === "Listed Property Basic" && upgradeToPlus) baseCost = 20;
-
     const upgrades = [];
-    let upgradeTotal = 0;
+    let upsellTotal = 0;
 
-    if (plan === "Listed Property Basic" && upgradeToPlus) {
-      upgrades.push("Upgrade to Listed Property Plus ($20)");
+    // Base plan cost
+    if (plan === "Listed Property Basic") {
+      if (upgradeToPlus) {
+        upgrades.push("Upgrade to Listed Property Plus ($20)");
+        baseCost = 20;
+      } else {
+        baseCost = 0;
+      }
+    } else if (plan === "Listed Property Plus") {
+      baseCost = 20;
+    } else if (plan === "FSBO Plus") {
+      baseCost = 100;
     }
 
-    if (banner) {
-      upgrades.push("Banner ($10)");
-      upgradeTotal += 10;
-    }
-
-    if (pin) {
-      upgrades.push("Pin Placement ($50, includes Premium)");
-      upgradeTotal += 50;
-    } else if (premium) {
-      upgrades.push("Premium Placement ($10)");
-      upgradeTotal += 10;
-    }
-
+    // Upsells
     if (confidential) {
       upgrades.push("Confidential FSBO Upgrade ($100)");
-      upgradeTotal += 100;
+      upsellTotal += 100;
+    }
+    if (banner) {
+      upgrades.push("Banner ($10)");
+      upsellTotal += 10;
+    }
+    if (pin) {
+      upgrades.push("Pin Placement ($50, includes Premium)");
+      upsellTotal += 50;
+    } else if (premium) {
+      upgrades.push("Premium Placement ($10)");
+      upsellTotal += 10;
     }
 
-    const total = baseCost + upgradeTotal;
+    const total = baseCost + upsellTotal;
 
-    // Populate page
-    document.getElementById("selectedPlan").textContent = plan;
+    // Populate UI
+    document.getElementById("planName").textContent = plan;
     document.getElementById("totalAmount").textContent = total;
-
     const list = document.getElementById("upgradeList");
     if (upgrades.length === 0) {
-      list.innerHTML = "<li>None selected</li>";
+      list.innerHTML = "<li>No additional upgrades</li>";
     } else {
       list.innerHTML = upgrades.map(up => `<li>${up}</li>`).join("");
     }
+
+    // Save checkout data for Stripe
+    localStorage.setItem("checkoutData", JSON.stringify({
+      plan,
+      baseCost,
+      upgrades,
+      total
+    }));
   </script>
 
-  <!-- Stripe logic is handled by checkout.js -->
+  <!-- Stripe logic -->
   <script src="/checkout.js"></script>
 
 </body>
