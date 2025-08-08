@@ -1,115 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Agent Listing Preview</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .thumb { width: 100%; height: 160px; object-fit: cover; border-radius: 0.5rem; border: 1px solid #e5e7eb; }
+    .badge {
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.65); color: #fff;
+      padding: 4px 8px; font-size: 12px; border-radius: 6px;
+    }
+    .ribbon {
+      position: absolute; top: 10px; right: -10px;
+      background: #2563eb; color: #fff; padding: 6px 12px;
+      transform: rotate(10deg); border-radius: 6px;
+      font-size: 12px;
+      max-width: 160px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-  <div class="max-w-5xl mx-auto px-4 py-8">
-    <div class="flex items-center justify-between mb-6">
+
+  <div class="max-w-5xl mx-auto p-6">
+    <div class="flex items-start justify-between mb-4">
       <h1 class="text-2xl font-bold">Agent Listing Preview</h1>
-      <button onclick="window.location.href='/agent-detail.html'" class="text-sm px-4 py-2 rounded border">Back to Edit</button>
-    </div>
-
-    <div id="content" class="bg-white rounded shadow p-5">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 space-y-4">
-          <div id="primaryWrap" class="rounded overflow-hidden border">
-            <img id="primaryImg" class="w-full h-80 object-cover" alt="Primary Photo" />
-          </div>
-          <div>
-            <h2 class="text-xl font-semibold" id="addr"></h2>
-            <p class="text-gray-700 mt-1">
-              <span id="price"></span> • <span id="beds"></span> bd • <span id="baths"></span> ba • <span id="sqft"></span> sqft
-            </p>
-          </div>
-          <div id="descBlock" class="mt-2">
-            <h3 class="font-semibold mb-1">Description</h3>
-            <p id="description" class="whitespace-pre-line text-gray-800"></p>
-          </div>
-
-          <div id="galleryBlock" class="mt-4">
-            <h3 class="font-semibold mb-2">Photos</h3>
-            <div id="gallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
-          </div>
-        </div>
-
-        <aside class="space-y-4">
-          <div class="border rounded p-4 bg-gray-50">
-            <h4 class="font-semibold mb-2">Commission</h4>
-            <p><strong>Offer:</strong> <span id="commissionOffer"></span></p>
-            <p><strong>Calculated:</strong> <span id="commissionCalc"></span></p>
-          </div>
-          <div class="border rounded p-4">
-            <button onclick="window.print()" class="w-full bg-blue-600 text-white py-2 rounded">Print Preview</button>
-          </div>
-        </aside>
+      <div class="flex gap-2">
+        <a href="/agent-detail.html" class="text-sm text-blue-600 hover:underline">Back to Edit</a>
+        <a href="/index.html" class="text-sm text-blue-600 hover:underline">Home</a>
       </div>
     </div>
+
+    <!-- Tile preview -->
+    <div id="tile" class="bg-white rounded-lg shadow overflow-hidden max-w-xl">
+      <div class="relative">
+        <img id="mainPhoto" src="" alt="Main" class="w-full h-56 object-cover bg-gray-200">
+        <div id="commissionBadge" class="badge"></div>
+        <div id="bannerRibbon" class="ribbon hidden"></div>
+      </div>
+      <div class="p-4">
+        <div class="text-xl font-semibold" id="price">$—</div>
+        <div class="text-gray-700" id="shortAddress">[short address]</div>
+        <div class="text-sm text-gray-500 mt-1" id="fullAddress"></div>
+      </div>
+    </div>
+
+    <p class="text-xs text-gray-500 mt-3">This preview matches the style used for Strip 2 listing tiles.</p>
   </div>
 
   <script>
-    const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
-    const data = JSON.parse(localStorage.getItem("formData") || "{}");
+    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
+    const agentListing = JSON.parse(localStorage.getItem("agentListing") || "{}");
+    const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
 
-    // Address + basics
-    document.getElementById("addr").textContent = data.address || "[address]";
-    document.getElementById("price").textContent = data.price ? Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(+data.price) : "—";
-    document.getElementById("beds").textContent = data.beds || "—";
-    document.getElementById("baths").textContent = data.baths || "—";
-    document.getElementById("sqft").textContent = data.sqft || "—";
-
-    // Description (hidden on Basic if none)
-    const desc = data.description || "";
-    if (!desc) {
-      document.getElementById("descBlock").classList.add("hidden");
-    } else {
-      document.getElementById("description").textContent = desc;
+    function fmtPrice(v) {
+      const n = Number(v || 0);
+      if (!n) return "$—";
+      return "$" + n.toLocaleString();
     }
 
-    // Primary photo
-    const primaryImg = document.getElementById("primaryImg");
-    if (data.primaryPhotoData) {
-      primaryImg.src = data.primaryPhotoData;
-    } else {
-      primaryImg.src = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400"><rect width="100%" height="100%" fill="#e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#6b7280" font-size="20">No Primary Photo</text></svg>');
+    function buildCommissionBadge(price, comm, type) {
+      const p = Number(price || 0);
+      const c = Number(comm || 0);
+      if (!c) return "";
+      if (type === "$") return `Commission: $${Math.round(c).toLocaleString()}`;
+      // percent
+      const amt = Math.round(p * (c/100));
+      return `Commission: ${c}% (~$${amt.toLocaleString()})`;
     }
 
-    // Gallery (Plus/FSBO only)
-    const galleryBlock = document.getElementById("galleryBlock");
-    const gallery = document.getElementById("gallery");
-    const photos = data.photosData || [];
-    if (!photos.length || selectedPlan === "Listed Property Basic") {
-      galleryBlock.classList.add("hidden");
-    } else {
-      photos.slice(0,20).forEach(src => {
-        const img = document.createElement("img");
-        img.src = src;
-        img.className = "thumb";
-        gallery.appendChild(img);
-      });
+    function load() {
+      // Photos
+      const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
+      const idx = typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0;
+
+      // Price/commission from agent first; fallback to seller
+      const price = agentListing.price ?? "";
+      const commission = agentListing.commission ?? (formData.commission || "");
+      const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
+
+      // Address
+      const fullAddr = formData.address || "";
+      const shortAddr = fullAddr ? fullAddr.split(",")[0] : "";
+
+      // Render
+      document.getElementById("price").textContent = fmtPrice(price);
+      document.getElementById("fullAddress").textContent = fullAddr || "";
+      document.getElementById("shortAddress").textContent = shortAddr || "";
+
+      const badge = buildCommissionBadge(price, commission, commissionType);
+      document.getElementById("commissionBadge").textContent = badge;
+
+      const mainPhotoEl = document.getElementById("mainPhoto");
+      if (photos.length > 0 && photos[idx]) {
+        mainPhotoEl.src = photos[idx];
+      } else {
+        mainPhotoEl.src = ""; // keeps gray bg
+      }
+
+      const ribbon = document.getElementById("bannerRibbon");
+      const bannerText = (agentListing.bannerText || "").trim();
+      if (bannerText) {
+        ribbon.textContent = bannerText;
+        ribbon.classList.remove("hidden");
+      } else {
+        ribbon.classList.add("hidden");
+      }
     }
 
-    // Commission
-    const offer = (data.commissionType || "%") === "$"
-      ? `$${data.commission || 0}`
-      : `${data.commission || 0}%`;
-    document.getElementById("commissionOffer").textContent = offer;
-
-    const priceVal = parseFloat(data.price || "0");
-    let calc = 0;
-    if ((data.commissionType || "%") === "%") {
-      calc = priceVal * ((parseFloat(data.commission || "0") || 0) / 100);
-    } else {
-      calc = parseFloat(data.commission || "0") || 0;
-    }
-    document.getElementById("commissionCalc").textContent =
-      calc.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+    load();
   </script>
 </body>
 </html>
