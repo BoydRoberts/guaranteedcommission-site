@@ -8,99 +8,49 @@
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
+  <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded shadow relative">
+    <!-- Test Mode badge -->
+    <div class="absolute -top-3 -right-3 bg-yellow-500 text-white text-xs font-bold px-3 py-1 rounded">
+      TEST MODE
+    </div>
 
-  <!-- ✅ TEST MODE BADGE -->
-  <div class="bg-yellow-400 text-black text-center py-2 font-semibold">
-    ⚠️ TEST MODE — No live charges will be made
-  </div>
+    <h1 class="text-2xl font-bold text-center mb-6">Review & Checkout</h1>
 
-  <div class="max-w-xl mx-auto mt-8 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold text-center mb-6">Review Cart and Checkout</h1>
-
-    <div class="space-y-4 text-sm">
-      <p><strong>Selected Plan:</strong> <span id="planName">Loading...</span></p>
-
+    <!-- Summary -->
+    <div class="space-y-3 text-sm">
+      <p><strong>Selected Plan:</strong> <span id="planName">—</span></p>
       <div>
         <strong>Upgrades:</strong>
-        <ul id="upgradeList" class="list-disc list-inside text-gray-700 mt-2"></ul>
+        <ul id="upgradeList" class="list-disc list-inside text-gray-700 mt-1"></ul>
       </div>
+      <p class="text-lg font-semibold mt-2">Total: $<span id="totalAmount">0</span></p>
+      <p id="freeNote" class="text-green-700 text-sm mt-1 hidden">
+        Your total is $0. No payment is required.
+      </p>
+    </div>
 
-      <p class="text-lg font-semibold mt-4">Total: $<span id="totalAmount">0</span></p>
+    <hr class="my-6" />
 
-      <hr class="my-4" />
-
-      <button id="payButton" class="w-full bg-green-600 text-white py-2 rounded text-lg font-semibold">
+    <!-- Actions -->
+    <div class="space-y-3">
+      <button id="stripePayBtn" class="w-full bg-green-600 text-white py-2 rounded">
         Pay Now with Stripe
       </button>
+
+      <button id="continueBtn" class="w-full bg-blue-600 text-white py-2 rounded hidden">
+        Continue (no payment needed)
+      </button>
+
+      <button id="backBtn" class="w-full bg-gray-200 text-gray-800 py-2 rounded">
+        Go Back
+      </button>
     </div>
+
+    <!-- Debug (optional) -->
+    <pre id="debug" class="mt-6 text-xs text-gray-500 whitespace-pre-wrap hidden"></pre>
   </div>
 
-  <script>
-    const plan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
-    const upgradeToPlus = localStorage.getItem("upgradeToPlus") === "true";
-    const banner = localStorage.getItem("banner") === "true";
-    const premium = localStorage.getItem("premium") === "true";
-    const pin = localStorage.getItem("pin") === "true";
-    const confidential = localStorage.getItem("confidential") === "true";
-
-    let baseCost = 0;
-    const upgrades = [];
-    let upsellTotal = 0;
-
-    // Base plan cost
-    if (plan === "Listed Property Basic") {
-      if (upgradeToPlus) {
-        upgrades.push("Upgrade to Listed Property Plus ($20)");
-        baseCost = 20;
-      } else {
-        baseCost = 0;
-      }
-    } else if (plan === "Listed Property Plus") {
-      baseCost = 20;
-    } else if (plan === "FSBO Plus") {
-      baseCost = 100;
-    }
-
-    // Upsells
-    if (confidential) {
-      upgrades.push("Confidential FSBO Upgrade ($100)");
-      upsellTotal += 100;
-    }
-    if (banner) {
-      upgrades.push("Banner ($10)");
-      upsellTotal += 10;
-    }
-    if (pin) {
-      upgrades.push("Pin Placement ($50, includes Premium)");
-      upsellTotal += 50;
-    } else if (premium) {
-      upgrades.push("Premium Placement ($10)");
-      upsellTotal += 10;
-    }
-
-    const total = baseCost + upsellTotal;
-
-    // Populate UI
-    document.getElementById("planName").textContent = plan;
-    document.getElementById("totalAmount").textContent = total;
-    const list = document.getElementById("upgradeList");
-    if (upgrades.length === 0) {
-      list.innerHTML = "<li>No additional upgrades</li>";
-    } else {
-      list.innerHTML = upgrades.map(up => `<li>${up}</li>`).join("");
-    }
-
-    // Save checkout data for Stripe
-    localStorage.setItem("checkoutData", JSON.stringify({
-      plan,
-      baseCost,
-      upgrades,
-      total
-    }));
-  </script>
-
-  <!-- Stripe logic -->
+  <!-- Your checkout logic -->
   <script src="/checkout.js"></script>
-
 </body>
 </html>
