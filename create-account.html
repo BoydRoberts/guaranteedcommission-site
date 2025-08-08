@@ -93,7 +93,7 @@
   </div>
 
   <script>
-    // ✅ NEW: Reset checkout state on load
+    // ✅ Reset checkout state on load
     function resetCheckoutState() {
       [
         "upgradeToPlus","banner","premium","pin","confidential",
@@ -121,7 +121,7 @@
       fine.textContent = "GuaranteedCommission.com only uses your information for escrow and identification. Your information will not be sold to third parties or used for solicitation purposes.";
     }
 
-    // Phone formatting
+    // Phone formatting + validation
     const phoneInput = document.getElementById("phone");
     const phoneErr = document.getElementById("phoneErr");
     phoneInput.addEventListener("input", function() {
@@ -201,45 +201,61 @@
     }
     confirm.addEventListener("input", checkMatch);
 
-    // Submit
-    document.getElementById("submitBtn").addEventListener("click", () => {
-      const name = document.getElementById("name").value.trim();
-      const phone = phoneInput.value.trim();
-      const email = emailInput.value.trim();
-      const password = pass.value;
-      const confirmPw = confirm.value;
-      const verifyMethod = (document.querySelector('input[name="verifyMethod"]:checked') || {}).value || "phone";
-
-      if (!name || !phone || !email || !password || !confirmPw) {
-        alert("Please complete all fields.");
-        return;
-      }
-      if (!/^\d{3}-\d{3}-\d{4}$/.test(phone)) {
-        alert("Please enter a valid phone number (123-456-7890).");
-        return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        alert("Please enter a valid email address.");
-        return;
-      }
-      if (password !== confirmPw) {
-        alert("Passwords do not match.");
-        return;
-      }
-      const s = scorePassword(password);
-      if (s < 4) {
-        alert("Please choose a stronger password (aim for Good/Strong).");
-        return;
-      }
-
-      const verifyData = { name, phone, email, password, verifyMethod, plan: selectedPlan };
-      localStorage.setItem("verifyData", JSON.stringify(verifyData));
-
+    // 🔔 Helper: generate & store code (TEST MODE shows alert + console)
+    function sendCode(method, destinationRaw) {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       localStorage.setItem("verificationCode", code);
-      console.log("Verification code sent to", verifyMethod, ":", code);
+      console.log("🔐 Verification code sent via", method, "to", destinationRaw, "→", code);
+      // TEST MODE UX: surface the code so you can proceed even without email/SMS
+      alert("Test Mode: Your verification code is " + code);
+      return code;
+    }
 
-      window.location.href = "/verify-code.html";
+    // Submit
+    document.getElementById("submitBtn").addEventListener("click", () => {
+      try {
+        const name = document.getElementById("name").value.trim();
+        const phone = phoneInput.value.trim();
+        const email = emailInput.value.trim();
+        const password = pass.value;
+        const confirmPw = confirm.value;
+        const verifyMethod = (document.querySelector('input[name="verifyMethod"]:checked') || {}).value || "phone";
+
+        if (!name || !phone || !email || !password || !confirmPw) {
+          alert("Please complete all fields.");
+          return;
+        }
+        if (!/^\d{3}-\d{3}-\d{4}$/.test(phone)) {
+          alert("Please enter a valid phone number (123-456-7890).");
+          return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          alert("Please enter a valid email address.");
+          return;
+        }
+        if (password !== confirmPw) {
+          alert("Passwords do not match.");
+          return;
+        }
+        const s = scorePassword(password);
+        if (s < 4) {
+          alert("Please choose a stronger password (aim for Good/Strong).");
+          return;
+        }
+
+        const verifyData = { name, phone, email, password, verifyMethod, plan: selectedPlan };
+        localStorage.setItem("verifyData", JSON.stringify(verifyData));
+
+        // ✅ Generate the code here (so it definitely exists before redirect)
+        const destination = verifyMethod === "phone" ? phone : email;
+        sendCode(verifyMethod, destination);
+
+        // 👉 Go to code entry
+        window.location.href = "/verify-code.html";
+      } catch (e) {
+        console.error("Create account error:", e);
+        alert("Unexpected error. Please refresh and try again.");
+      }
     });
   </script>
 
