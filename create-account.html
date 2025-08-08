@@ -87,27 +87,22 @@
       <!-- Already have account -->
       <p class="text-center text-sm mt-4">
         Already have an account?
-        <a href="/login.html" class="text-blue-600 underline">Log in</a>
+        <a href="/login.html" class="text-blue-600 hover:underline">Log in here</a>
       </p>
     </form>
   </div>
 
   <script>
-    // Prefill from previous steps
     const formData = JSON.parse(localStorage.getItem("formData") || "{}");
     const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
     const isFSBO = selectedPlan.includes("FSBO");
 
-    // Name always
     if (formData.name) document.getElementById("name").value = formData.name;
-
-    // FSBO autofill (phone/email came from earlier page: phone=agentPhone, brokerage=email)
     if (isFSBO) {
       if (formData.phone) document.getElementById("phone").value = formData.phone;
       if (formData.brokerage) document.getElementById("email").value = formData.brokerage;
     }
 
-    // Fine print by plan
     const fine = document.getElementById("finePrint");
     if (isFSBO) {
       fine.textContent = "GuaranteedCommission.com displays FSBO seller information on the Irrevocable Seller Communication and on the listing detail page. Unless you select the optional Confidential FSBO Upgrade ($100) your information may be sold to third parties and used for solicitation purposes.";
@@ -115,7 +110,6 @@
       fine.textContent = "GuaranteedCommission.com only uses your information for escrow and identification. Your information will not be sold to third parties or used for solicitation purposes.";
     }
 
-    // Phone mask/validation
     const phoneInput = document.getElementById("phone");
     const phoneErr = document.getElementById("phoneErr");
     phoneInput.addEventListener("input", function() {
@@ -127,7 +121,6 @@
       phoneErr.classList.toggle("hidden", ok || this.value.trim() === "");
     });
 
-    // Email validation
     const emailInput = document.getElementById("email");
     const emailErr = document.getElementById("emailErr");
     emailInput.addEventListener("input", function() {
@@ -135,7 +128,6 @@
       emailErr.classList.toggle("hidden", ok || this.value.trim() === "");
     });
 
-    // Show/hide password toggles
     const togglePass = document.getElementById("togglePass");
     const toggleConfirm = document.getElementById("toggleConfirm");
     const pass = document.getElementById("password");
@@ -149,7 +141,6 @@
       toggleConfirm.textContent = confirm.type === "password" ? "Show" : "Hide";
     });
 
-    // Password strength meter
     const strengthFill = document.getElementById("strengthFill");
     const strengthLabel = document.getElementById("strengthLabel");
     const strengthTips = document.getElementById("strengthTips");
@@ -170,10 +161,8 @@
       strengthFill.style.width = pct + "%";
       const colors = ["bg-red-500","bg-orange-500","bg-yellow-500","bg-yellow-500","bg-green-500","bg-green-600","bg-green-700"];
       strengthFill.className = "rounded strength-bar " + colors[score];
-
       const labels = ["—","Very Weak","Weak","Fair","Good","Strong","Very Strong"];
       strengthLabel.textContent = "Strength: " + labels[score];
-
       const tips = [];
       if (pw.length < 12) tips.push("12+ chars");
       if (!/[A-Z]/.test(pw)) tips.push("uppercase");
@@ -186,11 +175,9 @@
     pass.addEventListener("input", () => {
       const s = scorePassword(pass.value);
       renderStrength(s, pass.value);
-      // live check confirm match too
       checkMatch();
     });
 
-    // Confirm match validation
     const matchErr = document.getElementById("matchErr");
     function checkMatch() {
       const mismatch = confirm.value && pass.value !== confirm.value;
@@ -199,7 +186,6 @@
     }
     confirm.addEventListener("input", checkMatch);
 
-    // Submit handler
     document.getElementById("submitBtn").addEventListener("click", () => {
       const name = document.getElementById("name").value.trim();
       const phone = phoneInput.value.trim();
@@ -208,7 +194,6 @@
       const confirmPw = confirm.value;
       const verifyMethod = (document.querySelector('input[name="verifyMethod"]:checked') || {}).value || "phone";
 
-      // Basic validations
       if (!name || !phone || !email || !password || !confirmPw) {
         alert("Please complete all fields.");
         return;
@@ -225,25 +210,18 @@
         alert("Passwords do not match.");
         return;
       }
-      // Enforce minimum strength (>= 4 = Good)
       const s = scorePassword(password);
       if (s < 4) {
         alert("Please choose a stronger password (aim for Good/Strong).");
         return;
       }
 
-      // Save to localStorage (demo). In production, send to backend & hash server-side.
       const verifyData = { name, phone, email, password, verifyMethod, plan: selectedPlan };
       localStorage.setItem("verifyData", JSON.stringify(verifyData));
 
-      // Create and store 6-digit verification code (demo)
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       localStorage.setItem("verificationCode", code);
-
-      // Simulated send (for dev: reveal code)
       console.log("Verification code sent to", verifyMethod, ":", code);
-
-      // Go to code entry
       window.location.href = "/verify-code.html";
     });
   </script>
