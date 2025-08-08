@@ -39,16 +39,19 @@ document.addEventListener("DOMContentLoaded", () => {
     lineItems.push({ price: priceIDs.upgrades["Upgrade to Listed Property Plus ($20)"], quantity: 1 });
   }
 
-  // Add any other upgrades
+  // Add other upgrades
   upgrades.forEach(up => {
-    // Avoid adding the upgrade to Plus twice
     if (up === "Upgrade to Listed Property Plus ($20)" && plan === "Listed Property Basic") {
-      return; // already handled above
+      return; // avoid double-charging
     }
     if (priceIDs.upgrades[up]) {
       lineItems.push({ price: priceIDs.upgrades[up], quantity: 1 });
     }
   });
+
+  // ✅ DEBUG LOG — For testing only
+  console.log("DEBUG: checkoutData from localStorage:", checkoutData);
+  console.log("DEBUG: Stripe lineItems to be sent:", lineItems);
 
   // Handle click to pay
   document.getElementById("payButton").addEventListener("click", async () => {
