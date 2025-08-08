@@ -84,7 +84,10 @@
           </div>
           <input id="primaryPhoto" type="file" accept="image/*" class="block w-full text-sm text-gray-600 mb-3">
           <div id="primaryPreview" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
-          <p class="text-xs text-gray-500">Upgrade to Plus to add up to 20 photos.</p>
+          <div class="flex gap-2">
+            <button id="clearPrimary" type="button" class="text-xs px-3 py-1 border rounded">Clear</button>
+            <p class="text-xs text-gray-500 self-center">Upgrade to Plus to add up to 20 photos.</p>
+          </div>
         </div>
 
         <!-- Description (locked for Basic) -->
@@ -94,7 +97,6 @@
             <span class="text-xs text-gray-500"><span id="descCount">0</span>/2000</span>
           </div>
           <textarea id="description" rows="6" maxlength="2000" class="w-full border p-2 rounded" placeholder="Describe the property, upgrades, neighborhood, and anything buyers should know."></textarea>
-          <!-- Overlay shown only for Basic -->
           <div id="descLock" class="lock-overlay absolute inset-0 rounded hidden flex items-center justify-center text-center px-8">
             <div>
               <p class="text-gray-700 font-semibold">Locked on Basic</p>
@@ -113,7 +115,6 @@
           <input id="photos" type="file" accept="image/*" multiple class="block w-full text-sm text-gray-600 mb-3">
           <div id="photoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
 
-          <!-- Overlay for Basic -->
           <div id="photoLock" class="lock-overlay absolute inset-0 rounded hidden flex items-center justify-center text-center px-8">
             <div>
               <p class="text-gray-700 font-semibold">Locked on Basic</p>
@@ -176,7 +177,7 @@
   <script>
     // ---- State ----
     const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
-    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
+    let formData = JSON.parse(localStorage.getItem("formData") || "{}");
 
     // ---- Elements ----
     const planBadge = document.getElementById("planBadge");
@@ -196,6 +197,7 @@
     const primaryPhoto = document.getElementById("primaryPhoto");
     const primaryPreview = document.getElementById("primaryPreview");
     const primaryCount = document.getElementById("primaryCount");
+    const clearPrimary = document.getElementById("clearPrimary");
 
     const photosInput = document.getElementById("photos");
     const photoGrid   = document.getElementById("photoGrid");
@@ -220,7 +222,7 @@
     // ---- Init ----
     planBadge.textContent = selectedPlan;
 
-    // Prefill basics from existing data
+    // Prefill basics
     if (formData.address) addr.value = formData.address;
     if (formData.price)   price.value = formData.price;
     if (formData.beds)    beds.value = formData.beds;
@@ -228,7 +230,7 @@
     if (formData.sqft)    sqft.value = formData.sqft;
     if (formData.description) description.value = formData.description;
 
-    // Commission prefill from earlier steps
+    // Commission prefill
     if (formData.commission) commissionEl.value = formData.commission;
     if (formData.commissionType) commissionTypeEl.value = formData.commissionType;
     priceMirrorEl.value = price.value || "";
@@ -248,7 +250,7 @@
       description.setAttribute("disabled", "true");
       photosInput.setAttribute("disabled", "true");
       upgradePanel.classList.remove("hidden");
-      primaryPhotoCard.classList.remove("hidden"); // allow 1 primary photo on Basic
+      primaryPhotoCard.classList.remove("hidden");
     } else {
       descLock.classList.add("hidden");
       photoLock.classList.add("hidden");
@@ -279,7 +281,6 @@
 
     [commissionEl, commissionTypeEl, price, priceMirrorEl].forEach(el => {
       el.addEventListener("input", () => {
-        // Keep mirrors synced
         if (el === price) priceMirrorEl.value = price.value;
         if (el === priceMirrorEl) price.value = priceMirrorEl.value;
         recalcCommission();
@@ -287,48 +288,86 @@
     });
     recalcCommission();
 
-    // ---- Primary Photo (Basic) ----
-    function refreshPrimaryCount() {
-      const count = primaryPreview.querySelectorAll("img").length;
-      primaryCount.textContent = count + " / 1";
-    }
-
-    primaryPhoto.addEventListener("change", () => {
-      if (!isBasic) return; // safety
+    // ---- Primary Photo (Basic) persistence (Data URL in localStorage) ----
+    function renderPrimaryFromData() {
       primaryPreview.innerHTML = "";
-      const file = primaryPhoto.files && primaryPhoto.files[0];
-      if (file) {
-        const url = URL.createObjectURL(file);
+      if (formData.primaryPhotoData) {
         const img = document.createElement("img");
-        img.src = url;
-        img.alt = file.name;
+        img.src = formData.primaryPhotoData;
+        img.alt = "Primary Photo";
         img.className = "thumb";
         primaryPreview.appendChild(img);
       }
-      refreshPrimaryCount();
-    });
-
-    // ---- Additional Photos (Plus only) ----
-    function refreshPhotoCount() {
-      const count = photoGrid.querySelectorAll("img").length;
-      photoCount.textContent = count + " / 20";
+      primaryCount.textContent = (formData.primaryPhotoData ? 1 : 0) + " / 1";
     }
 
-    photosInput.addEventListener("change", () => {
-      if (!isPlus) return; // locked on Basic
+    function fileToDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    primaryPhoto.addEventListener("change", async () => {
+      if (!isBasic) return;
+      const file = primaryPhoto.files && primaryPhoto.files[0];
+      if (!file) return;
+      try {
+        const dataUrl = await fileToDataURL(file);
+        formData = JSON.parse(localStorage.getItem("formData") || "{}");
+        formData.primaryPhotoData = dataUrl;
+        localStorage.setItem("formData", JSON.stringify(formData));
+        renderPrimaryFromData();
+        primaryPhoto.value = ""; // allow re-upload same file name
+      } catch (e) {
+        alert("Could not load image. Please try another file.");
+      }
+    });
+
+    clearPrimary.addEventListener("click", () => {
+      formData = JSON.parse(localStorage.getItem("formData") || "{}");
+      delete formData.primaryPhotoData;
+      localStorage.setItem("formData", JSON.stringify(formData));
+      renderPrimaryFromData();
+      primaryPhoto.value = "";
+    });
+
+    // Render existing primary photo on load
+    renderPrimaryFromData();
+
+    // ---- Additional Photos (Plus only) -> Save as array of Data URLs ----
+    async function renderGalleryFromData() {
       photoGrid.innerHTML = "";
-      const files = Array.from(photosInput.files || []);
-      const slice = files.slice(0, 20);
-      slice.forEach(file => {
-        const url = URL.createObjectURL(file);
+      const arr = formData.photosData || [];
+      arr.slice(0, 20).forEach(src => {
         const img = document.createElement("img");
-        img.src = url;
-        img.alt = file.name;
+        img.src = src;
+        img.alt = "Photo";
         img.className = "thumb";
         photoGrid.appendChild(img);
       });
-      refreshPhotoCount();
+      photoCount.textContent = `${arr.length} / 20`;
+    }
+
+    photosInput.addEventListener("change", async () => {
+      if (!isPlus) return;
+      const files = Array.from(photosInput.files || []).slice(0, 20);
+      try {
+        const dataUrls = await Promise.all(files.map(fileToDataURL));
+        formData = JSON.parse(localStorage.getItem("formData") || "{}");
+        formData.photosData = dataUrls; // overwrite for simplicity
+        localStorage.setItem("formData", JSON.stringify(formData));
+        renderGalleryFromData();
+        photosInput.value = "";
+      } catch (e) {
+        alert("Could not load one or more images.");
+      }
     });
+
+    // Render existing gallery on load
+    renderGalleryFromData();
 
     // ---- Save details back to formData ----
     function saveDetails() {
@@ -339,13 +378,15 @@
       data.baths   = baths.value.trim();
       data.sqft    = sqft.value.trim();
 
-      // Keep commission in sync
+      // Commission
       data.commission = commissionEl.value.trim();
       data.commissionType = commissionTypeEl.value;
 
+      // Only save description if unlocked (or keep existing if already Plus)
       if (!isBasic) {
         data.description = description.value.trim();
       }
+
       localStorage.setItem("formData", JSON.stringify(data));
       saveMsg.classList.remove("hidden");
       setTimeout(() => saveMsg.classList.add("hidden"), 1800);
@@ -379,7 +420,6 @@
     renderUpgradeTotal();
 
     upgradeBtn.addEventListener("click", () => {
-      // Build a clean checkoutData for agent-paid upgrade
       const upgrades = ["Upgrade to Listed Property Plus ($20)"];
       if (upBanner.checked) upgrades.push("Banner ($10)");
       if (upPin.checked) {
@@ -392,22 +432,24 @@
         plan: "Listed Property Plus",
         upgrades,
         totalCost: computeUpgradeTotal(),
-        payer: "agent" // <- important flag
+        payer: "agent"
       };
 
-      // Persist
       localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
-      // Keep original selectedPlan until payment success; checkout.js will route back to signature/next step
-      // But we store short address for convenience:
+
+      // short address convenience
       const data = JSON.parse(localStorage.getItem("formData") || "{}");
       if (data.address) {
         const short = data.address.split(",")[0];
         localStorage.setItem("shortAddress", short);
       }
-
-      // Go to checkout
       window.location.href = "/checkout.html";
     });
+
+    // Prefill existing plus gallery into UI on Plus
+    if (isPlus) {
+      renderGalleryFromData();
+    }
   </script>
 </body>
 </html>
