@@ -1,59 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sign Irrevocable Seller Communication</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .font-cursive {
-      font-family: "Brush Script MT", cursive;
-    }
+    .font-cursive { font-family: "Brush Script MT", cursive; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
+  <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold text-center mb-6">Irrevocable Seller Communication</h1>
 
-  <div class="max-w-2xl mx-auto mt-20 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold text-center mb-6">Sign the Irrevocable Seller Communication</h1>
+    <div class="space-y-4 text-sm">
+      <p><strong>Selected Plan:</strong> <span id="selectedPlan">Loading...</span> - $<span id="planCost">0</span></p>
 
-    <div id="iscText" class="text-sm leading-relaxed whitespace-pre-line border p-4 rounded mb-6 bg-gray-50">
-      Loading ISC...
-    </div>
+      <div id="iscText" class="text-sm leading-relaxed whitespace-pre-line border rounded p-3 bg-gray-50">
+        Loading ISC...
+      </div>
 
-    <div class="mt-6">
-      <label class="block mb-2 text-sm font-semibold">Electronic Signature:</label>
-      <input type="text" id="signature" placeholder="Type your full name here" class="font-cursive w-full border p-2 rounded" required>
-    </div>
+      <div class="mt-6">
+        <label class="block mb-2 text-sm font-semibold">Electronic Signature:</label>
+        <input type="text" id="signature" placeholder="Type your full name here" class="font-cursive w-full border p-2 rounded" required>
+      </div>
 
-    <div class="mt-4">
-      <label class="block text-sm font-semibold">Date:</label>
-      <p id="date" class="text-sm"></p>
-    </div>
+      <div class="mt-4">
+        <label class="block text-sm font-semibold">Date:</label>
+        <p id="date" class="text-sm"></p>
+      </div>
 
-    <div class="flex justify-between mt-6">
-      <button onclick="window.location.href='/printable-isc.html'" class="bg-gray-600 text-white px-4 py-2 rounded">
-        View / Print ISC
-      </button>
-      <button onclick="continueFlow()" class="bg-blue-600 text-white px-6 py-2 rounded">
-        Continue
-      </button>
+      <div class="flex flex-col sm:flex-row gap-3 mt-6">
+        <button id="viewDocBtn" class="bg-gray-600 text-white px-4 py-2 rounded w-full sm:w-auto">
+          Sign and View Document
+        </button>
+        <button id="continueBtn" class="bg-blue-600 text-white px-6 py-2 rounded w-full sm:w-auto">
+          Continue
+        </button>
+      </div>
     </div>
   </div>
 
   <script>
+    const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
+    const basePlanCost = { "Listed Property Basic": 0, "Listed Property Plus": 20, "FSBO Plus": 100 }[selectedPlan] || 0;
+
+    document.getElementById("selectedPlan").textContent = selectedPlan;
+    document.getElementById("planCost").textContent = basePlanCost;
+    document.getElementById("date").textContent = new Date().toLocaleDateString();
+
     function fillISC() {
-      const planType = localStorage.getItem("postSignatureOptions") || "listed";
+      const planType = (localStorage.getItem("postSignatureOptions") || "").toLowerCase() || (selectedPlan.includes("FSBO") ? "fsbo" : "listed");
       const data = JSON.parse(localStorage.getItem("formData") || "{}");
+
       const commissionType = data.commissionType || "%";
       const commission = data.commission || "";
       const fullAddress = data.address || "";
-      const shortAddress = fullAddress.split(",")[0];
-      const apn = data.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
+      const shortAddress = fullAddress ? fullAddress.split(",")[0] : "[short address]";
+      const apn = data.apn || "[Parcel # / Pin # /Tax ID # / Folio # / APN #]";
       const name = data.name || "[name]";
       const agentPhone = data.agentPhone || "";
       const brokerage = data.brokerage || "";
       const agent = data.agent || "";
-      const suffix = commissionType === "%" ? " of the total purchase price" : "";
+      const suffix = commissionType === "%" ? "" : ""; // we’re not appending the price suffix here
       const commissionDisplay = commissionType === "$" ? `$${commission}` : `${commission}%`;
 
       let text = `To the escrow holder/closing agent,\n\n`;
@@ -66,25 +75,27 @@
         text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${suffix}.`;
       }
 
-      text += `\n\n\n        ${name} Electronic Signature                                  date`;
-
+      text += `\n\n[Name] Electronic Signature        \tdate`;
       document.getElementById("iscText").textContent = text;
     }
 
-    function continueFlow() {
-      const signature = document.getElementById("signature").value.trim();
-      if (!signature) {
-        alert("Please type your full name to sign the ISC.");
-        return;
-      }
-
-      localStorage.setItem("signature", signature);
-      window.location.href = "/agent-invite.html"; // or seller-portal.html later
-    }
-
-    document.getElementById("date").textContent = new Date().toLocaleDateString();
     window.addEventListener("DOMContentLoaded", fillISC);
-  </script>
 
+    document.getElementById("viewDocBtn").addEventListener("click", () => {
+      const sig = document.getElementById("signature").value.trim();
+      if (!sig) return alert("Please type your full name to sign the ISC.");
+      localStorage.setItem("signature", sig);
+      window.location.href = "/printable-isc.html";
+    });
+
+    document.getElementById("continueBtn").addEventListener("click", () => {
+      const sig = document.getElementById("signature").value.trim();
+      if (!sig) return alert("Please type your full name to sign the ISC.");
+      localStorage.setItem("signature", sig);
+      // Continue the flow
+      const next = localStorage.getItem("postSignatureOptions") === "fsbo" ? "/seller-detail.html" : "/agent-invite.html";
+      window.location.href = next;
+    });
+  </script>
 </body>
 </html>
