@@ -3,106 +3,221 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Listing Detail | GuaranteedCommission.com</title>
+  <title>Listing | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js"></script>
+  <style>
+    .gc-hero { position: relative; border-radius: 0.75rem; overflow: hidden; }
+    .gc-hero img { width: 100%; height: 22rem; object-fit: cover; background: #e5e7eb; }
+    .gc-badge {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(0,0,0,0.7); color: #fff; padding: 6px 10px; border-radius: 8px;
+      font-size: 13px;
+    }
+    .gc-ribbon {
+      position: absolute; top: 12px; right: -10px; transform: rotate(10deg);
+      background: #2563eb; color: #fff; padding: 8px 14px; border-radius: 8px;
+      font-size: 12px; max-width: 200px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+    }
+    .font-cursive { font-family: 'Brush Script MT', cursive; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <!-- Header -->
-  <header class="text-center py-4 bg-white shadow">
-    <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
+  <!-- Top bar -->
+  <header class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <a href="/#strip2Search" class="text-sm text-blue-600 hover:underline">&larr; Back to Search</a>
+      <h1 class="text-lg font-semibold">GuaranteedCommission.com</h1>
+      <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log in</a>
+    </div>
   </header>
 
-  <!-- Main Layout -->
-  <main class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 p-4">
-    
-    <!-- Left Column: Photo -->
-    <div class="relative bg-white rounded shadow overflow-hidden">
-      <!-- Ribbon for Banner -->
-      <div id="bannerRibbon" class="absolute top-2 left-2 bg-red-600 text-white px-3 py-1 rounded text-sm hidden"></div>
-      <!-- Main Photo -->
-      <img id="mainPhoto" src="https://via.placeholder.com/600x400" alt="Property Photo" class="w-full h-auto">
-      <!-- Basic Listing Info -->
-      <div class="p-4">
-        <h2 id="price" class="text-2xl font-bold">$Price</h2>
-        <p id="details" class="text-sm text-gray-700">Bedrooms | Bathrooms | Sqft | Status</p>
-        <p id="address" class="text-sm text-gray-500">Full Address</p>
-        <p id="agentInfo" class="text-sm text-gray-500">Brokerage, Agent Name, Agent Phone</p>
-      </div>
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Address / Price -->
+    <div class="mb-4">
+      <h2 id="addrLine" class="text-2xl md:text-3xl font-bold">[Full Address]</h2>
+      <p id="priceLine" class="text-xl text-gray-700 mt-1">$—</p>
     </div>
 
-    <!-- Middle Column: Map -->
-    <div class="bg-white rounded shadow">
-      <h3 class="text-center font-semibold p-2 border-b">Map</h3>
-      <div class="w-full h-96 bg-gray-200 flex items-center justify-center">
-        <span class="text-gray-500">Map Placeholder</span>
-      </div>
+    <!-- Hero -->
+    <div class="gc-hero mb-6">
+      <img id="heroImg" alt="Main listing photo" />
+      <div id="ribbon" class="gc-ribbon hidden"></div>
+      <div id="commissionBadge" class="gc-badge hidden"></div>
     </div>
 
-    <!-- Right Column: ISC -->
-    <div class="bg-white rounded shadow p-4 text-sm text-justify">
-      <h3 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h3>
-      <div id="iscContent" class="whitespace-pre-wrap leading-relaxed">
-        Loading ISC...
-      </div>
-      <div class="text-center mt-3">
-        <button onclick="window.print()" class="bg-blue-600 text-white px-3 py-1 rounded">Print this document</button>
-      </div>
-    </div>
+    <!-- Two columns -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left: Details -->
+      <section class="lg:col-span-2 space-y-6">
+        <!-- Quick facts -->
+        <div class="bg-white rounded shadow p-4">
+          <h3 class="text-lg font-semibold mb-3">Listing Details</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div><span class="text-gray-500">Address:</span> <span id="detailAddress" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Listing Price:</span> <span id="detailPrice" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Commission:</span> <span id="detailCommission" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Estimated Commission (USD):</span> <span id="detailCommissionCalc" class="font-medium"></span></div>
+            <div><span class="text-gray-500">APN / Parcel:</span> <span id="detailAPN" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Plan:</span> <span id="detailPlan" class="font-medium"></span></div>
+          </div>
+        </div>
 
+        <!-- Description (only if present; usually Plus) -->
+        <div id="descCard" class="bg-white rounded shadow p-4 hidden">
+          <h3 class="text-lg font-semibold mb-3">Description</h3>
+          <p id="detailDescription" class="text-sm leading-relaxed whitespace-pre-line"></p>
+        </div>
+
+        <!-- Gallery (if photos beyond primary) -->
+        <div id="galleryCard" class="bg-white rounded shadow p-4 hidden">
+          <h3 class="text-lg font-semibold mb-3">Photos</h3>
+          <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
+        </div>
+      </section>
+
+      <!-- Right: Contact + Actions -->
+      <aside class="space-y-4">
+        <div class="bg-white rounded shadow p-4">
+          <h3 class="text-lg font-semibold mb-2">Contact</h3>
+          <!-- Listed -->
+          <div id="listedContact" class="text-sm hidden">
+            <div><span class="text-gray-500">Brokerage:</span> <span id="cBrokerage" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Agent:</span> <span id="cAgent" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Agent Phone:</span> <span id="cAgentPhone" class="font-medium"></span></div>
+          </div>
+          <!-- FSBO -->
+          <div id="fsboContact" class="text-sm hidden">
+            <div><span class="text-gray-500">Owner Phone:</span> <span id="cOwnerPhone" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Owner Email:</span> <span id="cOwnerEmail" class="font-medium"></span></div>
+          </div>
+
+          <div class="mt-4 flex flex-col gap-2">
+            <a href="/printable-isc.html" class="w-full text-center bg-gray-700 text-white py-2 rounded">View / Print ISC</a>
+            <a href="/login.html" class="w-full text-center bg-blue-600 text-white py-2 rounded">Log in to Message</a>
+          </div>
+        </div>
+
+        <div class="bg-white rounded shadow p-4 text-sm text-gray-600">
+          <p><strong>Commission clarity helps homes sell.</strong> This listing states buyer’s agent compensation up front to improve showings and outcomes.</p>
+        </div>
+      </aside>
+    </div>
   </main>
 
-  <!-- Firebase & Script -->
   <script>
-    // Firebase Config
-    const firebaseConfig = {
-      apiKey: "AIzaSyB2ajOd_C8rfjOogqnGo-bZrD8kvjQ8XT4",
-      authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
-      projectId: "guaranteedcommission-d4d91",
-      storageBucket: "guaranteedcommission-d4d91.appspot.com",
-      messagingSenderId: "900066461936",
-      appId: "1:900066461936:web:80b909f6c62acaf84b9a35"
+    // Utility
+    const fmtUSD = (v) => {
+      const n = Number(v || 0);
+      if (!n) return "$—";
+      return "$" + n.toLocaleString();
     };
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
 
-    // Extract listing ID from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const listingId = urlParams.get('id');
+    // Get local "listing data" from prior steps (until Firestore is wired)
+    // We accept any ?id for now; for local preview we just read from localStorage.
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("id") || "local-preview";
 
-    if (listingId) {
-      const docRef = db.collection("listings").doc(listingId);
-      docRef.get().then((doc) => {
-        if (doc.exists) {
-          const data = doc.data();
-          // Fill in details
-          document.getElementById('price').textContent = `$${data.price || 'Price'}`;
-          document.getElementById('details').textContent = `${data.bedrooms || '?'} bds | ${data.bathrooms || '?'} ba | ${data.sqft || '?'} sqft | ${data.status || 'Status'}`;
-          document.getElementById('address').textContent = data.address || 'Address';
-          document.getElementById('agentInfo').textContent = `${data.brokerage || 'Brokerage'}, ${data.agent || 'Agent'}, ${data.agentPhone || 'Phone'}`;
-          document.getElementById('mainPhoto').src = data.mainPhoto || "https://via.placeholder.com/600x400";
-          
-          // Banner
-          if (data.bannerText) {
-            document.getElementById('bannerRibbon').textContent = data.bannerText;
-            document.getElementById('bannerRibbon').classList.remove('hidden');
-          }
+    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
+    const agentListing = JSON.parse(localStorage.getItem("agentListing") || "{}");
+    const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
 
-          // ISC
-          document.getElementById('iscContent').textContent = data.iscText || 'ISC not available.';
-        } else {
-          document.getElementById('iscContent').textContent = 'Listing not found.';
-        }
-      }).catch((error) => {
-        document.getElementById('iscContent').textContent = 'Error loading listing.';
-        console.error(error);
+    const fullAddress = formData.address || "[full address]";
+    const price = agentListing.price ?? "";
+    const commission = agentListing.commission ?? (formData.commission || "");
+    const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
+    const apn = formData.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
+    const bannerText = (agentListing.bannerText || "").trim();
+    const description = (agentListing.description || "").trim();
+
+    const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
+    const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
+    const primaryPhoto = photos[primaryIndex] || "";
+
+    // Compute commission display and estimated dollar
+    const commissionDisplay = commissionType === "$"
+      ? (commission ? ("$" + Number(commission || 0).toLocaleString()) : "[commission]")
+      : (commission ? (commission + "%") : "[commission]");
+
+    let commissionEstimate = "—";
+    const pNum = Number(price || 0);
+    const cNum = Number(commission || 0);
+    if (cNum) {
+      if (commissionType === "$") {
+        commissionEstimate = "$" + Math.round(cNum).toLocaleString();
+      } else if (pNum) {
+        commissionEstimate = "$" + Math.round(pNum * (cNum / 100)).toLocaleString();
+      }
+    }
+
+    // Populate header/address
+    document.getElementById("addrLine").textContent = fullAddress;
+    document.getElementById("priceLine").textContent = fmtUSD(price);
+
+    // Hero
+    const heroImg = document.getElementById("heroImg");
+    heroImg.src = primaryPhoto || "";
+    const ribbon = document.getElementById("ribbon");
+    const badge = document.getElementById("commissionBadge");
+
+    if (bannerText) {
+      ribbon.textContent = bannerText;
+      ribbon.classList.remove("hidden");
+    }
+    if (cNum) {
+      const badgeText = (commissionType === "$")
+        ? `Commission: $${Math.round(cNum).toLocaleString()}`
+        : `Commission: ${cNum}%${pNum ? ` (~$${Math.round(pNum * (cNum/100)).toLocaleString()})` : ""}`;
+      badge.textContent = badgeText;
+      badge.classList.remove("hidden");
+    }
+
+    // Details
+    document.getElementById("detailAddress").textContent = fullAddress;
+    document.getElementById("detailPrice").textContent = fmtUSD(price);
+    document.getElementById("detailCommission").textContent = commissionDisplay;
+    document.getElementById("detailCommissionCalc").textContent = commissionEstimate;
+    document.getElementById("detailAPN").textContent = apn;
+    document.getElementById("detailPlan").textContent = plan || "—";
+
+    // Description & Gallery cards
+    const descCard = document.getElementById("descCard");
+    const descEl = document.getElementById("detailDescription");
+    if (description) {
+      descEl.textContent = description;
+      descCard.classList.remove("hidden");
+    }
+
+    const galleryCard = document.getElementById("galleryCard");
+    const galleryGrid = document.getElementById("galleryGrid");
+    const otherPhotos = photos.filter((_, i) => i !== primaryIndex);
+    if (otherPhotos.length > 0) {
+      otherPhotos.forEach(src => {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "Listing photo";
+        img.className = "w-full h-32 object-cover rounded";
+        galleryGrid.appendChild(img);
       });
+      galleryCard.classList.remove("hidden");
+    }
+
+    // Contact (Listed vs FSBO)
+    const isFSBO = (plan || "").includes("FSBO");
+    const listedContact = document.getElementById("listedContact");
+    const fsboContact = document.getElementById("fsboContact");
+
+    if (isFSBO) {
+      // FSBO: phone/email came from Box 2 (we re-used fields)
+      document.getElementById("cOwnerPhone").textContent = formData.agentPhone || "[owner/seller phone number]";
+      document.getElementById("cOwnerEmail").textContent = formData.brokerage || "[owner/seller email]";
+      fsboContact.classList.remove("hidden");
     } else {
-      document.getElementById('iscContent').textContent = 'No listing ID provided.';
+      document.getElementById("cBrokerage").textContent = formData.brokerage || "[listing brokerage]";
+      document.getElementById("cAgent").textContent = formData.agent || "[listing agent]";
+      document.getElementById("cAgentPhone").textContent = formData.agentPhone || "[agent phone]";
+      listedContact.classList.remove("hidden");
     }
   </script>
-
 </body>
 </html>
