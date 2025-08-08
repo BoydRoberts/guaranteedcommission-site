@@ -6,17 +6,8 @@
   <title>Complete Your Listing Details</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .lock-overlay {
-      background: rgba(255,255,255,0.85);
-      backdrop-filter: blur(2px);
-    }
-    .thumb {
-      width: 100%;
-      height: 110px;
-      object-fit: cover;
-      border-radius: 0.5rem;
-      border: 1px solid #e5e7eb;
-    }
+    .lock-overlay { background: rgba(255,255,255,0.85); backdrop-filter: blur(2px); }
+    .thumb { width: 100%; height: 110px; object-fit: cover; border-radius: 0.5rem; border: 1px solid #e5e7eb; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -29,7 +20,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- LEFT: Main form -->
       <div class="lg:col-span-2 space-y-6">
-        <!-- Address (read from earlier formData, editable) -->
+        <!-- Property Basics -->
         <div class="bg-white rounded shadow p-4">
           <h2 class="text-lg font-semibold mb-3">Property Basics</h2>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -39,7 +30,7 @@
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">Listing Price (USD)</label>
-              <input id="price" type="number" class="w-full border p-2 rounded" placeholder="500000">
+              <input id="price" type="number" min="0" class="w-full border p-2 rounded" placeholder="500000">
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">Bedrooms</label>
@@ -56,16 +47,55 @@
           </div>
         </div>
 
+        <!-- Commission -->
+        <div class="bg-white rounded shadow p-4">
+          <h2 class="text-lg font-semibold mb-3">Commission</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div>
+              <label class="block text-sm font-medium mb-1">Offer</label>
+              <div class="flex gap-2">
+                <input id="commission" type="number" min="0" class="w-full border p-2 rounded" placeholder="e.g., 2.5">
+                <select id="commissionType" class="border p-2 rounded">
+                  <option value="%">%</option>
+                  <option value="$">$</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Listing Price (for % calc)</label>
+              <input id="priceMirror" type="number" min="0" class="w-full border p-2 rounded" placeholder="500000">
+              <p class="text-xs text-gray-500 mt-1">Kept in sync with price above.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Calculated Commission</label>
+              <div class="border p-2 rounded bg-gray-50"><span id="calcCommission">$0.00</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Primary Photo (BASIC ONLY) -->
+        <div id="primaryPhotoCard" class="bg-white rounded shadow p-4 hidden">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold mb-3">Primary Photo (Basic allows 1 photo)</h2>
+            <span id="primaryCount" class="text-xs text-gray-500">0 / 1</span>
+          </div>
+          <input id="primaryPhoto" type="file" accept="image/*" class="block w-full text-sm text-gray-600 mb-3">
+          <div id="primaryPreview" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+          <p class="text-xs text-gray-500">Upgrade to Plus to add up to 20 photos.</p>
+        </div>
+
         <!-- Description (locked for Basic) -->
         <div class="relative bg-white rounded shadow p-4">
-          <h2 class="text-lg font-semibold mb-3">Full Property Description</h2>
-          <textarea id="description" rows="6" class="w-full border p-2 rounded" placeholder="Describe your property, upgrades, neighborhood, schools, and anything buyers should know."></textarea>
-
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold mb-1">Full Property Description</h2>
+            <span class="text-xs text-gray-500"><span id="descCount">0</span>/2000</span>
+          </div>
+          <textarea id="description" rows="6" maxlength="2000" class="w-full border p-2 rounded" placeholder="Describe your property, upgrades, neighborhood, schools, and anything buyers should know."></textarea>
           <!-- Overlay shown only for Basic -->
           <div id="descLock" class="lock-overlay absolute inset-0 rounded hidden flex items-center justify-center text-center px-8">
             <div>
               <p class="text-gray-700 font-semibold">Unlock with Listed Property Plus</p>
-              <p class="text-gray-600 text-sm">Upgrade to add a full property description.</p>
+              <p class="text-gray-600 text-sm">Upgrade to add a full property description (2,000 characters).</p>
             </div>
           </div>
         </div>
@@ -73,7 +103,7 @@
         <!-- Photos (locked for Basic) -->
         <div class="relative bg-white rounded shadow p-4">
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold mb-3">Photos <span class="text-sm text-gray-500">(up to 20)</span></h2>
+            <h2 class="text-lg font-semibold mb-3">Additional Photos <span class="text-sm text-gray-500">(up to 20)</span></h2>
             <span id="photoCount" class="text-xs text-gray-500">0 / 20</span>
           </div>
 
@@ -89,7 +119,7 @@
           </div>
         </div>
 
-        <!-- Save button (always available) -->
+        <!-- Save / Preview -->
         <div class="bg-white rounded shadow p-4">
           <div class="flex flex-col sm:flex-row gap-3">
             <button id="saveBtn" class="bg-blue-600 text-white px-5 py-2 rounded">Save Details</button>
@@ -154,6 +184,12 @@
     const baths = document.getElementById("baths");
     const sqft  = document.getElementById("sqft");
     const description = document.getElementById("description");
+    const descCount = document.getElementById("descCount");
+
+    const primaryPhotoCard = document.getElementById("primaryPhotoCard");
+    const primaryPhoto = document.getElementById("primaryPhoto");
+    const primaryPreview = document.getElementById("primaryPreview");
+    const primaryCount = document.getElementById("primaryCount");
 
     const photosInput = document.getElementById("photos");
     const photoGrid   = document.getElementById("photoGrid");
@@ -169,6 +205,12 @@
     const upgradeTotal = document.getElementById("upgradeTotal");
     const upgradeBtn = document.getElementById("upgradeBtn");
 
+    // Commission section
+    const commissionEl = document.getElementById("commission");
+    const commissionTypeEl = document.getElementById("commissionType");
+    const priceMirrorEl = document.getElementById("priceMirror");
+    const calcCommissionEl = document.getElementById("calcCommission");
+
     // ---- Init ----
     planBadge.textContent = selectedPlan;
 
@@ -179,6 +221,16 @@
     if (formData.baths)   baths.value = formData.baths;
     if (formData.sqft)    sqft.value = formData.sqft;
     if (formData.description) description.value = formData.description;
+
+    // Commission prefill from Box 2
+    if (formData.commission) commissionEl.value = formData.commission;
+    if (formData.commissionType) commissionTypeEl.value = formData.commissionType;
+    priceMirrorEl.value = price.value || "";
+
+    // Description counter
+    const updateDescCount = () => { descCount.textContent = (description.value || "").length; };
+    description.addEventListener("input", updateDescCount);
+    updateDescCount();
 
     const isBasic = selectedPlan === "Listed Property Basic";
     const isPlus  = selectedPlan === "Listed Property Plus";
@@ -191,22 +243,74 @@
       description.setAttribute("disabled", "true");
       photosInput.setAttribute("disabled", "true");
       upgradePanel.classList.remove("hidden");
+      primaryPhotoCard.classList.remove("hidden"); // allow 1 primary photo
     } else {
       descLock.classList.add("hidden");
       photoLock.classList.add("hidden");
       description.removeAttribute("disabled");
       photosInput.removeAttribute("disabled");
       upgradePanel.classList.add("hidden");
+      primaryPhotoCard.classList.add("hidden");
     }
 
-    // ---- Photo handling (Plus/FSBO only) ----
+    // ---- Commission calculation ----
+    function toCurrency(n) {
+      const num = isNaN(n) || !isFinite(n) ? 0 : n;
+      return num.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+    }
+
+    function recalcCommission() {
+      const type = commissionTypeEl.value;
+      const commVal = parseFloat(commissionEl.value || "0");
+      const priceVal = parseFloat(priceMirrorEl.value || price.value || "0");
+      let result = 0;
+      if (type === "%") {
+        result = priceVal * (commVal / 100);
+      } else {
+        result = commVal;
+      }
+      calcCommissionEl.textContent = toCurrency(result);
+    }
+
+    [commissionEl, commissionTypeEl, price, priceMirrorEl].forEach(el => {
+      el.addEventListener("input", () => {
+        // Keep mirrors synced
+        if (el === price) priceMirrorEl.value = price.value;
+        if (el === priceMirrorEl) price.value = priceMirrorEl.value;
+        recalcCommission();
+      });
+    });
+    recalcCommission();
+
+    // ---- Primary Photo (Basic) ----
+    function refreshPrimaryCount() {
+      const count = primaryPreview.querySelectorAll("img").length;
+      primaryCount.textContent = count + " / 1";
+    }
+
+    primaryPhoto.addEventListener("change", () => {
+      if (!isBasic) return; // safety
+      primaryPreview.innerHTML = "";
+      const file = primaryPhoto.files && primaryPhoto.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = file.name;
+        img.className = "thumb";
+        primaryPreview.appendChild(img);
+      }
+      refreshPrimaryCount();
+    });
+
+    // ---- Additional Photos (Plus/FSBO only) ----
     function refreshPhotoCount() {
       const count = photoGrid.querySelectorAll("img").length;
       photoCount.textContent = count + " / 20";
     }
 
     photosInput.addEventListener("change", () => {
-      if (isBasic) return; // safety
+      if (isBasic) return; // locked section
       photoGrid.innerHTML = "";
       const files = Array.from(photosInput.files || []);
       const slice = files.slice(0, 20);
@@ -229,9 +333,14 @@
       data.beds    = beds.value.trim();
       data.baths   = baths.value.trim();
       data.sqft    = sqft.value.trim();
+
+      // Save commission inputs back to formData so ISC/math stay consistent everywhere
+      data.commission = commissionEl.value.trim();
+      data.commissionType = commissionTypeEl.value;
+
       if (!isBasic) {
         data.description = description.value.trim();
-        // NOTE: Photos are not persisted here; that’ll be a backend/upload step later.
+        // NOTE: Photos are not persisted in localStorage; will be handled with real uploads later.
       }
       localStorage.setItem("formData", JSON.stringify(data));
       saveMsg.classList.remove("hidden");
@@ -247,7 +356,7 @@
 
     // ---- Upgrade panel logic (Basic only) ----
     function computeUpgradeTotal() {
-      let total = 20; // Plus upgrade base
+      let total = 20; // Plus base
       const pin = upPin.checked;
       const premium = upPremium.checked;
       const banner = upBanner.checked;
@@ -261,17 +370,8 @@
       return total;
     }
 
-    function renderUpgradeTotal() {
-      upgradeTotal.textContent = computeUpgradeTotal();
-    }
-
-    [upBanner, upPremium, upPin].forEach(el => {
-      el && el.addEventListener("change", () => {
-        // If Pin is checked, ensure Premium stays visually independent (we just won't charge for it)
-        renderUpgradeTotal();
-      });
-    });
-
+    function renderUpgradeTotal() { upgradeTotal.textContent = computeUpgradeTotal(); }
+    [upBanner, upPremium, upPin].forEach(el => el && el.addEventListener("change", renderUpgradeTotal));
     renderUpgradeTotal();
 
     upgradeBtn.addEventListener("click", () => {
@@ -280,7 +380,6 @@
       if (upBanner.checked) upgrades.push("Banner ($10)");
       if (upPin.checked) {
         upgrades.push("Pin Placement ($50)");
-        // Note: Premium is included with Pin, but we only charge the Pin line.
       } else if (upPremium.checked) {
         upgrades.push("Premium Placement ($10)");
       }
@@ -294,6 +393,7 @@
       // Persist
       localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
       localStorage.setItem("selectedPlan", "Listed Property Plus"); // so when they return, fields unlock
+
       // Helpful for later steps:
       const data = JSON.parse(localStorage.getItem("formData") || "{}");
       if (data.address) {
