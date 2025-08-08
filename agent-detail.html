@@ -1,455 +1,274 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Agent: Manage Listing Details</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .lock-overlay { background: rgba(255,255,255,0.85); backdrop-filter: blur(2px); }
-    .thumb { width: 100%; height: 110px; object-fit: cover; border-radius: 0.5rem; border: 1px solid #e5e7eb; }
+    .font-cursive { font-family: 'Brush Script MT', cursive; }
+    .thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-  <div class="max-w-6xl mx-auto px-4 py-8">
-    <div class="flex items-center justify-between mb-6">
+
+  <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow">
+    <div class="flex items-start justify-between">
+      <h1 class="text-2xl font-bold">Agent: Manage Listing Details</h1>
+      <a href="/index.html" class="text-sm text-blue-600 hover:underline">Back to Home</a>
+    </div>
+
+    <p class="text-sm text-gray-600 mt-1">
+      Enter the details below. Changes auto-save to your browser. Use “Preview” to see the public tile.
+    </p>
+
+    <hr class="my-5"/>
+
+    <!-- Status -->
+    <div id="planPill" class="inline-block text-xs font-semibold px-2 py-1 rounded bg-gray-200 text-gray-700"></div>
+
+    <form id="agentForm" class="mt-4 space-y-4" autocomplete="off">
+      <!-- Address (read-only from seller) -->
       <div>
-        <h1 class="text-2xl font-bold">Agent: Manage Listing Details</h1>
-        <p class="text-sm text-gray-600">You can upgrade this listing and pay with your own card.</p>
+        <label class="block text-sm font-semibold mb-1">Full Property Address</label>
+        <input id="fullAddress" class="w-full border p-2 rounded bg-gray-50" type="text" readonly>
       </div>
-      <span id="planBadge" class="text-xs font-semibold px-3 py-1 rounded bg-gray-200 text-gray-700"></span>
-    </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- LEFT: Main form -->
-      <div class="lg:col-span-2 space-y-6">
-        <!-- Property Basics -->
-        <div class="bg-white rounded shadow p-4">
-          <h2 class="text-lg font-semibold mb-3">Property Basics</h2>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">Address</label>
-              <input id="addr" type="text" class="w-full border p-2 rounded" placeholder="123 Main St, City, ST 12345">
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Listing Price (USD)</label>
-              <input id="price" type="number" min="0" class="w-full border p-2 rounded" placeholder="500000">
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Bedrooms</label>
-              <input id="beds" type="number" min="0" class="w-full border p-2 rounded" placeholder="3">
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Bathrooms</label>
-              <input id="baths" type="number" min="0" step="0.5" class="w-full border p-2 rounded" placeholder="2">
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Square Footage</label>
-              <input id="sqft" type="number" min="0" class="w-full border p-2 rounded" placeholder="1800">
-            </div>
-          </div>
+      <!-- Price & Commission -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
+          <input id="price" type="number" min="0" step="1000" placeholder="e.g., 850000" class="w-full border p-2 rounded">
         </div>
 
-        <!-- Commission -->
-        <div class="bg-white rounded shadow p-4">
-          <h2 class="text-lg font-semibold mb-3">Commission</h2>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-            <div>
-              <label class="block text-sm font-medium mb-1">Offer</label>
-              <div class="flex gap-2">
-                <input id="commission" type="number" min="0" class="w-full border p-2 rounded" placeholder="e.g., 2.5">
-                <select id="commissionType" class="border p-2 rounded">
-                  <option value="%">%</option>
-                  <option value="$">$</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Listing Price (for % calc)</label>
-              <input id="priceMirror" type="number" min="0" class="w-full border p-2 rounded" placeholder="500000">
-              <p class="text-xs text-gray-500 mt-1">Kept in sync with price above.</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">Calculated Commission</label>
-              <div class="border p-2 rounded bg-gray-50"><span id="calcCommission">$0.00</span></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Primary Photo (BASIC ONLY) -->
-        <div id="primaryPhotoCard" class="bg-white rounded shadow p-4 hidden">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold mb-3">Primary Photo (Basic allows 1 photo)</h2>
-            <span id="primaryCount" class="text-xs text-gray-500">0 / 1</span>
-          </div>
-          <input id="primaryPhoto" type="file" accept="image/*" class="block w-full text-sm text-gray-600 mb-3">
-          <div id="primaryPreview" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Commission</label>
           <div class="flex gap-2">
-            <button id="clearPrimary" type="button" class="text-xs px-3 py-1 border rounded">Clear</button>
-            <p class="text-xs text-gray-500 self-center">Upgrade to Plus to add up to 20 photos.</p>
+            <input id="commission" type="number" min="0" step="0.01" placeholder="e.g., 2.5" class="w-full border p-2 rounded">
+            <select id="commissionType" class="border p-2 rounded">
+              <option value="%">%</option>
+              <option value="$">$</option>
+            </select>
           </div>
-        </div>
-
-        <!-- Description (locked for Basic) -->
-        <div class="relative bg-white rounded shadow p-4">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold mb-1">Full Property Description</h2>
-            <span class="text-xs text-gray-500"><span id="descCount">0</span>/2000</span>
-          </div>
-          <textarea id="description" rows="6" maxlength="2000" class="w-full border p-2 rounded" placeholder="Describe the property, upgrades, neighborhood, and anything buyers should know."></textarea>
-          <div id="descLock" class="lock-overlay absolute inset-0 rounded hidden flex items-center justify-center text-center px-8">
-            <div>
-              <p class="text-gray-700 font-semibold">Locked on Basic</p>
-              <p class="text-gray-600 text-sm">Upgrade to Plus to add a full property description (2,000 characters).</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Photos (locked for Basic) -->
-        <div class="relative bg-white rounded shadow p-4">
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold mb-3">Additional Photos <span class="text-sm text-gray-500">(up to 20)</span></h2>
-            <span id="photoCount" class="text-xs text-gray-500">0 / 20</span>
-          </div>
-
-          <input id="photos" type="file" accept="image/*" multiple class="block w-full text-sm text-gray-600 mb-3">
-          <div id="photoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
-
-          <div id="photoLock" class="lock-overlay absolute inset-0 rounded hidden flex items-center justify-center text-center px-8">
-            <div>
-              <p class="text-gray-700 font-semibold">Locked on Basic</p>
-              <p class="text-gray-600 text-sm">Upgrade to Plus to upload and showcase up to 20 photos.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Save / Preview -->
-        <div class="bg-white rounded shadow p-4">
-          <div class="flex flex-col sm:flex-row gap-3">
-            <button id="saveBtn" class="bg-blue-600 text-white px-5 py-2 rounded">Save Details</button>
-            <button id="previewBtn" class="bg-gray-200 text-gray-800 px-5 py-2 rounded">Preview Listing</button>
-          </div>
-          <p id="saveMsg" class="text-sm text-green-600 mt-3 hidden">Saved!</p>
+          <!-- 👇 moved helper BELOW so it doesn’t collide with the price field -->
+          <p class="text-xs text-gray-500 mt-1">Kept in sync with price above for the calculated amount.</p>
         </div>
       </div>
 
-      <!-- RIGHT: Upgrade panel (only for Basic) -->
-      <aside id="upgradePanel" class="bg-white rounded shadow p-4 h-fit hidden sticky top-6">
-        <h2 class="text-lg font-semibold mb-1">Upgrade (Agent Pays)</h2>
-        <p class="text-sm text-gray-700 mb-2">
-          Upgrade to <strong>Listed Property Plus ($20)</strong> to unlock description and 20 photos.
-        </p>
-        <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-3">
-          This purchase will be charged to <strong>you</strong> (the agent), not the seller.
-        </p>
+      <!-- Calculated Commission -->
+      <div class="bg-gray-50 border rounded p-3 text-sm">
+        <strong>Calculated Commission: </strong>
+        <span id="commissionCalc">$0</span>
+      </div>
 
-        <div class="border-t pt-3 mt-2">
-          <p class="text-sm font-semibold mb-2">Optional Add-Ons</p>
-          <label class="flex items-center gap-2 mb-2">
-            <input type="checkbox" id="upBanner">
-            <span>Banner ($10)</span>
-          </label>
-          <label class="flex items-center gap-2 mb-2">
-            <input type="checkbox" id="upPremium">
-            <span>Premium Placement ($10)</span>
-          </label>
-          <label class="flex items-center gap-2 mb-2">
-            <input type="checkbox" id="upPin">
-            <span>Pin Placement ($50, includes Premium)</span>
-          </label>
+      <!-- Description (Plus only) -->
+      <div id="descBlock">
+        <label class="block text-sm font-semibold mb-1">Full Property Description (Plus)</label>
+        <textarea id="description" rows="6" placeholder="Enter full property description (Plus only)" class="w-full border p-2 rounded"></textarea>
+        <p class="text-xs text-gray-500 mt-1">Up to 2,500 characters.</p>
+      </div>
+
+      <!-- Banner text (optional upsell) -->
+      <div>
+        <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
+        <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
+        <p class="text-xs text-gray-500 mt-1">Appears as a small ribbon on the listing tile.</p>
+      </div>
+
+      <!-- Photos -->
+      <div>
+        <label class="block text-sm font-semibold mb-2">Photos</label>
+        <div class="text-xs text-gray-600 mb-2" id="photoHelp"></div>
+        <input id="photoInput" type="file" accept="image/*" multiple class="block">
+        <div id="photoGrid" class="flex flex-wrap gap-2 mt-3"></div>
+        <p class="text-xs text-gray-500 mt-2">Tip: click a thumbnail to set it as the primary photo.</p>
+      </div>
+
+      <!-- Upsell (Agent Pays) -->
+      <div class="bg-blue-50 border border-blue-200 rounded p-3">
+        <p class="text-sm">
+          <strong>Upgrade (Agent Pays):</strong>
+          <span class="text-gray-700">Upgrade to Listed Property Plus ($20) to display full property description and 20 photos.</span>
+        </p>
+        <div class="mt-2">
+          <button id="upgradePlusBtn" type="button" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">Upgrade to Plus</button>
         </div>
+      </div>
 
-        <div class="mt-4 p-3 bg-gray-50 rounded">
-          <p class="text-sm">Estimated total:</p>
-          <p class="text-xl font-bold">$<span id="upgradeTotal">20</span></p>
-        </div>
-
-        <button id="upgradeBtn" class="w-full mt-4 bg-green-600 text-white py-2 rounded">
-          Upgrade & Continue
-        </button>
-        <p class="text-xs text-gray-500 mt-3">
-          You’ll review this on the next screen before paying.
-        </p>
-      </aside>
-    </div>
+      <div class="flex items-center gap-2 pt-2">
+        <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
+        <a href="/agent-preview.html" class="bg-green-600 text-white px-4 py-2 rounded">Preview</a>
+      </div>
+    </form>
   </div>
 
   <script>
-    // ---- State ----
-    const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
-    let formData = JSON.parse(localStorage.getItem("formData") || "{}");
+    // ---------- State ----------
+    const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+    const formData = JSON.parse(localStorage.getItem("formData") || "{}"); // source of address + seller entries
+    const AGENT_KEY = "agentListing";
 
-    // ---- Elements ----
-    const planBadge = document.getElementById("planBadge");
-    const descLock = document.getElementById("descLock");
-    const photoLock = document.getElementById("photoLock");
-    const upgradePanel = document.getElementById("upgradePanel");
+    // load agent draft or init
+    const agentListing = JSON.parse(localStorage.getItem(AGENT_KEY) || "{}");
 
-    const addr = document.getElementById("addr");
-    const price = document.getElementById("price");
-    const beds  = document.getElementById("beds");
-    const baths = document.getElementById("baths");
-    const sqft  = document.getElementById("sqft");
-    const description = document.getElementById("description");
-    const descCount = document.getElementById("descCount");
+    // helpers
+    const $ = (id) => document.getElementById(id);
 
-    const primaryPhotoCard = document.getElementById("primaryPhotoCard");
-    const primaryPhoto = document.getElementById("primaryPhoto");
-    const primaryPreview = document.getElementById("primaryPreview");
-    const primaryCount = document.getElementById("primaryCount");
-    const clearPrimary = document.getElementById("clearPrimary");
+    // ---------- Init ----------
+    function init() {
+      // Plan pill
+      $("planPill").textContent = plan;
 
-    const photosInput = document.getElementById("photos");
-    const photoGrid   = document.getElementById("photoGrid");
-    const photoCount  = document.getElementById("photoCount");
+      // Address from seller
+      $("fullAddress").value = formData.address || "";
 
-    const saveBtn = document.getElementById("saveBtn");
-    const previewBtn = document.getElementById("previewBtn");
-    const saveMsg = document.getElementById("saveMsg");
+      // Price
+      $("price").value = agentListing.price ?? "";
 
-    const upBanner = document.getElementById("upBanner");
-    const upPremium = document.getElementById("upPremium");
-    const upPin = document.getElementById("upPin");
-    const upgradeTotal = document.getElementById("upgradeTotal");
-    const upgradeBtn = document.getElementById("upgradeBtn");
+      // Commission + type (fallback to seller-entered commission)
+      $("commission").value = agentListing.commission ?? (formData.commission || "");
+      $("commissionType").value = agentListing.commissionType ?? (formData.commissionType || "%");
 
-    // Commission section
-    const commissionEl = document.getElementById("commission");
-    const commissionTypeEl = document.getElementById("commissionType");
-    const priceMirrorEl = document.getElementById("priceMirror");
-    const calcCommissionEl = document.getElementById("calcCommission");
+      // Description gate based on plan
+      const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
+      $("descBlock").style.display = isPlus ? "block" : "none";
+      $("description").value = agentListing.description ?? "";
 
-    // ---- Init ----
-    planBadge.textContent = selectedPlan;
+      // Banner
+      $("bannerText").value = agentListing.bannerText ?? "";
 
-    // Prefill basics
-    if (formData.address) addr.value = formData.address;
-    if (formData.price)   price.value = formData.price;
-    if (formData.beds)    beds.value = formData.beds;
-    if (formData.baths)   baths.value = formData.baths;
-    if (formData.sqft)    sqft.value = formData.sqft;
-    if (formData.description) description.value = formData.description;
+      // Photos help & limit
+      const canUpload = isPlus ? 20 : 1;
+      $("photoHelp").textContent = isPlus
+        ? "You can upload up to 20 photos."
+        : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
 
-    // Commission prefill
-    if (formData.commission) commissionEl.value = formData.commission;
-    if (formData.commissionType) commissionTypeEl.value = formData.commissionType;
-    priceMirrorEl.value = price.value || "";
+      // Render thumbnails
+      renderThumbs(agentListing.photos || [], agentListing.primaryIndex || 0);
 
-    // Description counter
-    const updateDescCount = () => { descCount.textContent = (description.value || "").length; };
-    description.addEventListener("input", updateDescCount);
-    updateDescCount();
-
-    const isBasic = selectedPlan === "Listed Property Basic";
-    const isPlus  = selectedPlan === "Listed Property Plus" || selectedPlan === "FSBO Plus";
-
-    // Lock/Unlock behavior
-    if (isBasic) {
-      descLock.classList.remove("hidden");
-      photoLock.classList.remove("hidden");
-      description.setAttribute("disabled", "true");
-      photosInput.setAttribute("disabled", "true");
-      upgradePanel.classList.remove("hidden");
-      primaryPhotoCard.classList.remove("hidden");
-    } else {
-      descLock.classList.add("hidden");
-      photoLock.classList.add("hidden");
-      description.removeAttribute("disabled");
-      photosInput.removeAttribute("disabled");
-      upgradePanel.classList.add("hidden");
-      primaryPhotoCard.classList.add("hidden");
+      // After initial fill, compute commission
+      computeCommission();
     }
 
-    // ---- Commission calculation ----
-    function toCurrency(n) {
-      const num = isNaN(n) || !isFinite(n) ? 0 : n;
-      return num.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+    function renderThumbs(photos, primaryIndex) {
+      const grid = $("photoGrid");
+      grid.innerHTML = "";
+      photos.forEach((src, idx) => {
+        const img = new Image();
+        img.src = src;
+        img.alt = "Photo " + (idx + 1);
+        img.className = "thumb border " + (idx === primaryIndex ? "border-green-500" : "border-gray-300");
+        img.title = (idx === primaryIndex) ? "Primary photo" : "Click to set as primary";
+        img.addEventListener("click", () => {
+          agentListing.primaryIndex = idx;
+          saveAgentListing();
+          renderThumbs(agentListing.photos || [], agentListing.primaryIndex || 0);
+        });
+        grid.appendChild(img);
+      });
     }
 
-    function recalcCommission() {
-      const type = commissionTypeEl.value;
-      const commVal = parseFloat(commissionEl.value || "0");
-      const priceVal = parseFloat(priceMirrorEl.value || price.value || "0");
-      let result = 0;
+    function computeCommission() {
+      const price = Number($("price").value || 0);
+      const comm = Number($("commission").value || 0);
+      const type = $("commissionType").value;
+      let calc = 0;
       if (type === "%") {
-        result = priceVal * (commVal / 100);
+        calc = Math.round(price * (comm / 100));
       } else {
-        result = commVal;
+        calc = Math.round(comm);
       }
-      calcCommissionEl.textContent = toCurrency(result);
+      $("commissionCalc").textContent = `$${(calc || 0).toLocaleString()}`;
     }
 
-    [commissionEl, commissionTypeEl, price, priceMirrorEl].forEach(el => {
-      el.addEventListener("input", () => {
-        if (el === price) priceMirrorEl.value = price.value;
-        if (el === priceMirrorEl) price.value = priceMirrorEl.value;
-        recalcCommission();
+    function saveAgentListing() {
+      // Clamp photo count based on plan
+      const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
+      const maxPhotos = isPlus ? 20 : 1;
+
+      const payload = {
+        price: $("price").value,
+        commission: $("commission").value,
+        commissionType: $("commissionType").value,
+        description: $("description").value,
+        bannerText: $("bannerText").value,
+        photos: (agentListing.photos || []).slice(0, maxPhotos),
+        primaryIndex: (agentListing.primaryIndex || 0)
+      };
+      localStorage.setItem(AGENT_KEY, JSON.stringify(payload));
+    }
+
+    // ---------- Events ----------
+    ["price","commission","commissionType","description","bannerText"].forEach(id => {
+      $(id).addEventListener("input", () => {
+        if (id === "price" || id === "commission" || id === "commissionType") {
+          computeCommission();
+        }
+        saveAgentListing();
       });
     });
-    recalcCommission();
 
-    // ---- Primary Photo (Basic) persistence (Data URL in localStorage) ----
-    function renderPrimaryFromData() {
-      primaryPreview.innerHTML = "";
-      if (formData.primaryPhotoData) {
-        const img = document.createElement("img");
-        img.src = formData.primaryPhotoData;
-        img.alt = "Primary Photo";
-        img.className = "thumb";
-        primaryPreview.appendChild(img);
+    $("saveBtn").addEventListener("click", () => {
+      saveAgentListing();
+      alert("Saved.");
+    });
+
+    $("photoInput").addEventListener("change", async (e) => {
+      const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
+      const maxPhotos = isPlus ? 20 : 1;
+
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+
+      const existing = agentListing.photos || [];
+      let spaceLeft = maxPhotos - existing.length;
+      if (spaceLeft <= 0) {
+        alert(`You have reached the photo limit for your plan (${maxPhotos}).`);
+        e.target.value = "";
+        return;
       }
-      primaryCount.textContent = (formData.primaryPhotoData ? 1 : 0) + " / 1";
-    }
 
-    function fileToDataURL(file) {
-      return new Promise((resolve, reject) => {
+      const toRead = files.slice(0, spaceLeft);
+
+      const readAsDataURL = (file) => new Promise((res, rej) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
+        reader.onload = () => res(reader.result);
+        reader.onerror = rej;
         reader.readAsDataURL(file);
       });
-    }
 
-    primaryPhoto.addEventListener("change", async () => {
-      if (!isBasic) return;
-      const file = primaryPhoto.files && primaryPhoto.files[0];
-      if (!file) return;
-      try {
-        const dataUrl = await fileToDataURL(file);
-        formData = JSON.parse(localStorage.getItem("formData") || "{}");
-        formData.primaryPhotoData = dataUrl;
-        localStorage.setItem("formData", JSON.stringify(formData));
-        renderPrimaryFromData();
-        primaryPhoto.value = ""; // allow re-upload same file name
-      } catch (e) {
-        alert("Could not load image. Please try another file.");
+      for (const f of toRead) {
+        try {
+          const dataUrl = await readAsDataURL(f);
+          existing.push(dataUrl);
+        } catch (err) {
+          console.error("Failed to read file", err);
+        }
       }
+
+      agentListing.photos = existing.slice(0, maxPhotos);
+      if (typeof agentListing.primaryIndex !== "number") agentListing.primaryIndex = 0;
+
+      saveAgentListing();
+      renderThumbs(agentListing.photos, agentListing.primaryIndex);
+
+      e.target.value = "";
     });
 
-    clearPrimary.addEventListener("click", () => {
-      formData = JSON.parse(localStorage.getItem("formData") || "{}");
-      delete formData.primaryPhotoData;
-      localStorage.setItem("formData", JSON.stringify(formData));
-      renderPrimaryFromData();
-      primaryPhoto.value = "";
-    });
-
-    // Render existing primary photo on load
-    renderPrimaryFromData();
-
-    // ---- Additional Photos (Plus only) -> Save as array of Data URLs ----
-    async function renderGalleryFromData() {
-      photoGrid.innerHTML = "";
-      const arr = formData.photosData || [];
-      arr.slice(0, 20).forEach(src => {
-        const img = document.createElement("img");
-        img.src = src;
-        img.alt = "Photo";
-        img.className = "thumb";
-        photoGrid.appendChild(img);
-      });
-      photoCount.textContent = `${arr.length} / 20`;
-    }
-
-    photosInput.addEventListener("change", async () => {
-      if (!isPlus) return;
-      const files = Array.from(photosInput.files || []).slice(0, 20);
-      try {
-        const dataUrls = await Promise.all(files.map(fileToDataURL));
-        formData = JSON.parse(localStorage.getItem("formData") || "{}");
-        formData.photosData = dataUrls; // overwrite for simplicity
-        localStorage.setItem("formData", JSON.stringify(formData));
-        renderGalleryFromData();
-        photosInput.value = "";
-      } catch (e) {
-        alert("Could not load one or more images.");
-      }
-    });
-
-    // Render existing gallery on load
-    renderGalleryFromData();
-
-    // ---- Save details back to formData ----
-    function saveDetails() {
-      const data = JSON.parse(localStorage.getItem("formData") || "{}");
-      data.address = addr.value.trim();
-      data.price   = price.value.trim();
-      data.beds    = beds.value.trim();
-      data.baths   = baths.value.trim();
-      data.sqft    = sqft.value.trim();
-
-      // Commission
-      data.commission = commissionEl.value.trim();
-      data.commissionType = commissionTypeEl.value;
-
-      // Only save description if unlocked (or keep existing if already Plus)
-      if (!isBasic) {
-        data.description = description.value.trim();
-      }
-
-      localStorage.setItem("formData", JSON.stringify(data));
-      saveMsg.classList.remove("hidden");
-      setTimeout(() => saveMsg.classList.add("hidden"), 1800);
-    }
-
-    saveBtn.addEventListener("click", saveDetails);
-
-    previewBtn.addEventListener("click", () => {
-      saveDetails();
-      window.location.href = "/agent-preview.html";
-    });
-
-    // ---- Upgrade panel logic (Basic only) ----
-    function computeUpgradeTotal() {
-      let total = 20; // Plus base
-      const pin = upPin.checked;
-      const premium = upPremium.checked;
-      const banner = upBanner.checked;
-
-      if (banner) total += 10;
-      if (pin) {
-        total += 50; // includes premium
-      } else if (premium) {
-        total += 10;
-      }
-      return total;
-    }
-
-    function renderUpgradeTotal() { upgradeTotal.textContent = computeUpgradeTotal(); }
-    [upBanner, upPremium, upPin].forEach(el => el && el.addEventListener("change", renderUpgradeTotal));
-    renderUpgradeTotal();
-
-    upgradeBtn.addEventListener("click", () => {
-      const upgrades = ["Upgrade to Listed Property Plus ($20)"];
-      if (upBanner.checked) upgrades.push("Banner ($10)");
-      if (upPin.checked) {
-        upgrades.push("Pin Placement ($50)");
-      } else if (upPremium.checked) {
-        upgrades.push("Premium Placement ($10)");
-      }
-
+    $("upgradePlusBtn").addEventListener("click", () => {
+      // Build a minimal checkout payload for an agent upgrade to Plus
       const checkoutData = {
         plan: "Listed Property Plus",
-        upgrades,
-        totalCost: computeUpgradeTotal(),
-        payer: "agent"
+        upgrades: [],            // no add-ons here; pure plan upgrade
+        totalCost: 20,
+        payer: "agent"           // 👈 this returns to agent-detail after Stripe
       };
-
       localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
-
-      // short address convenience
-      const data = JSON.parse(localStorage.getItem("formData") || "{}");
-      if (data.address) {
-        const short = data.address.split(",")[0];
-        localStorage.setItem("shortAddress", short);
-      }
       window.location.href = "/checkout.html";
     });
 
-    // Prefill existing plus gallery into UI on Plus
-    if (isPlus) {
-      renderGalleryFromData();
-    }
+    // ---------- Start ----------
+    init();
   </script>
 </body>
 </html>
