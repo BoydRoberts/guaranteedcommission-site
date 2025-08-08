@@ -8,50 +8,136 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <div class="max-w-md mx-auto mt-20 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold text-center mb-6">Enter Verification Code</h1>
+  <div class="max-w-md mx-auto mt-12 bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold text-center mb-2">Enter Verification Code</h1>
+    <p id="sentTo" class="text-center text-sm text-gray-600 mb-6"></p>
 
-    <form id="codeForm" class="space-y-4">
-      <input 
+    <form id="codeForm" class="space-y-4" autocomplete="off">
+      <input
         type="text"
         id="enteredCode"
         maxlength="6"
         placeholder="Enter 6-digit code"
-        class="w-full border p-3 rounded text-center text-lg tracking-widest"
+        class="w-full border p-2 rounded text-center text-lg tracking-widest"
         required
       />
 
-      <button 
-        type="button"
-        onclick="verifyCode()"
-        class="w-full bg-green-600 text-white py-2 rounded font-semibold"
-      >
+      <button type="button" id="verifyBtn" class="w-full bg-green-600 text-white py-2 rounded">
         Verify & Continue
       </button>
 
-      <p id="errorMsg" class="text-red-600 text-sm mt-4 hidden text-center">
-        ❌ Incorrect code. Please try again.
-      </p>
+      <p id="errorMsg" class="text-red-600 text-sm mt-2 hidden text-center">Incorrect code. Please try again.</p>
     </form>
+
+    <div class="flex justify-between items-center mt-6 text-sm">
+      <button id="resendBtn" class="text-blue-600 hover:underline">Resend code</button>
+      <button id="changeMethodBtn" class="text-gray-600 hover:underline">Change method</button>
+    </div>
+
+    <p id="debugInfo" class="mt-4 text-xs text-gray-400 text-center hidden"></p>
   </div>
 
   <script>
-    function verifyCode() {
-      const storedCode = localStorage.getItem("verificationCode") || "";
-      const enteredCode = document.getElementById("enteredCode").value.trim();
-      const errorMsg = document.getElementById("errorMsg");
+    // Helpers
+    function maskEmail(email) {
+      if (!email || !email.includes("@")) return email || "";
+      const [user, domain] = email.split("@");
+      const maskedUser = user.length <= 2 ? user[0] + "*" : user[0] + "*".repeat(user.length - 2) + user.slice(-1);
+      return maskedUser + "@" + domain;
+    }
 
-      if (enteredCode === storedCode) {
-        // Clear error message just in case
-        errorMsg.classList.add("hidden");
+    function maskPhone(phone) {
+      if (!phone) return "";
+      const digits = phone.replace(/\D/g, "");
+      if (digits.length < 10) return phone;
+      return "***-***-" + digits.slice(-4);
+    }
 
-        // Proceed to upsell
+    function sendCode(method, destination) {
+      // In production: call backend / Twilio / SendGrid
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      localStorage.setItem("verificationCode", code);
+      console.log("🔐 Verification code sent via", method, "to", destination, "→", code);
+      return code;
+    }
+
+    // Load prior data
+    const verifyData = JSON.parse(localStorage.getItem("verifyData") || "{}");
+    const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
+
+    // Safety: if user jumped here directly, try to create context
+    if (!verifyData.verifyMethod) {
+      // fallback to email if not set
+      verifyData.verifyMethod = "email";
+      verifyData.email = verifyData.email || (JSON.parse(localStorage.getItem("formData") || "{}").brokerage || "");
+      localStorage.setItem("verifyData", JSON.stringify(verifyData));
+    }
+
+    // Show where we sent the code
+    const sentToEl = document.getElementById("sentTo");
+    const dest = verifyData.verifyMethod === "phone" ? maskPhone(verifyData.phone) : maskEmail(verifyData.email);
+    sentToEl.textContent = verifyData.verifyMethod === "phone"
+      ? `We sent a 6-digit code via text to ${dest}.`
+      : `We sent a 6-digit code via email to ${dest}.`;
+
+    // Ensure we have a code (generate if missing)
+    let currentCode = localStorage.getItem("verificationCode");
+    if (!currentCode) {
+      currentCode = sendCode(verifyData.verifyMethod, dest);
+    }
+
+    // Verify button
+    document.getElementById("verifyBtn").addEventListener("click", () => {
+      const entered = (document.getElementById("enteredCode").value || "").trim();
+      const stored = localStorage.getItem("verificationCode") || "";
+
+      if (entered === stored) {
+        // Success → continue to upsells
         window.location.href = "/upsell.html";
       } else {
-        // Show error message
-        errorMsg.classList.remove("hidden");
+        document.getElementById("errorMsg").classList.remove("hidden");
       }
-    }
+    });
+
+    // Resend code
+    document.getElementById("resendBtn").addEventListener("click", () => {
+      const destRaw = verifyData.verifyMethod === "phone" ? verifyData.phone : verifyData.email;
+      const newCode = sendCode(verifyData.verifyMethod, destRaw);
+      // small UX: clear box & hint success
+      document.getElementById("enteredCode").value = "";
+      document.getElementById("errorMsg").classList.add("hidden");
+      alert("A new code has been sent.");
+    });
+
+    // Change method (flip between phone/email)
+    document.getElementById("changeMethodBtn").addEventListener("click", () => {
+      if (verifyData.verifyMethod === "phone") {
+        verifyData.verifyMethod = "email";
+        if (!verifyData.email) {
+          const email = prompt("Enter your email to receive the code:");
+          if (!email) return;
+          verifyData.email = email;
+        }
+      } else {
+        verifyData.verifyMethod = "phone";
+        if (!verifyData.phone) {
+          const phone = prompt("Enter your phone (123-456-7890) to receive the code:");
+          if (!phone) return;
+          verifyData.phone = phone;
+        }
+      }
+      localStorage.setItem("verifyData", JSON.stringify(verifyData));
+
+      // Update UI and send new code
+      const destNow = verifyData.verifyMethod === "phone" ? maskPhone(verifyData.phone) : maskEmail(verifyData.email);
+      sentToEl.textContent = verifyData.verifyMethod === "phone"
+        ? `We sent a 6-digit code via text to ${destNow}.`
+        : `We sent a 6-digit code via email to ${destNow}.`;
+
+      sendCode(verifyData.verifyMethod, destNow);
+      document.getElementById("enteredCode").value = "";
+      document.getElementById("errorMsg").classList.add("hidden");
+    });
   </script>
 
 </body>
