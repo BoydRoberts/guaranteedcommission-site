@@ -2,72 +2,114 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Agent Listing Preview</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .thumb { width: 100%; height: 160px; object-fit: cover; border-radius: 0.5rem; border: 1px solid #e5e7eb; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-
-  <div class="max-w-2xl mx-auto mt-16 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold mb-6 text-center">Preview Listing Details</h1>
-
-    <div class="space-y-4 text-sm leading-relaxed">
-      <p><strong>Property Address:</strong> <span id="address">Loading...</span></p>
-      <p><strong>Description:</strong> <span id="description"></span></p>
-      <p><strong>Bedrooms:</strong> <span id="bedrooms"></span></p>
-      <p><strong>Bathrooms:</strong> <span id="bathrooms"></span></p>
-      <p><strong>Square Feet:</strong> <span id="sqft"></span></p>
-      <p><strong>Listing Price:</strong> $<span id="price"></span></p>
-
-      <div id="bannerSection" class="hidden">
-        <p><strong>Banner:</strong> <span id="banner"></span></p>
-      </div>
-
-      <div>
-        <p><strong>Photos:</strong></p>
-        <ul id="photoList" class="list-disc list-inside ml-4"></ul>
-      </div>
+  <div class="max-w-5xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold">Agent Listing Preview</h1>
+      <button onclick="window.location.href='/agent-detail.html'" class="text-sm px-4 py-2 rounded border">Back to Edit</button>
     </div>
 
-    <div class="flex justify-center gap-4 mt-8">
-      <button onclick="editListing()" class="bg-gray-600 text-white px-6 py-2 rounded">Edit Listing</button>
-      <button onclick="publishListing()" class="bg-green-600 text-white px-6 py-2 rounded">Submit to Publish</button>
+    <div id="content" class="bg-white rounded shadow p-5">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-4">
+          <div id="primaryWrap" class="rounded overflow-hidden border">
+            <img id="primaryImg" class="w-full h-80 object-cover" alt="Primary Photo" />
+          </div>
+          <div>
+            <h2 class="text-xl font-semibold" id="addr"></h2>
+            <p class="text-gray-700 mt-1">
+              <span id="price"></span> • <span id="beds"></span> bd • <span id="baths"></span> ba • <span id="sqft"></span> sqft
+            </p>
+          </div>
+          <div id="descBlock" class="mt-2">
+            <h3 class="font-semibold mb-1">Description</h3>
+            <p id="description" class="whitespace-pre-line text-gray-800"></p>
+          </div>
+
+          <div id="galleryBlock" class="mt-4">
+            <h3 class="font-semibold mb-2">Photos</h3>
+            <div id="gallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+          </div>
+        </div>
+
+        <aside class="space-y-4">
+          <div class="border rounded p-4 bg-gray-50">
+            <h4 class="font-semibold mb-2">Commission</h4>
+            <p><strong>Offer:</strong> <span id="commissionOffer"></span></p>
+            <p><strong>Calculated:</strong> <span id="commissionCalc"></span></p>
+          </div>
+          <div class="border rounded p-4">
+            <button onclick="window.print()" class="w-full bg-blue-600 text-white py-2 rounded">Print Preview</button>
+          </div>
+        </aside>
+      </div>
     </div>
   </div>
 
   <script>
-    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
-    const details = JSON.parse(localStorage.getItem("agentListingDetails") || "{}");
-    const hasBanner = localStorage.getItem("banner") === "true";
+    const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
+    const data = JSON.parse(localStorage.getItem("formData") || "{}");
 
-    document.getElementById("address").textContent = formData.address || "[Address]";
-    document.getElementById("description").textContent = details.description || "[Description]";
-    document.getElementById("bedrooms").textContent = details.bedrooms || "-";
-    document.getElementById("bathrooms").textContent = details.bathrooms || "-";
-    document.getElementById("sqft").textContent = details.sqft || "-";
-    document.getElementById("price").textContent = details.price || "-";
+    // Address + basics
+    document.getElementById("addr").textContent = data.address || "[address]";
+    document.getElementById("price").textContent = data.price ? Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(+data.price) : "—";
+    document.getElementById("beds").textContent = data.beds || "—";
+    document.getElementById("baths").textContent = data.baths || "—";
+    document.getElementById("sqft").textContent = data.sqft || "—";
 
-    if (hasBanner && details.banner) {
-      document.getElementById("banner").textContent = details.banner;
-      document.getElementById("bannerSection").classList.remove("hidden");
-    }
-
-    const photoList = document.getElementById("photoList");
-    if (details.photos && details.photos.length > 0) {
-      photoList.innerHTML = details.photos.map(name => `<li>${name}</li>`).join("");
+    // Description (hidden on Basic if none)
+    const desc = data.description || "";
+    if (!desc) {
+      document.getElementById("descBlock").classList.add("hidden");
     } else {
-      photoList.innerHTML = "<li>No photos uploaded.</li>";
+      document.getElementById("description").textContent = desc;
     }
 
-    function editListing() {
-      window.location.href = "/agent-detail.html";
+    // Primary photo
+    const primaryImg = document.getElementById("primaryImg");
+    if (data.primaryPhotoData) {
+      primaryImg.src = data.primaryPhotoData;
+    } else {
+      primaryImg.src = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400"><rect width="100%" height="100%" fill="#e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#6b7280" font-size="20">No Primary Photo</text></svg>');
     }
 
-    function publishListing() {
-      alert("Listing submitted by agent! (Future: save to Firestore)");
-      window.location.href = "/thank-you.html";
+    // Gallery (Plus/FSBO only)
+    const galleryBlock = document.getElementById("galleryBlock");
+    const gallery = document.getElementById("gallery");
+    const photos = data.photosData || [];
+    if (!photos.length || selectedPlan === "Listed Property Basic") {
+      galleryBlock.classList.add("hidden");
+    } else {
+      photos.slice(0,20).forEach(src => {
+        const img = document.createElement("img");
+        img.src = src;
+        img.className = "thumb";
+        gallery.appendChild(img);
+      });
     }
+
+    // Commission
+    const offer = (data.commissionType || "%") === "$"
+      ? `$${data.commission || 0}`
+      : `${data.commission || 0}%`;
+    document.getElementById("commissionOffer").textContent = offer;
+
+    const priceVal = parseFloat(data.price || "0");
+    let calc = 0;
+    if ((data.commissionType || "%") === "%") {
+      calc = priceVal * ((parseFloat(data.commission || "0") || 0) / 100);
+    } else {
+      calc = parseFloat(data.commission || "0") || 0;
+    }
+    document.getElementById("commissionCalc").textContent =
+      calc.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
   </script>
-
 </body>
 </html>
