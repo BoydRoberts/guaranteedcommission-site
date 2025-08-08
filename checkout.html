@@ -2,55 +2,69 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Review Cart and Checkout</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Review & Checkout</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
-  <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded shadow relative">
-    <!-- Test Mode badge -->
-    <div class="absolute -top-3 -right-3 bg-yellow-500 text-white text-xs font-bold px-3 py-1 rounded">
-      TEST MODE
+
+  <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded shadow">
+    <!-- Test badge -->
+    <div class="mb-4">
+      <span class="inline-block text-xs font-semibold px-2 py-1 bg-yellow-200 border border-yellow-400 rounded">
+        TEST MODE — Stripe sandbox
+      </span>
     </div>
 
     <h1 class="text-2xl font-bold text-center mb-6">Review & Checkout</h1>
 
-    <!-- Summary -->
-    <div class="space-y-3 text-sm">
-      <p><strong>Selected Plan:</strong> <span id="planName">—</span></p>
+    <div class="space-y-4 text-sm">
+      <p><strong>Selected Plan:</strong> <span id="planName">Loading…</span></p>
+
       <div>
         <strong>Upgrades:</strong>
         <ul id="upgradeList" class="list-disc list-inside text-gray-700 mt-1"></ul>
       </div>
-      <p class="text-lg font-semibold mt-2">Total: $<span id="totalAmount">0</span></p>
-      <p id="freeNote" class="text-green-700 text-sm mt-1 hidden">
-        Your total is $0. No payment is required.
-      </p>
+
+      <p class="mt-2 text-lg font-bold">Total: $<span id="totalAmount">0</span></p>
     </div>
 
-    <hr class="my-6" />
+    <button id="payNowBtn" class="w-full bg-green-600 text-white py-2 rounded mt-6">
+      Pay Now with Stripe
+    </button>
 
-    <!-- Actions -->
-    <div class="space-y-3">
-      <button id="stripePayBtn" class="w-full bg-green-600 text-white py-2 rounded">
-        Pay Now with Stripe
-      </button>
-
-      <button id="continueBtn" class="w-full bg-blue-600 text-white py-2 rounded hidden">
-        Continue (no payment needed)
-      </button>
-
-      <button id="backBtn" class="w-full bg-gray-200 text-gray-800 py-2 rounded">
-        Go Back
-      </button>
-    </div>
-
-    <!-- Debug (optional) -->
-    <pre id="debug" class="mt-6 text-xs text-gray-500 whitespace-pre-wrap hidden"></pre>
+    <p class="text-xs text-gray-500 mt-4">
+      You will be redirected to Stripe to complete payment (if required).
+    </p>
   </div>
 
-  <!-- Your checkout logic -->
+  <script>
+    // Read normalized checkout payload built in upsell/verify steps
+    const checkoutData = JSON.parse(localStorage.getItem("checkoutData") || "{}");
+
+    // Robust plan fallback: checkoutData.plan -> selectedPlan -> 'Listed Property Basic'
+    const planName = checkoutData.plan 
+      ? checkoutData.plan 
+      : (localStorage.getItem("selectedPlan") || "Listed Property Basic");
+
+    // Render plan
+    document.getElementById("planName").textContent = planName;
+
+    // Render upgrades
+    const upgrades = Array.isArray(checkoutData.upgrades) ? checkoutData.upgrades : [];
+    const upgradeList = document.getElementById("upgradeList");
+    upgradeList.innerHTML = upgrades.length 
+      ? upgrades.map(u => `<li>${u}</li>`).join("")
+      : "<li>None</li>";
+
+    // Render total
+    const total = Number(checkoutData.totalCost || 0);
+    document.getElementById("totalAmount").textContent = total.toFixed(0);
+
+    // (Payment click handled by checkout.js)
+  </script>
+
   <script src="/checkout.js"></script>
 </body>
 </html>
