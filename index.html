@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
+    /* Nav hover (no click required) */
     .group:hover #commissionMenu,
     .group:focus-within #commissionMenu {
       display: block;
@@ -108,13 +109,81 @@
   <!-- Box 2 -->
   <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
     <h2 class="text-lg font-bold mb-4 text-center">Listed Property Communication Form</h2>
-    <!-- form fields -->
+    <form id="listingForm" class="space-y-2" autocomplete="off">
+      <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded" required>
+      <input type="text" id="address" placeholder="Full Property Address" class="w-full border p-1 rounded" required>
+      <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
+      <div class="flex gap-2">
+        <input type="text" id="commission" placeholder="Commission" class="w-full border p-1 rounded">
+        <select id="commissionType" class="border p-1 rounded">
+          <option value="%">%</option>
+          <option value="$">$</option>
+        </select>
+      </div>
+      <div class="relative">
+        <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded" required>
+        <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (123-456-7890)</span>
+      </div>
+      <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
+      <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
+      <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-4">
+        Submit Listing
+      </button>
+    </form>
   </div>
 
   <!-- Box 3 -->
   <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm text-justify">
     <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
-    <!-- ISC content -->
+
+    <!-- LISTED ISC -->
+    <div id="iscTextListed" class="">
+      <p>To the escrow holder/closing agent,</p>
+      <br>
+      <p>
+        I, <span id="letterName">[name]</span>, am the owner/seller of 
+        <span id="letterAddressFull">[full address]</span>, #
+        <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>. 
+        <span id="letterAddressShort1">[short address]</span> is listed for sale by 
+        <span id="letterBrokerage">[listing brokerage]</span>, 
+        <span id="letterAgent">[listing agent]</span>, listing agent, 
+        <span id="letterAgentPhone">[agent phone]</span>.
+      </p>
+      <br>
+      <p>
+        Let it be known: if a buyer’s agent/broker facilitates the sale of 
+        <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) 
+        are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the 
+        listing brokerage (if there is an agreement for broker-to-broker compensation) and second by 
+        debiting me, the seller – a commission not to exceed 
+        <span id="letterCommissionDisplay">[commission]</span>.
+      </p>
+      <br>
+      <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+    </div>
+
+    <!-- FSBO ISC -->
+    <div id="iscTextFSBO" class="hidden mt-8">
+      <p>To the escrow holder/closing agent,</p>
+      <br>
+      <p>
+        I, <span id="letterName">[name]</span>, am the owner/seller of 
+        <span id="letterAddressFull">[full address]</span>, #
+        <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>. 
+        <span id="letterAddressShort1">[short address]</span> is listed for sale by owner (Me). 
+        My phone number is <span id="fsboPhone"></span>. 
+        My email address is <span id="fsboEmail"></span>.
+      </p>
+      <br>
+      <p>
+        Let it be known: if a buyer’s agent/broker facilitates the sale of 
+        <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) 
+        are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed 
+        <span id="letterCommissionDisplay">[commission]</span>.
+      </p>
+      <br>
+      <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+    </div>
   </div>
 </section>
 
@@ -130,6 +199,7 @@
     </div>
   </div>
 
+  <!-- Simple search (visual stub; we’ll wire to Firestore soon) -->
   <div class="bg-white border rounded p-3 mb-6">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
       <input id="s2Location" class="border p-2 rounded" placeholder="City, neighborhood, ZIP">
@@ -142,13 +212,16 @@
     </div>
   </div>
 
+  <!-- Listings grid -->
   <div id="listingsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
 
+  <!-- Empty state -->
   <div id="listingsEmpty" class="hidden text-sm text-gray-600 bg-white border rounded p-4">
     No listings yet. Once a seller/agent completes details, listings will appear here.
   </div>
 
   <style>
+    /* Match agent-preview tile styling */
     .gc-tile { border-radius: 0.75rem; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
     .gc-img { width: 100%; height: 14rem; object-fit: cover; background: #e5e7eb; }
     .gc-badge {
@@ -165,11 +238,144 @@
   </style>
 </section>
 
-<!-- Scripts -->
+<!-- Scripts (page functionality) -->
 <script>
-  // Existing index.html scripts...
+/* --- Header modals --- */
+function openInvestorModal() { document.getElementById('investorModal').classList.remove('hidden'); }
+function closeInvestorModal() { document.getElementById('investorModal').classList.add('hidden'); }
+function submitInvestorForm() { document.getElementById('investorConfirmation').classList.remove('hidden'); }
+
+function openPressModal() { document.getElementById('pressModal').classList.remove('hidden'); }
+function closePressModal() { document.getElementById('pressModal').classList.add('hidden'); }
+function submitPressForm() { document.getElementById('pressConfirmation').classList.remove('hidden'); }
+
+/* --- Strip 1: plan select + form mode --- */
+function selectPlan(planName) {
+  localStorage.setItem("selectedPlan", planName);
+  showForm(planName === "FSBO Plus" ? "fsbo" : "listed");
+}
+function showForm(type) {
+  const title = document.querySelector("#formBlock h2");
+  const phoneInput = document.getElementById('agentPhone');
+  const brokerageInput = document.getElementById('brokerage');
+  const agentInput = document.getElementById('agent');
+
+  if (type === 'fsbo') {
+    title.textContent = 'FSBO Communication Form';
+    phoneInput.placeholder = 'Owner/Seller phone number';
+    brokerageInput.placeholder = 'Owner/Seller email';
+    agentInput.style.display = 'none';
+    document.getElementById('iscTextListed').classList.add('hidden');
+    document.getElementById('iscTextFSBO').classList.remove('hidden');
+  } else {
+    title.textContent = 'Listed Property Communication Form';
+    phoneInput.placeholder = 'Agent’s direct phone only – NOT your number';
+    brokerageInput.placeholder = 'Listing Brokerage';
+    agentInput.style.display = 'block';
+    document.getElementById('iscTextListed').classList.remove('hidden');
+    document.getElementById('iscTextFSBO').classList.add('hidden');
+  }
+}
+
+/* --- Strip 1: live wiring + validation --- */
+window.addEventListener('DOMContentLoaded', () => {
+  // Default to Listed mode on page load
+  const selectedPlan = localStorage.getItem('selectedPlan');
+  if (selectedPlan === 'FSBO Plus') showForm('fsbo');
+  else showForm('listed');
+
+  // Phone formatting + validation
+  const phoneInput = document.getElementById('agentPhone');
+  const phoneError = document.getElementById('phoneError');
+  phoneInput.addEventListener('input', function () {
+    let val = this.value.replace(/\D/g, '');
+    if (val.length > 3 && val.length <= 6) val = val.replace(/(\d{3})(\d+)/, '$1-$2');
+    else if (val.length > 6) val = val.replace(/(\d{3})(\d{3})(\d+)/, '$1-$2-$3');
+    this.value = val;
+    const phonePattern = /^\d{3}-\d{3}-\d{4}$/;
+    if (!phonePattern.test(this.value)) {
+      phoneInput.classList.add('border-red-500');
+      phoneError.classList.remove('hidden');
+    } else {
+      phoneInput.classList.remove('border-red-500');
+      phoneError.classList.add('hidden');
+    }
+  });
+
+  // Live-populate ISC + signatures
+  ['name','address','apn','brokerage','agent','agentPhone','commission','commissionType'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      const fullAddr = document.getElementById('address').value;
+      const short = fullAddr.split(',')[0];
+      const isFSBO = document.querySelector("#formBlock h2").textContent.includes("FSBO");
+      const nameVal = document.getElementById('name').value;
+
+      document.getElementById('letterName').textContent = nameVal || "[name]";
+      document.getElementById('signatureName').textContent = nameVal || "[Name]";
+      document.getElementById('signatureNameFSBO').textContent = nameVal || "[Name]";
+
+      document.getElementById('letterAddressFull').textContent = fullAddr || "[full address]";
+      document.getElementById('letterAddressShort1').textContent = short || "[short address]";
+      document.getElementById('letterAddressShort2').textContent = short || "[short address]";
+      document.getElementById('letterAPN').textContent = document.getElementById('apn').value || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
+
+      if (isFSBO) {
+        document.getElementById('fsboPhone').textContent = document.getElementById('agentPhone').value || "[owner/seller phone number]";
+        document.getElementById('fsboEmail').textContent = document.getElementById('brokerage').value || "[owner/seller email]";
+      } else {
+        document.getElementById('letterBrokerage').textContent = document.getElementById('brokerage').value || "[listing brokerage]";
+        document.getElementById('letterAgent').textContent = document.getElementById('agent').value || "[listing agent]";
+        document.getElementById('letterAgentPhone').textContent = document.getElementById('agentPhone').value || "[agent phone]";
+      }
+
+      // Commission display
+      const amount = document.getElementById('commission').value;
+      const type = document.getElementById('commissionType').value;
+      const suffix = type === '%' ? '' : ''; // we removed the trailing explanatory suffix in the prose block per your spec
+      const display = (type === '$') ? "$" + amount : (amount ? amount + "%" : "[commission]");
+      document.getElementById('letterCommissionDisplay').textContent = display;
+    });
+  });
+});
+
+/* --- Strip 1: submit -> verify flow --- */
+function submitForm() {
+  const requiredFields = ['name', 'address', 'agentPhone'];
+  let valid = true;
+
+  requiredFields.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el.value.trim()) {
+      el.classList.add('border-red-500');
+      valid = false;
+    } else {
+      el.classList.remove('border-red-500');
+    }
+  });
+
+  if (!valid) {
+    alert("Please complete all required fields.");
+    return;
+  }
+
+  const formData = {
+    name: document.getElementById('name').value,
+    address: document.getElementById('address').value,
+    apn: document.getElementById('apn').value,
+    commission: document.getElementById('commission').value,
+    commissionType: document.getElementById('commissionType').value,
+    agentPhone: document.getElementById('agentPhone').value,
+    brokerage: document.getElementById('brokerage').value,
+    agent: document.getElementById('agent').value
+  };
+  localStorage.setItem("formData", JSON.stringify(formData));
+  window.location.href = "/verify.html";
+}
 </script>
 
+<!-- Strip 2 wiring (tiles) -->
 <script>
 (function wireStrip2(){
   const grid = document.getElementById("listingsGrid");
@@ -179,10 +385,12 @@
   const agentListing = JSON.parse(localStorage.getItem("agentListing") || "{}");
   const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
 
+  // Build one listing from local storage (seller + agent inputs)
   const listing = (() => {
     if (!formData.address) return null;
     const fullAddress = formData.address;
     const shortAddress = fullAddress.split(",")[0] || fullAddress;
+
     const price = agentListing.price ?? "";
     const commission = agentListing.commission ?? (formData.commission || "");
     const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
@@ -191,6 +399,7 @@
     const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
 
     return {
+      id: "local-preview", // placeholder until Firestore IDs
       plan,
       fullAddress,
       shortAddress,
@@ -198,7 +407,7 @@
       commission,
       commissionType,
       bannerText,
-      photo: (photos[primaryIndex] || null)
+      photo: (photos[primaryIndex] || "")
     };
   })();
 
@@ -213,13 +422,14 @@
     const c = Number(comm || 0);
     if (!c) return "";
     if (type === "$") return `Commission: $${Math.round(c).toLocaleString()}`;
-    const amt = Math.round(p * (c/100));
+    const amt = p ? Math.round(p * (c/100)) : 0;
     return `Commission: ${c}%${p ? ` (~$${amt.toLocaleString()})` : ""}`;
   };
 
   const makeTile = (item) => {
     const card = document.createElement("a");
-    card.href = "/agent-preview.html";
+    // Public listing detail page (we’ll build /listing.html next)
+    card.href = `/listing.html?id=${encodeURIComponent(item.id)}`;
     card.className = "gc-tile block hover:shadow-md transition";
 
     const wrap = document.createElement("div");
@@ -275,5 +485,6 @@
   }
 })();
 </script>
+
 </body>
 </html>
