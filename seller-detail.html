@@ -2,92 +2,308 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Seller Listing Details</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Complete Your Listing Details</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .lock-overlay {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(2px);
+    }
+    .thumb {
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 0.5rem;
+      border: 1px solid #e5e7eb;
+    }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold">Complete Your Listing Details</h1>
+      <span id="planBadge" class="text-xs font-semibold px-3 py-1 rounded bg-gray-200 text-gray-700"></span>
+    </div>
 
-  <div class="max-w-2xl mx-auto mt-16 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold mb-6 text-center">Complete Your Listing Details</h1>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- LEFT: Main form -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Address (read from earlier formData, editable) -->
+        <div class="bg-white rounded shadow p-4">
+          <h2 class="text-lg font-semibold mb-3">Property Basics</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium mb-1">Address</label>
+              <input id="addr" type="text" class="w-full border p-2 rounded" placeholder="123 Main St, City, ST 12345">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Listing Price (USD)</label>
+              <input id="price" type="number" class="w-full border p-2 rounded" placeholder="500000">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Bedrooms</label>
+              <input id="beds" type="number" min="0" class="w-full border p-2 rounded" placeholder="3">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Bathrooms</label>
+              <input id="baths" type="number" min="0" step="0.5" class="w-full border p-2 rounded" placeholder="2">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Square Footage</label>
+              <input id="sqft" type="number" min="0" class="w-full border p-2 rounded" placeholder="1800">
+            </div>
+          </div>
+        </div>
 
-    <form id="sellerForm" class="space-y-4">
-      <div>
-        <label class="block text-sm font-semibold mb-1">Property Address:</label>
-        <p id="propertyAddress" class="bg-gray-100 border px-3 py-2 rounded text-sm"></p>
+        <!-- Description (locked for Basic) -->
+        <div class="relative bg-white rounded shadow p-4">
+          <h2 class="text-lg font-semibold mb-3">Full Property Description</h2>
+          <textarea id="description" rows="6" class="w-full border p-2 rounded" placeholder="Describe your property, upgrades, neighborhood, schools, and anything buyers should know."></textarea>
+
+          <!-- Overlay shown only for Basic -->
+          <div id="descLock" class="lock-overlay absolute inset-0 rounded hidden flex items-center justify-center text-center px-8">
+            <div>
+              <p class="text-gray-700 font-semibold">Unlock with Listed Property Plus</p>
+              <p class="text-gray-600 text-sm">Upgrade to add a full property description.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Photos (locked for Basic) -->
+        <div class="relative bg-white rounded shadow p-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold mb-3">Photos <span class="text-sm text-gray-500">(up to 20)</span></h2>
+            <span id="photoCount" class="text-xs text-gray-500">0 / 20</span>
+          </div>
+
+          <input id="photos" type="file" accept="image/*" multiple class="block w-full text-sm text-gray-600 mb-3">
+          <div id="photoGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+
+          <!-- Overlay for Basic -->
+          <div id="photoLock" class="lock-overlay absolute inset-0 rounded hidden flex items-center justify-center text-center px-8">
+            <div>
+              <p class="text-gray-700 font-semibold">Unlock with Listed Property Plus</p>
+              <p class="text-gray-600 text-sm">Upgrade to upload and showcase up to 20 photos.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Save button (always available) -->
+        <div class="bg-white rounded shadow p-4">
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button id="saveBtn" class="bg-blue-600 text-white px-5 py-2 rounded">Save Details</button>
+            <button id="previewBtn" class="bg-gray-200 text-gray-800 px-5 py-2 rounded">Preview Listing</button>
+          </div>
+          <p id="saveMsg" class="text-sm text-green-600 mt-3 hidden">Saved!</p>
+        </div>
       </div>
 
-      <div>
-        <label class="block text-sm font-semibold mb-1">Property Description:</label>
-        <textarea id="description" rows="4" class="w-full border p-2 rounded" placeholder="Describe your property..."></textarea>
-      </div>
+      <!-- RIGHT: Upgrade panel (only for Basic) -->
+      <aside id="upgradePanel" class="bg-white rounded shadow p-4 h-fit hidden sticky top-6">
+        <h2 class="text-lg font-semibold mb-1">Unlock Everything</h2>
+        <p class="text-sm text-gray-700 mb-4">
+          Upgrade to <strong>Listed Property Plus ($20)</strong> to add a full description and up to 20 photos.
+        </p>
 
-      <div class="grid grid-cols-2 gap-4">
-        <input type="number" id="bedrooms" placeholder="Bedrooms" class="border p-2 rounded" />
-        <input type="number" id="bathrooms" placeholder="Bathrooms" class="border p-2 rounded" />
-        <input type="number" id="sqft" placeholder="Square Feet" class="border p-2 rounded" />
-        <input type="number" id="price" placeholder="Listing Price ($)" class="border p-2 rounded" />
-      </div>
+        <div class="border-t pt-3 mt-2">
+          <p class="text-sm font-semibold mb-2">Optional Add-Ons</p>
+          <label class="flex items-center gap-2 mb-2">
+            <input type="checkbox" id="upBanner">
+            <span>Banner ($10)</span>
+          </label>
+          <label class="flex items-center gap-2 mb-2">
+            <input type="checkbox" id="upPremium">
+            <span>Premium Placement ($10)</span>
+          </label>
+          <label class="flex items-center gap-2 mb-2">
+            <input type="checkbox" id="upPin">
+            <span>Pin Placement ($50, includes Premium)</span>
+          </label>
+        </div>
 
-      <div id="bannerSection" class="hidden">
-        <label class="block text-sm font-semibold mb-1">Banner Text (30 characters max):</label>
-        <input type="text" id="banner" maxlength="30" class="w-full border p-2 rounded" placeholder="e.g., Open House Sunday 1-4" />
-      </div>
+        <div class="mt-4 p-3 bg-gray-50 rounded">
+          <p class="text-sm">Estimated total:</p>
+          <p class="text-xl font-bold">$<span id="upgradeTotal">20</span></p>
+        </div>
 
-      <div>
-        <label class="block text-sm font-semibold mb-1">Upload Photos (up to 20):</label>
-        <input type="file" id="photos" multiple accept="image/*" class="w-full border p-2 rounded" />
-        <p class="text-xs text-gray-500 mt-1">Each image must be under 5MB.</p>
-      </div>
-
-      <button type="button" onclick="submitListing()" class="w-full bg-blue-600 text-white py-2 rounded font-semibold">
-        Save Listing
-      </button>
-    </form>
+        <button id="upgradeBtn" class="w-full mt-4 bg-green-600 text-white py-2 rounded">
+          Upgrade & Continue
+        </button>
+        <p class="text-xs text-gray-500 mt-3">
+          You’ll review this on the next screen before paying.
+        </p>
+      </aside>
+    </div>
   </div>
 
   <script>
-    // Load address from formData
+    // ---- State ----
+    const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
     const formData = JSON.parse(localStorage.getItem("formData") || "{}");
-    document.getElementById("propertyAddress").textContent = formData.address || "[Property Address]";
 
-    // Show banner field if banner upsell is selected
-    const hasBanner = localStorage.getItem("banner") === "true";
-    if (hasBanner) {
-      document.getElementById("bannerSection").classList.remove("hidden");
+    // ---- Elements ----
+    const planBadge = document.getElementById("planBadge");
+    const descLock = document.getElementById("descLock");
+    const photoLock = document.getElementById("photoLock");
+    const upgradePanel = document.getElementById("upgradePanel");
+
+    const addr = document.getElementById("addr");
+    const price = document.getElementById("price");
+    const beds  = document.getElementById("beds");
+    const baths = document.getElementById("baths");
+    const sqft  = document.getElementById("sqft");
+    const description = document.getElementById("description");
+
+    const photosInput = document.getElementById("photos");
+    const photoGrid   = document.getElementById("photoGrid");
+    const photoCount  = document.getElementById("photoCount");
+
+    const saveBtn = document.getElementById("saveBtn");
+    const previewBtn = document.getElementById("previewBtn");
+    const saveMsg = document.getElementById("saveMsg");
+
+    const upBanner = document.getElementById("upBanner");
+    const upPremium = document.getElementById("upPremium");
+    const upPin = document.getElementById("upPin");
+    const upgradeTotal = document.getElementById("upgradeTotal");
+    const upgradeBtn = document.getElementById("upgradeBtn");
+
+    // ---- Init ----
+    planBadge.textContent = selectedPlan;
+
+    // Prefill basics from earlier form where possible
+    if (formData.address) addr.value = formData.address;
+    if (formData.price)   price.value = formData.price;
+    if (formData.beds)    beds.value = formData.beds;
+    if (formData.baths)   baths.value = formData.baths;
+    if (formData.sqft)    sqft.value = formData.sqft;
+    if (formData.description) description.value = formData.description;
+
+    const isBasic = selectedPlan === "Listed Property Basic";
+    const isPlus  = selectedPlan === "Listed Property Plus";
+    const isFSBO  = selectedPlan === "FSBO Plus";
+
+    // Lock/Unlock behavior
+    if (isBasic) {
+      descLock.classList.remove("hidden");
+      photoLock.classList.remove("hidden");
+      description.setAttribute("disabled", "true");
+      photosInput.setAttribute("disabled", "true");
+      upgradePanel.classList.remove("hidden");
+    } else {
+      descLock.classList.add("hidden");
+      photoLock.classList.add("hidden");
+      description.removeAttribute("disabled");
+      photosInput.removeAttribute("disabled");
+      upgradePanel.classList.add("hidden");
     }
 
-    function submitListing() {
-      const listing = {
-        description: document.getElementById("description").value.trim(),
-        bedrooms: document.getElementById("bedrooms").value,
-        bathrooms: document.getElementById("bathrooms").value,
-        sqft: document.getElementById("sqft").value,
-        price: document.getElementById("price").value,
-        banner: hasBanner ? document.getElementById("banner").value.trim() : "",
-        address: formData.address || "",
-        photos: []
+    // ---- Photo handling (Plus/FSBO only) ----
+    function refreshPhotoCount() {
+      const count = photoGrid.querySelectorAll("img").length;
+      photoCount.textContent = count + " / 20";
+    }
+
+    photosInput.addEventListener("change", () => {
+      if (isBasic) return; // safety
+      photoGrid.innerHTML = "";
+      const files = Array.from(photosInput.files || []);
+      const slice = files.slice(0, 20);
+      slice.forEach(file => {
+        const url = URL.createObjectURL(file);
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = file.name;
+        img.className = "thumb";
+        photoGrid.appendChild(img);
+      });
+      refreshPhotoCount();
+    });
+
+    // ---- Save basics to localStorage ----
+    function saveDetails() {
+      const data = JSON.parse(localStorage.getItem("formData") || "{}");
+      data.address = addr.value.trim();
+      data.price   = price.value.trim();
+      data.beds    = beds.value.trim();
+      data.baths   = baths.value.trim();
+      data.sqft    = sqft.value.trim();
+      if (!isBasic) {
+        data.description = description.value.trim();
+        // NOTE: Photos are not persisted here; that’ll be a backend/upload step later.
+      }
+      localStorage.setItem("formData", JSON.stringify(data));
+      saveMsg.classList.remove("hidden");
+      setTimeout(() => saveMsg.classList.add("hidden"), 1800);
+    }
+
+    saveBtn.addEventListener("click", saveDetails);
+
+    previewBtn.addEventListener("click", () => {
+      saveDetails();
+      window.location.href = "/seller-preview.html";
+    });
+
+    // ---- Upgrade panel logic (Basic only) ----
+    function computeUpgradeTotal() {
+      let total = 20; // Plus upgrade base
+      const pin = upPin.checked;
+      const premium = upPremium.checked;
+      const banner = upBanner.checked;
+
+      if (banner) total += 10;
+      if (pin) {
+        total += 50; // includes premium
+      } else if (premium) {
+        total += 10;
+      }
+      return total;
+    }
+
+    function renderUpgradeTotal() {
+      upgradeTotal.textContent = computeUpgradeTotal();
+    }
+
+    [upBanner, upPremium, upPin].forEach(el => {
+      el && el.addEventListener("change", () => {
+        // If Pin is checked, ensure Premium stays visually independent (we just won't charge for it)
+        renderUpgradeTotal();
+      });
+    });
+
+    renderUpgradeTotal();
+
+    upgradeBtn.addEventListener("click", () => {
+      // Build a clean checkoutData
+      const upgrades = ["Upgrade to Listed Property Plus ($20)"];
+      if (upBanner.checked) upgrades.push("Banner ($10)");
+      if (upPin.checked) {
+        upgrades.push("Pin Placement ($50)");
+        // Note: Premium is included with Pin, but we only charge the Pin line.
+      } else if (upPremium.checked) {
+        upgrades.push("Premium Placement ($10)");
+      }
+
+      const checkoutData = {
+        plan: "Listed Property Plus",
+        upgrades,
+        totalCost: computeUpgradeTotal()
       };
 
-      const files = document.getElementById("photos").files;
-      if (files.length > 20) {
-        alert("You can upload up to 20 photos only.");
-        return;
+      // Persist
+      localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
+      localStorage.setItem("selectedPlan", "Listed Property Plus"); // so when they return, fields unlock
+      // Helpful for later steps:
+      const data = JSON.parse(localStorage.getItem("formData") || "{}");
+      if (data.address) {
+        const short = data.address.split(",")[0];
+        localStorage.setItem("shortAddress", short);
       }
 
-      for (let i = 0; i < files.length; i++) {
-        if (files[i].size > 5 * 1024 * 1024) {
-          alert(`Image "${files[i].name}" is too large. Limit is 5MB.`);
-          return;
-        }
-        listing.photos.push(files[i].name); // Save file names only for now
-      }
-
-      localStorage.setItem("listingDetails", JSON.stringify(listing));
-      alert("Your listing details have been saved.");
-      window.location.href = "/seller-preview.html"; // or confirmation page
-    }
+      // Go to checkout
+      window.location.href = "/checkout.html";
+    });
   </script>
-
 </body>
 </html>
