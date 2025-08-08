@@ -38,14 +38,16 @@
         </select>
       </div>
 
-      <!-- Actions -->
+      <!-- Login Button -->
       <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded font-semibold">Login</button>
 
+      <!-- Links for navigation -->
       <div class="flex justify-between text-sm mt-3">
         <a href="/forgot-password.html" class="text-blue-600 hover:underline">Forgot password?</a>
         <a href="/create-account.html" class="text-blue-600 hover:underline">Create an account</a>
       </div>
 
+      <!-- Status message -->
       <p id="status" class="mt-4 text-center text-sm text-red-600"></p>
     </form>
   </div>
@@ -89,10 +91,8 @@
 
       signInWithEmailAndPassword(auth, email, password)
         .then(() => {
-          // Store role for future logic
           localStorage.setItem("userRole", role);
 
-          // Redirect based on role
           if (role === "seller") {
             window.location.href = "/seller-dashboard.html";
           } else if (role === "agent") {
