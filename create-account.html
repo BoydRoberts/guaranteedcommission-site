@@ -76,7 +76,7 @@
         </label>
       </div>
 
-      <!-- Fine print (varies FSBO vs Listed) -->
+      <!-- Fine print -->
       <p id="finePrint" class="text-xs text-gray-500 mt-3"></p>
 
       <!-- Submit -->
@@ -93,6 +93,16 @@
   </div>
 
   <script>
+    // ✅ NEW: Reset checkout state on load
+    function resetCheckoutState() {
+      [
+        "upgradeToPlus","banner","premium","pin","confidential",
+        "checkoutData","verificationCode"
+      ].forEach(k => localStorage.removeItem(k));
+    }
+    resetCheckoutState();
+
+    // Prefill from previous steps
     const formData = JSON.parse(localStorage.getItem("formData") || "{}");
     const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
     const isFSBO = selectedPlan.includes("FSBO");
@@ -103,6 +113,7 @@
       if (formData.brokerage) document.getElementById("email").value = formData.brokerage;
     }
 
+    // Fine print by plan
     const fine = document.getElementById("finePrint");
     if (isFSBO) {
       fine.textContent = "GuaranteedCommission.com displays FSBO seller information on the Irrevocable Seller Communication and on the listing detail page. Unless you select the optional Confidential FSBO Upgrade ($100) your information may be sold to third parties and used for solicitation purposes.";
@@ -110,6 +121,7 @@
       fine.textContent = "GuaranteedCommission.com only uses your information for escrow and identification. Your information will not be sold to third parties or used for solicitation purposes.";
     }
 
+    // Phone formatting
     const phoneInput = document.getElementById("phone");
     const phoneErr = document.getElementById("phoneErr");
     phoneInput.addEventListener("input", function() {
@@ -121,6 +133,7 @@
       phoneErr.classList.toggle("hidden", ok || this.value.trim() === "");
     });
 
+    // Email validation
     const emailInput = document.getElementById("email");
     const emailErr = document.getElementById("emailErr");
     emailInput.addEventListener("input", function() {
@@ -128,6 +141,7 @@
       emailErr.classList.toggle("hidden", ok || this.value.trim() === "");
     });
 
+    // Show/hide password toggles
     const togglePass = document.getElementById("togglePass");
     const toggleConfirm = document.getElementById("toggleConfirm");
     const pass = document.getElementById("password");
@@ -141,6 +155,7 @@
       toggleConfirm.textContent = confirm.type === "password" ? "Show" : "Hide";
     });
 
+    // Password strength meter
     const strengthFill = document.getElementById("strengthFill");
     const strengthLabel = document.getElementById("strengthLabel");
     const strengthTips = document.getElementById("strengthTips");
@@ -186,6 +201,7 @@
     }
     confirm.addEventListener("input", checkMatch);
 
+    // Submit
     document.getElementById("submitBtn").addEventListener("click", () => {
       const name = document.getElementById("name").value.trim();
       const phone = phoneInput.value.trim();
@@ -222,6 +238,7 @@
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       localStorage.setItem("verificationCode", code);
       console.log("Verification code sent to", verifyMethod, ":", code);
+
       window.location.href = "/verify-code.html";
     });
   </script>
