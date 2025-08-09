@@ -119,9 +119,11 @@
         placeholder="123 Main St, Laguna Beach, CA 92651"
         class="w-full border p-1 rounded"
         required
-        pattern="^.+,\\s*[A-Za-z .'-]+,\\s*[A-Za-z]{2}\\s+\\d{5}$"
+        pattern="^.+,\s*[A-Za-z .'-]+,\s*[A-Za-z]{2}\s+\d{5}$"
         title="Use full address format: Street, City, ST 12345"
       >
+      <!-- Moved helper under the address field -->
+      <p class="text-[11px] text-gray-500 -mt-1 mb-1">Address format: <em>Street, City, ST 12345</em></p>
 
       <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
 
@@ -141,11 +143,10 @@
       <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
       <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
 
-      <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-4">
+      <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-2">
         Submit Listing
       </button>
     </form>
-    <p class="text-[11px] text-gray-500 mt-2">Address format: <em>Street, City, ST 12345</em></p>
   </div>
 
   <!-- Box 3 -->
@@ -341,7 +342,9 @@
 
     // Address pattern check (Street, City, ST 12345)
     const addressEl = document.getElementById('address');
-    const addrOk = new RegExp(addressEl.getAttribute('pattern')).test(addressEl.value.trim());
+    // Use the pattern directly from the attribute
+    const pattern = addressEl.getAttribute('pattern');
+    const addrOk = new RegExp(pattern).test(addressEl.value.trim());
     if(!addrOk){
       addressEl.classList.add('border-red-500');
       alert('Please use full address format: Street, City, ST 12345');
