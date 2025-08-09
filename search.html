@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Search | GuaranteedCommission.com</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Mapbox GL JS (CSS + JS) -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+
+  <style>
+    .gc-map { width: 100%; height: 100%; }
+    .tile { border-radius: 0.75rem; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+    .tile img { width: 100%; height: 10rem; object-fit: cover; background:#e5e7eb; }
+    .tile .body { padding: .75rem; }
+    .tile .addr { font-weight: 700; font-size: 0.95rem; }
+    .tile .price { color:#111827; font-weight:600; margin-top:.25rem;}
+    .tile .meta { color:#6b7280; font-size:.8rem; margin-top:.15rem;}
+    .badge { position:absolute; top:.5rem; left:.5rem; background:rgba(0,0,0,.7); color:#fff; padding:2px 6px; font-size:.7rem; border-radius:.5rem; }
+    .banner { position:absolute; top:.5rem; right:.5rem; background:#2563eb; color:#fff; padding:2px 6px; font-size:.7rem; border-radius:.5rem; max-width:60%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ad { border:2px dashed #e5e7eb; }
+    .ad .tag { font-size:.7rem; color:#2563eb; font-weight:700; }
+    .font-cursive { font-family: 'Brush Script MT', cursive; }
+    .test-badge { position: fixed; bottom: 12px; right: 12px; background: #111827; color: #fff; padding: 6px 10px; border-radius: 8px; font-size: 12px; opacity:.9; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+  <!-- Header -->
+  <header class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+      <a href="/" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
+      <h1 class="text-lg font-semibold">Search Guaranteed Commissions</h1>
+      <div class="ml-auto">
+        <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log in</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Filters/Search -->
+  <section class="bg-white">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap gap-3 items-center">
+      <input id="q" type="text" placeholder="Search city or neighborhood (e.g., Laguna Beach)"
+             class="border rounded px-3 py-2 w-full md:w-96" />
+      <select id="minCommissionType" class="border rounded px-2 py-2">
+        <option value="">Commission filter</option>
+        <option value="%:2">≥ 2%</option>
+        <option value="%:3">≥ 3%</option>
+        <option value="$:5000">≥ $5,000</option>
+        <option value="$:10000">≥ $10,000</option>
+      </select>
+      <select id="planFilter" class="border rounded px-2 py-2">
+        <option value="">Any plan</option>
+        <option value="Listed Property Basic">Listed Property Basic</option>
+        <option value="Listed Property Plus">Listed Property Plus</option>
+        <option value="FSBO Plus">FSBO Plus</option>
+      </select>
+      <button id="applyBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Search</button>
+      <button id="locateBtn" class="bg-gray-200 text-gray-800 px-3 py-2 rounded">Use my location</button>
+    </div>
+  </section>
+
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Map -->
+    <div class="lg:col-span-1 h-[65vh] lg:h-[78vh] rounded overflow-hidden bg-white">
+      <div id="map" class="gc-map"></div>
+    </div>
+
+    <!-- Tiles -->
+    <div class="lg:col-span-2">
+      <div id="resultHeader" class="flex items-center justify-between mb-3">
+        <div class="text-sm text-gray-600"><span id="count">0</span> results</div>
+        <div>
+          <select id="sortSelect" class="border rounded px-2 py-2 text-sm">
+            <option value="newest">Sort: Newest</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="commission-desc">Commission: High to Low</option>
+          </select>
+        </div>
+      </div>
+      <div id="grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+      <p class="text-xs text-gray-500 mt-4">
+        Disclaimer: Commission amounts are provided by the listing party and are not guaranteed by GuaranteedCommission.com. Verify independently.
+      </p>
+    </div>
+  </main>
+
+  <div class="test-badge">Demo Search • Mapbox placeholder</div>
+
+  <script type="module" src="/search.js"></script>
+</body>
+</html>
