@@ -9,23 +9,26 @@
 <body class="bg-gray-100 text-gray-800">
 
   <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded shadow text-center">
-    <h1 class="text-2xl font-bold mb-6">Upgrade Your Listing</h1>
-
-    <h2 id="upsellTitle" class="text-lg font-semibold mb-4"></h2>
-    <p id="upsellDescription" class="text-sm text-gray-700 mb-6"></p>
+    <h1 class="text-2xl font-bold mb-6" id="upsellTitle">Loading...</h1>
+    <p id="upsellDescription" class="text-sm text-gray-700 mb-6">Please wait...</p>
 
     <div class="flex justify-center gap-4">
       <button onclick="acceptUpsell()" class="bg-green-600 text-white px-6 py-2 rounded">Yes</button>
       <button onclick="skipUpsell()" class="bg-gray-400 text-white px-6 py-2 rounded">Skip</button>
     </div>
+
+    <p class="text-sm text-center mt-6">
+      Need to log in?  
+      <a href="/login.html" class="text-blue-600 hover:underline">Go to login</a>
+    </p>
   </div>
 
   <script>
     const selectedPlan = localStorage.getItem("selectedPlan") || "";
     const upsells = [];
 
-    // Build upsell sequence based on plan
-    if (selectedPlan === "Listed Property Basic") {
+    // Build upsell list based on plan
+    if(selectedPlan === "Listed Property Basic"){
       upsells.push({
         id: "upgradeToPlus",
         title: "Upgrade to Listed Property Plus ($20)",
@@ -34,30 +37,30 @@
       });
     }
 
-    if (selectedPlan === "Listed Property Basic" || selectedPlan === "Listed Property Plus") {
+    if(selectedPlan === "Listed Property Plus" || selectedPlan === "Listed Property Basic"){
       upsells.push(
         {
           id: "banner",
           title: "Add Banner ($10)",
-          desc: "Add a 30-character banner to highlight features like 'Open Sunday' or 'Ocean View'.",
+          desc: "Add a 30-character banner. Highlight special features, open houses, or whatever you like until your home is sold.",
           storageKey: "banner"
         },
         {
           id: "premium",
           title: "Add Premium Placement ($10)",
-          desc: "Appear above non-premium listings in your search area.",
+          desc: "Your listing will appear ahead of non-premium listings in your search area until your home is sold.",
           storageKey: "premium"
         },
         {
           id: "pin",
           title: "Add Pin Placement ($50)",
-          desc: "Pinned at the top of listings in your search area. Includes Premium Placement for free.",
+          desc: "Your listing will be pinned ahead of all listings in your search area until your home is sold. Includes Premium Placement for free.",
           storageKey: "pin"
         }
       );
     }
 
-    if (selectedPlan === "FSBO Plus") {
+    if(selectedPlan === "FSBO Plus"){
       upsells.push(
         {
           id: "confidential",
@@ -68,19 +71,19 @@
         {
           id: "banner",
           title: "Add Banner ($10)",
-          desc: "Add a 30-character banner to highlight features like 'Open Sunday' or 'Ocean View'.",
+          desc: "Add a 30-character banner. Highlight special features, open houses, or whatever you like until your home is sold.",
           storageKey: "banner"
         },
         {
           id: "premium",
           title: "Add Premium Placement ($10)",
-          desc: "Appear above non-premium listings in your search area.",
+          desc: "Your listing will appear ahead of non-premium listings in your search area until your home is sold.",
           storageKey: "premium"
         },
         {
           id: "pin",
           title: "Add Pin Placement ($50)",
-          desc: "Pinned at the top of listings in your search area. Includes Premium Placement for free.",
+          desc: "Your listing will be pinned ahead of all listings in your search area until your home is sold. Includes Premium Placement for free.",
           storageKey: "pin"
         }
       );
@@ -88,10 +91,9 @@
 
     let currentIndex = 0;
 
-    function showCurrentUpsell() {
+    function showCurrentUpsell(){
       const upsell = upsells[currentIndex];
-      if (!upsell) {
-        // All upsells done → go to checkout
+      if(!upsell){
         window.location.href = "/checkout.html";
         return;
       }
@@ -99,34 +101,23 @@
       document.getElementById("upsellDescription").textContent = upsell.desc;
     }
 
-    function acceptUpsell() {
+    function acceptUpsell(){
       const upsell = upsells[currentIndex];
       localStorage.setItem(upsell.storageKey, "true");
-
-      // Special: if pin is selected, also set premium
-      if (upsell.id === "pin") {
-        localStorage.setItem("premium", "true");
+      if(upsell.id === "pin"){
+        localStorage.setItem("premium", "true"); // pin includes premium
       }
-
       currentIndex++;
       showCurrentUpsell();
     }
 
-    function skipUpsell() {
-      const upsell = upsells[currentIndex];
-
-      // Special: if skipping pin, leave premium as-is
-      if (upsell.id === "pin") {
-        localStorage.setItem("pin", "false");
-      }
-
-      localStorage.setItem(upsell.storageKey, "false");
-
+    function skipUpsell(){
       currentIndex++;
       showCurrentUpsell();
     }
 
     window.addEventListener("DOMContentLoaded", showCurrentUpsell);
   </script>
+
 </body>
 </html>
