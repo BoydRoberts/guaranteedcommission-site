@@ -5,92 +5,201 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Search | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Mapbox GL JS (CSS + JS) -->
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
-  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-
   <style>
-    .gc-map { width: 100%; height: 100%; }
-    .tile { border-radius: 0.75rem; overflow: hidden; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-    .tile img { width: 100%; height: 10rem; object-fit: cover; background:#e5e7eb; }
-    .tile .body { padding: .75rem; }
-    .tile .addr { font-weight: 700; font-size: 0.95rem; }
-    .tile .price { color:#111827; font-weight:600; margin-top:.25rem;}
-    .tile .meta { color:#6b7280; font-size:.8rem; margin-top:.15rem;}
-    .badge { position:absolute; top:.5rem; left:.5rem; background:rgba(0,0,0,.7); color:#fff; padding:2px 6px; font-size:.7rem; border-radius:.5rem; }
-    .banner { position:absolute; top:.5rem; right:.5rem; background:#2563eb; color:#fff; padding:2px 6px; font-size:.7rem; border-radius:.5rem; max-width:60%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .ad { border:2px dashed #e5e7eb; }
-    .ad .tag { font-size:.7rem; color:#2563eb; font-weight:700; }
     .font-cursive { font-family: 'Brush Script MT', cursive; }
-    .test-badge { position: fixed; bottom: 12px; right: 12px; background: #111827; color: #fff; padding: 6px 10px; border-radius: 8px; font-size: 12px; opacity:.9; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-
   <!-- Header -->
-  <header class="bg-white border-b">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-      <a href="/" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
-      <h1 class="text-lg font-semibold">Search Guaranteed Commissions</h1>
-      <div class="ml-auto">
-        <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log in</a>
+  <header class="bg-white shadow">
+    <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
+      <a href="/" class="text-blue-700 underline text-sm">&larr; Back to Home</a>
+      <div class="text-center flex-1">
+        <h1 class="text-2xl font-bold">Search Guaranteed Commissions</h1>
+        <p class="text-xs text-gray-600">Find listings where the buyer’s agent commission is communicated up front.</p>
       </div>
+      <a href="/login.html" class="text-blue-700 underline text-sm">Log In</a>
     </div>
   </header>
 
-  <!-- Filters/Search -->
-  <section class="bg-white">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap gap-3 items-center">
-      <input id="q" type="text" placeholder="Search city or neighborhood (e.g., Laguna Beach)"
-             class="border rounded px-3 py-2 w-full md:w-96" />
-      <select id="minCommissionType" class="border rounded px-2 py-2">
-        <option value="">Commission filter</option>
-        <option value="%:2">≥ 2%</option>
-        <option value="%:3">≥ 3%</option>
-        <option value="$:5000">≥ $5,000</option>
-        <option value="$:10000">≥ $10,000</option>
-      </select>
-      <select id="planFilter" class="border rounded px-2 py-2">
-        <option value="">Any plan</option>
-        <option value="Listed Property Basic">Listed Property Basic</option>
-        <option value="Listed Property Plus">Listed Property Plus</option>
-        <option value="FSBO Plus">FSBO Plus</option>
-      </select>
-      <button id="applyBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Search</button>
-      <button id="locateBtn" class="bg-gray-200 text-gray-800 px-3 py-2 rounded">Use my location</button>
+  <!-- Search Bar & Filters -->
+  <section class="max-w-7xl mx-auto px-4 py-4">
+    <div class="bg-white rounded-lg shadow p-4">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
+        <div class="lg:col-span-2">
+          <label class="text-sm font-semibold block mb-1">Search</label>
+          <input id="q" type="text"
+                 placeholder="Search by address, city, brokerage, or agent..."
+                 class="w-full border p-2 rounded" />
+        </div>
+        <div>
+          <label class="text-sm font-semibold block mb-1">Min Price</label>
+          <input id="minPrice" type="number" min="0" step="1000" placeholder="e.g., 500000"
+                 class="w-full border p-2 rounded" />
+        </div>
+        <div>
+          <label class="text-sm font-semibold block mb-1">Max Price</label>
+          <input id="maxPrice" type="number" min="0" step="1000" placeholder="e.g., 1500000"
+                 class="w-full border p-2 rounded" />
+        </div>
+
+        <div>
+          <label class="text-sm font-semibold block mb-1">Beds (min)</label>
+          <input id="bedsMin" type="number" min="0" step="1" placeholder="e.g., 2"
+                 class="w-full border p-2 rounded" />
+        </div>
+        <div>
+          <label class="text-sm font-semibold block mb-1">Baths (min)</label>
+          <input id="bathsMin" type="number" min="0" step="1" placeholder="e.g., 2"
+                 class="w-full border p-2 rounded" />
+        </div>
+
+        <div class="lg:col-span-2 flex gap-2">
+          <button id="applyBtn" class="bg-blue-600 text-white px-4 py-2 rounded w-full lg:w-auto">Apply Filters</button>
+          <button id="clearBtn" class="bg-gray-300 text-gray-900 px-4 py-2 rounded w-full lg:w-auto">Clear</button>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- Main -->
-  <main class="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-    <!-- Map -->
-    <div class="lg:col-span-1 h-[65vh] lg:h-[78vh] rounded overflow-hidden bg-white">
-      <div id="map" class="gc-map"></div>
-    </div>
+  <!-- Results -->
+  <section class="max-w-7xl mx-auto px-4 pb-12">
+    <div id="tilesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <p id="noResults" class="hidden text-center text-sm text-gray-600 mt-6">No listings match your filters.</p>
+  </section>
 
-    <!-- Tiles -->
-    <div class="lg:col-span-2">
-      <div id="resultHeader" class="flex items-center justify-between mb-3">
-        <div class="text-sm text-gray-600"><span id="count">0</span> results</div>
-        <div>
-          <select id="sortSelect" class="border rounded px-2 py-2 text-sm">
-            <option value="newest">Sort: Newest</option>
-            <option value="price-asc">Price: Low to High</option>
-            <option value="price-desc">Price: High to Low</option>
-            <option value="commission-desc">Commission: High to Low</option>
-          </select>
-        </div>
-      </div>
-      <div id="grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-      <p class="text-xs text-gray-500 mt-4">
-        Disclaimer: Commission amounts are provided by the listing party and are not guaranteed by GuaranteedCommission.com. Verify independently.
-      </p>
-    </div>
-  </main>
+  <script>
+    function getAllListings() {
+      const listings = JSON.parse(localStorage.getItem('listings') || '[]');
 
-  <div class="test-badge">Demo Search • Mapbox placeholder</div>
+      // Include stub listing if present (from agent invite path)
+      const status = localStorage.getItem('listingStatus');
+      const stub = JSON.parse(localStorage.getItem('listingStub') || 'null');
+      if (status === 'stub-live' && stub) {
+        listings.unshift({
+          id: 'stub',
+          address: stub.address || localStorage.getItem('shortAddress') || 'Coming Soon',
+          shortAddress: (stub.shortAddress || (stub.address || '').split(',')[0] || 'Coming Soon'),
+          plan: stub.plan || 'Listed Property Basic',
+          price: '', // Coming soon
+          beds: '', baths: '',
+          commissionDisplay: stub.commissionDisplay || '',
+          commissionType: stub.commissionType || '%',
+          brokerage: stub.brokerage || '',
+          agent: stub.agent || '',
+          agentPhone: stub.agentPhone || '',
+          photoUrl: 'coming-soon',
+          createdAt: Date.now()
+        });
+      }
+      return listings;
+    }
 
-  <script type="module" src="/search.js"></script>
+    function money(n){
+      if(n === '' || n === null || n === undefined) return '';
+      const num = Number(n);
+      if (isNaN(num)) return '';
+      return num.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    }
+
+    function tileHtml(l){
+      const imgSrc = (l.photoUrl === 'coming-soon' || !l.photoUrl)
+        ? 'https://via.placeholder.com/600x400?text=Coming+Soon'
+        : l.photoUrl;
+
+      const price = l.price ? money(l.price) : 'Price coming soon';
+      const beds = l.beds ? `${l.beds} bd` : '';
+      const baths = l.baths ? `${l.baths} ba` : '';
+      const meta = [beds, baths].filter(Boolean).join(' • ');
+
+      const commissionBadge = l.commissionDisplay
+        ? `<span class="text-xs px-2 py-1 rounded bg-green-100 text-green-700 ring-1 ring-green-300">${l.commissionDisplay}</span>`
+        : '';
+
+      const agentLine = (l.brokerage || l.agent || l.agentPhone)
+        ? `<p class="mt-1 text-xs text-gray-600">${[l.brokerage, l.agent, l.agentPhone].filter(Boolean).join(' • ')}</p>`
+        : '';
+
+      const href = `/listing.html?id=${encodeURIComponent(l.id || 'stub')}`;
+
+      return `
+        <a href="${href}" class="block bg-white rounded-lg shadow hover:shadow-md transition overflow-hidden">
+          <div class="relative">
+            <img src="${imgSrc}" alt="${l.shortAddress || l.address || ''}" class="w-full h-44 object-cover">
+            ${commissionBadge ? `<div class="absolute top-2 left-2">${commissionBadge}</div>` : ''}
+          </div>
+          <div class="p-3">
+            <div class="flex items-baseline justify-between">
+              <h3 class="font-semibold text-base truncate mr-2">${l.shortAddress || l.address || ''}</h3>
+              <span class="text-sm font-bold">${price}</span>
+            </div>
+            ${meta ? `<p class="text-sm text-gray-700 mt-1">${meta}</p>` : ''}
+            ${agentLine}
+          </div>
+        </a>
+      `;
+    }
+
+    function passesFilters(l, f){
+      // Text search
+      const hay = [
+        l.address || '', l.shortAddress || '', l.brokerage || '', l.agent || ''
+      ].join(' ').toLowerCase();
+      if (f.q && !hay.includes(f.q)) return false;
+
+      // Price
+      const price = Number(l.price || 0);
+      if (f.minPrice && (!price || price < f.minPrice)) return false;
+      if (f.maxPrice && price && price > f.maxPrice) return false;
+
+      // Beds / Baths (treat missing as 0)
+      const beds = Number(l.beds || 0);
+      const baths = Number(l.baths || 0);
+      if (f.bedsMin && beds < f.bedsMin) return false;
+      if (f.bathsMin && baths < f.bathsMin) return false;
+
+      return true;
+    }
+
+    function render(){
+      const grid = document.getElementById('tilesGrid');
+      const noRes = document.getElementById('noResults');
+
+      const f = {
+        q: (document.getElementById('q').value || '').toLowerCase().trim(),
+        minPrice: Number(document.getElementById('minPrice').value || 0),
+        maxPrice: Number(document.getElementById('maxPrice').value || 0),
+        bedsMin: Number(document.getElementById('bedsMin').value || 0),
+        bathsMin: Number(document.getElementById('bathsMin').value || 0),
+      };
+
+      const all = getAllListings();
+      const filtered = all.filter(l => passesFilters(l, f));
+
+      if (filtered.length === 0){
+        grid.innerHTML = '';
+        noRes.classList.remove('hidden');
+        return;
+      }
+      noRes.classList.add('hidden');
+
+      grid.innerHTML = filtered.map(tileHtml).join('');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // Wire buttons
+      document.getElementById('applyBtn').addEventListener('click', render);
+      document.getElementById('clearBtn').addEventListener('click', () => {
+        ['q','minPrice','maxPrice','bedsMin','bathsMin'].forEach(id => document.getElementById(id).value = '');
+        render();
+      });
+
+      // Live typing on main query
+      document.getElementById('q').addEventListener('input', render);
+
+      // Initial paint
+      render();
+    });
+  </script>
 </body>
 </html>
