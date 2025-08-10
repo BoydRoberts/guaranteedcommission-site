@@ -4,10 +4,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const stripe = Stripe("pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD");
 
   // --- 2) Load checkoutData produced by checkout.html ---
-  const checkoutData = JSON.parse(localStorage.getItem("checkoutData") || "{}");
+  let checkoutData = JSON.parse(localStorage.getItem("checkoutData") || "{}");
 
   // Defensive defaults
-  const {
+  let {
     selectedPlan = "Listed Property Basic",
     upgradeToPlus = false,
     banner = false,
@@ -18,8 +18,64 @@ document.addEventListener("DOMContentLoaded", () => {
     total = 0
   } = checkoutData;
 
-  // --- 3) Map products to Stripe Price IDs ---
-  // Keep these centralized so it’s easy to swap to live IDs later.
+  // --- 3) Read promo code (set on agent-detail page) ---
+  const rawPromo = (localStorage.getItem("agentPromoCode") || "").trim();
+
+  const isAugust2025 = (() => {
+    const now = new Date();
+    // JS month is 0-indexed: 7 = August
+    return now.getUTCFullYear() === 2025 && now.getUTCMonth() === 7;
+  })();
+
+  const isAugustFree = (code) => {
+    if (!code) return false;
+    const normalized = code.replace(/\s+/g, "").toLowerCase(); // "August Free" or "AUGUSTFREE"
+    return (normalized === "augustfree") && isAugust2025;
+  };
+
+  const promoApplied = isAugustFree(rawPromo);
+
+  // --- 4) If promo applies, override selections to be FREE ---
+  if (promoApplied) {
+    // Upgrade logic:
+    // - If Basic → force upgrade to Listed Property Plus
+    // - If Plus → keep Plus
+    // - If FSBO Plus → leave as-is (promo targets agent upgrades; keep extras free)
+    if (selectedPlan === "Listed Property Basic") {
+      selectedPlan = "Listed Property Plus";
+      upgradeToPlus = true;
+    }
+
+    // Free upgrades for agents: Banner + Pin (which includes Premium)
+    banner = true;
+    pin = true;
+    premium = true; // explicitly true so downstream UI shows Premium too
+
+    // Confidential is NOT auto-added by promo (only applies to FSBO flow if user chose it)
+    // If they had chosen it already, we zero it out too by making total $0.
+
+    // Zero out pricing entirely
+    baseCost = 0;
+    total = 0;
+
+    // Persist the override so subsequent pages see the promo result
+    checkoutData = {
+      ...checkoutData,
+      selectedPlan,
+      upgradeToPlus,
+      banner,
+      premium,
+      pin,
+      confidential,
+      baseCost,
+      total,
+      promoApplied: true,
+      promoCode: rawPromo
+    };
+    localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
+  }
+
+  // --- 5) Map products to Stripe Price IDs ---
   const PRICE_IDS = {
     LISTED_PLUS: "price_1RsQFlPTiT2zuxx0414nGtTu",      // $20
     FSBO_PLUS:   "price_1RsQJbPTiT2zuxx0w3GUIdxJ",      // $100
@@ -29,48 +85,45 @@ document.addEventListener("DOMContentLoaded", () => {
     CONFIDENTIAL:"price_1RsRP4PTiT2zuxx0eoOGEDvm"       // $100
   };
 
-  // --- 4) Build Stripe line items based on the final plan & upsells ---
+  // --- 6) Build Stripe line items based on final selections ---
   const lineItems = [];
 
-  // Base plan price item
-  // If the final plan is Listed Property Plus and baseCost==20, add LP Plus price
-  if (selectedPlan === "Listed Property Plus" && baseCost === 20) {
-    lineItems.push({ price: PRICE_IDS.LISTED_PLUS, quantity: 1 });
-  }
-  // If FSBO Plus and baseCost==100, add FSBO price
-  if (selectedPlan === "FSBO Plus" && baseCost === 100) {
-    lineItems.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
-  }
-
-  // Upsells
-  if (banner) {
-    lineItems.push({ price: PRICE_IDS.BANNER, quantity: 1 });
-  }
-
-  if (pin) {
-    // Pin includes Premium — only charge Pin ($50)
-    lineItems.push({ price: PRICE_IDS.PIN, quantity: 1 });
-  } else if (premium) {
-    lineItems.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
-  }
-
-  if (confidential) {
-    lineItems.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
+  if (!promoApplied) {
+    // Only add line items if no promo override
+    if (selectedPlan === "Listed Property Plus" && baseCost === 20) {
+      lineItems.push({ price: PRICE_IDS.LISTED_PLUS, quantity: 1 });
+    }
+    if (selectedPlan === "FSBO Plus" && baseCost === 100) {
+      lineItems.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
+    }
+    if (banner) {
+      lineItems.push({ price: PRICE_IDS.BANNER, quantity: 1 });
+    }
+    if (pin) {
+      lineItems.push({ price: PRICE_IDS.PIN, quantity: 1 });
+    } else if (premium) {
+      lineItems.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
+    }
+    if (confidential) {
+      lineItems.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
+    }
   }
 
-  // --- 5) Debug log so we can verify everything in the console ---
-  console.debug("[checkout.js] checkoutData:", checkoutData);
+  // --- 7) Debug log so we can verify everything in the console ---
+  console.debug("[checkout.js] rawPromo:", rawPromo, "promoApplied:", promoApplied);
+  console.debug("[checkout.js] checkoutData (final):", checkoutData);
   console.debug("[checkout.js] computed lineItems:", lineItems);
 
-  // --- 6) Handle $0 total: skip Stripe and move forward immediately ---
+  // --- 8) Handle $0 total: skip Stripe and move forward immediately ---
   if (!total || total === 0 || lineItems.length === 0) {
-    // No charge — continue straight to signature
-    // (Keeps your zero-dollar Basic flow snappy)
+    if (promoApplied) {
+      alert("Agent Promo Applied: “August Free”. Your upgrades are free this month. Proceeding to signature.");
+    }
     window.location.href = "/signature.html";
     return;
   }
 
-  // --- 7) Attach handler to the "Pay Now with Stripe" button ---
+  // --- 9) Attach handler to the "Pay Now with Stripe" button ---
   const payBtn = document.getElementById("payNowButton");
   if (!payBtn) {
     console.warn("[checkout.js] payNowButton not found on page.");
