@@ -3,98 +3,182 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sign Irrevocable Seller Communication</title>
+  <title>Sign Irrevocable Seller Communication | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .font-cursive { font-family: "Brush Script MT", cursive; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
+
   <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow">
     <h1 class="text-2xl font-bold text-center mb-6">Irrevocable Seller Communication</h1>
 
-    <div class="space-y-4 text-sm">
-      <p><strong>Selected Plan:</strong> <span id="selectedPlan">Loading...</span> - $<span id="planCost">0</span></p>
+    <!-- Order recap -->
+    <div class="bg-gray-50 border rounded p-4 mb-6 text-sm">
+      <p><strong>Selected Plan:</strong> <span id="recapPlan">—</span></p>
+      <p class="mt-1"><strong>Upgrades:</strong></p>
+      <ul id="recapUpgrades" class="list-disc list-inside text-gray-700"></ul>
+      <p class="mt-2 font-semibold">Total: $<span id="recapTotal">0</span></p>
+    </div>
 
-      <div id="iscText" class="text-sm leading-relaxed whitespace-pre-line border rounded p-3 bg-gray-50">
-        Loading ISC...
-      </div>
+    <!-- ISC text -->
+    <div id="iscBlock" class="text-sm leading-relaxed">
+      <p>To the escrow holder/closing agent,</p>
 
-      <div class="mt-6">
-        <label class="block mb-2 text-sm font-semibold">Electronic Signature:</label>
-        <input type="text" id="signature" placeholder="Type your full name here" class="font-cursive w-full border p-2 rounded" required>
-      </div>
+      <p class="mt-2" id="para1Listed">
+        I, <span id="letterName">[name]</span>, am the owner/seller of
+        <span id="letterAddressFull">[full address]</span>, #
+        <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
+        <span id="letterAddressShort1">[short address]</span> is listed for sale by
+        <span id="letterBrokerage">[listing brokerage]</span>,
+        <span id="letterAgent">[listing agent]</span>, listing agent,
+        <span id="letterAgentPhone">[agent phone]</span>.
+      </p>
 
-      <div class="mt-4">
-        <label class="block text-sm font-semibold">Date:</label>
-        <p id="date" class="text-sm"></p>
-      </div>
+      <p class="mt-2" id="para2Listed">
+        Let it be known: if a buyer’s agent/broker facilitates the sale of
+        <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent)
+        are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the
+        listing brokerage (if there is an agreement for broker-to-broker compensation) and second by
+        debiting me, the seller – a commission not to exceed
+        <span id="letterCommissionDisplay">[commission]</span>
+        <span id="commissionSuffix"></span>.
+      </p>
 
-      <div class="flex flex-col sm:flex-row gap-3 mt-6">
-        <button id="viewDocBtn" class="bg-gray-600 text-white px-4 py-2 rounded w-full sm:w-auto">
-          Sign and View Document
-        </button>
-        <button id="continueBtn" class="bg-blue-600 text-white px-6 py-2 rounded w-full sm:w-auto">
-          Continue
-        </button>
-      </div>
+      <!-- FSBO version -->
+      <p class="mt-2 hidden" id="para1FSBO">
+        I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
+        <span id="letterAddressFullFSBO">[full address]</span>, #
+        <span id="letterAPNFSBO">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
+        <span id="letterAddressShort1FSBO">[short address]</span> is listed for sale by owner (Me).
+        My phone number is <span id="fsboPhone"></span>. My email address is <span id="fsboEmail"></span>.
+      </p>
+
+      <p class="mt-2 hidden" id="para2FSBO">
+        Let it be known: if a buyer’s agent/broker facilitates the sale of
+        <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent)
+        are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed
+        <span id="letterCommissionDisplayFSBO">[commission]</span>
+        <span id="commissionSuffixFSBO"></span>.
+      </p>
+
+      <!-- Signature preview (handwritten font) -->
+      <p class="mt-4">
+        <span id="signaturePreview" class="pl-5 font-cursive">[Name]</span>
+        &nbsp;Electronic Signature &nbsp;&nbsp;&nbsp; <span id="signatureDate">[date]</span>
+      </p>
+    </div>
+
+    <!-- Signature input -->
+    <div class="mt-6">
+      <label for="signatureInput" class="block mb-2 text-sm font-semibold">Electronic Signature (type your full name):</label>
+      <input
+        type="text"
+        id="signatureInput"
+        class="font-cursive w-full border p-2 rounded"
+        placeholder="Type your full name here"
+        autocomplete="off"
+        required
+      />
+    </div>
+
+    <!-- Actions -->
+    <div class="flex flex-col md:flex-row gap-3 mt-6">
+      <button id="viewBtn" class="flex-1 bg-gray-600 text-white py-2 rounded">Sign and View Document</button>
+      <button id="continueBtn" class="flex-1 bg-blue-600 text-white py-2 rounded">Continue</button>
     </div>
   </div>
 
   <script>
-    const selectedPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
-    const basePlanCost = { "Listed Property Basic": 0, "Listed Property Plus": 20, "FSBO Plus": 100 }[selectedPlan] || 0;
+    // Load data from earlier steps
+    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
+    const checkoutData = JSON.parse(localStorage.getItem("checkoutData") || "{}");
+    const selectedPlan = checkoutData.plan || localStorage.getItem("selectedPlan") || "Listed Property Basic";
+    const postSig = localStorage.getItem("postSignatureOptions") || (selectedPlan.includes("FSBO") ? "fsbo" : "listed");
 
-    document.getElementById("selectedPlan").textContent = selectedPlan;
-    document.getElementById("planCost").textContent = basePlanCost;
-    document.getElementById("date").textContent = new Date().toLocaleDateString();
+    // Recap
+    document.getElementById("recapPlan").textContent = selectedPlan;
+    const upgrades = checkoutData.upgrades || [];
+    document.getElementById("recapUpgrades").innerHTML =
+      upgrades.length ? upgrades.map(u => `<li>${u}</li>`).join("") : "<li>None</li>";
+    document.getElementById("recapTotal").textContent = checkoutData.totalCost != null ? checkoutData.totalCost : 0;
 
-    function fillISC() {
-      const planType = (localStorage.getItem("postSignatureOptions") || "").toLowerCase() || (selectedPlan.includes("FSBO") ? "fsbo" : "listed");
-      const data = JSON.parse(localStorage.getItem("formData") || "{}");
+    // Fill ISC fields
+    const fullAddr = formData.address || "[full address]";
+    const shortAddr = fullAddr.split(",")[0] || "[short address]";
+    const commissionType = formData.commissionType || "%";
+    const commission = formData.commission || "";
+    const commissionDisplay = commissionType === "$" ? `$${commission}` : (commission ? `${commission}%` : "[commission]");
+    const suffix = commission && commissionType === "%" ? "of the total purchase price" : "";
 
-      const commissionType = data.commissionType || "%";
-      const commission = data.commission || "";
-      const fullAddress = data.address || "";
-      const shortAddress = fullAddress ? fullAddress.split(",")[0] : "[short address]";
-      const apn = data.apn || "[Parcel # / Pin # /Tax ID # / Folio # / APN #]";
-      const name = data.name || "[name]";
-      const agentPhone = data.agentPhone || "";
-      const brokerage = data.brokerage || "";
-      const agent = data.agent || "";
-      const suffix = commissionType === "%" ? "" : ""; // we’re not appending the price suffix here
-      const commissionDisplay = commissionType === "$" ? `$${commission}` : `${commission}%`;
+    // Listed bindings
+    document.getElementById("letterName").textContent = formData.name || "[name]";
+    document.getElementById("letterAddressFull").textContent = fullAddr;
+    document.getElementById("letterAPN").textContent = formData.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
+    document.getElementById("letterAddressShort1").textContent = shortAddr;
+    document.getElementById("letterAddressShort2").textContent = shortAddr;
+    document.getElementById("letterBrokerage").textContent = formData.brokerage || "[listing brokerage]";
+    document.getElementById("letterAgent").textContent = formData.agent || "[listing agent]";
+    document.getElementById("letterAgentPhone").textContent = formData.phone || "[agent phone]";
+    document.getElementById("letterCommissionDisplay").textContent = commissionDisplay;
+    document.getElementById("commissionSuffix").textContent = suffix ? " " + suffix : "";
 
-      let text = `To the escrow holder/closing agent,\n\n`;
+    // FSBO bindings
+    document.getElementById("letterNameFSBO").textContent = formData.name || "[name]";
+    document.getElementById("letterAddressFullFSBO").textContent = fullAddr;
+    document.getElementById("letterAPNFSBO").textContent = formData.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
+    document.getElementById("letterAddressShort1FSBO").textContent = shortAddr;
+    document.getElementById("letterAddressShort2FSBO").textContent = shortAddr;
+    document.getElementById("fsboPhone").textContent = formData.phone || "[owner/seller phone number]";
+    document.getElementById("fsboEmail").textContent = formData.brokerage || "[owner/seller email]";
+    document.getElementById("letterCommissionDisplayFSBO").textContent = commissionDisplay;
+    document.getElementById("commissionSuffixFSBO").textContent = suffix ? " " + suffix : "";
 
-      if (planType === "fsbo") {
-        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by owner (Me). My phone number is ${agentPhone}. My email address is ${brokerage}.\n\n`;
-        text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${suffix}.`;
-      } else {
-        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by ${brokerage}, ${agent}, listing agent, ${agentPhone}.\n\n`;
-        text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${suffix}.`;
-      }
-
-      text += `\n\n[Name] Electronic Signature        \tdate`;
-      document.getElementById("iscText").textContent = text;
+    // Toggle which paragraphs to show
+    if (postSig === "fsbo" || selectedPlan.includes("FSBO")) {
+      document.getElementById("para1Listed").classList.add("hidden");
+      document.getElementById("para2Listed").classList.add("hidden");
+      document.getElementById("para1FSBO").classList.remove("hidden");
+      document.getElementById("para2FSBO").classList.remove("hidden");
     }
 
-    window.addEventListener("DOMContentLoaded", fillISC);
+    // Signature preview + default value
+    const signatureInput = document.getElementById("signatureInput");
+    const signaturePreview = document.getElementById("signaturePreview");
+    signatureInput.value = formData.name || "";
+    signaturePreview.textContent = signatureInput.value || "[Name]";
 
-    document.getElementById("viewDocBtn").addEventListener("click", () => {
-      const sig = document.getElementById("signature").value.trim();
-      if (!sig) return alert("Please type your full name to sign the ISC.");
+    signatureInput.addEventListener("input", () => {
+      signaturePreview.textContent = signatureInput.value.trim() || "[Name]";
+    });
+
+    // Date
+    document.getElementById("signatureDate").textContent = new Date().toLocaleDateString();
+
+    // Buttons
+    document.getElementById("viewBtn").addEventListener("click", () => {
+      const sig = signatureInput.value.trim();
+      if (!sig) {
+        alert("Please type your full name to sign.");
+        return;
+      }
       localStorage.setItem("signature", sig);
+      // Open printable view with signature already saved
       window.location.href = "/printable-isc.html";
     });
 
     document.getElementById("continueBtn").addEventListener("click", () => {
-      const sig = document.getElementById("signature").value.trim();
-      if (!sig) return alert("Please type your full name to sign the ISC.");
+      const sig = signatureInput.value.trim();
+      if (!sig) {
+        alert("Please type your full name to sign.");
+        return;
+      }
       localStorage.setItem("signature", sig);
-      // Continue the flow
-      const next = localStorage.getItem("postSignatureOptions") === "fsbo" ? "/seller-detail.html" : "/agent-invite.html";
-      window.location.href = next;
+
+      // Decide where to send next; default to who-will-complete flow
+      // If you have a dedicated “who will complete” page, go there; otherwise agent-invite:
+      window.location.href = "/agent-invite.html";
     });
   </script>
 </body>
