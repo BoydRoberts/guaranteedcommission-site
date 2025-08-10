@@ -1,44 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Create Account | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .strength-bar { height: 6px; }
-    .strength-0 { width: 0%; }
-    .strength-1 { width: 25%; }
-    .strength-2 { width: 50%; }
-    .strength-3 { width: 75%; }
-    .strength-4 { width: 100%; }
-  </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-
-  <div class="max-w-lg mx-auto mt-10 bg-white p-6 md:p-8 rounded shadow">
+  <div class="max-w-md mx-auto mt-12 bg-white p-6 md:p-8 rounded shadow">
     <h1 class="text-2xl md:text-3xl font-bold text-center">Create Your Account</h1>
-    <p class="text-center text-sm text-gray-600 mt-1">State-of-the-art security & verification</p>
+    <p class="text-center text-xs text-gray-500 mt-1">
+      State-of-the-art security &amp; verification
+    </p>
 
-    <form id="createForm" class="space-y-4 mt-6" autocomplete="off">
-      <!-- Role (kept simple; default seller) -->
+    <form id="createAccountForm" class="space-y-4 mt-6" autocomplete="off">
       <div>
-        <label class="block text-sm font-medium mb-1">I am a</label>
-        <select id="role" class="w-full border rounded p-2">
-          <option value="seller">Seller</option>
-          <option value="agent">Listing Agent</option>
-        </select>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label for="name" class="block text-sm font-medium mb-1">Full Name</label>
-          <input id="name" type="text" class="w-full border rounded p-2" placeholder="Jane Seller" required>
-        </div>
-        <div>
-          <label for="phone" class="block text-sm font-medium mb-1">Phone</label>
-          <input id="phone" type="tel" class="w-full border rounded p-2" placeholder="123-456-7890" required>
-        </div>
+        <label for="name" class="block text-sm font-medium mb-1">Full Name</label>
+        <input id="name" type="text" class="w-full border rounded p-2" placeholder="John Doe" required>
       </div>
 
       <div>
@@ -46,169 +24,64 @@
         <input id="email" type="email" class="w-full border rounded p-2" placeholder="you@example.com" required>
       </div>
 
-      <!-- Passwords -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label for="password" class="block text-sm font-medium mb-1">Password</label>
-          <div class="relative">
-            <input id="password" type="password" class="w-full border rounded p-2 pr-16" placeholder="Min 12 characters" required>
-            <button type="button" id="togglePw1" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-600">Show</button>
-          </div>
-        </div>
-        <div>
-          <label for="confirmPassword" class="block text-sm font-medium mb-1">Confirm Password</label>
-          <div class="relative">
-            <input id="confirmPassword" type="password" class="w-full border rounded p-2 pr-16" placeholder="Re-enter password" required>
-            <button type="button" id="togglePw2" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-blue-600">Show</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Strength meter -->
       <div>
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-medium">Password strength</span>
-          <span id="strengthLabel" class="text-xs text-gray-500">—</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded overflow-hidden mt-1">
-          <div id="strengthBar" class="bg-green-600 strength-bar strength-0"></div>
-        </div>
-        <ul id="pwTips" class="mt-2 text-xs text-gray-600 list-disc list-inside space-y-1">
-          <li>Use at least 12 characters</li>
-          <li>Mix upper/lowercase, numbers, and symbols</li>
-          <li>Avoid names, addresses, and common words</li>
-        </ul>
+        <label for="phone" class="block text-sm font-medium mb-1">Phone</label>
+        <input id="phone" type="tel" class="w-full border rounded p-2" placeholder="123-456-7890" required>
       </div>
 
-      <!-- Verification method -->
-      <div class="text-sm">
-        <p class="font-medium mb-2">Preferred verification method</p>
-        <label class="mr-4"><input type="radio" name="verifyMethod" value="phone" checked> Phone</label>
-        <label><input type="radio" name="verifyMethod" value="email"> Email</label>
+      <div>
+        <label for="password" class="block text-sm font-medium mb-1">Password</label>
+        <input id="password" type="password" class="w-full border rounded p-2" required>
       </div>
 
-      <!-- Policy line -->
-      <p class="text-xs text-gray-500">
-        GuaranteedCommission.com only uses your information for escrow and identification.
-        Your information will not be sold to third parties or used for solicitation purposes.
-      </p>
+      <div>
+        <label for="confirmPassword" class="block text-sm font-medium mb-1">Confirm Password</label>
+        <input id="confirmPassword" type="password" class="w-full border rounded p-2" required>
+      </div>
 
-      <button id="submitBtn" type="submit" class="w-full bg-blue-600 text-white py-2 rounded font-semibold">
-        Create Account & Send Code
+      <p id="passwordError" class="text-xs text-red-600 hidden">Passwords do not match.</p>
+
+      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded font-semibold">
+        Create Account &amp; Send Code
       </button>
 
-      <p class="text-center text-sm">
-        Already have an account?
-        <a href="/login.html" class="text-blue-600 hover:underline">Log in</a>
-      </p>
-
-      <p id="status" class="text-center text-sm text-red-600"></p>
+      <div class="flex justify-between text-sm pt-2">
+        <a href="/login.html" class="text-blue-600 hover:underline">Already have an account?</a>
+      </div>
     </form>
   </div>
 
   <script>
-    // Prefill from prior steps when available
-    window.addEventListener("DOMContentLoaded", () => {
-      try {
-        const verifyData = JSON.parse(localStorage.getItem("verifyData") || "{}");
-        if (verifyData.name) document.getElementById("name").value = verifyData.name;
-        if (verifyData.phone) document.getElementById("phone").value = verifyData.phone;
-        if (verifyData.email) document.getElementById("email").value = verifyData.email;
-
-        // If we came from FSBO form where brokerage held the email, fall back:
-        const formData = JSON.parse(localStorage.getItem("formData") || "{}");
-        if (!verifyData.email && formData && formData.brokerage && /@/.test(formData.brokerage)) {
-          document.getElementById("email").value = formData.brokerage;
-        }
-      } catch {}
-    });
-
-    // Show/hide password toggles
-    const pw1 = document.getElementById("password");
-    const pw2 = document.getElementById("confirmPassword");
-    document.getElementById("togglePw1").addEventListener("click", () => togglePw(pw1, "togglePw1"));
-    document.getElementById("togglePw2").addEventListener("click", () => togglePw(pw2, "togglePw2"));
-
-    function togglePw(input, btnId) {
-      const btn = document.getElementById(btnId);
-      if (input.type === "password") {
-        input.type = "text"; btn.textContent = "Hide";
-      } else {
-        input.type = "password"; btn.textContent = "Show";
-      }
-    }
-
-    // Strength meter (simple heuristic)
-    const strengthBar = document.getElementById("strengthBar");
-    const strengthLabel = document.getElementById("strengthLabel");
-
-    function scorePassword(pw) {
-      let score = 0;
-      if (pw.length >= 12) score++;
-      if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
-      if (/\d/.test(pw)) score++;
-      if (/[^A-Za-z0-9]/.test(pw)) score++;
-      // Penalty for obvious patterns
-      if (/password|1234|qwer|abcd|letmein|admin/i.test(pw)) score = Math.max(0, score - 2);
-      return Math.min(score, 4);
-    }
-
-    function updateStrength(pw) {
-      const s = scorePassword(pw);
-      strengthBar.className = "bg-green-600 strength-bar strength-" + s;
-      const labels = ["Very weak", "Weak", "Fair", "Good", "Strong"];
-      strengthLabel.textContent = labels[s] || "—";
-    }
-
-    pw1.addEventListener("input", (e) => updateStrength(e.target.value));
-
-    // Submit: validate + simulate code send + redirect
-    document.getElementById("createForm").addEventListener("submit", (e) => {
+    document.getElementById("createAccountForm").addEventListener("submit", function(e) {
       e.preventDefault();
-      const status = document.getElementById("status");
-      status.textContent = "";
 
-      const role = document.getElementById("role").value;
       const name = document.getElementById("name").value.trim();
-      const phone = document.getElementById("phone").value.trim();
       const email = document.getElementById("email").value.trim();
+      const phone = document.getElementById("phone").value.trim();
       const password = document.getElementById("password").value;
       const confirmPassword = document.getElementById("confirmPassword").value;
-      const verifyMethod = document.querySelector("input[name='verifyMethod']:checked").value;
 
-      // Basic validations
-      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-      const phoneOk = /^\d{3}-\d{3}-\d{4}$/.test(phone) || /^\d{10}$/.test(phone);
-      const strength = scorePassword(password);
+      const passwordError = document.getElementById("passwordError");
 
-      if (!name || !emailOk || !phoneOk) {
-        status.textContent = "Please enter a valid name, email, and phone (123-456-7890).";
-        return;
-      }
       if (password !== confirmPassword) {
-        status.textContent = "Passwords do not match.";
+        passwordError.classList.remove("hidden");
         return;
-      }
-      if (strength < 3) {
-        status.textContent = "Password is too weak. Please strengthen it (12+ chars incl. upper, lower, number, symbol).";
-        return;
+      } else {
+        passwordError.classList.add("hidden");
       }
 
-      // Persist pending account for verify step
-      const pending = { role, name, phone, email, password, verifyMethod, createdAt: Date.now() };
-      localStorage.setItem("pendingAccount", JSON.stringify(pending));
+      // Save account info locally (test mode only)
+      const accountData = { name, email, phone, password };
+      localStorage.setItem("accountData", JSON.stringify(accountData));
 
-      // Also set the older verifyData key so older steps that expect it still work
-      localStorage.setItem("verifyData", JSON.stringify({ name, phone, email, verifyMethod }));
-
-      // Simulate sending a 6-digit code
+      // Generate 6-digit test code
       const code = Math.floor(100000 + Math.random() * 900000);
-      localStorage.setItem("verificationCode", String(code));
+      localStorage.setItem("verificationCode", code);
 
-      // For test mode visibility:
-      console.log("[CreateAccount] Sent verification code:", code, "to", verifyMethod === "phone" ? phone : email);
+      // Show test alert
+      alert(`Test mode: Verification code sent to ${email || phone}: ${code}`);
 
-      // Redirect to code entry
+      // Redirect to verify-code page
       window.location.href = "/verify-code.html";
     });
   </script>
