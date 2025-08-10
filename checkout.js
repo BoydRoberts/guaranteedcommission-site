@@ -1,83 +1,98 @@
+// /checkout.js
 document.addEventListener("DOMContentLoaded", () => {
-  // ⛳ Your Stripe *test* publishable key
+  // --- 1) Init Stripe (test key) ---
   const stripe = Stripe("pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD");
 
-  // Read the normalized checkout payload we build earlier in the flow
+  // --- 2) Load checkoutData produced by checkout.html ---
   const checkoutData = JSON.parse(localStorage.getItem("checkoutData") || "{}");
-  const selectedPlan = checkoutData.plan || localStorage.getItem("selectedPlan") || "Listed Property Basic";
-  const upgrades = Array.isArray(checkoutData.upgrades) ? checkoutData.upgrades : [];
-  const totalCost = Number(checkoutData.totalCost || 0);
-  const payer = checkoutData.payer === "agent" ? "agent" : "seller"; // default seller
 
-  // Decide where to send the user after payment
-  // - Agent payer: go back to agent-detail to continue editing unlocked features
-  // - Seller payer: proceed to signature
-  const successUrl = window.location.origin + (payer === "agent" ? "/agent-detail.html" : "/signature.html");
-  const cancelUrl = window.location.href;
+  // Defensive defaults
+  const {
+    selectedPlan = "Listed Property Basic",
+    upgradeToPlus = false,
+    banner = false,
+    premium = false,
+    pin = false,
+    confidential = false,
+    baseCost = 0,
+    total = 0
+  } = checkoutData;
 
-  // Map plan/upgrades -> Stripe Price IDs
-  // (Keep these in sync with your Stripe Dashboard)
+  // --- 3) Map products to Stripe Price IDs ---
+  // Keep these centralized so it’s easy to swap to live IDs later.
   const PRICE_IDS = {
-    PLUS: "price_1RsQFlPTiT2zuxx0414nGtTu",         // $20 Listed Property Plus
-    FSBO_PLUS: "price_1RsQJbPTiT2zuxx0w3GUIdxJ",    // $100 FSBO Plus
-    BANNER: "price_1RsQTOPTiT2zuxx0TLCwAthR",       // $10 Banner
-    PREMIUM: "price_1RsQbjPTiT2zuxx0hA6p5H4h",      // $10 Premium Placement
-    PIN: "price_1RsQknPTiT2zuxx0Av9skJyW",          // $50 Pin Placement (includes Premium)
-    CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm"  // $100 Confidential FSBO Upgrade
+    LISTED_PLUS: "price_1RsQFlPTiT2zuxx0414nGtTu",      // $20
+    FSBO_PLUS:   "price_1RsQJbPTiT2zuxx0w3GUIdxJ",      // $100
+    BANNER:      "price_1RsQTOPTiT2zuxx0TLCwAthR",      // $10
+    PREMIUM:     "price_1RsQbjPTiT2zuxx0hA6p5H4h",      // $10
+    PIN:         "price_1RsQknPTiT2zuxx0Av9skJyW",      // $50 (includes Premium)
+    CONFIDENTIAL:"price_1RsRP4PTiT2zuxx0eoOGEDvm"       // $100
   };
 
+  // --- 4) Build Stripe line items based on the final plan & upsells ---
   const lineItems = [];
 
-  // Base plan
-  if (selectedPlan === "Listed Property Plus") {
-    lineItems.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-  } else if (selectedPlan === "FSBO Plus") {
+  // Base plan price item
+  // If the final plan is Listed Property Plus and baseCost==20, add LP Plus price
+  if (selectedPlan === "Listed Property Plus" && baseCost === 20) {
+    lineItems.push({ price: PRICE_IDS.LISTED_PLUS, quantity: 1 });
+  }
+  // If FSBO Plus and baseCost==100, add FSBO price
+  if (selectedPlan === "FSBO Plus" && baseCost === 100) {
     lineItems.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
   }
-  // (Listed Property Basic has no base charge)
 
-  // Upgrades (we match by substring so the labels can stay human-friendly)
-  const addIfChosen = (labelSubstr, priceId) => {
-    if (upgrades.some(u => u.toLowerCase().includes(labelSubstr))) {
-      lineItems.push({ price: priceId, quantity: 1 });
-    }
-  };
-
-  addIfChosen("banner", PRICE_IDS.BANNER);
-  if (upgrades.some(u => u.toLowerCase().includes("pin placement"))) {
-    addIfChosen("pin placement", PRICE_IDS.PIN);
-  } else {
-    addIfChosen("premium placement", PRICE_IDS.PREMIUM);
+  // Upsells
+  if (banner) {
+    lineItems.push({ price: PRICE_IDS.BANNER, quantity: 1 });
   }
-  addIfChosen("confidential fsbo", PRICE_IDS.CONFIDENTIAL);
 
-  // 🧪 Debug: show what we're about to send
-  console.log("[checkout.js] checkoutData:", checkoutData);
-  console.log("[checkout.js] computed lineItems:", lineItems);
-  console.log("[checkout.js] payer:", payer, "successUrl:", successUrl);
+  if (pin) {
+    // Pin includes Premium — only charge Pin ($50)
+    lineItems.push({ price: PRICE_IDS.PIN, quantity: 1 });
+  } else if (premium) {
+    lineItems.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
+  }
 
-  // Handle $0 scenarios gracefully (e.g., Basic with no upsells)
-  const payBtn = document.getElementById("payNowBtn") || document.querySelector("button");
-  if (!payBtn) return;
+  if (confidential) {
+    lineItems.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
+  }
+
+  // --- 5) Debug log so we can verify everything in the console ---
+  console.debug("[checkout.js] checkoutData:", checkoutData);
+  console.debug("[checkout.js] computed lineItems:", lineItems);
+
+  // --- 6) Handle $0 total: skip Stripe and move forward immediately ---
+  if (!total || total === 0 || lineItems.length === 0) {
+    // No charge — continue straight to signature
+    // (Keeps your zero-dollar Basic flow snappy)
+    window.location.href = "/signature.html";
+    return;
+  }
+
+  // --- 7) Attach handler to the "Pay Now with Stripe" button ---
+  const payBtn = document.getElementById("payNowButton");
+  if (!payBtn) {
+    console.warn("[checkout.js] payNowButton not found on page.");
+    return;
+  }
 
   payBtn.addEventListener("click", async () => {
-    // If total is explicitly zero, skip Stripe and go straight to successUrl
-    if (totalCost === 0 || lineItems.length === 0) {
-      console.log("[checkout.js] Skipping Stripe (free checkout). Redirecting to:", successUrl);
-      window.location.href = successUrl;
-      return;
-    }
+    try {
+      const { error } = await stripe.redirectToCheckout({
+        lineItems,
+        mode: "payment",
+        successUrl: window.location.origin + "/signature.html",
+        cancelUrl: window.location.href
+      });
 
-    const { error } = await stripe.redirectToCheckout({
-      lineItems,
-      mode: "payment",
-      successUrl,
-      cancelUrl
-    });
-
-    if (error) {
-      alert("Stripe error: " + error.message);
-      console.error(error);
+      if (error) {
+        alert("Stripe error: " + error.message);
+        console.error("[checkout.js] Stripe error:", error);
+      }
+    } catch (e) {
+      alert("Unexpected error during checkout.");
+      console.error("[checkout.js] Unexpected error:", e);
     }
   });
 });
