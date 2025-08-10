@@ -3,68 +3,150 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Review & Checkout</title>
+  <title>Review & Checkout | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Stripe.js (needed by checkout.js) -->
   <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded shadow">
-    <!-- Test badge -->
-    <div class="mb-4">
-      <span class="inline-block text-xs font-semibold px-2 py-1 bg-yellow-200 border border-yellow-400 rounded">
-        TEST MODE — Stripe sandbox
+  <div class="max-w-2xl mx-auto mt-10">
+    <!-- Test Mode badge -->
+    <div class="flex justify-end mb-2">
+      <span class="inline-flex items-center text-xs font-semibold px-2 py-1 rounded bg-yellow-100 text-yellow-800 border border-yellow-300">
+        Test Mode
       </span>
     </div>
 
-    <h1 class="text-2xl font-bold text-center mb-6">Review & Checkout</h1>
+    <div class="bg-white p-6 rounded shadow">
+      <h1 class="text-2xl font-bold text-center mb-6">Review & Checkout</h1>
 
-    <div class="space-y-4 text-sm">
-      <p><strong>Selected Plan:</strong> <span id="planName">Loading…</span></p>
+      <!-- Summary -->
+      <div class="space-y-3 text-sm">
+        <div class="flex justify-between">
+          <span class="font-semibold">Selected Plan:</span>
+          <span id="selectedPlan">—</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="font-semibold">Base Price:</span>
+          <span>$<span id="basePrice">0</span></span>
+        </div>
 
-      <div>
-        <strong>Upgrades:</strong>
-        <ul id="upgradeList" class="list-disc list-inside text-gray-700 mt-1"></ul>
+        <div class="mt-4">
+          <div class="font-semibold">Upgrades:</div>
+          <ul id="upgradeList" class="list-disc list-inside text-gray-700 mt-1"></ul>
+        </div>
+
+        <hr class="my-4"/>
+
+        <div class="flex justify-between text-lg font-bold">
+          <span>Total:</span>
+          <span>$<span id="totalAmount">0</span></span>
+        </div>
       </div>
 
-      <p class="mt-2 text-lg font-bold">Total: $<span id="totalAmount">0</span></p>
+      <!-- Actions -->
+      <div class="mt-6 flex items-center justify-between">
+        <a href="/upsell.html" class="text-sm text-blue-600 hover:underline">Back</a>
+        <button id="payNowButton" class="bg-green-600 text-white px-6 py-2 rounded">
+          Pay Now with Stripe
+        </button>
+      </div>
+
+      <!-- Debug (optional) -->
+      <details class="mt-6">
+        <summary class="cursor-pointer text-sm text-gray-600">Show debug info</summary>
+        <pre id="debugOut" class="mt-2 text-xs bg-gray-50 p-3 rounded border overflow-auto"></pre>
+      </details>
     </div>
-
-    <button id="payNowBtn" class="w-full bg-green-600 text-white py-2 rounded mt-6">
-      Pay Now with Stripe
-    </button>
-
-    <p class="text-xs text-gray-500 mt-4">
-      You will be redirected to Stripe to complete payment (if required).
-    </p>
   </div>
 
   <script>
-    // Read normalized checkout payload built in upsell/verify steps
-    const checkoutData = JSON.parse(localStorage.getItem("checkoutData") || "{}");
+    // Read the base plan from earlier in the flow
+    const originalPlan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
 
-    // Robust plan fallback: checkoutData.plan -> selectedPlan -> 'Listed Property Basic'
-    const planName = checkoutData.plan 
-      ? checkoutData.plan 
-      : (localStorage.getItem("selectedPlan") || "Listed Property Basic");
+    // Read upsell selections
+    const upgradeToPlus = localStorage.getItem("upgradeToPlus") === "true";
+    const banner       = localStorage.getItem("banner") === "true";
+    const premium      = localStorage.getItem("premium") === "true";
+    const pin          = localStorage.getItem("pin") === "true";
+    const confidential = localStorage.getItem("confidential") === "true";
 
-    // Render plan
-    document.getElementById("planName").textContent = planName;
+    // Compute final plan and base cost
+    let finalPlan = originalPlan;
+    let baseCost  = 0;
 
-    // Render upgrades
-    const upgrades = Array.isArray(checkoutData.upgrades) ? checkoutData.upgrades : [];
-    const upgradeList = document.getElementById("upgradeList");
-    upgradeList.innerHTML = upgrades.length 
-      ? upgrades.map(u => `<li>${u}</li>`).join("")
-      : "<li>None</li>";
+    if (originalPlan === "Listed Property Basic" && upgradeToPlus) {
+      finalPlan = "Listed Property Plus";
+      baseCost = 20;
+    } else if (originalPlan === "Listed Property Plus") {
+      baseCost = 20;
+    } else if (originalPlan === "FSBO Plus") {
+      baseCost = 100;
+    } else {
+      baseCost = 0; // Basic, no upgrade
+    }
 
-    // Render total
-    const total = Number(checkoutData.totalCost || 0);
-    document.getElementById("totalAmount").textContent = total.toFixed(0);
+    // Build upgrades for display & total calculation
+    const upgradesForDisplay = [];
+    let upgradesTotal = 0;
 
-    // (Payment click handled by checkout.js)
+    // FSBO Confidential only meaningful for FSBO Plus flow,
+    // but if user somehow selected it, we still honor the flag.
+    if (confidential) {
+      upgradesForDisplay.push({ label: "Confidential FSBO Upgrade", amount: 100 });
+      upgradesTotal += 100;
+    }
+
+    if (banner) {
+      upgradesForDisplay.push({ label: "Banner", amount: 10 });
+      upgradesTotal += 10;
+    }
+
+    if (pin) {
+      // Pin includes Premium at no extra charge beyond the $50
+      upgradesForDisplay.push({ label: "Pin Placement (includes Premium)", amount: 50 });
+      upgradesTotal += 50;
+    } else if (premium) {
+      upgradesForDisplay.push({ label: "Premium Placement", amount: 10 });
+      upgradesTotal += 10;
+    }
+
+    const total = baseCost + upgradesTotal;
+
+    // Populate the UI
+    document.getElementById("selectedPlan").textContent = finalPlan;
+    document.getElementById("basePrice").textContent = baseCost.toString();
+    document.getElementById("totalAmount").textContent = total.toString();
+
+    const ul = document.getElementById("upgradeList");
+    if (upgradesForDisplay.length === 0) {
+      ul.innerHTML = '<li>None</li>';
+    } else {
+      ul.innerHTML = upgradesForDisplay
+        .map(u => `<li>${u.label} ($${u.amount})</li>`)
+        .join("");
+    }
+
+    // Persist a single checkoutData object for checkout.js to consume
+    const checkoutData = {
+      selectedPlan: finalPlan,
+      // keep the flags so checkout.js can map to Stripe price IDs reliably
+      upgradeToPlus: upgradeToPlus,
+      banner: banner,
+      premium: premium,
+      pin: pin,
+      confidential: confidential,
+      baseCost: baseCost,
+      total: total
+    };
+    localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
+
+    // Debug dump for easy testing
+    document.getElementById("debugOut").textContent =
+      JSON.stringify({ originalPlan, checkoutData, upgradesForDisplay }, null, 2);
   </script>
-
+  <!-- checkout.js will attach the click listener to #payNowButton -->
   <script src="/checkout.js"></script>
 </body>
 </html>
