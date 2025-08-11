@@ -10,7 +10,7 @@
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">verify build 2025-08-11a</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">verify build 2025-08-11b</span>
       </div>
 
       <h1 class="text-2xl font-bold text-center">Enter Verification Code</h1>
@@ -30,10 +30,10 @@
         </div>
       </div>
 
-      <form id="verifyForm" class="space-y-4" autocomplete="off">
+      <form id="verifyForm" class="space-y-4" autocomplete="off" novalidate>
         <div>
           <label for="code" class="block text-sm font-medium text-gray-700">6-digit code</label>
-          <input id="code" inputmode="numeric" pattern="\\d{6}" maxlength="6" required
+          <input id="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required
                  class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono tracking-widest"
                  placeholder="••••••" />
         </div>
@@ -51,7 +51,7 @@
   </div>
 
   <script>
-    console.log('[verify] build 2025-08-11a');
+    console.log('[verify] build 2025-08-11b');
 
     const $ = (id) => document.getElementById(id);
     const statusBox = $('status');
@@ -89,6 +89,13 @@
       ? `We sent a 6-digit code to ${maskEmail(target)}.`
       : `We sent a 6-digit code.`;
 
+    // Sanitize input to digits only & clear native validity on input
+    $('code').addEventListener('input', (e) => {
+      const onlyDigits = (e.target.value || '').replace(/\D/g, '').slice(0, 6);
+      if (e.target.value !== onlyDigits) e.target.value = onlyDigits;
+      e.target.setCustomValidity('');
+    });
+
     // Resend = regenerate a code
     $('resend').addEventListener('click', (e) => {
       e.preventDefault();
@@ -98,7 +105,7 @@
       setStatus('A new code has been generated.', true);
     });
 
-    // Copy code (handy on mobile simulators)
+    // Copy code
     $('copy').addEventListener('click', async (e) => {
       e.preventDefault();
       try {
@@ -113,6 +120,13 @@
     $('verifyForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const entered = ($('code').value || '').trim();
+
+      // client check first to avoid HTML5 pattern message
+      if (!/^[0-9]{6}$/.test(entered)) {
+        $('code').setCustomValidity('Enter 6 digits');
+        $('code').reportValidity();
+        return;
+      }
 
       const saved = localStorage.getItem('verificationCode');
       if (!saved) {
