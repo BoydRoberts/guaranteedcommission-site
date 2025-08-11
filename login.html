@@ -4,31 +4,37 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login / Create Account | GuaranteedCommission.com</title>
+  <meta name="description" content="Secure login and account creation for GuaranteedCommission.com with strong password protection and verification." />
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-900">
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6">
+      <!-- Header -->
       <div class="text-center mb-6">
         <h1 class="text-2xl font-bold">Secure Access</h1>
         <p class="text-sm text-gray-600 mt-1">State-of-the-art security & verification</p>
       </div>
 
       <!-- Tabs -->
-      <div class="flex border-b mb-4" role="tablist">
-        <button id="tab-signin" class="flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700">
+      <div class="flex border-b mb-4" role="tablist" aria-label="Auth Tabs">
+        <button type="button" id="tab-signin"
+          class="flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700"
+          aria-selected="true" aria-controls="panel-signin">
           Sign In
         </button>
-        <button id="tab-create" class="flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+        <button type="button" id="tab-create"
+          class="flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700"
+          aria-selected="false" aria-controls="panel-create">
           Create Account
         </button>
       </div>
 
       <!-- Status -->
-      <div id="status" class="hidden mb-4 text-sm rounded-lg p-3"></div>
+      <div id="status" class="hidden mb-4 text-sm rounded-lg p-3" role="alert"></div>
 
       <!-- SIGN IN -->
-      <form id="loginForm" class="space-y-4" autocomplete="off">
+      <form id="loginForm" class="space-y-4" autocomplete="off" aria-labelledby="tab-signin">
         <div>
           <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
           <input id="email" name="email" type="email" required
@@ -61,7 +67,7 @@
       </form>
 
       <!-- CREATE ACCOUNT -->
-      <form id="createForm" class="space-y-4 hidden" autocomplete="off">
+      <form id="createForm" class="space-y-4 hidden" autocomplete="off" aria-labelledby="tab-create">
         <div>
           <label for="c_name" class="block text-sm font-medium text-gray-700">Full Name</label>
           <input id="c_name" type="text" required
@@ -89,13 +95,13 @@
           </div>
           <!-- Strength -->
           <div class="mt-2">
-            <div class="h-2 w-full bg-gray-200 rounded">
+            <div class="h-2 w-full bg-gray-200 rounded" aria-hidden="true">
               <div id="strengthBar" class="h-2 w-0 rounded"></div>
             </div>
             <p id="strengthText" class="text-xs mt-1 text-gray-600">Password strength: —</p>
             <ul class="text-[11px] text-gray-600 mt-2 list-disc list-inside">
               <li>At least 10 characters</li>
-              <li>Include UPPER & lower case letters</li>
+              <li>Include UPPER &amp; lower case letters</li>
               <li>Include a number and a symbol</li>
             </ul>
           </div>
@@ -126,13 +132,13 @@
       </form>
 
       <p class="text-[11px] text-gray-500 text-center mt-4">
-        We never sell your data. Used only for escrow & identification.
+        We never sell your data. Used only for escrow &amp; identification.
       </p>
     </div>
   </div>
 
   <script>
-    // Tab logic
+    // ---- Tab logic ----
     const tabSignin = document.getElementById('tab-signin');
     const tabCreate = document.getElementById('tab-create');
     const loginForm = document.getElementById('loginForm');
@@ -142,29 +148,34 @@
 
     function showSignin() {
       tabSignin.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
+      tabSignin.setAttribute('aria-selected', 'true');
       tabCreate.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+      tabCreate.setAttribute('aria-selected', 'false');
       loginForm.classList.remove('hidden');
       createForm.classList.add('hidden');
     }
+
     function showCreate() {
       tabCreate.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
+      tabCreate.setAttribute('aria-selected', 'true');
       tabSignin.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+      tabSignin.setAttribute('aria-selected', 'false');
       createForm.classList.remove('hidden');
       loginForm.classList.add('hidden');
     }
 
     tabSignin.addEventListener('click', showSignin);
     tabCreate.addEventListener('click', showCreate);
-    goCreate.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
-    goSignin.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
+    if (goCreate) goCreate.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
+    if (goSignin) goSignin.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
 
     // Auto-open Create tab when coming from Box 2 flows
     (function autoOpenCreate() {
-      const reason = localStorage.getItem('nextAfterLogin'); // e.g., '/verify-code.html'
+      const reason = localStorage.getItem('nextAfterLogin'); // e.g., '/verify-code.html' or next step
       if (reason) showCreate();
     })();
 
-    // Status helper
+    // ---- Status helper ----
     const statusBox = document.getElementById('status');
     function setStatus(msg, ok=false) {
       statusBox.classList.remove('hidden');
@@ -174,11 +185,13 @@
         : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
     }
 
-    // Show/Hide password buttons
+    // ---- Show/Hide password toggles ----
     function wireToggle(inputId, btnId) {
       const input = document.getElementById(inputId);
       const btn = document.getElementById(btnId);
-      btn.addEventListener('click', () => {
+      if (!input || !btn) return;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
         const showing = input.type === 'text';
         input.type = showing ? 'password' : 'text';
         btn.textContent = showing ? 'Show' : 'Hide';
@@ -189,7 +202,7 @@
     wireToggle('c_password','togglePwdC1');
     wireToggle('c_password2','togglePwdC2');
 
-    // Password strength checker
+    // ---- Password strength + match ----
     const cPwd = document.getElementById('c_password');
     const cPwd2 = document.getElementById('c_password2');
     const strengthBar = document.getElementById('strengthBar');
@@ -206,7 +219,9 @@
       if (p.length >= 14) score += 1; // bonus
       return Math.min(score, 4);
     }
+
     function updateStrength() {
+      if (!cPwd || !strengthBar || !strengthText) return;
       const s = scorePassword(cPwd.value);
       const widths = ['0%','25%','50%','75%','100%'];
       const colors = ['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'];
@@ -216,6 +231,7 @@
       strengthText.textContent = 'Password strength: ' + labels[s];
 
       // match status
+      if (!cPwd2) return;
       if (cPwd2.value.length) {
         if (cPwd.value === cPwd2.value) {
           matchMsg.textContent = 'Passwords match';
@@ -229,16 +245,16 @@
         matchMsg.className = 'text-xs mt-1';
       }
     }
-    cPwd.addEventListener('input', updateStrength);
-    cPwd2.addEventListener('input', updateStrength);
+    if (cPwd) cPwd.addEventListener('input', updateStrength);
+    if (cPwd2) cPwd2.addEventListener('input', updateStrength);
 
-    // CREATE ACCOUNT submit
+    // ---- CREATE ACCOUNT submit ----
     document.getElementById('createForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const name = document.getElementById('c_name').value.trim();
       const email = document.getElementById('c_email').value.trim().toLowerCase();
-      const p1 = cPwd.value;
-      const p2 = cPwd2.value;
+      const p1 = cPwd ? cPwd.value : '';
+      const p2 = cPwd2 ? cPwd2.value : '';
 
       // enforce strong
       const s = scorePassword(p1);
@@ -253,7 +269,7 @@
         return;
       }
 
-      // Save
+      // Save account (simulated)
       localStorage.setItem('userAccount', JSON.stringify({ name, email, password: p1 }));
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('loggedInEmail', email);
@@ -266,11 +282,12 @@
       localStorage.setItem('verifyTarget', email);
 
       // Continue flow
-      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
+      const configuredNext = localStorage.getItem('nextAfterLogin');
+      const next = configuredNext || '/verify-code.html';
       setTimeout(()=>{ window.location.href = next; }, 600);
     });
 
-    // SIGN IN submit
+    // ---- SIGN IN submit ----
     document.getElementById('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const email = document.getElementById('email').value.trim().toLowerCase();
@@ -300,9 +317,12 @@
       localStorage.setItem('loggedInEmail', email);
       setStatus('Login successful. Redirecting…', true);
 
-      const next = localStorage.getItem('nextAfterLogin') || '/index.html';
+      const configuredNext = localStorage.getItem('nextAfterLogin');
+      const next = configuredNext || '/index.html';
       setTimeout(()=>{ window.location.href = next; }, 500);
     });
+
+    // ---- Quality-of-life: Enter-to-submit works by default; ensure buttons are type="button" for toggles ----
   </script>
 </body>
 </html>
