@@ -38,6 +38,7 @@
             <button type="button" id="togglePw"
                     class="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-gray-700"
                     aria-pressed="false" aria-label="Show password">
+              <!-- eye (show) -->
               <svg id="eyeOn" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                    viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
@@ -45,6 +46,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
                       d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
               </svg>
+              <!-- eye-off (hide) -->
               <svg id="eyeOff" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none"
                    viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
@@ -68,7 +70,7 @@
         <p id="formErr" class="hidden text-center text-red-600 text-sm mt-2"></p>
       </form>
 
-      <!-- Optional: test mode bypass to keep you moving if storage is empty -->
+      <!-- Test bypass so you’re never blocked while iterating -->
       <div class="mt-4">
         <button id="bypassBtn"
                 class="w-full text-xs text-gray-600 hover:text-gray-800 underline">
@@ -79,93 +81,89 @@
   </main>
 
   <script>
-    // Show/hide password
-    const togglePw = document.getElementById('togglePw');
-    const pwInput = document.getElementById('password');
-    const eyeOn = document.getElementById('eyeOn');
-    const eyeOff = document.getElementById('eyeOff');
+    document.addEventListener('DOMContentLoaded', () => {
+      // Show/hide password
+      const togglePw = document.getElementById('togglePw');
+      const pwInput = document.getElementById('password');
+      const eyeOn = document.getElementById('eyeOn');
+      const eyeOff = document.getElementById('eyeOff');
 
-    togglePw.addEventListener('click', () => {
-      const showing = pwInput.type === 'text';
-      pwInput.type = showing ? 'password' : 'text';
-      togglePw.setAttribute('aria-pressed', String(!showing));
-      togglePw.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
-      eyeOn.classList.toggle('hidden', !showing);   // if we were showing, now hide
-      eyeOff.classList.toggle('hidden', showing);   // opposite
-    });
+      togglePw.addEventListener('click', () => {
+        const showing = pwInput.type === 'text';
+        pwInput.type = showing ? 'password' : 'text';
+        togglePw.setAttribute('aria-pressed', String(!showing));
+        togglePw.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+        eyeOn.classList.toggle('hidden', !showing);
+        eyeOff.classList.toggle('hidden', showing);
+      });
 
-    const email = document.getElementById('email');
-    const emailErr = document.getElementById('emailErr');
-    const pwErr = document.getElementById('pwErr');
-    const formErr = document.getElementById('formErr');
+      const email = document.getElementById('email');
+      const emailErr = document.getElementById('emailErr');
+      const pwErr = document.getElementById('pwErr');
+      const formErr = document.getElementById('formErr');
 
-    function validate() {
-      let ok = true;
-      if (!email.value || !/.+@.+\..+/.test(email.value)) {
-        emailErr.classList.remove('hidden'); ok = false;
-      } else emailErr.classList.add('hidden');
+      function validate() {
+        let ok = true;
+        if (!email.value || !/.+@.+\..+/.test(email.value)) {
+          emailErr.classList.remove('hidden'); ok = false;
+        } else emailErr.classList.add('hidden');
 
-      if (!pwInput.value) {
-        pwErr.classList.remove('hidden'); ok = false;
-      } else pwErr.classList.add('hidden');
+        if (!pwInput.value) {
+          pwErr.classList.remove('hidden'); ok = false;
+        } else pwErr.classList.add('hidden');
 
-      return ok;
-    }
+        return ok;
+      }
 
-    // We’ll look for an account from our create-account flow.
-    function getStoredAccount() {
-      // Primary (newer) key
-      const a = localStorage.getItem('gc_account');
-      if (a) { try { return JSON.parse(a); } catch(_){} }
-      // Fallback to older keys if they exist
-      const verifyData = localStorage.getItem('verifyData');
-      if (verifyData) { try { return JSON.parse(verifyData); } catch(_){} }
-      // Nothing found
-      return null;
-    }
+      function getStoredAccount() {
+        const a = localStorage.getItem('gc_account');
+        if (a) { try { return JSON.parse(a); } catch(_){} }
+        const verifyData = localStorage.getItem('verifyData');
+        if (verifyData) { try { return JSON.parse(verifyData); } catch(_){} }
+        return null;
+      }
 
-    document.getElementById('loginForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      formErr.classList.add('hidden');
-      if (!validate()) return;
+      document.getElementById('loginForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        formErr.classList.add('hidden');
+        if (!validate()) return;
 
-      const acct = getStoredAccount();
-      const inputEmail = email.value.trim().toLowerCase();
-      const inputPw = pwInput.value;
+        const acct = getStoredAccount();
+        const inputEmail = email.value.trim().toLowerCase();
+        const inputPw = pwInput.value;
 
-      // If we have an account saved from create-account.html, enforce it
-      if (acct && acct.email) {
-        const savedEmail = (acct.email || '').trim().toLowerCase();
-        const savedPw = acct.password || ''; // in our demo we store plaintext; when we move to Firebase we’ll swap this
+        if (acct && acct.email) {
+          const savedEmail = (acct.email || '').trim().toLowerCase();
+          const savedPw = acct.password || '';
 
-        if (inputEmail !== savedEmail || inputPw !== savedPw) {
-          formErr.textContent = 'Incorrect email or password.';
-          formErr.classList.remove('hidden');
+          if (inputEmail !== savedEmail || inputPw !== savedPw) {
+            formErr.textContent = 'Incorrect email or password.';
+            formErr.classList.remove('hidden');
+            return;
+          }
+
+          localStorage.setItem('gc_logged_in', '1');
+
+          // If a verification code exists, send them to verify; otherwise proceed
+          const needsVerify = localStorage.getItem('verificationCode');
+          if (needsVerify) {
+            window.location.href = '/verify-code.html';
+          } else {
+            window.location.href = '/upsell.html';
+          }
           return;
         }
 
-        // Good login
+        // No stored account (direct visit) — keep you moving
         localStorage.setItem('gc_logged_in', '1');
+        window.location.href = '/upsell.html';
+      });
 
-        // If user still hasn’t verified (demo code path), push them to verify; else continue to upsell
-        const needsVerify = localStorage.getItem('verificationCode');
-        if (needsVerify) {
-          window.location.href = '/verify-code.html';
-        } else {
-          window.location.href = '/upsell.html';
-        }
-        return;
-      }
-
-      // If no saved account (e.g., you came here directly), keep you moving:
-      localStorage.setItem('gc_logged_in', '1');
-      window.location.href = '/upsell.html';
-    });
-
-    // Test bypass (keeps you moving if login is blocked)
-    document.getElementById('bypassBtn').addEventListener('click', () => {
-      localStorage.setItem('gc_logged_in', '1');
-      window.location.href = '/upsell.html';
+      // Bypass for testing
+      document.getElementById('bypassBtn').addEventListener('click', () => {
+        localStorage.setItem('gc_logged_in', '1');
+        window.location.href = '/upsell.html';
+      });
     });
   </script>
 </body>
