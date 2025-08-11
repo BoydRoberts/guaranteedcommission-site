@@ -10,8 +10,13 @@
 <body class="bg-gray-100 text-gray-900">
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6">
+      <!-- Build/version badge (helps us confirm we’re on the right file) -->
+      <div class="text-center mb-2">
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">build 2025-08-11a</span>
+      </div>
+
       <!-- Header -->
-      <div class="text-center mb-6">
+      <div class="text-center mb-4">
         <h1 class="text-2xl font-bold">Secure Access</h1>
         <p class="text-sm text-gray-600 mt-1">State-of-the-art security & verification</p>
       </div>
@@ -139,27 +144,19 @@
   </div>
 
   <script>
-    // ---------- Utilities ----------
+    console.log('[login] build 2025-08-11a');
+
+    // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
+    function safeJSONParse(s) { try { return JSON.parse(s); } catch { return null; } }
 
-    function safeJSONParse(s) {
-      try { return JSON.parse(s); } catch { return null; }
-    }
+    // simple accounts map in localStorage for reliability
+    function getAccounts() { return safeJSONParse(localStorage.getItem('accounts')) || {}; }
+    function saveAccounts(obj) { localStorage.setItem('accounts', JSON.stringify(obj || {})); }
 
-    function getAccounts() {
-      return safeJSONParse(localStorage.getItem('accounts')) || {};
-    }
-    function saveAccounts(obj) {
-      localStorage.setItem('accounts', JSON.stringify(obj || {}));
-    }
-
-    // Back-compat single-account record
-    function getLegacyAccount() {
-      return safeJSONParse(localStorage.getItem('userAccount'));
-    }
-    function setLegacyAccount(acct) {
-      localStorage.setItem('userAccount', JSON.stringify(acct));
-    }
+    // legacy single account (back-compat)
+    function getLegacyAccount() { return safeJSONParse(localStorage.getItem('userAccount')); }
+    function setLegacyAccount(acct) { localStorage.setItem('userAccount', JSON.stringify(acct)); }
 
     function setStatus(msg, ok=false) {
       const box = $('status');
@@ -170,17 +167,24 @@
         : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
     }
 
-    // ---------- Remove any stale "I am a" / role field ----------
-    (function nukeRoleField() {
-      const possibleIds = ['role', 'roleSelect', 'userRole'];
-      possibleIds.forEach(id => {
+    // ---------- Remove any stale "I am a / role" field (defensive) ----------
+    (function nukeRoleFieldEverywhere() {
+      const idCandidates = ['role', 'roleSelect', 'userRole'];
+      idCandidates.forEach(id => {
         const el = document.getElementById(id);
         if (el && el.parentElement) el.parentElement.remove();
       });
-      // Also remove any <label> containing "I am a"
       document.querySelectorAll('label').forEach(lab => {
         if (lab.textContent && /i am a/i.test(lab.textContent)) {
           const wrap = lab.closest('div') || lab;
+          wrap.remove();
+        }
+      });
+      // remove selects that look like role pickers
+      document.querySelectorAll('select').forEach(sel => {
+        const text = Array.from(sel.options).map(o => (o.text || '').toLowerCase()).join('|');
+        if (/seller|agent|buyer/.test(text)) {
+          const wrap = sel.closest('div') || sel;
           wrap.remove();
         }
       });
@@ -218,7 +222,6 @@
 
     // ---------- Prefill from Box 2 ----------
     (function prefillFromBox2() {
-      // Common keys we may have saved earlier
       const candidateKeysName = ['sellerName','ownerName','contactName','name'];
       const candidateKeysEmail = ['sellerEmail','email','contactEmail','pendingEmail'];
 
@@ -286,98 +289,4 @@
       if (!cPwd || !strengthBar || !strengthText) return;
       const s = scorePassword(cPwd.value);
       const widths = ['0%','25%','50%','75%','100%'];
-      const colors = ['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'];
-      const labels = ['—','Weak','Fair','Good','Strong'];
-      strengthBar.style.width = widths[s];
-      strengthBar.style.backgroundColor = colors[s];
-      strengthText.textContent = 'Password strength: ' + labels[s];
-
-      if (!cPwd2) return;
-      if (cPwd2.value.length) {
-        if (cPwd.value === cPwd2.value) {
-          matchMsg.textContent = 'Passwords match';
-          matchMsg.className = 'text-xs mt-1 text-green-600';
-        } else {
-          matchMsg.textContent = 'Passwords do not match';
-          matchMsg.className = 'text-xs mt-1 text-red-600';
-        }
-      } else {
-        matchMsg.textContent = '';
-        matchMsg.className = 'text-xs mt-1';
-      }
-    }
-    if (cPwd) cPwd.addEventListener('input', updateStrength);
-    if (cPwd2) cPwd2.addEventListener('input', updateStrength);
-
-    // ---------- CREATE ACCOUNT ----------
-    $('createForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const name = $('c_name').value.trim();
-      const email = $('c_email').value.trim().toLowerCase();
-      const p1 = cPwd ? cPwd.value : '';
-      const p2 = cPwd2 ? cPwd2.value : '';
-
-      const s = scorePassword(p1);
-      if (s < 3) { setStatus('Please use a stronger password (aim for Good or Strong).'); showCreate(); return; }
-      if (p1 !== p2) { setStatus('Passwords do not match.'); showCreate(); return; }
-
-      // Save into accounts map + legacy record
-      const accounts = getAccounts();
-      accounts[email] = { name, email, password: p1 };
-      saveAccounts(accounts);
-      setLegacyAccount({ name, email, password: p1 });
-
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('loggedInEmail', email);
-
-      setStatus('Account created. Sending verification code…', true);
-
-      // Simulate code send
-      const code = Math.floor(100000 + Math.random() * 900000);
-      localStorage.setItem('verificationCode', String(code));
-      localStorage.setItem('verifyTarget', email);
-
-      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
-      setTimeout(()=>{ window.location.href = next; }, 600);
-    });
-
-    // ---------- SIGN IN ----------
-    $('loginForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const email = $('email').value.trim().toLowerCase();
-      const password = $('password').value;
-
-      const accounts = getAccounts();
-      let acct = accounts[email];
-
-      // Fallback to legacy record if single saved account
-      if (!acct) {
-        const legacy = getLegacyAccount();
-        if (legacy && legacy.email && legacy.password && legacy.email.toLowerCase() === email) {
-          acct = legacy;
-          // also upgrade into accounts map for future
-          accounts[email] = legacy;
-          saveAccounts(accounts);
-        }
-      }
-
-      if (!acct) {
-        setStatus('No account found. Please create an account first.');
-        showCreate();
-        return;
-      }
-      if (acct.password !== password) {
-        setStatus('Invalid email or password.');
-        return;
-      }
-
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('loggedInEmail', email);
-      setStatus('Login successful. Redirecting…', true);
-
-      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
-      setTimeout(()=>{ window.location.href = next; }, 500);
-    });
-  </script>
-</body>
-</html>
+      const colors = ['transparent','#fca5a5','#fbbf24','#60a5fa','#34d]()
