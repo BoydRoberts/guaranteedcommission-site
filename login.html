@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login / Create Account | GuaranteedCommission.com</title>
-  <meta name="description" content="Secure login and account creation for GuaranteedCommission.com with strong password protection and verification." />
+  <meta name="description" content="Secure login and account creation with strong password protection and verification." />
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -93,6 +93,7 @@
               Show
             </button>
           </div>
+
           <!-- Strength -->
           <div class="mt-2">
             <div class="h-2 w-full bg-gray-200 rounded" aria-hidden="true">
@@ -138,13 +139,60 @@
   </div>
 
   <script>
-    // ---- Tab logic ----
-    const tabSignin = document.getElementById('tab-signin');
-    const tabCreate = document.getElementById('tab-create');
-    const loginForm = document.getElementById('loginForm');
-    const createForm = document.getElementById('createForm');
-    const goCreate = document.getElementById('goCreate');
-    const goSignin = document.getElementById('goSignin');
+    // ---------- Utilities ----------
+    const $ = (id) => document.getElementById(id);
+
+    function safeJSONParse(s) {
+      try { return JSON.parse(s); } catch { return null; }
+    }
+
+    function getAccounts() {
+      return safeJSONParse(localStorage.getItem('accounts')) || {};
+    }
+    function saveAccounts(obj) {
+      localStorage.setItem('accounts', JSON.stringify(obj || {}));
+    }
+
+    // Back-compat single-account record
+    function getLegacyAccount() {
+      return safeJSONParse(localStorage.getItem('userAccount'));
+    }
+    function setLegacyAccount(acct) {
+      localStorage.setItem('userAccount', JSON.stringify(acct));
+    }
+
+    function setStatus(msg, ok=false) {
+      const box = $('status');
+      box.classList.remove('hidden');
+      box.textContent = msg;
+      box.className = ok
+        ? 'mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
+        : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
+    }
+
+    // ---------- Remove any stale "I am a" / role field ----------
+    (function nukeRoleField() {
+      const possibleIds = ['role', 'roleSelect', 'userRole'];
+      possibleIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.parentElement) el.parentElement.remove();
+      });
+      // Also remove any <label> containing "I am a"
+      document.querySelectorAll('label').forEach(lab => {
+        if (lab.textContent && /i am a/i.test(lab.textContent)) {
+          const wrap = lab.closest('div') || lab;
+          wrap.remove();
+        }
+      });
+    })();
+
+    // ---------- Tabs ----------
+    const tabSignin = $('tab-signin');
+    const tabCreate = $('tab-create');
+    const loginForm = $('loginForm');
+    const createForm = $('createForm');
+    const goCreate = $('goCreate');
+    const goSignin = $('goSignin');
 
     function showSignin() {
       tabSignin.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
@@ -154,7 +202,6 @@
       loginForm.classList.remove('hidden');
       createForm.classList.add('hidden');
     }
-
     function showCreate() {
       tabCreate.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
       tabCreate.setAttribute('aria-selected', 'true');
@@ -169,26 +216,42 @@
     if (goCreate) goCreate.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
     if (goSignin) goSignin.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
 
-    // Auto-open Create tab when coming from Box 2 flows
-    (function autoOpenCreate() {
-      const reason = localStorage.getItem('nextAfterLogin'); // e.g., '/verify-code.html' or next step
+    // ---------- Prefill from Box 2 ----------
+    (function prefillFromBox2() {
+      // Common keys we may have saved earlier
+      const candidateKeysName = ['sellerName','ownerName','contactName','name'];
+      const candidateKeysEmail = ['sellerEmail','email','contactEmail','pendingEmail'];
+
+      let formData = safeJSONParse(localStorage.getItem('formData')) || {};
+      let name = '';
+      let email = '';
+
+      for (const k of candidateKeysName) {
+        if (formData[k]) { name = formData[k]; break; }
+        const v = localStorage.getItem(k);
+        if (v) { name = v; break; }
+      }
+      for (const k of candidateKeysEmail) {
+        if (formData[k]) { email = formData[k]; break; }
+        const v = localStorage.getItem(k);
+        if (v) { email = v; break; }
+      }
+
+      if (name) { const f = $('c_name'); if (f) f.value = name; }
+      if (email) {
+        const ce = $('c_email'); if (ce) ce.value = email;
+        const se = $('email');   if (se) se.value = email;
+      }
+
+      // If coming from Box 2, default to Create tab
+      const reason = localStorage.getItem('nextAfterLogin');
       if (reason) showCreate();
     })();
 
-    // ---- Status helper ----
-    const statusBox = document.getElementById('status');
-    function setStatus(msg, ok=false) {
-      statusBox.classList.remove('hidden');
-      statusBox.textContent = msg;
-      statusBox.className = ok
-        ? 'mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
-        : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
-    }
-
-    // ---- Show/Hide password toggles ----
+    // ---------- Show/Hide toggles ----------
     function wireToggle(inputId, btnId) {
-      const input = document.getElementById(inputId);
-      const btn = document.getElementById(btnId);
+      const input = $(inputId);
+      const btn = $(btnId);
       if (!input || !btn) return;
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -202,12 +265,12 @@
     wireToggle('c_password','togglePwdC1');
     wireToggle('c_password2','togglePwdC2');
 
-    // ---- Password strength + match ----
-    const cPwd = document.getElementById('c_password');
-    const cPwd2 = document.getElementById('c_password2');
-    const strengthBar = document.getElementById('strengthBar');
-    const strengthText = document.getElementById('strengthText');
-    const matchMsg = document.getElementById('matchMsg');
+    // ---------- Strength meter + match ----------
+    const cPwd = $('c_password');
+    const cPwd2 = $('c_password2');
+    const strengthBar = $('strengthBar');
+    const strengthText = $('strengthText');
+    const matchMsg = $('matchMsg');
 
     function scorePassword(p) {
       let score = 0;
@@ -219,7 +282,6 @@
       if (p.length >= 14) score += 1; // bonus
       return Math.min(score, 4);
     }
-
     function updateStrength() {
       if (!cPwd || !strengthBar || !strengthText) return;
       const s = scorePassword(cPwd.value);
@@ -230,7 +292,6 @@
       strengthBar.style.backgroundColor = colors[s];
       strengthText.textContent = 'Password strength: ' + labels[s];
 
-      // match status
       if (!cPwd2) return;
       if (cPwd2.value.length) {
         if (cPwd.value === cPwd2.value) {
@@ -248,29 +309,24 @@
     if (cPwd) cPwd.addEventListener('input', updateStrength);
     if (cPwd2) cPwd2.addEventListener('input', updateStrength);
 
-    // ---- CREATE ACCOUNT submit ----
-    document.getElementById('createForm').addEventListener('submit', (e) => {
+    // ---------- CREATE ACCOUNT ----------
+    $('createForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const name = document.getElementById('c_name').value.trim();
-      const email = document.getElementById('c_email').value.trim().toLowerCase();
+      const name = $('c_name').value.trim();
+      const email = $('c_email').value.trim().toLowerCase();
       const p1 = cPwd ? cPwd.value : '';
       const p2 = cPwd2 ? cPwd2.value : '';
 
-      // enforce strong
       const s = scorePassword(p1);
-      if (s < 3) { // require Good or Strong
-        setStatus('Please use a stronger password (aim for Good or Strong).');
-        showCreate();
-        return;
-      }
-      if (p1 !== p2) {
-        setStatus('Passwords do not match.');
-        showCreate();
-        return;
-      }
+      if (s < 3) { setStatus('Please use a stronger password (aim for Good or Strong).'); showCreate(); return; }
+      if (p1 !== p2) { setStatus('Passwords do not match.'); showCreate(); return; }
 
-      // Save account (simulated)
-      localStorage.setItem('userAccount', JSON.stringify({ name, email, password: p1 }));
+      // Save into accounts map + legacy record
+      const accounts = getAccounts();
+      accounts[email] = { name, email, password: p1 };
+      saveAccounts(accounts);
+      setLegacyAccount({ name, email, password: p1 });
+
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('loggedInEmail', email);
 
@@ -281,48 +337,47 @@
       localStorage.setItem('verificationCode', String(code));
       localStorage.setItem('verifyTarget', email);
 
-      // Continue flow
-      const configuredNext = localStorage.getItem('nextAfterLogin');
-      const next = configuredNext || '/verify-code.html';
+      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
       setTimeout(()=>{ window.location.href = next; }, 600);
     });
 
-    // ---- SIGN IN submit ----
-    document.getElementById('loginForm').addEventListener('submit', (e) => {
+    // ---------- SIGN IN ----------
+    $('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const email = document.getElementById('email').value.trim().toLowerCase();
-      const password = document.getElementById('password').value;
+      const email = $('email').value.trim().toLowerCase();
+      const password = $('password').value;
 
-      const raw = localStorage.getItem('userAccount');
-      if (!raw) {
+      const accounts = getAccounts();
+      let acct = accounts[email];
+
+      // Fallback to legacy record if single saved account
+      if (!acct) {
+        const legacy = getLegacyAccount();
+        if (legacy && legacy.email && legacy.password && legacy.email.toLowerCase() === email) {
+          acct = legacy;
+          // also upgrade into accounts map for future
+          accounts[email] = legacy;
+          saveAccounts(accounts);
+        }
+      }
+
+      if (!acct) {
         setStatus('No account found. Please create an account first.');
         showCreate();
         return;
       }
-
-      let acct;
-      try { acct = JSON.parse(raw); } catch { acct = null; }
-      if (!acct || !acct.email || !acct.password) {
-        setStatus('Saved account is invalid. Please create a new account.');
-        showCreate();
-        return;
-      }
-
-      if (acct.email.toLowerCase() !== email || acct.password !== password) {
+      if (acct.password !== password) {
         setStatus('Invalid email or password.');
         return;
       }
 
-      localStorage.setItem('isLoggedIn','true');
+      localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('loggedInEmail', email);
       setStatus('Login successful. Redirecting…', true);
 
-      const configuredNext = localStorage.getItem('nextAfterLogin');
-      const next = configuredNext || '/index.html';
+      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
       setTimeout(()=>{ window.location.href = next; }, 500);
     });
-
-    // ---- Quality-of-life: Enter-to-submit works by default; ensure buttons are type="button" for toggles ----
   </script>
 </body>
 </html>
