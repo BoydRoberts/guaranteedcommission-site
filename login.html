@@ -1,169 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Log In | GuaranteedCommission.com</title>
+  <title>Login | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen bg-gray-100 text-gray-900 flex items-center justify-center p-4">
-
-  <main class="w-full max-w-md">
-    <div class="bg-white rounded-xl shadow p-6">
-      <div class="flex items-center justify-center mb-4">
-        <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 1.75a6.25 6.25 0 0 0-6.25 6.25v2.25H5a2.75 2.75 0 0 0-2.75 2.75v5.5A2.75 2.75 0 0 0 5 21.25h14a2.75 2.75 0 0 0 2.75-2.75v-5.5A2.75 2.75 0 0 0 19 10.25h-.75V8A6.25 6.25 0 0 0 12 1.75Zm-4.75 6.25A4.75 4.75 0 0 1 12 3.25 4.75 4.75 0 0 1 16.75 8v2.25h-9.5V8Z"/>
-          </svg>
-        </div>
+<body class="bg-gray-100 text-gray-900">
+  <div class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow p-6">
+      <div class="text-center mb-6">
+        <h1 class="text-2xl font-bold">Welcome back</h1>
+        <p class="text-sm text-gray-600 mt-1">State-of-the-art security & verification</p>
       </div>
-      <h1 class="text-xl font-bold text-center">Secure Login</h1>
-      <p class="text-center text-sm text-gray-600 mt-1">Use your email and password to continue.</p>
 
-      <form id="loginForm" class="mt-6 space-y-4" autocomplete="off" novalidate>
+      <!-- Status / errors -->
+      <div id="status" class="hidden mb-4 text-sm rounded-lg p-3"></div>
+
+      <form id="loginForm" class="space-y-4" autocomplete="off">
         <div>
-          <label for="email" class="block text-sm font-medium mb-1">Email</label>
+          <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
           <input id="email" name="email" type="email" required
-                 class="w-full border rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-500"
-                 placeholder="you@example.com">
-          <p id="emailErr" class="hidden text-xs text-red-600 mt-1">Please enter a valid email.</p>
+                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 placeholder="you@example.com" />
         </div>
 
         <div>
-          <label for="password" class="block text-sm font-medium mb-1">Password</label>
-          <div class="relative">
+          <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+          <div class="relative mt-1">
             <input id="password" name="password" type="password" required
-                   class="w-full border rounded-lg p-2 pr-10 outline-none focus:ring-2 focus:ring-blue-500"
-                   placeholder="Enter your password">
-            <button type="button" id="togglePw"
-                    class="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-gray-700"
-                    aria-pressed="false" aria-label="Show password">
-              <!-- eye (show) -->
-              <svg id="eyeOn" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                   viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-              </svg>
-              <!-- eye-off (hide) -->
-              <svg id="eyeOff" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none"
-                   viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.052 10.052 0 012.146-3.362M9.88 9.88a3 3 0 104.24 4.24M6.1 6.1l11.8 11.8"/>
-              </svg>
+                   class="w-full border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="Your password" />
+            <button type="button" id="togglePwd"
+                    class="absolute inset-y-0 right-0 px-3 text-sm text-blue-600 hover:underline select-none">
+              Show
             </button>
           </div>
-          <p id="pwErr" class="hidden text-xs text-red-600 mt-1">Please enter your password.</p>
         </div>
 
-        <button type="submit"
-                class="w-full bg-blue-600 text-white font-semibold rounded-lg py-2 hover:bg-blue-700 transition">
-          Log In
-        </button>
-
-        <div class="flex items-center justify-between text-sm mt-1">
+        <div class="flex items-center justify-between text-sm">
           <a href="/forgot-password.html" class="text-blue-600 hover:underline">Forgot password?</a>
           <a href="/create-account.html" class="text-blue-600 hover:underline">Create account</a>
         </div>
 
-        <p id="formErr" class="hidden text-center text-red-600 text-sm mt-2"></p>
+        <button type="submit"
+                class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition">
+          Log In
+        </button>
       </form>
 
-      <!-- Test bypass so you’re never blocked while iterating -->
-      <div class="mt-4">
-        <button id="bypassBtn"
-                class="w-full text-xs text-gray-600 hover:text-gray-800 underline">
-          Trouble logging in? Continue in test mode →
-        </button>
-      </div>
+      <p class="text-[11px] text-gray-500 text-center mt-4">
+        We never sell your data. Used only for escrow & identification.
+      </p>
     </div>
-  </main>
+  </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // Show/hide password
-      const togglePw = document.getElementById('togglePw');
-      const pwInput = document.getElementById('password');
-      const eyeOn = document.getElementById('eyeOn');
-      const eyeOff = document.getElementById('eyeOff');
-
-      togglePw.addEventListener('click', () => {
-        const showing = pwInput.type === 'text';
-        pwInput.type = showing ? 'password' : 'text';
-        togglePw.setAttribute('aria-pressed', String(!showing));
-        togglePw.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
-        eyeOn.classList.toggle('hidden', !showing);
-        eyeOff.classList.toggle('hidden', showing);
+    // Show/Hide password
+    (function () {
+      const pwd = document.getElementById('password');
+      const btn = document.getElementById('togglePwd');
+      btn.addEventListener('click', () => {
+        const showing = pwd.type === 'text';
+        pwd.type = showing ? 'password' : 'text';
+        btn.textContent = showing ? 'Show' : 'Hide';
+        // Keep focus on the field for accessibility
+        pwd.focus({ preventScroll: true });
       });
+    })();
 
-      const email = document.getElementById('email');
-      const emailErr = document.getElementById('emailErr');
-      const pwErr = document.getElementById('pwErr');
-      const formErr = document.getElementById('formErr');
+    // Simple localStorage-based login (works with our create-account.html)
+    const statusBox = document.getElementById('status');
+    function setStatus(msg, ok=false) {
+      statusBox.classList.remove('hidden');
+      statusBox.textContent = msg;
+      statusBox.className = ok
+        ? 'mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
+        : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
+    }
 
-      function validate() {
-        let ok = true;
-        if (!email.value || !/.+@.+\..+/.test(email.value)) {
-          emailErr.classList.remove('hidden'); ok = false;
-        } else emailErr.classList.add('hidden');
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const password = document.getElementById('password').value;
 
-        if (!pwInput.value) {
-          pwErr.classList.remove('hidden'); ok = false;
-        } else pwErr.classList.add('hidden');
-
-        return ok;
+      const raw = localStorage.getItem('userAccount');
+      if (!raw) {
+        setStatus('No account found. Please create an account first.');
+        setTimeout(() => { window.location.href = '/create-account.html'; }, 900);
+        return;
       }
 
-      function getStoredAccount() {
-        const a = localStorage.getItem('gc_account');
-        if (a) { try { return JSON.parse(a); } catch(_){} }
-        const verifyData = localStorage.getItem('verifyData');
-        if (verifyData) { try { return JSON.parse(verifyData); } catch(_){} }
-        return null;
+      let acct;
+      try { acct = JSON.parse(raw); } catch { acct = null; }
+      if (!acct || !acct.email || !acct.password) {
+        setStatus('Saved account data is invalid. Please create a new account.');
+        setTimeout(() => { window.location.href = '/create-account.html'; }, 900);
+        return;
       }
 
-      document.getElementById('loginForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        formErr.classList.add('hidden');
-        if (!validate()) return;
+      if (acct.email.toLowerCase() !== email || acct.password !== password) {
+        setStatus('Invalid email or password.');
+        return;
+      }
 
-        const acct = getStoredAccount();
-        const inputEmail = email.value.trim().toLowerCase();
-        const inputPw = pwInput.value;
+      // Logged in
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('loggedInEmail', email);
+      setStatus('Login successful. Redirecting…', true);
 
-        if (acct && acct.email) {
-          const savedEmail = (acct.email || '').trim().toLowerCase();
-          const savedPw = acct.password || '';
-
-          if (inputEmail !== savedEmail || inputPw !== savedPw) {
-            formErr.textContent = 'Incorrect email or password.';
-            formErr.classList.remove('hidden');
-            return;
-          }
-
-          localStorage.setItem('gc_logged_in', '1');
-
-          // If a verification code exists, send them to verify; otherwise proceed
-          const needsVerify = localStorage.getItem('verificationCode');
-          if (needsVerify) {
-            window.location.href = '/verify-code.html';
-          } else {
-            window.location.href = '/upsell.html';
-          }
-          return;
+      // If we’re mid-flow, continue; otherwise go home
+      const continueTo = localStorage.getItem('nextAfterLogin');
+      setTimeout(() => {
+        if (continueTo) {
+          window.location.href = continueTo;
+        } else {
+          window.location.href = '/index.html';
         }
-
-        // No stored account (direct visit) — keep you moving
-        localStorage.setItem('gc_logged_in', '1');
-        window.location.href = '/upsell.html';
-      });
-
-      // Bypass for testing
-      document.getElementById('bypassBtn').addEventListener('click', () => {
-        localStorage.setItem('gc_logged_in', '1');
-        window.location.href = '/upsell.html';
-      });
+      }, 600);
     });
   </script>
 </body>
