@@ -9,11 +9,15 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
   <div class="min-h-screen flex items-center justify-center px-4">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow p-6">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <!-- Build/version badge -->
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">build 2025-08-11f</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">build 2025-08-11h</span>
       </div>
+
+      <!-- Debug toggle -->
+      <button id="dbgToggle" class="absolute top-2 right-2 text-[11px] px-2 py-1 rounded border">Debug</button>
+      <div id="dbgPanel" class="hidden mt-2 text-[11px] bg-gray-50 border rounded p-2 whitespace-pre-wrap break-all"></div>
 
       <!-- Header -->
       <div class="text-center mb-4">
@@ -88,6 +92,14 @@
         </div>
 
         <div>
+          <label for="c_phone" class="block text-sm font-medium text-gray-700">Phone</label>
+          <input id="c_phone" type="tel" required
+                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 placeholder="123-456-7890" inputmode="numeric" />
+          <p class="text-xs text-gray-500 mt-1">Format: 123-456-7890</p>
+        </div>
+
+        <div>
           <label for="c_password" class="block text-sm font-medium text-gray-700">Create Password</label>
           <div class="relative mt-1">
             <input id="c_password" type="password" required
@@ -144,7 +156,7 @@
   </div>
 
   <script>
-    console.log('[login] build 2025-08-11f');
+    console.log('[login] build 2025-08-11h');
 
     // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
@@ -165,7 +177,26 @@
     function getLegacyAccount() { return safeJSONParse(localStorage.getItem('userAccount')); }
     function setLegacyAccount(acct) { localStorage.setItem('userAccount', JSON.stringify(acct)); }
 
-    // ---------- Remove any stale role field if present (defensive) ----------
+    // Debug panel
+    function renderDebug() {
+      const dbg = $('dbgPanel');
+      const dump = {
+        accounts: getAccounts(),
+        userAccount: getLegacyAccount(),
+        accountData: safeJSONParse(localStorage.getItem('accountData')),
+        loggedInEmail: localStorage.getItem('loggedInEmail'),
+        isLoggedIn: localStorage.getItem('isLoggedIn'),
+        verificationCode: localStorage.getItem('verificationCode'),
+        verifyTarget: localStorage.getItem('verifyTarget'),
+      };
+      dbg.textContent = JSON.stringify(dump, null, 2);
+    }
+    $('dbgToggle').addEventListener('click', () => {
+      $('dbgPanel').classList.toggle('hidden');
+      renderDebug();
+    });
+
+    // ---------- Remove any stale role field (defensive) ----------
     (function nukeRoleFieldEverywhere() {
       const idCandidates = ['role', 'roleSelect', 'userRole'];
       idCandidates.forEach(id => {
@@ -187,37 +218,48 @@
       });
     })();
 
-    // ---------- MIGRATE any old saved accounts into the new store ----------
-    (function migrateOldAccounts() {
+    // ---------- Phone helpers ----------
+    function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
+    function formatPhone(s){
+      const d = onlyDigits(s).slice(0,10);
+      if (d.length <= 3) return d;
+      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
+      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
+    }
+    function isValidPhone(s){
+      return onlyDigits(s).length === 10;
+    }
+
+    // ---------- MIGRATE old accounts into the new store ----------
+    function migrateAll() {
       const accounts = getAccounts();
 
-      // 1) From old create-account.html (stored at "accountData")
+      // From old create-account.html
       const ad = safeJSONParse(localStorage.getItem('accountData'));
       if (ad && ad.email && ad.password) {
         const email = String(ad.email).toLowerCase().trim();
-        accounts[email] = { name: ad.name || '', email, password: ad.password };
+        accounts[email] = { name: ad.name || '', email, password: ad.password, phone: ad.phone || '' };
       }
 
-      // 2) From legacy single record ("userAccount")
+      // Legacy single record
       const legacy = getLegacyAccount();
       if (legacy && legacy.email && legacy.password) {
         const email = String(legacy.email).toLowerCase().trim();
-        accounts[email] = { name: legacy.name || '', email, password: legacy.password };
+        accounts[email] = { name: legacy.name || '', email, password: legacy.password, phone: legacy.phone || '' };
       }
 
-      // 3) Other possible keys from older tests
-      const possibleKeys = ['acct','account','user','gc_user','gc_account'];
-      possibleKeys.forEach(k => {
+      // Any other prior keys
+      ['acct','account','user','gc_user','gc_account'].forEach(k => {
         const obj = safeJSONParse(localStorage.getItem(k));
         if (obj && obj.email && obj.password) {
           const email = String(obj.email).toLowerCase().trim();
-          accounts[email] = { name: obj.name || '', email, password: obj.password };
+          accounts[email] = { name: obj.name || '', email, password: obj.password, phone: obj.phone || '' };
         }
       });
 
-      // Persist merged accounts map
       saveAccounts(accounts);
-    })();
+    }
+    migrateAll();
 
     // ---------- Tabs ----------
     const tabSignin = $('tab-signin');
@@ -253,10 +295,12 @@
     (function prefillFromBox2() {
       const candidateKeysName = ['sellerName','ownerName','contactName','name'];
       const candidateKeysEmail = ['sellerEmail','email','contactEmail','pendingEmail'];
+      const candidateKeysPhone = ['sellerPhone','phone','contactPhone'];
 
       let formData = safeJSONParse(localStorage.getItem('formData')) || {};
       let name = '';
       let email = '';
+      let phone = '';
 
       for (const k of candidateKeysName) {
         if (formData[k]) { name = formData[k]; break; }
@@ -268,11 +312,19 @@
         const v = localStorage.getItem(k);
         if (v) { email = v; break; }
       }
+      for (const k of candidateKeysPhone) {
+        if (formData[k]) { phone = formData[k]; break; }
+        const v = localStorage.getItem(k);
+        if (v) { phone = v; break; }
+      }
 
       if (name) { const f = $('c_name'); if (f) f.value = name; }
       if (email) {
         const ce = $('c_email'); if (ce) ce.value = email;
         const se = $('email');   if (se) se.value = email;
+      }
+      if (phone) {
+        const cp = $('c_phone'); if (cp) cp.value = formatPhone(phone);
       }
 
       // If coming from Box 2, default to Create tab
@@ -296,6 +348,18 @@
     wireToggle('password','togglePwd');
     wireToggle('c_password','togglePwdC1');
     wireToggle('c_password2','togglePwdC2');
+
+    // ---------- Phone mask ----------
+    const phoneEl = $('c_phone');
+    if (phoneEl) {
+      phoneEl.addEventListener('input', () => {
+        const cur = phoneEl.selectionStart;
+        const before = phoneEl.value;
+        phoneEl.value = formatPhone(before);
+        // best-effort caret preservation (simple)
+        phoneEl.selectionStart = phoneEl.selectionEnd = Math.min(cur + (phoneEl.value.length - before.length), phoneEl.value.length);
+      });
+    }
 
     // ---------- Strength meter + match ----------
     const cPwd = $('c_password');
@@ -344,56 +408,54 @@
     // ---------- CREATE ACCOUNT ----------
     $('createForm').addEventListener('submit', (e) => {
       e.preventDefault();
+      migrateAll(); // ensure fresh
       const name = $('c_name').value.trim();
       const email = $('c_email').value.trim().toLowerCase();
+      const phone = $('c_phone').value.trim();
       const p1 = cPwd ? cPwd.value : '';
       const p2 = cPwd2 ? cPwd2.value : '';
+
+      if (!isValidPhone(phone)) {
+        setStatus('Please enter a valid 10-digit phone number.', false);
+        $('c_phone').focus();
+        return;
+      }
 
       const s = scorePassword(p1);
       if (s < 3) { setStatus('Please use a stronger password (aim for Good or Strong).'); showCreate(); return; }
       if (p1 !== p2) { setStatus('Passwords do not match.'); showCreate(); return; }
 
-      // Save into accounts map + legacy record
       const accounts = getAccounts();
-      accounts[email] = { name, email, password: p1 };
+      accounts[email] = { name, email, password: p1, phone: formatPhone(phone) };
       saveAccounts(accounts);
-      setLegacyAccount({ name, email, password: p1 });
+      setLegacyAccount({ name, email, password: p1, phone: formatPhone(phone) });
 
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('loggedInEmail', email);
 
-      setStatus('Account created. Sending verification code…', true);
-
-      // Simulate code send
-      const code = Math.floor(100000 + Math.random() * 900000);
-      localStorage.setItem('verificationCode', String(code));
+      // Send code (simulated) + show it for testing
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      localStorage.setItem('verificationCode', code);
       localStorage.setItem('verifyTarget', email);
 
+      setStatus(`Account created for ${email}. 6-digit code: ${code}. Redirecting…`, true);
+      renderDebug();
+
       const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
-      setTimeout(()=>{ window.location.href = next; }, 600);
+      setTimeout(()=>{ window.location.href = next; }, 800);
     });
 
     // ---------- SIGN IN ----------
     $('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
+      migrateAll(); // pull in any legacy keys right before checking
+
       const email = $('email').value.trim().toLowerCase();
       const password = $('password').value;
-
-      // Always migrate just before checking (catches any older keys just created)
-      (function lateMigrate(){
-        const accounts = getAccounts();
-        const ad = safeJSONParse(localStorage.getItem('accountData'));
-        if (ad && ad.email && ad.password) {
-          const m = String(ad.email).toLowerCase().trim();
-          accounts[m] = { name: ad.name || '', email: m, password: ad.password };
-          saveAccounts(accounts);
-        }
-      })();
 
       const accounts = getAccounts();
       let acct = accounts[email];
 
-      // Fallback to legacy record (upgrade it silently)
       if (!acct) {
         const legacy = getLegacyAccount();
         if (legacy && legacy.email && legacy.password && legacy.email.toLowerCase() === email) {
@@ -403,15 +465,24 @@
         }
       }
 
-      if (!acct) { setStatus('No account found. Please create an account first.'); showCreate(); return; }
-      if (acct.password !== password) { setStatus('Invalid email or password.'); return; }
+      if (!acct) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); renderDebug(); return; }
+      if (acct.password !== password) { setStatus(`Invalid email or password for ${email}.`); renderDebug(); return; }
 
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('loggedInEmail', email);
-      setStatus('Login successful. Redirecting…', true);
+
+      // If no code exists yet, simulate send one so verify page works in all cases
+      if (!localStorage.getItem('verificationCode')) {
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        localStorage.setItem('verificationCode', code);
+      }
+      localStorage.setItem('verifyTarget', email);
+
+      setStatus(`Login successful for ${email}. Redirecting…`, true);
+      renderDebug();
 
       const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
-      setTimeout(()=>{ window.location.href = next; }, 500);
+      setTimeout(()=>{ window.location.href = next; }, 600);
     });
   </script>
 </body>
