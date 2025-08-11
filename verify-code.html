@@ -1,54 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Enter Verification Code | GuaranteedCommission.com</title>
+  <title>Verify Code | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 text-gray-800">
-  <div class="max-w-md mx-auto mt-10 bg-white p-6 rounded-2xl shadow">
-    <h1 class="text-2xl font-bold text-center">Enter Verification Code</h1>
-    <p class="text-center text-sm text-gray-500 mt-1">We sent a 6-digit code to your email or phone</p>
+<body class="bg-gray-100 text-gray-900">
+  <div class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow p-6">
+      <div class="text-center mb-2">
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">verify build 2025-08-11a</span>
+      </div>
 
-    <form id="codeForm" class="space-y-4 mt-6">
-      <input 
-        type="text" 
-        id="enteredCode" 
-        maxlength="6" 
-        placeholder="Enter 6-digit code" 
-        class="w-full border p-2 rounded text-center text-lg tracking-widest" 
-        required 
-      />
+      <h1 class="text-2xl font-bold text-center">Enter Verification Code</h1>
+      <p id="who" class="text-sm text-gray-600 text-center mt-1"></p>
 
-      <button 
-        type="button" 
-        onclick="verifyCode()" 
-        class="w-full bg-green-600 text-white py-2 rounded font-semibold">
-        Verify & Continue
-      </button>
-    </form>
+      <div id="status" class="hidden mb-4 text-sm rounded-lg p-3 mt-4" role="alert"></div>
 
-    <p id="errorMsg" class="text-red-600 text-sm mt-4 hidden text-center">Incorrect code. Please try again.</p>
+      <!-- Dev helper: shows current code -->
+      <div class="mb-4 p-3 rounded bg-yellow-50 text-yellow-800 text-sm">
+        <div class="flex items-center justify-between">
+          <span>Dev helper — current 6-digit code:</span>
+          <span id="codeBadge" class="font-mono text-base bg-white px-2 py-1 rounded border">------</span>
+        </div>
+        <div class="mt-2 flex gap-2">
+          <button id="resend" class="px-3 py-1 rounded bg-yellow-600 text-white hover:bg-yellow-700">Resend code</button>
+          <button id="copy" class="px-3 py-1 rounded border">Copy</button>
+        </div>
+      </div>
 
-    <p class="text-sm text-center mt-6">
-      Already verified?
-      <a href="/login.html" class="text-blue-600 hover:underline">Log in</a>
-    </p>
+      <form id="verifyForm" class="space-y-4" autocomplete="off">
+        <div>
+          <label for="code" class="block text-sm font-medium text-gray-700">6-digit code</label>
+          <input id="code" inputmode="numeric" pattern="\\d{6}" maxlength="6" required
+                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono tracking-widest"
+                 placeholder="••••••" />
+        </div>
+
+        <button type="submit"
+                class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition">
+          Verify
+        </button>
+      </form>
+
+      <p class="text-[11px] text-gray-500 text-center mt-4">
+        We never sell your data. Used only for escrow & identification.
+      </p>
+    </div>
   </div>
 
   <script>
-    function verifyCode(){
-      const storedCode = localStorage.getItem("verificationCode");
-      const enteredCode = document.getElementById("enteredCode").value.trim();
+    console.log('[verify] build 2025-08-11a');
 
-      if(enteredCode === storedCode){
-        console.log("[TEST] Code verified successfully:", enteredCode);
-        window.location.href = "/upsell.html";
-      } else {
-        document.getElementById("errorMsg").classList.remove("hidden");
-      }
+    const $ = (id) => document.getElementById(id);
+    const statusBox = $('status');
+
+    function setStatus(msg, ok=false) {
+      statusBox.classList.remove('hidden');
+      statusBox.textContent = msg;
+      statusBox.className = ok
+        ? 'mb-4 text-sm rounded-lg p-3 mt-4 bg-green-50 text-green-700'
+        : 'mb-4 text-sm rounded-lg p-3 mt-4 bg-red-50 text-red-700';
     }
+
+    function generateCode() {
+      return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    function maskEmail(e) {
+      if (!e || !e.includes('@')) return e || '';
+      const [u, d] = e.split('@');
+      const um = u.length <= 2 ? u[0] + '•' : u[0] + '•'.repeat(Math.max(1, u.length-2)) + u[u.length-1];
+      return um + '@' + d;
+    }
+
+    // Init: ensure we have a target and a code
+    let target = localStorage.getItem('verifyTarget') || localStorage.getItem('loggedInEmail') || '';
+    let code = localStorage.getItem('verificationCode');
+
+    if (!code) {
+      code = generateCode();
+      localStorage.setItem('verificationCode', code);
+    }
+    $('codeBadge').textContent = code;
+
+    $('who').textContent = target
+      ? `We sent a 6-digit code to ${maskEmail(target)}.`
+      : `We sent a 6-digit code.`;
+
+    // Resend = regenerate a code
+    $('resend').addEventListener('click', (e) => {
+      e.preventDefault();
+      code = generateCode();
+      localStorage.setItem('verificationCode', code);
+      $('codeBadge').textContent = code;
+      setStatus('A new code has been generated.', true);
+    });
+
+    // Copy code (handy on mobile simulators)
+    $('copy').addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        await navigator.clipboard.writeText(code);
+        setStatus('Code copied to clipboard.', true);
+      } catch {
+        setStatus('Could not copy. Please type it in.', false);
+      }
+    });
+
+    // Verify submit
+    $('verifyForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const entered = ($('code').value || '').trim();
+
+      const saved = localStorage.getItem('verificationCode');
+      if (!saved) {
+        setStatus('No code found. Click “Resend code” and try again.', false);
+        return;
+      }
+      if (entered !== saved) {
+        setStatus('Incorrect code. Please try again or click “Resend code”.', false);
+        return;
+      }
+
+      // Mark verified
+      localStorage.setItem('isVerified', 'true');
+      setStatus('Verified! Redirecting…', true);
+
+      // Decide next step in flow (customize as needed)
+      const next =
+        localStorage.getItem('nextAfterVerify') ||
+        localStorage.getItem('nextAfterLogin') ||
+        '/index.html';
+
+      setTimeout(() => { window.location.href = next; }, 600);
+    });
   </script>
 </body>
 </html>
