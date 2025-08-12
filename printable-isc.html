@@ -18,7 +18,7 @@
   <div class="max-w-3xl mx-auto p-6">
     <!-- Header / Controls -->
     <div class="flex items-center justify-between no-print">
-      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">printable build 2025-08-11b</span>
+      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">printable build 2025-08-11c</span>
       <div class="flex gap-2">
         <button onclick="window.print()" class="px-3 py-1 rounded bg-gray-800 text-white">Print</button>
         <a href="/signature.html" class="px-3 py-1 rounded border">Back</a>
@@ -27,7 +27,7 @@
 
     <h1 class="text-xl font-bold text-center mt-2 mb-6">Irrevocable Seller Communication (ISC)</h1>
 
-    <!-- ORDER SUMMARY (optional visual cue) -->
+    <!-- ORDER SUMMARY -->
     <div class="grid grid-cols-2 gap-4 text-sm mb-6">
       <div class="bg-gray-50 rounded p-3">
         <div><span class="font-semibold">Selected Plan:</span> <span id="planLabel">—</span></div>
@@ -42,7 +42,6 @@
     <!-- LISTED VERSION -->
     <div id="iscListed" class="text-sm leading-relaxed">
       <p>To the escrow holder/closing agent,</p>
-
       <p class="mt-2">
         I, <span id="s_nameL">[name]</span>, am the owner/seller of
         <span id="s_addrFullL">[full address]</span><span id="s_apnWrapL">, # <span id="s_apnL">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span></span>.
@@ -51,7 +50,6 @@
         <span id="s_agentL">[listing agent]</span>, listing agent,
         <span id="s_agentPhoneL">[agent phone]</span>.
       </p>
-
       <p class="mt-2">
         Let it be known: if a buyer’s agent/broker facilitates the sale of
         <span id="s_addrShortL2">[short address]</span>, you (the escrow holder/closing agent)
@@ -60,7 +58,6 @@
         debiting me, the seller – a commission not to exceed
         <span id="s_commL">[commission]</span><span id="s_commSuffixL"></span>.
       </p>
-
       <p class="mt-6">
         <span id="sigRenderL" class="pl-5 font-cursive">[Name]</span> Electronic Signature
         <span class="ml-6" id="sigDateL"></span>
@@ -70,7 +67,6 @@
     <!-- FSBO VERSION -->
     <div id="iscFSBO" class="text-sm leading-relaxed hidden">
       <p>To the escrow holder/closing agent,</p>
-
       <p class="mt-2">
         I, <span id="s_nameF">[name]</span>, am the owner/seller of
         <span id="s_addrFullF">[full address]</span>, # <span id="s_apnF">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
@@ -78,23 +74,24 @@
         My phone number is <span id="s_phoneF">[owner/seller phone number]</span>.
         My email address is <span id="s_emailF">[owner/seller email]</span>.
       </p>
-
       <p class="mt-2">
         Let it be known: if a buyer’s agent/broker facilitates the sale of
         <span id="s_addrShortF2">[short address]</span>, you (the escrow holder/closing agent)
         are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed
         <span id="s_commF">[commission]</span><span id="s_commSuffixF"></span>.
       </p>
-
       <p class="mt-6">
         <span id="sigRenderF" class="pl-5 font-cursive">[Name]</span> Electronic Signature
         <span class="ml-6" id="sigDateF"></span>
       </p>
     </div>
+
+    <!-- FOOTER VIEW COUNTER -->
+    <p id="viewCounter" class="text-xs text-gray-500 mt-8"></p>
   </div>
 
   <script>
-    console.log("[printable-isc] build 2025-08-11b");
+    console.log("[printable-isc] build 2025-08-11c");
     const $ = (id) => document.getElementById(id);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
@@ -110,6 +107,12 @@
     const isFSBO = /fsbo/i.test(plan);
     const signature = (localStorage.getItem("signature") || "").trim();
     const today = new Date().toLocaleDateString();
+
+    // View counter
+    let views = parseInt(localStorage.getItem("iscViews") || "0", 10) || 0;
+    views++;
+    localStorage.setItem("iscViews", views.toString());
+    $("viewCounter").textContent = `This Irrevocable Seller Communication has been viewed ${views} time${views !== 1 ? "s" : ""}.`;
 
     // Show correct variant
     $("iscListed").classList.toggle("hidden", isFSBO);
@@ -147,7 +150,6 @@
       $("s_agentL").textContent = formData.agent || "[listing agent]";
       $("s_agentPhoneL").textContent = formData.phone || "[agent phone]";
 
-      // APN logic: hide wrapper if "agent to provide"
       const apnRaw = (formData.apn || "").trim();
       const showAPN = !!(apnRaw && !/^agent to provide$/i.test(apnRaw));
       $("s_apnWrapL").style.display = showAPN ? "inline" : "none";
