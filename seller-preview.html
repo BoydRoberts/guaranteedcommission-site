@@ -1,73 +1,252 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Listing Preview</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Preview Your Listing | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .ribbon {
+      position: absolute; top: 12px; left: -8px;
+      background: #111827; color: #fff; padding: 6px 12px;
+      font-size: 12px; font-weight: 600; transform: rotate(-6deg);
+      border-radius: 6px;
+    }
+    .status-pill {
+      font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 9999px;
+    }
+    .grid-photos img { object-fit: cover; width: 100%; height: 100%; border-radius: 10px; }
+  </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-900">
 
-  <div class="max-w-2xl mx-auto mt-16 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold mb-6 text-center">Preview Your Listing</h1>
-
-    <div class="space-y-4 text-sm leading-relaxed">
-      <p><strong>Property Address:</strong> <span id="address">Loading...</span></p>
-      <p><strong>Description:</strong> <span id="description"></span></p>
-      <p><strong>Bedrooms:</strong> <span id="bedrooms"></span></p>
-      <p><strong>Bathrooms:</strong> <span id="bathrooms"></span></p>
-      <p><strong>Square Feet:</strong> <span id="sqft"></span></p>
-      <p><strong>Listing Price:</strong> $<span id="price"></span></p>
-
-      <div id="bannerSection" class="hidden">
-        <p><strong>Banner:</strong> <span id="banner"></span></p>
-      </div>
-
-      <div>
-        <p><strong>Photos:</strong></p>
-        <ul id="photoList" class="list-disc list-inside ml-4"></ul>
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Top bar -->
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-bold">Preview Your Listing</h1>
+      <div class="flex gap-2">
+        <a href="/seller-detail.html" class="px-3 py-2 rounded border bg-white hover:bg-gray-50">Edit</a>
+        <a href="/printable-isc.html" class="px-3 py-2 rounded border bg-white hover:bg-gray-50">Print ISC</a>
+        <a href="/index.html" class="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Done</a>
       </div>
     </div>
 
-    <div class="flex justify-center gap-4 mt-8">
-      <button onclick="editListing()" class="bg-gray-600 text-white px-6 py-2 rounded">Edit Listing</button>
-      <button onclick="publishListing()" class="bg-green-600 text-white px-6 py-2 rounded">Submit to Publish</button>
+    <div id="warn" class="hidden mb-4 p-3 rounded bg-yellow-50 text-yellow-800 text-sm"></div>
+
+    <!-- Card -->
+    <div class="bg-white rounded-2xl shadow overflow-hidden">
+      <!-- Hero -->
+      <div class="relative">
+        <img id="heroImg" alt="Primary photo" class="w-full h-[300px] md:h-[420px] object-cover bg-gray-100">
+        <div id="banner" class="ribbon hidden"></div>
+        <div id="statusPill" class="status-pill absolute bottom-3 left-3 bg-gray-800 text-white">STATUS</div>
+      </div>
+
+      <!-- Summary -->
+      <div class="p-5 md:p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <div class="text-2xl md:text-3xl font-extrabold">
+              <span id="price">$—</span>
+            </div>
+            <div class="text-sm text-gray-600">
+              <span id="address">[Full address]</span>
+            </div>
+          </div>
+
+          <!-- Commission block -->
+          <div class="bg-gray-50 border rounded-xl px-4 py-3">
+            <div class="text-xs text-gray-500 uppercase tracking-wide">Buyer Agent Commission</div>
+            <div class="flex items-baseline gap-4 mt-1">
+              <div class="text-lg font-semibold" id="commDisplay">—</div>
+              <div class="text-lg font-extrabold" id="commTotal">$0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tile line (beds, baths, sqft) -->
+        <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-700">
+          <div id="bedsBadge" class="px-2 py-1 rounded bg-gray-100">Beds: —</div>
+          <div id="bathsBadge" class="px-2 py-1 rounded bg-gray-100">Baths: —</div>
+          <div id="sqftBadge" class="px-2 py-1 rounded bg-gray-100">Sq Ft: —</div>
+          <div id="planBadge" class="px-2 py-1 rounded bg-indigo-50 text-indigo-700 font-semibold">Plan</div>
+        </div>
+
+        <!-- Photos grid -->
+        <div id="photosWrap" class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 grid-photos"></div>
+
+        <!-- Description -->
+        <div id="descWrap" class="mt-6">
+          <h3 class="text-lg font-bold mb-1">Property Description</h3>
+          <p id="description" class="text-gray-800 whitespace-pre-wrap">[Description]</p>
+        </div>
+
+        <!-- APN / Parcel -->
+        <div class="mt-6">
+          <h3 class="text-sm font-semibold text-gray-600 mb-1">Parcel / APN</h3>
+          <p id="apn" class="text-gray-800">—</p>
+        </div>
+
+        <!-- Contact / Brokerage -->
+        <div class="mt-6">
+          <h3 class="text-lg font-bold mb-1">Listing Contact</h3>
+          <div id="contactBlock" class="text-gray-800 text-sm space-y-0.5">
+            <!-- Filled dynamically for Listed vs FSBO -->
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- tiny footnote -->
+    <p class="text-[11px] text-gray-500 mt-3">This is a preview. Final public page may vary slightly in layout.</p>
   </div>
 
   <script>
-    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
-    const details = JSON.parse(localStorage.getItem("listingDetails") || "{}");
-    const hasBanner = localStorage.getItem("banner") === "true";
-
-    document.getElementById("address").textContent = formData.address || "[Address]";
-    document.getElementById("description").textContent = details.description || "[Description]";
-    document.getElementById("bedrooms").textContent = details.bedrooms || "-";
-    document.getElementById("bathrooms").textContent = details.bathrooms || "-";
-    document.getElementById("sqft").textContent = details.sqft || "-";
-    document.getElementById("price").textContent = details.price || "-";
-
-    if (hasBanner && details.banner) {
-      document.getElementById("banner").textContent = details.banner;
-      document.getElementById("bannerSection").classList.remove("hidden");
+    // Helpers
+    function getJSON(k, fb){ try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } }
+    function $(id){ return document.getElementById(id); }
+    function money(n){ const x = Number(n||0); return isFinite(x) ? '$' + x.toLocaleString() : '$-'; }
+    function computeCommissionAmount(price, commission, type){
+      const p = Number(price || 0);
+      const c = Number(commission || 0);
+      if (type === '%') return Math.round(p * (c/100));
+      return Math.round(c);
+    }
+    function statusLabel(s){
+      switch((s||'').toLowerCase()){
+        case 'active': return ['Active','#065f46','#d1fae5','#065f46'];
+        case 'in_contract': return ['In Contract','#92400e','#ffedd5','#92400e'];
+        case 'sold': return ['Sold','#991b1b','#fee2e2','#991b1b'];
+        default: return ['Draft','#1f2937','#e5e7eb','#1f2937'];
+      }
     }
 
-    const photoList = document.getElementById("photoList");
-    if (details.photos && details.photos.length > 0) {
-      photoList.innerHTML = details.photos.map(name => `<li>${name}</li>`).join("");
-    } else {
-      photoList.innerHTML = "<li>No photos uploaded.</li>";
+    // Load state
+    const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+    const formData = getJSON('formData', {});
+    const data = getJSON('sellerListing', {});
+    const isPlus = plan === 'Listed Property Plus' || plan === 'FSBO Plus';
+    const isFSBO = plan === 'FSBO Plus';
+
+    // Guard & gentle warnings
+    const warn = $('warn');
+    if (!data.status) {
+      warn.classList.remove('hidden');
+      warn.textContent = 'Status is not set. Please select a status on the edit screen.';
     }
 
-    function editListing() {
-      window.location.href = "/seller-detail.html";
-    }
+    // Hero / banner / status
+    (function paintHero(){
+      const photos = Array.isArray(data.photos) ? data.photos : [];
+      const primaryIdx = (typeof data.primaryIndex === 'number') ? data.primaryIndex : 0;
+      const hero = photos[primaryIdx] || '';
+      $('heroImg').src = hero || 'https://via.placeholder.com/1200x700?text=Primary+Photo';
 
-    function publishListing() {
-      alert("Listing submitted! (Future: save to Firestore)");
-      window.location.href = "/thank-you.html";
-    }
+      const b = $('banner');
+      if (data.bannerText && data.bannerText.trim()) {
+        b.textContent = data.bannerText.trim();
+        b.classList.remove('hidden');
+      } else {
+        b.classList.add('hidden');
+      }
+
+      const pill = $('statusPill');
+      const [label, textColor, bgColor, borderColor] = statusLabel(data.status);
+      pill.textContent = label;
+      pill.style.background = bgColor;
+      pill.style.color = textColor;
+      pill.style.border = '1px solid ' + borderColor;
+    })();
+
+    // Price + commission block
+    (function paintMoney(){
+      $('price').textContent = data.price ? money(data.price) : 'Price coming soon';
+
+      const cType = data.commissionType || formData.commissionType || '%';
+      const cVal  = (data.commission ?? formData.commission) ?? '';
+      const commDisplay =
+        (cVal === '' || cVal === null || typeof cVal === 'undefined')
+          ? '—'
+          : (cType === '$' ? ('$' + Number(cVal||0)) : (Number(cVal||0) + '%'));
+      $('commDisplay').textContent = commDisplay;
+
+      const total = computeCommissionAmount(data.price, cVal, cType);
+      $('commTotal').textContent = money(total);
+    })();
+
+    // Address + plan badge + tile chips
+    (function paintMeta(){
+      $('address').textContent = formData.address || '[Full address]';
+      $('bedsBadge').textContent  = 'Beds: ' + (data.beds || '—');
+      $('bathsBadge').textContent = 'Baths: ' + (data.baths || '—');
+      $('sqftBadge').textContent  = 'Sq Ft: ' + (data.sqft || '—');
+
+      $('planBadge').textContent = plan;
+    })();
+
+    // Photos grid
+    (function paintGrid(){
+      const wrap = $('photosWrap');
+      const photos = Array.isArray(data.photos) ? data.photos : [];
+      wrap.innerHTML = '';
+
+      if (!photos.length) {
+        wrap.innerHTML = '<div class="col-span-full text-sm text-gray-500">No photos uploaded.</div>';
+        return;
+      }
+
+      photos.forEach((src, i) => {
+        const d = document.createElement('div');
+        d.className = 'aspect-square';
+        const img = new Image();
+        img.src = src;
+        img.alt = 'Photo ' + (i+1);
+        img.loading = 'lazy';
+        d.appendChild(img);
+        wrap.appendChild(d);
+      });
+    })();
+
+    // Description
+    (function paintDesc(){
+      if (!isPlus) {
+        $('descWrap').classList.add('opacity-60');
+        $('description').textContent = '[Upgrade to Plus to display a full property description.]';
+        return;
+      }
+      $('description').textContent = data.description && data.description.trim()
+        ? data.description.trim()
+        : '[Description]';
+    })();
+
+    // APN / Parcel
+    (function paintAPN(){
+      $('apn').textContent = data.apn && data.apn.trim() ? data.apn.trim() : '—';
+    })();
+
+    // Contact block (Listed vs FSBO)
+    (function paintContact(){
+      const block = $('contactBlock');
+      let html = '';
+      if (isFSBO) {
+        // From Box 2: phone = owner phone, brokerage = owner email in FSBO flow
+        const ownerPhone = formData.phone || '';
+        const ownerEmail = formData.brokerage || '';
+        html += `<div><span class="font-semibold">Owner/Seller</span></div>`;
+        if (ownerPhone) html += `<div>Phone: ${ownerPhone}</div>`;
+        if (ownerEmail) html += `<div>Email: ${ownerEmail}</div>`;
+        if (!ownerPhone && !ownerEmail) html += `<div class="text-gray-500">Contact info pending.</div>`;
+      } else {
+        const brokerage = formData.brokerage || '';
+        const agent     = formData.agent || '';
+        const phone     = formData.phone || '';
+        if (brokerage) html += `<div><span class="font-semibold">${brokerage}</span></div>`;
+        if (agent)     html += `<div>Listing Agent: ${agent}</div>`;
+        if (phone)     html += `<div>Agent Phone: ${phone}</div>`;
+        if (!brokerage && !agent && !phone) html += `<div class="text-gray-500">Listing brokerage/agent details pending.</div>`;
+      }
+      block.innerHTML = html;
+    })();
   </script>
-
 </body>
 </html>
