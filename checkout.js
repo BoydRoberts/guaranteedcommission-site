@@ -1,6 +1,6 @@
-// checkout.js — build 2025-08-12r
+// checkout.js — build 2025-08-12POP
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-12r");
+  console.log("[checkout.js] build 2025-08-12POP");
 
   // ---------- Stripe (test) ----------
   const stripe = Stripe("pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD");
@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
   const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-  const fmt = (n) => (Number(n || 0)).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0});
 
   // Confidence line
   (function renderWhoRow(){
@@ -24,8 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
     $("whoRow").classList.remove("hidden");
   })();
 
-  // ---------- source of truth from upsell ----------
-  // We support both the "new" boolean-upgrades object and an older "array of strings" schema.
+  // ---------- load checkout data (supports old & new schemas) ----------
   let data = getJSON("checkoutData", null);
   if (!data) {
     const plan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
@@ -38,7 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
       total: 0
     };
   } else {
-    // If old array schema, normalize it into booleans
     if (Array.isArray(data.upgrades)) {
       const arr = data.upgrades.map(s => (s||"").toLowerCase());
       data.upgrades = {
@@ -49,20 +46,20 @@ document.addEventListener("DOMContentLoaded", () => {
         confidential:  arr.some(s => s.includes("confidential"))
       };
     } else {
-      // ensure all keys exist
       data.upgrades = Object.assign({ upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false }, data.upgrades || {});
     }
-    // ensure prices exist
     data.prices = Object.assign({ plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 }, data.prices || {});
-    data.base ??= (data.plan === "FSBO Plus" ? data.prices.fsbo : (data.plan === "Listed Property Plus" ? data.prices.plus : 0));
+    if (typeof data.base !== "number") {
+      data.base = (data.plan === "FSBO Plus" ? data.prices.fsbo : (data.plan === "Listed Property Plus" ? data.prices.plus : 0));
+    }
   }
 
-  // ---------- compute total ----------
+  // ---------- compute totals ----------
   function recompute(d) {
     let plan = d.plan;
     let base = d.base;
 
-    // If Basic & chose upgradeToPlus, treat as Plus base here (and update selectedPlan for later pages)
+    // If Basic + upgradeToPlus → treat as Plus
     if (plan === "Listed Property Basic" && d.upgrades.upgradeToPlus) {
       plan = "Listed Property Plus";
       base = d.prices.plus;
@@ -86,8 +83,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---------- render summary ----------
   function renderSummary() {
     $("planName").textContent = data.plan;
-    $("basePrice").textContent = (data.base||0);
-    $("totalAmount").textContent = (data.total||0);
+    $("basePrice").textContent = (data.base || 0);
+    $("totalAmount").textContent = (data.total || 0);
 
     const sel = [];
     if (data.upgrades.upgradeToPlus) sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
@@ -99,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const ul = $("selectedList");
     ul.innerHTML = sel.length ? sel.map(s => `<li>${s}</li>`).join("") : `<li class="text-gray-400">None</li>`;
 
-    // Toggle zero-total continue
+    // Toggle $0 flow
     if ((data.total || 0) <= 0) {
       $("goSignatureZero").classList.remove("hidden");
       $("payNowBtn").classList.add("hidden");
@@ -130,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     box.innerHTML = toggles.map(t => `
-      <label class="flex items-center justify-between border rounded px-3 py-2">
+      <label class="flex items-center justify-between border rounded-lg px-3 py-2 bg-white">
         <div>
           <span class="font-medium">${t.label}</span>
           <span class="text-gray-500"> — $${t.price}</span>
@@ -158,7 +155,7 @@ document.addEventListener("DOMContentLoaded", () => {
           data.upgrades.premium = checked;
         } else if (k === "pin") {
           data.upgrades.pin = checked;
-          if (checked) data.upgrades.premium = true;
+          if (checked) data.upgrades.premium = true; // included
         } else if (k === "confidential") {
           data.upgrades.confidential = checked;
         }
@@ -176,13 +173,13 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   $("payNowBtn").addEventListener("click", async () => {
-    // Guard: if $0, skip Stripe
+    // Skip Stripe if $0
     if ((data.total || 0) <= 0) {
       window.location.href = "/signature.html";
       return;
     }
 
-    // Build Stripe line items from current state
+    // Stripe Price IDs (your test IDs)
     const PRICE_IDS = {
       PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu", // $20 Listed Property Plus
       FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ", // $100 FSBO Plus
@@ -197,16 +194,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const isPlus = data.plan === "Listed Property Plus";
     const isBasic= data.plan === "Listed Property Basic";
 
-    // Base plan
-    if (isFSBO && (data.base ?? data.prices.fsbo) > 0) {
-      items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
-    } else if (isPlus && (data.base ?? data.prices.plus) > 0) {
-      items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-    } else if (isBasic && data.upgrades.upgradeToPlus && data.prices.plus > 0) {
-      items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-    }
+    // Base
+    if (isFSBO && (data.base ?? data.prices.fsbo) > 0) items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
+    else if (isPlus && (data.base ?? data.prices.plus) > 0) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
+    else if (isBasic && data.upgrades.upgradeToPlus && data.prices.plus > 0) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
 
-    // Upsells (only charge if price > 0)
+    // Upsells
     if (data.upgrades.banner && data.prices.banner > 0) items.push({ price: PRICE_IDS.BANNER, quantity: 1 });
     if (data.upgrades.pin) {
       if (data.prices.pin > 0) items.push({ price: PRICE_IDS.PIN, quantity: 1 });
@@ -220,7 +213,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Redirect to Stripe Checkout (success → Signature)
     const { error } = await stripe.redirectToCheckout({
       lineItems: items,
       mode: "payment",
@@ -228,9 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
       cancelUrl:  window.location.origin + "/checkout.html"
     });
 
-    if (error) {
-      alert("Stripe error: " + error.message);
-    }
+    if (error) alert("Stripe error: " + error.message);
   });
 
   // ---------- initial paint ----------
