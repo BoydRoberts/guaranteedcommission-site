@@ -1,66 +1,254 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Review Cart and Checkout | GuaranteedCommission.com</title>
+  <title>Review & Checkout | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://js.stripe.com/v3/"></script>
 </head>
-<body class="bg-gray-100 text-gray-800">
-
-  <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold text-center mb-6">Review & Checkout</h1>
-
-    <div class="space-y-4 text-sm">
-      <p><strong>Selected Plan:</strong> <span id="selectedPlan">Loading...</span> - $<span id="planCost">0</span></p>
-
-      <div>
-        <strong>Upgrades:</strong>
-        <ul id="upgradeList" class="list-disc list-inside text-gray-700"></ul>
+<body class="bg-gray-100 text-gray-900">
+  <div class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-2xl bg-white rounded-2xl shadow p-6 relative">
+      <!-- Test badge -->
+      <div class="absolute -top-3 -right-3">
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-yellow-100 text-yellow-800 border border-yellow-300">
+          TEST MODE
+        </span>
       </div>
 
-      <p class="mt-4 text-lg font-bold">Total: $<span id="totalAmountConfirm">0</span></p>
+      <div class="text-center mb-2">
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-08-11d</span>
+      </div>
+
+      <h1 class="text-2xl font-bold text-center mb-6">Review & Checkout</h1>
+
+      <!-- Summary -->
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="space-y-3">
+          <p class="text-sm">
+            <strong>Selected Plan:</strong>
+            <span id="planName">—</span>
+            <span class="text-gray-500"> — Base $<span id="basePrice">0</span></span>
+          </p>
+
+          <div>
+            <p class="text-sm font-semibold mb-1">Selected Upgrades:</p>
+            <ul id="selectedList" class="list-disc list-inside text-sm text-gray-700">
+              <li class="text-gray-400">None</li>
+            </ul>
+          </div>
+
+          <div class="pt-2 border-t mt-3">
+            <p class="text-lg font-bold">
+              Total: $<span id="totalAmount">0</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Last-chance upsells -->
+        <div>
+          <p class="text-sm font-semibold mb-2">Add upgrades before you pay:</p>
+          <div id="upsellChoices" class="space-y-2 text-sm">
+            <!-- dynamically filled -->
+          </div>
+
+          <!-- Promo code -->
+          <div class="mt-4 p-3 rounded border bg-gray-50">
+            <label for="promoInput" class="block text-sm font-semibold">Promo Code</label>
+            <div class="mt-1 flex gap-2">
+              <input id="promoInput" type="text" class="flex-1 border rounded px-3 py-2" placeholder="e.g., August Free"/>
+              <button id="applyPromoBtn" class="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Apply</button>
+            </div>
+            <p class="text-[11px] text-gray-500 mt-1">Agents can unlock August promo here.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="mt-6 flex items-center justify-between">
+        <button id="backBtn" class="px-4 py-2 rounded border">Back</button>
+        <button id="payNowBtn" class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700">
+          Pay Now with Stripe
+        </button>
+      </div>
+
+      <p class="text-[11px] text-gray-500 text-center mt-4">
+        You’ll be able to electronically sign your ISC on the next step.
+      </p>
     </div>
-
-    <button id="proceedPaymentBtn" class="w-full bg-green-600 text-white py-2 rounded mt-6">
-      Pay Now with Stripe
-    </button>
-
-    <p class="text-sm text-center mt-6">
-      Need to log in first?
-      <a href="/login.html" class="text-blue-600 hover:underline">Go to login</a>
-    </p>
   </div>
 
   <script>
-    // Read checkout data
-    const checkoutData = JSON.parse(localStorage.getItem("checkoutData") || "{}");
+    console.log('[checkout] build 2025-08-11d');
 
-    const plan = checkoutData.plan || "No plan selected";
-    const planCost = checkoutData.planCost || 0;
-    const upgrades = checkoutData.upgrades || [];
-    const totalCost = checkoutData.totalCost || 0;
+    const $ = (id) => document.getElementById(id);
+    function getJSON(key, fallback){ try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
+    function setJSON(key, obj){ localStorage.setItem(key, JSON.stringify(obj)); }
 
-    document.getElementById("selectedPlan").innerText = plan;
-    document.getElementById("planCost").innerText = planCost;
-    document.getElementById("totalAmountConfirm").innerText = totalCost;
+    // Load data from upsell flow
+    let checkoutData = getJSON('checkoutData', null);
+    const allOptions = getJSON('allUpsellOptions', {});
 
-    const upgradeList = document.getElementById("upgradeList");
-    upgradeList.innerHTML = upgrades.length 
-      ? upgrades.map(up => `<li>${up}</li>`).join("") 
-      : "<li>None</li>";
+    // Defensive: if no data, build a minimal structure so page doesn't break
+    if (!checkoutData) {
+      const selectedPlan = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
+      checkoutData = {
+        plan: selectedPlan,
+        base: selectedPlan === 'FSBO Plus' ? 100 : (selectedPlan === 'Listed Property Plus' ? 20 : 0),
+        upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
+        prices: { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
+        meta: {},
+        total: 0
+      };
+    }
 
-    document.getElementById("proceedPaymentBtn").addEventListener("click", () => {
-      if(totalCost === 0){
-        alert("No payment required. Proceeding to signature page...");
-        window.location.href = "/signature.html";
+    // UI fill
+    $('planName').textContent = checkoutData.plan || '—';
+    $('basePrice').textContent = checkoutData.base ?? 0;
+
+    function renderSelected() {
+      const ul = $('selectedList');
+      ul.innerHTML = '';
+      const sel = [];
+
+      // Upgrade to Plus (if selected)
+      if (checkoutData.upgrades.upgradeToPlus) sel.push(`Upgrade to Listed Property Plus ($${checkoutData.prices.plus})`);
+      if (checkoutData.upgrades.banner) sel.push(`Banner ($${checkoutData.prices.banner})`);
+      if (checkoutData.upgrades.pin) sel.push(`Pin Placement ($${checkoutData.prices.pin})`);
+      else if (checkoutData.upgrades.premium) sel.push(`Premium Placement ($${checkoutData.prices.premium})`);
+      if (checkoutData.upgrades.confidential) sel.push(`Confidential FSBO Upgrade ($${checkoutData.prices.confidential})`);
+
+      if (!sel.length) {
+        ul.innerHTML = '<li class="text-gray-400">None</li>';
+      } else {
+        ul.innerHTML = sel.map(s => `<li>${s}</li>`).join('');
+      }
+    }
+
+    function computeTotal() {
+      let total = checkoutData.base || 0;
+      if (checkoutData.upgrades.upgradeToPlus) total += checkoutData.prices.plus;
+      if (checkoutData.upgrades.banner) total += checkoutData.prices.banner;
+      if (checkoutData.upgrades.pin) total += checkoutData.prices.pin;
+      else if (checkoutData.upgrades.premium) total += checkoutData.prices.premium;
+      if (checkoutData.upgrades.confidential) total += checkoutData.prices.confidential;
+      checkoutData.total = total;
+      $('totalAmount').textContent = total;
+      setJSON('checkoutData', checkoutData);
+    }
+
+    function renderLastChance() {
+      const box = $('upsellChoices');
+      box.innerHTML = '';
+
+      // Build a normalized list of all possible toggles with their current selected state
+      const toggles = [];
+
+      const isBasic = checkoutData.plan === 'Listed Property Basic';
+      const isPlus = checkoutData.plan === 'Listed Property Plus';
+      const isFSBO = checkoutData.plan === 'FSBO Plus';
+
+      // Only show Upgrade to Plus for Basic and only if not already selected
+      if (isBasic && !checkoutData.upgrades.upgradeToPlus) {
+        toggles.push({ key:'upgradeToPlus', label:'Upgrade to Listed Property Plus', price: checkoutData.prices.plus });
+      }
+
+      // Banner always optional if not selected
+      if (!checkoutData.upgrades.banner) {
+        toggles.push({ key:'banner', label:'Banner', price: checkoutData.prices.banner });
+      }
+
+      // Premium optional if not selected and not already included by Pin
+      if (!checkoutData.upgrades.premium && !checkoutData.upgrades.pin) {
+        toggles.push({ key:'premium', label:'Premium Placement', price: checkoutData.prices.premium });
+      }
+
+      // Pin optional if not selected
+      if (!checkoutData.upgrades.pin) {
+        toggles.push({ key:'pin', label:'Pin Placement', price: checkoutData.prices.pin, note:'(includes Premium free)' });
+      }
+
+      // Confidential only for FSBO
+      if (isFSBO && !checkoutData.upgrades.confidential) {
+        toggles.push({ key:'confidential', label:'Confidential FSBO Upgrade', price: checkoutData.prices.confidential });
+      }
+
+      if (!toggles.length) {
+        box.innerHTML = '<p class="text-gray-500">No additional upgrades available.</p>';
         return;
       }
-      // Redirect to Stripe checkout
-      window.location.href = "/checkout-stripe.html";
+
+      box.innerHTML = toggles.map(t => `
+        <label class="flex items-center justify-between border rounded px-3 py-2">
+          <div>
+            <span class="font-medium">${t.label}</span>
+            <span class="text-gray-500"> — $${t.price}</span>
+            ${t.note ? `<div class="text-[11px] text-gray-500">${t.note}</div>` : ``}
+          </div>
+          <input type="checkbox" class="h-4 w-4" data-key="${t.key}"/>
+        </label>
+      `).join('');
+
+      // Wire changes
+      box.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const k = e.target.getAttribute('data-key');
+          const checked = e.target.checked;
+
+          // Apply logic
+          if (k === 'upgradeToPlus') {
+            checkoutData.upgrades.upgradeToPlus = checked;
+            if (checked) {
+              // Flip plan + base immediately for clarity
+              checkoutData.plan = 'Listed Property Plus';
+              checkoutData.base = checkoutData.prices.plus;
+              localStorage.setItem('selectedPlan', 'Listed Property Plus');
+              $('planName').textContent = checkoutData.plan;
+              $('basePrice').textContent = checkoutData.base;
+            } else {
+              // revert only if originally Basic with no other path to Plus
+              // (rare user action; leave as-is for simplicity)
+            }
+          } else if (k === 'banner') {
+            checkoutData.upgrades.banner = checked;
+          } else if (k === 'premium') {
+            // If Pin is already selected, Premium is implied and cannot be toggled here (we hide it above)
+            checkoutData.upgrades.premium = checked;
+          } else if (k === 'pin') {
+            checkoutData.upgrades.pin = checked;
+            if (checked) checkoutData.upgrades.premium = true; // include premium
+          } else if (k === 'confidential') {
+            checkoutData.upgrades.confidential = checked;
+          }
+
+          renderSelected();
+          computeTotal();
+        });
+      });
+    }
+
+    // Wire back & promo
+    $('backBtn').addEventListener('click', () => {
+      window.location.href = '/upsell.html';
     });
+
+    // Promo is handled by checkout.js, but we persist the typed value here for it to read
+    $('applyPromoBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      const code = ($('promoInput').value || '').trim();
+      localStorage.setItem('promoCode', code);
+      alert('Promo code saved. It will be applied on payment.');
+    });
+
+    // Initial paint
+    renderSelected();
+    computeTotal();
+    renderLastChance();
+
+    // NOTE: The actual Stripe redirect & $0 handling is done in checkout.js using #payNowBtn
   </script>
 
+  <!-- Stripe loader kept external via checkout.js -->
+  <script src="/checkout.js"></script>
 </body>
 </html>
