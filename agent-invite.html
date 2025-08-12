@@ -3,202 +3,108 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Who Will Complete the Listing? | GuaranteedCommission.com</title>
+  <title>Who Will Complete the Listing?</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .font-cursive { font-family: "Brush Script MT", cursive; }
-  </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-
-  <!-- Top bar -->
-  <div class="max-w-5xl mx-auto mt-6 mb-2 flex items-center justify-between text-sm px-2">
-    <a href="/" class="text-blue-600 underline">Back to Home</a>
-    <a href="/login.html" class="text-blue-600 underline">Log In</a>
-  </div>
-
-  <div class="max-w-5xl mx-auto bg-white rounded shadow p-6 mt-2">
-    <h1 class="text-2xl font-bold text-center">Who Will Complete the Listing?</h1>
-    <p class="text-center text-gray-600 mt-1">Choose how you’d like to finish the listing details.</p>
-
-    <div class="grid md:grid-cols-3 gap-6 mt-8">
-      <!-- Left: Options -->
-      <div class="md:col-span-2 space-y-6">
-        <!-- Option A: Invite agent -->
-        <div class="border rounded p-5">
-          <div class="flex items-start gap-3">
-            <div class="shrink-0">
-              <input id="optAgent" type="radio" name="who" value="agent" class="mt-1" checked />
-            </div>
-            <div class="grow">
-              <label for="optAgent" class="block font-semibold text-lg">Invite my agent to complete the listing</label>
-              <p class="text-sm text-gray-600 mt-1">
-                Your listing tile will go live immediately with a “Coming soon” photo, “Price coming soon,” and
-                blank beds/baths. We’ll display the listing brokerage, listing agent, and agent phone so agents
-                can contact you. Your agent will receive an invite to fill in photos, price, description, and details.
-              </p>
-
-              <!-- Agent invite form -->
-              <form id="agentForm" class="grid sm:grid-cols-2 gap-3 mt-4">
-                <input type="text" id="agentName" placeholder="Listing Agent Name" class="border rounded p-2 w-full">
-                <input type="text" id="agentBrokerage" placeholder="Listing Brokerage" class="border rounded p-2 w-full">
-                <input type="tel" id="agentPhone" placeholder="Agent Phone (123-456-7890)" class="border rounded p-2 w-full">
-                <input type="email" id="agentEmail" placeholder="Agent Email" class="border rounded p-2 w-full">
-                <div class="sm:col-span-2 flex items-center justify-between mt-1">
-                  <p class="text-xs text-gray-500">
-                    We’ll verify the agent by email or phone. The address must match to access the listing.
-                  </p>
-                  <button type="button" id="sendInviteBtn" class="bg-blue-600 text-white px-4 py-2 rounded">
-                    Send Invite & Publish Stub
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-
-        <!-- Option B: Seller completes -->
-        <div class="border rounded p-5">
-          <div class="flex items-start gap-3">
-            <div class="shrink-0">
-              <input id="optSeller" type="radio" name="who" value="seller" class="mt-1" />
-            </div>
-            <div class="grow">
-              <label for="optSeller" class="block font-semibold text-lg">I’ll complete the listing details myself</label>
-              <p class="text-sm text-gray-600 mt-1">
-                You’ll be able to add price, details, and one photo with the Basic plan.
-                Upgrade to Plus to unlock a full description and up to 20 photos.
-              </p>
-              <div class="mt-3">
-                <button id="sellerContinueBtn" class="bg-green-600 text-white px-4 py-2 rounded">
-                  Continue to Listing Details
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Helper tips -->
-        <div class="text-xs text-gray-500">
-          Tip: You can invite your agent now and still add your own details later. Agents can also pay to
-          upgrade to Plus and Pin Placement from their dashboard at any time.
-        </div>
+  <div class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-xl bg-white rounded-2xl shadow p-6">
+      <div class="text-center mb-2">
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">agent-invite build 2025-08-12a</span>
       </div>
 
-      <!-- Right: Recap -->
-      <aside class="border rounded p-5 h-fit">
-        <h2 class="font-semibold mb-3">Listing Recap</h2>
-        <div class="text-sm">
-          <div class="mb-2">
-            <div class="text-gray-500">Address</div>
-            <div id="recapAddress" class="font-medium">—</div>
-          </div>
-          <div class="mb-2">
-            <div class="text-gray-500">Plan</div>
-            <div id="recapPlan" class="font-medium">—</div>
-          </div>
-          <div class="mb-2">
-            <div class="text-gray-500">Commission</div>
-            <div class="font-medium">
-              <span id="recapCommission">—</span>
-              <span id="recapSuffix"></span>
-            </div>
-          </div>
-          <hr class="my-3">
-          <p class="text-xs text-gray-500">
-            Your tile appears in Search (Strip 2). Until details are filled, we’ll show a placeholder image and
-            limited info so buyer agents can see your guaranteed commission and contact info.
+      <h1 class="text-2xl font-bold text-center">Who Will Complete the Listing?</h1>
+      <p id="addrLine" class="text-sm text-gray-600 text-center mt-1"></p>
+
+      <div id="notice" class="hidden mt-4 text-sm rounded-lg p-3 bg-yellow-50 text-yellow-800"></div>
+
+      <div class="mt-6 grid gap-6 md:grid-cols-2">
+        <!-- Invite Agent -->
+        <section class="border rounded-xl p-4">
+          <h2 class="font-semibold mb-2">Invite my agent to complete listing</h2>
+          <p class="text-sm text-gray-600 mb-3">
+            We’ll start your listing with the details you provided. Your agent can add photos, description, and any missing fields.
           </p>
-        </div>
-      </aside>
+
+          <label class="block text-sm font-medium">Agent Email</label>
+          <input id="agentEmail" type="email" placeholder="agent@example.com"
+                 class="mt-1 w-full border rounded px-3 py-2" />
+
+          <button id="inviteBtn"
+                  class="mt-3 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
+            Invite Agent & Continue
+          </button>
+        </section>
+
+        <!-- Seller Completes -->
+        <section class="border rounded-xl p-4">
+          <h2 class="font-semibold mb-2">I will complete the listing myself</h2>
+          <p class="text-sm text-gray-600 mb-3">
+            You’ll be able to upload photos, set the price, status, and more. (Agents can still be invited later.)
+          </p>
+
+          <a href="/seller-detail.html"
+             class="inline-flex items-center justify-center w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition">
+            Continue
+          </a>
+        </section>
+      </div>
+
+      <div class="mt-6 text-center">
+        <a href="/index.html" class="text-sm text-blue-600 hover:underline">Back to Home</a>
+      </div>
     </div>
   </div>
 
   <script>
-    // Pull known data
-    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
-    const checkoutData = JSON.parse(localStorage.getItem("checkoutData") || "{}");
-    const selectedPlan = checkoutData.plan || localStorage.getItem("selectedPlan") || "Listed Property Basic";
+    console.log('[agent-invite] build 2025-08-12a');
 
-    // Prefill recap
-    const fullAddr = formData.address || "—";
-    const commissionType = formData.commissionType || "%";
-    const commission = formData.commission || "";
-    const commissionDisplay = commissionType === "$" ? (commission ? "$" + commission : "—") : (commission ? commission + "%" : "—");
-    const suffix = commission && commissionType === "%" ? " of the total purchase price" : "";
+    const $ = (id) => document.getElementById(id);
+    const plan = (localStorage.getItem('selectedPlan') || '').trim();
+    const formData = (function(){ try { return JSON.parse(localStorage.getItem('formData')||'{}'); } catch { return {}; } })();
 
-    document.getElementById("recapAddress").textContent = fullAddr;
-    document.getElementById("recapPlan").textContent = selectedPlan;
-    document.getElementById("recapCommission").textContent = commissionDisplay;
-    document.getElementById("recapSuffix").textContent = suffix ? " " + suffix : "";
+    // FSBO Plus skips this page entirely (no listing agent flow)
+    if (plan === 'FSBO Plus') {
+      localStorage.setItem('nextAfterVerify', '/seller-detail.html');
+      window.location.replace('/seller-detail.html');
+    }
 
-    // Prefill agent form from earlier inputs if present
-    document.getElementById("agentName").value = formData.agent || "";
-    document.getElementById("agentBrokerage").value = formData.brokerage || "";
-    document.getElementById("agentPhone").value = formData.phone || "";
-    document.getElementById("agentEmail").value = ""; // typically wasn’t in Box 2
+    // Paint address line (nice confidence cue)
+    const addr = formData.address || localStorage.getItem('shortAddress') || '';
+    if (addr) $('addrLine').textContent = addr;
 
-    // Radio interactions: clicking button selects radio
-    document.getElementById("sellerContinueBtn").addEventListener("click", () => {
-      document.getElementById("optSeller").checked = true;
-      // Route to seller details
-      window.location.href = "/seller-detail.html";
-    });
+    // Prefill agent email if we captured it in Box 2
+    const pre = (formData.agentEmail || '').trim();
+    if (pre) $('agentEmail').value = pre;
 
-    document.getElementById("sendInviteBtn").addEventListener("click", () => {
-      document.getElementById("optAgent").checked = true;
+    // If user previously tried inviting an agent but bailed, show a small notice
+    const lastInvited = localStorage.getItem('agentInviteEmail');
+    if (lastInvited) {
+      const n = $('notice');
+      n.textContent = 'Previous agent email on file: ' + lastInvited;
+      n.classList.remove('hidden');
+    }
 
-      // Basic validation
-      const name = document.getElementById("agentName").value.trim();
-      const brokerage = document.getElementById("agentBrokerage").value.trim();
-      const phone = document.getElementById("agentPhone").value.trim();
-      const email = document.getElementById("agentEmail").value.trim();
-
-      if (!name || !brokerage || !phone || !email) {
-        alert("Please complete all agent fields before sending the invite.");
+    // Invite flow – stores the email and proceeds to agent detail page
+    $('inviteBtn').addEventListener('click', (e) => {
+      e.preventDefault();
+      const email = ($('agentEmail').value || '').trim();
+      if (!email || !/^\S+@\S+\.\S{2,}$/.test(email)) {
+        alert('Please enter a valid agent email address.');
+        $('agentEmail').focus();
         return;
       }
+      localStorage.setItem('agentInviteEmail', email);
 
-      // Save agent invite details
-      const agentInvite = {
-        name,
-        brokerage,
-        phone,
-        email,
-        address: formData.address || "",
-        shortAddress: (formData.address || "").split(",")[0] || "",
-        requestedAt: new Date().toISOString()
-      };
-      localStorage.setItem("agentInvite", JSON.stringify(agentInvite));
-      localStorage.setItem("loginIntent", "agent-complete-listing");
+      // keep it in formData as well for later pages
+      try {
+        const fd = JSON.parse(localStorage.getItem('formData') || '{}');
+        fd.agentEmail = email;
+        localStorage.setItem('formData', JSON.stringify(fd));
+      } catch {}
 
-      // Publish a stub/listing placeholder (for Strip 2 tiles)
-      // Your strip 2 code can read this and show a “coming soon” tile
-      const stub = {
-        address: formData.address || "",
-        shortAddress: (formData.address || "").split(",")[0] || "",
-        plan: selectedPlan,
-        commissionDisplay,
-        commissionType,
-        commissionRaw: formData.commission || "",
-        listingBrokerage: brokerage,
-        listingAgent: name,
-        listingAgentPhone: phone,
-        price: "", // coming soon
-        beds: "",  // blank
-        baths: "", // blank
-        photo: "coming-soon", // use a placeholder in your tiles
-        status: "stub-live",
-        createdAt: new Date().toISOString()
-      };
-      localStorage.setItem("listingStub", JSON.stringify(stub));
-      localStorage.setItem("listingStatus", "stub-live");
-
-      // In a real system: send email/SMS here.
-      alert("Agent invite sent! Your listing tile is live with a placeholder. Redirecting…");
-
-      // Go to thank you
-      window.location.href = "/thank-you.html";
+      // In real app you’d send an email invite here.
+      window.location.href = '/agent-detail.html';
     });
   </script>
 </body>
