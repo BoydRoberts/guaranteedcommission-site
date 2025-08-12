@@ -10,12 +10,11 @@
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-xl bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell build 2025-08-12c</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell build 2025-08-11g</span>
       </div>
 
       <h1 id="upsellTitle" class="text-2xl font-bold text-center mb-2">Loading…</h1>
-      <p id="upsellDesc" class="text-sm text-gray-700 text-center mb-1">Please wait.</p>
-      <p class="text-xs text-gray-500 italic text-center mb-6">You can do this later.</p>
+      <p id="upsellDesc" class="text-sm text-gray-700 text-center mb-6">Please wait.</p>
 
       <!-- Optional input (only for Premium/Pin to collect area) -->
       <div id="areaWrap" class="hidden mb-4">
@@ -46,7 +45,7 @@
   </div>
 
   <script>
-    console.log('[upsell] build 2025-08-12c');
+    console.log('[upsell] build 2025-08-11g');
 
     // ---------- helpers ----------
     const $ = (id) => document.getElementById(id);
@@ -60,7 +59,6 @@
     const selectedPlan = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
 
     // ---------- upsell definitions ----------
-    // Each item: { key, title, desc, price, needsArea, apply(checkoutData, area) }
     const upsells = [];
 
     if (selectedPlan === 'Listed Property Basic') {
@@ -97,7 +95,7 @@
           needsArea: true,
           apply(cd, area){
             cd.upgrades.pin = true;
-            cd.upgrades.premium = true; // included
+            cd.upgrades.premium = true;
             if (area) cd.meta.pinArea = area;
           }
         }
@@ -128,7 +126,7 @@
           needsArea: true,
           apply(cd, area){
             cd.upgrades.pin = true;
-            cd.upgrades.premium = true; // included
+            cd.upgrades.premium = true;
             if (area) cd.meta.pinArea = area;
           }
         }
@@ -167,7 +165,7 @@
           needsArea: true,
           apply(cd, area){
             cd.upgrades.pin = true;
-            cd.upgrades.premium = true; // included
+            cd.upgrades.premium = true;
             if (area) cd.meta.pinArea = area;
           }
         }
@@ -185,7 +183,6 @@
       meta: {}
     };
 
-    // For checkout page reference (to show unselected options with prices)
     const allOptions = {
       upgradeToPlus: prices.plus,
       banner: prices.banner,
@@ -205,8 +202,6 @@
       }
       $('upsellTitle').textContent = cur.title;
       $('upsellDesc').textContent = cur.desc;
-
-      // area input
       if (cur.needsArea) {
         $('areaWrap').classList.remove('hidden');
         $('areaInput').value = '';
@@ -216,14 +211,11 @@
     }
 
     function finalizeAndGo() {
-      // If Basic and upgraded to Plus, bump plan + base price
       if (checkoutData.plan === 'Listed Property Basic' && checkoutData.upgrades.upgradeToPlus) {
         checkoutData.plan = 'Listed Property Plus';
         checkoutData.base = prices.plus;
         localStorage.setItem('selectedPlan', 'Listed Property Plus');
       }
-
-      // Compute total: Pin includes Premium; only charge Premium if chosen without Pin
       let total = checkoutData.base;
       if (checkoutData.upgrades.banner) total += prices.banner;
       if (checkoutData.upgrades.pin) {
@@ -232,21 +224,16 @@
         total += prices.premium;
       }
       if (checkoutData.upgrades.confidential) total += prices.confidential;
-
       checkoutData.total = total;
 
-      // Persist and move on
       setJSON('checkoutData', checkoutData);
       setJSON('allUpsellOptions', allOptions);
       window.location.href = '/checkout.html';
     }
 
-    // ---------- events ----------
     $('acceptBtn').addEventListener('click', () => {
       const cur = upsells[idx];
       if (!cur) return;
-
-      // area (optional nudge; not required)
       let areaVal = '';
       if (cur.needsArea) {
         areaVal = ($('areaInput').value || '').trim();
@@ -254,11 +241,7 @@
           if (!confirm('You did not enter a search area. Continue anyway?')) return;
         }
       }
-
-      // apply selection
       cur.apply(checkoutData, areaVal);
-
-      // next upsell
       idx++;
       paint();
     });
@@ -268,7 +251,6 @@
       paint();
     });
 
-    // ---------- start ----------
     paint();
   </script>
 </body>
