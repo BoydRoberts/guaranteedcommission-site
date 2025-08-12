@@ -5,63 +5,79 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Review & Checkout | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body class="bg-gray-100 text-gray-900">
-  <div class="min-h-screen max-w-3xl mx-auto px-4 py-8">
-    <header class="mb-6">
-      <h1 class="text-2xl font-bold">Review & Checkout</h1>
-      <p class="text-sm text-gray-600">Confirm your selections. You’ll sign next.</p>
-      <div class="mt-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-08-12b</span>
+  <div class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-2xl bg-white rounded-2xl shadow p-6 relative">
+      <!-- Test badge -->
+      <div class="absolute -top-3 -right-3">
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-yellow-100 text-yellow-800 border border-yellow-300">
+          TEST MODE
+        </span>
       </div>
-    </header>
 
-    <!-- Order summary -->
-    <section class="bg-white rounded-2xl shadow p-5 mb-6">
-      <h2 class="text-lg font-semibold">Your Order</h2>
+      <div class="text-center mb-2">
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-08-12r</span>
+      </div>
 
-      <!-- Address / Who (nice touch for confidence) -->
-      <div id="whoRow" class="mt-2 text-sm text-gray-600 hidden">
+      <h1 class="text-2xl font-bold text-center mb-1">Review & Checkout</h1>
+      <p class="text-sm text-gray-600 text-center mb-6">Confirm your selections. You’ll sign next.</p>
+
+      <!-- Confidence line -->
+      <div id="whoRow" class="text-center text-xs text-gray-500 mb-5 hidden">
         <span id="whoLine"></span>
       </div>
 
-      <div id="orderLines" class="mt-4 divide-y divide-gray-200"></div>
+      <!-- Summary -->
+      <section class="bg-gray-50 rounded-xl p-4 mb-4">
+        <div class="grid md:grid-cols-2 gap-6">
+          <div class="space-y-3">
+            <p class="text-sm">
+              <strong>Selected Plan:</strong>
+              <span id="planName">—</span>
+              <span class="text-gray-500"> — Base $<span id="basePrice">0</span></span>
+            </p>
 
-      <div class="mt-4 space-y-1">
-        <div class="flex justify-between text-sm text-gray-600">
-          <span>Subtotal</span>
-          <span id="subtotal">$0</span>
+            <div class="pt-2 border-t mt-2">
+              <p class="text-lg font-bold">
+                Total: $<span id="totalAmount">0</span>
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-sm font-semibold mb-1">Selected Upgrades:</p>
+            <ul id="selectedList" class="list-disc list-inside text-sm text-gray-700">
+              <li class="text-gray-400">None</li>
+            </ul>
+          </div>
         </div>
-        <div class="flex justify-between text-lg font-semibold">
-          <span>Total</span>
-          <span id="total">$0</span>
+      </section>
+
+      <!-- Last-chance toggles (kept—no promo box) -->
+      <section class="rounded-xl p-4 border mb-6">
+        <p class="text-sm font-semibold mb-2">Add upgrades before you pay:</p>
+        <div id="upsellChoices" class="space-y-2 text-sm"></div>
+      </section>
+
+      <!-- Actions -->
+      <div class="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+        <button id="backBtn" class="px-4 py-2 rounded border">Back</button>
+        <div class="flex gap-3 justify-end">
+          <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded border">
+            Continue (no payment due)
+          </a>
+          <button id="payNowBtn" class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700">
+            Pay Now with Stripe
+          </button>
         </div>
       </div>
-    </section>
 
-    <!-- Payment -->
-    <section class="bg-white rounded-2xl shadow p-5 mb-6">
-      <h2 class="text-lg font-semibold">Payment</h2>
-      <p class="text-sm text-gray-600">Stripe (test mode). You’ll review the final amount on Stripe if applicable.</p>
-
-      <div id="status" class="hidden mt-3 text-sm rounded-lg p-3"></div>
-
-      <div class="mt-4 flex flex-col sm:flex-row gap-3 sm:justify-end">
-        <a href="/upsell.html" class="border px-4 py-2 rounded-lg">Back</a>
-        <a href="/signature.html" id="goSignatureZero" class="hidden border px-4 py-2 rounded-lg">Continue (no payment due)</a>
-        <button id="payNow" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold">
-          Pay Now with Stripe
-        </button>
-      </div>
-
-      <p class="text-[11px] text-gray-500 mt-4">
-        By continuing, you agree that fees are for listing/placement services and are non-refundable once applied.
+      <p class="text-[11px] text-gray-500 text-center mt-4">
+        You’ll be able to electronically sign your ISC on the next step.
       </p>
-    </section>
-
-    <footer class="text-right">
-      <a href="/index.html" class="text-sm underline">Back to Home</a>
-    </footer>
+    </div>
   </div>
 
   <script src="/checkout.js"></script>
