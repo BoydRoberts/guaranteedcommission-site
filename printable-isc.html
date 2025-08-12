@@ -6,7 +6,6 @@
   <title>Printable ISC | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Print-friendly */
     @media print {
       .no-print { display: none !important; }
       body { background: #fff !important; }
@@ -18,9 +17,9 @@
   <div class="max-w-3xl mx-auto p-6">
     <!-- Header / Controls -->
     <div class="flex items-center justify-between no-print">
-      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">printable build 2025-08-11c</span>
+      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">printable build 2025-08-11d</span>
       <div class="flex gap-2">
-        <button onclick="window.print()" class="px-3 py-1 rounded bg-gray-800 text-white">Print</button>
+        <button onclick="recordPrint()" class="px-3 py-1 rounded bg-gray-800 text-white">Print</button>
         <a href="/signature.html" class="px-3 py-1 rounded border">Back</a>
       </div>
     </div>
@@ -86,12 +85,12 @@
       </p>
     </div>
 
-    <!-- FOOTER VIEW COUNTER -->
+    <!-- FOOTER VIEW COUNTER & PRINT DATE -->
     <p id="viewCounter" class="text-xs text-gray-500 mt-8"></p>
   </div>
 
   <script>
-    console.log("[printable-isc] build 2025-08-11c");
+    console.log("[printable-isc] build 2025-08-11d");
     const $ = (id) => document.getElementById(id);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
@@ -99,11 +98,11 @@
     const checkoutData = getJSON("checkoutData", {
       plan: localStorage.getItem("selectedPlan") || "Listed Property Basic",
       total: 0,
-      upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
+      upgrades: {},
       prices: { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 }
     });
 
-    const plan = checkoutData.plan || localStorage.getItem("selectedPlan") || "Listed Property Basic";
+    const plan = checkoutData.plan || "Listed Property Basic";
     const isFSBO = /fsbo/i.test(plan);
     const signature = (localStorage.getItem("signature") || "").trim();
     const today = new Date().toLocaleDateString();
@@ -112,7 +111,16 @@
     let views = parseInt(localStorage.getItem("iscViews") || "0", 10) || 0;
     views++;
     localStorage.setItem("iscViews", views.toString());
-    $("viewCounter").textContent = `This Irrevocable Seller Communication has been viewed ${views} time${views !== 1 ? "s" : ""}.`;
+
+    // Print date storage
+    function recordPrint() {
+      const ts = new Date().toLocaleString();
+      localStorage.setItem("iscLastPrinted", ts);
+      window.print();
+    }
+    const lastPrinted = localStorage.getItem("iscLastPrinted") || "Never printed";
+
+    $("viewCounter").textContent = `This Irrevocable Seller Communication has been viewed ${views} time${views !== 1 ? "s" : ""}. Last printed: ${lastPrinted}`;
 
     // Show correct variant
     $("iscListed").classList.toggle("hidden", isFSBO);
@@ -149,15 +157,12 @@
       $("s_brokerageL").textContent = formData.brokerage || "[listing brokerage]";
       $("s_agentL").textContent = formData.agent || "[listing agent]";
       $("s_agentPhoneL").textContent = formData.phone || "[agent phone]";
-
       const apnRaw = (formData.apn || "").trim();
       const showAPN = !!(apnRaw && !/^agent to provide$/i.test(apnRaw));
       $("s_apnWrapL").style.display = showAPN ? "inline" : "none";
       $("s_apnL").textContent = showAPN ? apnRaw : "";
-
       $("s_commL").textContent = display || "[commission]";
       $("s_commSuffixL").textContent = display ? suffix : "";
-
       $("sigRenderL").textContent = signature || (formData.name || "[Name]");
       $("sigDateL").textContent = today;
     } else {
@@ -167,12 +172,9 @@
       $("s_addrShortF2").textContent = short || "[short address]";
       $("s_phoneF").textContent = formData.phone || "[owner/seller phone number]";
       $("s_emailF").textContent = formData.brokerage || "[owner/seller email]";
-
-      $("s_apnF").textContent = (formData.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]");
-
+      $("s_apnF").textContent = formData.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
       $("s_commF").textContent = display || "[commission]";
       $("s_commSuffixF").textContent = display ? suffix : "";
-
       $("sigRenderF").textContent = signature || (formData.name || "[Name]");
       $("sigDateF").textContent = today;
     }
