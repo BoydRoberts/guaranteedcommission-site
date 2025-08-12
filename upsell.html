@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Upsells | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -10,34 +10,26 @@
   <div class="min-h-screen max-w-3xl mx-auto px-4 py-8">
     <header class="mb-6">
       <h1 class="text-2xl font-bold">Boost Your Listing</h1>
-      <p class="text-sm text-gray-600">Choose optional upgrades. You can decide details later if you want.</p>
+      <p class="text-sm text-gray-600">Choose optional upgrades. You can always come back to this step.</p>
       <div class="mt-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell build 2025-08-12a</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell build 2025-08-12b</span>
       </div>
     </header>
 
     <!-- Premium Placement -->
-    <section id="premium-block" class="mb-6 bg-white rounded-2xl shadow p-5">
+    <section class="mb-6 bg-white rounded-2xl shadow p-5">
       <h2 class="text-lg font-semibold">Add Premium Placement ($10)</h2>
       <p class="text-sm text-gray-600 mt-1">
         Your listing will appear ahead of non-premium listings in your search area until your home is sold.
       </p>
-
-      <!-- “I will do this later” -->
-      <label class="flex items-start gap-2 mt-4">
-        <input id="premium-defer" type="checkbox" class="mt-1">
-        <span class="text-sm">
-          <span class="font-semibold">I will do this later.</span>
-          <span class="text-gray-600">Pay now, decide the specifics later. We’ll remind you in Listing Intake.</span>
-        </span>
-      </label>
+      <p class="text-xs text-gray-500 italic mt-1">You can do this later.</p>
 
       <div class="mt-4 flex items-center gap-3">
-        <button id="premium-add"
+        <button id="premiumAdd"
                 class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold">
           Add Premium Placement
         </button>
-        <button id="premium-skip"
+        <button id="premiumSkip"
                 class="border px-4 py-2 rounded-lg">
           Skip
         </button>
@@ -45,28 +37,20 @@
     </section>
 
     <!-- Pin Placement -->
-    <section id="pin-block" class="mb-6 bg-white rounded-2xl shadow p-5">
+    <section class="mb-6 bg-white rounded-2xl shadow p-5">
       <h2 class="text-lg font-semibold">Add Pin Placement ($50)</h2>
       <p class="text-sm text-gray-600 mt-1">
         Your listing will be pinned ahead of all listings in your search area until your home is sold.
         <span class="font-medium">Includes Premium Placement for free.</span>
       </p>
-
-      <!-- “I will do this later” -->
-      <label class="flex items-start gap-2 mt-4">
-        <input id="pin-defer" type="checkbox" class="mt-1">
-        <span class="text-sm">
-          <span class="font-semibold">I will do this later.</span>
-          <span class="text-gray-600">Pay now, decide the pin specifics later. We’ll ask in Listing Intake.</span>
-        </span>
-      </label>
+      <p class="text-xs text-gray-500 italic mt-1">You can do this later.</p>
 
       <div class="mt-4 flex items-center gap-3">
-        <button id="pin-add"
+        <button id="pinAdd"
                 class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold">
           Add Pin Placement
         </button>
-        <button id="pin-skip"
+        <button id="pinSkip"
                 class="border px-4 py-2 rounded-lg">
           Skip
         </button>
@@ -81,10 +65,9 @@
   </div>
 
   <script>
-    // ---- small cart helpers (localStorage) ----
+    // Minimal cart logic (compatible with your current checkout.js)
     const CART_KEY = 'cart';
     const $ = (id) => document.getElementById(id);
-    const money = (n) => Math.max(0, Number(n||0));
 
     function loadCart() {
       try { return JSON.parse(localStorage.getItem(CART_KEY) || '{}'); }
@@ -92,75 +75,27 @@
     }
     function saveCart(c) { localStorage.setItem(CART_KEY, JSON.stringify(c || {})); }
 
-    function addOrUpdateItem(code, fields) {
+    function addItem(code, data) {
       const cart = loadCart();
       cart.items = cart.items || {};
-      cart.items[code] = { ...(cart.items[code] || {}), ...fields };
-      // keep running totals on write for simplicity
-      cart.items.premium && (cart.items.premium.price = 10);
-      cart.items.pin && (cart.items.pin.price = 50, cart.items.pin.includesPremium = true);
-      cart.total = computeTotal(cart);
+      cart.items[code] = { selected: true, ...(cart.items[code] || {}), ...data };
+      // Pricing rules
+      if (code === 'premium') cart.items.premium.price = 10;
+      if (code === 'pin') {
+        cart.items.pin.price = 50;
+        cart.items.pin.includesPremium = true;
+        // Pin includes Premium: keep premium selected but free
+        cart.items.premium = cart.items.premium || { selected: true, price: 0 };
+        cart.items.premium.price = 0;
+      }
       saveCart(cart);
-      return cart;
     }
+
     function removeItem(code) {
       const cart = loadCart();
       if (cart.items && cart.items[code]) {
         delete cart.items[code];
-        cart.total = computeTotal(cart);
-        saveCart(cart);
       }
-      return cart;
-    }
-    function computeTotal(cart) {
-      const items = (cart.items) ? Object.values(cart.items) : [];
-      return items.reduce((sum, it) => sum + money(it.price), 0);
-    }
-
-    // ---- wire Premium ----
-    $('premium-add').addEventListener('click', () => {
-      const defer = $('premium-defer').checked;
-      addOrUpdateItem('premium', { selected: true, price: 10, deferDetails: !!defer });
-      // If user buys Pin later, Premium is included; total will be adjusted then.
-      alert('Premium added' + (defer ? ' (you can provide the specifics later).' : '.'));
-    });
-    $('premium-skip').addEventListener('click', () => {
-      removeItem('premium');
-      alert('Premium skipped.');
-    });
-
-    // ---- wire Pin (includes Premium) ----
-    $('pin-add').addEventListener('click', () => {
-      const defer = $('pin-defer').checked;
-      // Add Pin with $50. Remove any separate Premium charge (since included).
-      const cart = addOrUpdateItem('pin', { selected: true, price: 50, deferDetails: !!defer, includesPremium: true });
-      if (cart.items && cart.items.premium) {
-        // keep the fact they want premium, but price is $0 when pin is present
-        cart.items.premium.selected = true;
-        cart.items.premium.price = 0;
-        saveCart(cart);
-      }
-      alert('Pin added' + (defer ? ' (you can provide the specifics later).' : '.'));
-    });
-    $('pin-skip').addEventListener('click', () => {
-      const cart = removeItem('pin');
-      // If pin removed, restore premium price if they had chosen it.
-      if (cart.items && cart.items.premium && cart.items.premium.selected) {
+      // If Pin removed, restore Premium price if still selected
+      if (code === 'pin' && cart.items && cart.items.premium && cart.items.premium.selected) {
         cart.items.premium.price = 10;
-        cart.total = computeTotal(cart);
-        saveCart(cart);
-      }
-      alert('Pin skipped.');
-    });
-
-    // ---- Leave a breadcrumb for Intake pages (so they can ask later) ----
-    (function flagIntakeFollowups(){
-      const flags = JSON.parse(localStorage.getItem('intakeFollowups') || '{}');
-      // These booleans tell listing intake pages to show the “complete later” prompts
-      flags.deferPremiumDetails = !!(loadCart().items && loadCart().items.premium && loadCart().items.premium.deferDetails);
-      flags.deferPinDetails = !!(loadCart().items && loadCart().items.pin && loadCart().items.pin.deferDetails);
-      localStorage.setItem('intakeFollowups', JSON.stringify(flags));
-    })();
-  </script>
-</body>
-</html>
