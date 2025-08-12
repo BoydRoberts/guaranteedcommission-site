@@ -12,12 +12,8 @@
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <!-- Build/version badge -->
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">build 2025-08-11h</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">build 2025-08-11k</span>
       </div>
-
-      <!-- Debug toggle -->
-      <button id="dbgToggle" class="absolute top-2 right-2 text-[11px] px-2 py-1 rounded border">Debug</button>
-      <div id="dbgPanel" class="hidden mt-2 text-[11px] bg-gray-50 border rounded p-2 whitespace-pre-wrap break-all"></div>
 
       <!-- Header -->
       <div class="text-center mb-4">
@@ -149,14 +145,13 @@
         </button>
       </form>
 
-      <p class="text-[11px] text-gray-500 text-center mt-4">
-        We never sell your data. Used only for escrow &amp; identification.
-      </p>
+      <!-- Plan-aware disclosure -->
+      <p id="disclosure" class="text-[11px] text-gray-500 text-center mt-4"></p>
     </div>
   </div>
 
   <script>
-    console.log('[login] build 2025-08-11h');
+    console.log('[login] build 2025-08-11k');
 
     // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
@@ -176,90 +171,6 @@
     function saveAccounts(obj) { localStorage.setItem('accounts', JSON.stringify(obj || {})); }
     function getLegacyAccount() { return safeJSONParse(localStorage.getItem('userAccount')); }
     function setLegacyAccount(acct) { localStorage.setItem('userAccount', JSON.stringify(acct)); }
-
-    // Debug panel
-    function renderDebug() {
-      const dbg = $('dbgPanel');
-      const dump = {
-        accounts: getAccounts(),
-        userAccount: getLegacyAccount(),
-        accountData: safeJSONParse(localStorage.getItem('accountData')),
-        loggedInEmail: localStorage.getItem('loggedInEmail'),
-        isLoggedIn: localStorage.getItem('isLoggedIn'),
-        verificationCode: localStorage.getItem('verificationCode'),
-        verifyTarget: localStorage.getItem('verifyTarget'),
-      };
-      dbg.textContent = JSON.stringify(dump, null, 2);
-    }
-    $('dbgToggle').addEventListener('click', () => {
-      $('dbgPanel').classList.toggle('hidden');
-      renderDebug();
-    });
-
-    // ---------- Remove any stale role field (defensive) ----------
-    (function nukeRoleFieldEverywhere() {
-      const idCandidates = ['role', 'roleSelect', 'userRole'];
-      idCandidates.forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.parentElement) el.parentElement.remove();
-      });
-      document.querySelectorAll('label').forEach(lab => {
-        if (lab.textContent && /i am a/i.test(lab.textContent)) {
-          const wrap = lab.closest('div') || lab;
-          wrap.remove();
-        }
-      });
-      document.querySelectorAll('select').forEach(sel => {
-        const text = Array.from(sel.options).map(o => (o.text || '').toLowerCase()).join('|');
-        if (/seller|agent|buyer/.test(text)) {
-          const wrap = sel.closest('div') || sel;
-          wrap.remove();
-        }
-      });
-    })();
-
-    // ---------- Phone helpers ----------
-    function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
-    function formatPhone(s){
-      const d = onlyDigits(s).slice(0,10);
-      if (d.length <= 3) return d;
-      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
-      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
-    }
-    function isValidPhone(s){
-      return onlyDigits(s).length === 10;
-    }
-
-    // ---------- MIGRATE old accounts into the new store ----------
-    function migrateAll() {
-      const accounts = getAccounts();
-
-      // From old create-account.html
-      const ad = safeJSONParse(localStorage.getItem('accountData'));
-      if (ad && ad.email && ad.password) {
-        const email = String(ad.email).toLowerCase().trim();
-        accounts[email] = { name: ad.name || '', email, password: ad.password, phone: ad.phone || '' };
-      }
-
-      // Legacy single record
-      const legacy = getLegacyAccount();
-      if (legacy && legacy.email && legacy.password) {
-        const email = String(legacy.email).toLowerCase().trim();
-        accounts[email] = { name: legacy.name || '', email, password: legacy.password, phone: legacy.phone || '' };
-      }
-
-      // Any other prior keys
-      ['acct','account','user','gc_user','gc_account'].forEach(k => {
-        const obj = safeJSONParse(localStorage.getItem(k));
-        if (obj && obj.email && obj.password) {
-          const email = String(obj.email).toLowerCase().trim();
-          accounts[email] = { name: obj.name || '', email, password: obj.password, phone: obj.phone || '' };
-        }
-      });
-
-      saveAccounts(accounts);
-    }
-    migrateAll();
 
     // ---------- Tabs ----------
     const tabSignin = $('tab-signin');
@@ -291,47 +202,6 @@
     if (goCreate) goCreate.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
     if (goSignin) goSignin.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
 
-    // ---------- Prefill from Box 2 ----------
-    (function prefillFromBox2() {
-      const candidateKeysName = ['sellerName','ownerName','contactName','name'];
-      const candidateKeysEmail = ['sellerEmail','email','contactEmail','pendingEmail'];
-      const candidateKeysPhone = ['sellerPhone','phone','contactPhone'];
-
-      let formData = safeJSONParse(localStorage.getItem('formData')) || {};
-      let name = '';
-      let email = '';
-      let phone = '';
-
-      for (const k of candidateKeysName) {
-        if (formData[k]) { name = formData[k]; break; }
-        const v = localStorage.getItem(k);
-        if (v) { name = v; break; }
-      }
-      for (const k of candidateKeysEmail) {
-        if (formData[k]) { email = formData[k]; break; }
-        const v = localStorage.getItem(k);
-        if (v) { email = v; break; }
-      }
-      for (const k of candidateKeysPhone) {
-        if (formData[k]) { phone = formData[k]; break; }
-        const v = localStorage.getItem(k);
-        if (v) { phone = v; break; }
-      }
-
-      if (name) { const f = $('c_name'); if (f) f.value = name; }
-      if (email) {
-        const ce = $('c_email'); if (ce) ce.value = email;
-        const se = $('email');   if (se) se.value = email;
-      }
-      if (phone) {
-        const cp = $('c_phone'); if (cp) cp.value = formatPhone(phone);
-      }
-
-      // If coming from Box 2, default to Create tab
-      const reason = localStorage.getItem('nextAfterLogin');
-      if (reason) showCreate();
-    })();
-
     // ---------- Show/Hide toggles ----------
     function wireToggle(inputId, btnId) {
       const input = $(inputId);
@@ -350,16 +220,94 @@
     wireToggle('c_password2','togglePwdC2');
 
     // ---------- Phone mask ----------
+    function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
+    function formatPhone(s){
+      const d = onlyDigits(s).slice(0,10);
+      if (d.length <= 3) return d;
+      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
+      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
+    }
+    function isValidPhone(s){ return onlyDigits(s).length === 10; }
+
     const phoneEl = $('c_phone');
     if (phoneEl) {
       phoneEl.addEventListener('input', () => {
         const cur = phoneEl.selectionStart;
         const before = phoneEl.value;
         phoneEl.value = formatPhone(before);
-        // best-effort caret preservation (simple)
-        phoneEl.selectionStart = phoneEl.selectionEnd = Math.min(cur + (phoneEl.value.length - before.length), phoneEl.value.length);
+        phoneEl.selectionStart = phoneEl.selectionEnd =
+          Math.min(cur + (phoneEl.value.length - before.length), phoneEl.value.length);
       });
     }
+
+    // ---------- MIGRATE any legacy stores ----------
+    function migrateAll() {
+      const accounts = getAccounts();
+
+      const ad = safeJSONParse(localStorage.getItem('accountData'));
+      if (ad && ad.email && ad.password) {
+        const email = String(ad.email).toLowerCase().trim();
+        accounts[email] = { name: ad.name || '', email, password: ad.password, phone: ad.phone || '' };
+      }
+
+      const legacy = getLegacyAccount();
+      if (legacy && legacy.email && legacy.password) {
+        const email = String(legacy.email).toLowerCase().trim();
+        accounts[email] = { name: legacy.name || '', email, password: legacy.password, phone: legacy.phone || '' };
+      }
+
+      ['acct','account','user','gc_user','gc_account'].forEach(k => {
+        const obj = safeJSONParse(localStorage.getItem(k));
+        if (obj && obj.email && obj.password) {
+          const email = String(obj.email).toLowerCase().trim();
+          accounts[email] = { name: obj.name || '', email, password: obj.password, phone: obj.phone || '' };
+        }
+      });
+
+      saveAccounts(accounts);
+    }
+    migrateAll();
+
+    // ---------- Prefill from Box 2 + Disclosures ----------
+    (function prefillAndDisclose() {
+      const plan = (localStorage.getItem('selectedPlan') || '').trim();
+      const isFSBO = /fsbo/i.test(plan);
+
+      // Disclosure text
+      const disc = $('disclosure');
+      if (isFSBO) {
+        disc.textContent =
+          'Not only does GuaranteedCommission.com use your information for escrow and identification, we display your phone number and email on the Irrevocable Seller Communication and – unless you upgrade to the Confidential FSBO Upgrade ($100) – will sell your information to third parties for solicitation purposes.';
+      } else {
+        disc.textContent =
+          'GuaranteedCommission.com uses your information for escrow and identification only. Your phone number and email will not be displayed publicly, will not be sold to third parties, and will not be used for solicitation purposes.';
+      }
+
+      // Prefill logic (EMAIL ok for both, PHONE only for FSBO)
+      const formData = safeJSONParse(localStorage.getItem('formData')) || {};
+      const emailFromBox2 = formData.brokerage && /@/.test(formData.brokerage) ? formData.brokerage : ''; // for FSBO we stored email in "brokerage"
+      const generalEmail = formData.email || '';
+
+      const preEmail = (isFSBO ? emailFromBox2 : generalEmail) || '';
+      if (preEmail) {
+        const ce = $('c_email'); if (ce) ce.value = preEmail;
+        const se = $('email');  if (se) se.value = preEmail;
+      }
+
+      // PHONE: only prefill for FSBO (seller phone entered in Box 2)
+      if (isFSBO && formData.phone) {
+        const cp = $('c_phone'); if (cp) cp.value = formatPhone(formData.phone);
+      }
+
+      // NAME: optional convenience, doesn't affect privacy
+      if (formData.name) {
+        const cn = $('c_name'); if (cn) cn.value = formData.name;
+      }
+
+      // Coming from Box 2? show Create tab first
+      const reason = localStorage.getItem('nextAfterLogin');
+      if (reason) showCreate();
+    })();
 
     // ---------- Strength meter + match ----------
     const cPwd = $('c_password');
@@ -408,7 +356,7 @@
     // ---------- CREATE ACCOUNT ----------
     $('createForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      migrateAll(); // ensure fresh
+      migrateAll();
       const name = $('c_name').value.trim();
       const email = $('c_email').value.trim().toLowerCase();
       const phone = $('c_phone').value.trim();
@@ -439,8 +387,8 @@
       localStorage.setItem('verifyTarget', email);
 
       setStatus(`Account created for ${email}. 6-digit code: ${code}. Redirecting…`, true);
-      renderDebug();
 
+      // Hand back to the flow (upsell/checkout or whatever was set by index)
       const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
       setTimeout(()=>{ window.location.href = next; }, 800);
     });
@@ -448,7 +396,7 @@
     // ---------- SIGN IN ----------
     $('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      migrateAll(); // pull in any legacy keys right before checking
+      migrateAll();
 
       const email = $('email').value.trim().toLowerCase();
       const password = $('password').value;
@@ -465,13 +413,12 @@
         }
       }
 
-      if (!acct) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); renderDebug(); return; }
-      if (acct.password !== password) { setStatus(`Invalid email or password for ${email}.`); renderDebug(); return; }
+      if (!acct) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); return; }
+      if (acct.password !== password) { setStatus(`Invalid email or password for ${email}.`); return; }
 
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('loggedInEmail', email);
 
-      // If no code exists yet, simulate send one so verify page works in all cases
       if (!localStorage.getItem('verificationCode')) {
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         localStorage.setItem('verificationCode', code);
@@ -479,7 +426,6 @@
       localStorage.setItem('verifyTarget', email);
 
       setStatus(`Login successful for ${email}. Redirecting…`, true);
-      renderDebug();
 
       const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
       setTimeout(()=>{ window.location.href = next; }, 600);
