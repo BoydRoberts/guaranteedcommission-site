@@ -68,7 +68,31 @@
         </div>
       </div>
     </div>
+<!-- Somewhere near the top of your preview page, above the full card -->
+<div id="tileMount" class="mb-6"></div>
 
+<!-- load the helper (after Tailwind) -->
+<script src="/scripts/tiles.js"></script>
+<script>
+  (function(){
+    const container = document.getElementById('tileMount');
+    const formData  = JSON.parse(localStorage.getItem('formData') || '{}');
+    const agentData = JSON.parse(localStorage.getItem('agentListing') || '{}');
+    const plan      = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+
+    renderTile({
+      container,
+      formData,
+      agentData,
+      plan,
+      onClick: () => {
+        // On preview, clicking the tile can scroll to the hero or do nothing
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  })();
+</script>
+    
     <!-- FULL PAGE PREVIEW CARD -->
     <div class="bg-white rounded-2xl shadow overflow-hidden">
       <!-- Hero -->
