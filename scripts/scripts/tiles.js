@@ -1,18 +1,9 @@
-<!-- Include this once on any page that needs tiles -->
 <script>
 /**
- * renderTile({
- *   container: HTMLElement (required),
- *   formData:  {...}        // from localStorage "formData"
- *   agentData: {...}        // from localStorage "agentListing" (or any listing object)
- *   plan: "Listed Property Basic" | "Listed Property Plus" | "FSBO Plus"
- *   onClick: fn()           // optional click handler
- * })
+ * renderTile(opts)
+ * renderTileList(list, container, { clear=true, onClick(item){...} } )
  *
- * Notes:
- * - Pure client-side (no deps). Uses Tailwind utility classes present on the page.
- * - Photos: expects agentData.photos = [dataURL or URL], primaryIndex (number).
- * - Status: agentData.status in {"active","in_contract","sold"} (else "draft").
+ * See inline docs below.
  */
 (function(global){
   function money(n){ const x = Number(n||0); return isFinite(x) ? '$' + x.toLocaleString() : '$-'; }
@@ -34,6 +25,17 @@
     }
   }
 
+  /**
+   * Render a single tile.
+   * @param {{
+   *   container: HTMLElement,
+   *   formData: object,
+   *   agentData: object,
+   *   plan: string,
+   *   onClick?: function
+   * }} opts
+   * @returns {HTMLElement} the tile element
+   */
   function renderTile(opts){
     const { container, formData={}, agentData={}, plan='Listed Property Basic', onClick } = opts || {};
     if (!container) throw new Error('renderTile: container is required');
@@ -50,7 +52,7 @@
     const address = formData.address || '[Address]';
 
     const tile = document.createElement('article');
-    tile.className = "bg-white rounded-2xl shadow hover:shadow-md transition overflow-hidden cursor-pointer w-full max-w-xl";
+    tile.className = "bg-white rounded-2xl shadow hover:shadow-md transition overflow-hidden cursor-pointer w-full";
     tile.innerHTML = `
       <div class="relative">
         <img class="w-full h-40 object-cover bg-gray-100" alt="Tile photo">
@@ -80,27 +82,46 @@
       </div>
     `;
 
-    // bind image & ribbon
     tile.querySelector('img').src = primaryPhoto(agentData);
     if (agentData.bannerText) tile.querySelector('[data-el="ribbon"]').textContent = agentData.bannerText;
 
-    // click -> optional handler
     tile.addEventListener('click', () => {
-      if (typeof onClick === 'function') return onClick();
-      // default: if a public listing page exists, go there
+      if (typeof onClick === 'function') return onClick({ formData, agentData, plan, el: tile });
       if (formData.address) {
-        // naive slug
         const slug = encodeURIComponent(formData.address);
         window.location.href = `/listing.html?addr=${slug}`;
       }
     });
 
-    // mount
     container.appendChild(tile);
     return tile;
   }
 
+  /**
+   * Bulk render helper.
+   * @param {Array<{formData:object, agentData:object, plan:string}>} list
+   * @param {HTMLElement} container
+   * @param {{clear?:boolean, onClick?:function}} options
+   */
+  function renderTileList(list, container, options){
+    const opts = Object.assign({ clear: true, onClick: null }, options || {});
+    if (!Array.isArray(list)) return;
+    if (!container) return;
+
+    if (opts.clear) container.innerHTML = '';
+    list.forEach(item => {
+      renderTile({
+        container,
+        formData: item.formData || {},
+        agentData: item.agentData || {},
+        plan: item.plan || 'Listed Property Basic',
+        onClick: opts.onClick
+      });
+    });
+  }
+
   // expose
   global.renderTile = renderTile;
+  global.renderTileList = renderTileList;
 })(window);
 </script>
