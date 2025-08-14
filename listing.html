@@ -219,5 +219,16 @@
       listedContact.classList.remove("hidden");
     }
   </script>
+  <script>
+  (function(){
+    try {
+      const fd = JSON.parse(localStorage.getItem('formData') || '{}');
+      const short = (fd.address || '').split(',')[0] || 'Listing';
+      const h1 = document.querySelector('[data-role="listing-title"]') || document.querySelector('h1');
+      if (h1) h1.textContent = short + ' — Full Listing Detail';
+      document.title = short + ' — Full Listing Detail';
+    } catch {}
+  })();
+</script>
 </body>
 </html>
