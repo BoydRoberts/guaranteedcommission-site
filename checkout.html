@@ -18,7 +18,7 @@
       </div>
 
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-08-12POP</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-08-14a</span>
       </div>
 
       <h1 class="text-2xl font-bold text-center mb-1">Review & Checkout</h1>
@@ -29,7 +29,7 @@
         <span id="whoLine"></span>
       </div>
 
-      <!-- Summary (POP: white card, deeper shadow, bigger total) -->
+      <!-- Summary -->
       <section class="bg-white rounded-2xl shadow p-5 mb-5">
         <div class="grid md:grid-cols-2 gap-6">
           <div class="space-y-3">
@@ -55,7 +55,7 @@
         </div>
       </section>
 
-      <!-- Last-chance toggles (no promo box) -->
+      <!-- Last-chance toggles -->
       <section class="rounded-2xl p-4 border mb-6 bg-gray-50">
         <p class="text-sm font-semibold mb-2">Add upgrades before you pay:</p>
         <div id="upsellChoices" class="space-y-2 text-sm"></div>
@@ -65,13 +65,10 @@
       <div class="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
         <button id="backBtn" class="px-4 py-2 rounded border">Back</button>
         <div class="flex gap-3 justify-end">
-          <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded border">
+          <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">
             Continue (no payment due)
           </a>
-          <button
-            id="payNowBtn"
-            class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition"
-            >
+          <button id="payNowBtn" class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition">
             Pay Now with Stripe
           </button>
         </div>
