@@ -6,7 +6,7 @@
   <title>Agent: Manage Listing Details</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .font-cursive { font-family: 'Brush Script MT', cursive; }
+    .font-cursive { font-family: "Brush Script MT", cursive; }
     .thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; }
   </style>
 </head>
@@ -14,12 +14,12 @@
 
   <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow">
     <div class="flex items-start justify-between">
-      <h1 class="text-2xl font-bold">Agent: Manage Listing Details</h1>
+      <h1 class="text-2xl font-bold">Listing Detail Intake</h1>
       <a href="/index.html" class="text-sm text-blue-600 hover:underline">Back to Home</a>
     </div>
 
     <p class="text-sm text-gray-600 mt-1">
-      Enter the details below. Changes auto-save to your browser. Use “Preview” to see the public tile.
+      Enter the details below. Changes auto-save to your browser. Use “Preview Full Listing Detail” to see the public view.
     </p>
 
     <hr class="my-5"/>
@@ -32,6 +32,23 @@
       <div>
         <label class="block text-sm font-semibold mb-1">Full Property Address</label>
         <input id="fullAddress" class="w-full border p-2 rounded bg-gray-50" type="text" readonly>
+      </div>
+
+      <!-- APN / Parcel -->
+      <div>
+        <label class="block text-sm font-semibold mb-1">Parcel # / PIN # / Tax ID # / Folio # / APN #</label>
+        <input id="apn" class="w-full border p-2 rounded" type="text" placeholder="Optional (required for FSBO)">
+      </div>
+
+      <!-- Status -->
+      <div>
+        <label class="block text-sm font-semibold mb-1">Status</label>
+        <select id="status" class="w-full border p-2 rounded" required>
+          <option value="">Select status…</option>
+          <option value="Active">Active</option>
+          <option value="In Contract">In Contract</option>
+          <option value="Sold">Sold</option>
+        </select>
       </div>
 
       <!-- Price & Commission -->
@@ -50,7 +67,6 @@
               <option value="$">$</option>
             </select>
           </div>
-          <!-- 👇 moved helper BELOW so it doesn’t collide with the price field -->
           <p class="text-xs text-gray-500 mt-1">Kept in sync with price above for the calculated amount.</p>
         </div>
       </div>
@@ -75,6 +91,18 @@
         <p class="text-xs text-gray-500 mt-1">Appears as a small ribbon on the listing tile.</p>
       </div>
 
+      <!-- Preferred / Pin placement areas -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Preferred Placement Area</label>
+          <input id="preferredArea" class="w-full border p-2 rounded" placeholder="City or neighborhood">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Pin Placement Area</label>
+          <input id="pinArea" class="w-full border p-2 rounded" placeholder="City or neighborhood">
+        </div>
+      </div>
+
       <!-- Photos -->
       <div>
         <label class="block text-sm font-semibold mb-2">Photos</label>
@@ -97,7 +125,9 @@
 
       <div class="flex items-center gap-2 pt-2">
         <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
-        <a href="/agent-preview.html" class="bg-green-600 text-white px-4 py-2 rounded">Preview</a>
+        <a href="/listing.html" class="bg-green-600 text-white px-4 py-2 rounded">
+          Preview Full Listing Detail
+        </a>
       </div>
     </form>
   </div>
@@ -105,60 +135,20 @@
   <script>
     // ---------- State ----------
     const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const formData = JSON.parse(localStorage.getItem("formData") || "{}"); // source of address + seller entries
+    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
     const AGENT_KEY = "agentListing";
-
-    // load agent draft or init
     const agentListing = JSON.parse(localStorage.getItem(AGENT_KEY) || "{}");
-
-    // helpers
     const $ = (id) => document.getElementById(id);
-
-    // ---------- Init ----------
-    function init() {
-      // Plan pill
-      $("planPill").textContent = plan;
-
-      // Address from seller
-      $("fullAddress").value = formData.address || "";
-
-      // Price
-      $("price").value = agentListing.price ?? "";
-
-      // Commission + type (fallback to seller-entered commission)
-      $("commission").value = agentListing.commission ?? (formData.commission || "");
-      $("commissionType").value = agentListing.commissionType ?? (formData.commissionType || "%");
-
-      // Description gate based on plan
-      const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
-      $("descBlock").style.display = isPlus ? "block" : "none";
-      $("description").value = agentListing.description ?? "";
-
-      // Banner
-      $("bannerText").value = agentListing.bannerText ?? "";
-
-      // Photos help & limit
-      const canUpload = isPlus ? 20 : 1;
-      $("photoHelp").textContent = isPlus
-        ? "You can upload up to 20 photos."
-        : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
-
-      // Render thumbnails
-      renderThumbs(agentListing.photos || [], agentListing.primaryIndex || 0);
-
-      // After initial fill, compute commission
-      computeCommission();
-    }
 
     function renderThumbs(photos, primaryIndex) {
       const grid = $("photoGrid");
       grid.innerHTML = "";
-      photos.forEach((src, idx) => {
+      (photos || []).forEach((src, idx) => {
         const img = new Image();
         img.src = src;
         img.alt = "Photo " + (idx + 1);
-        img.className = "thumb border " + (idx === primaryIndex ? "border-green-500" : "border-gray-300");
-        img.title = (idx === primaryIndex) ? "Primary photo" : "Click to set as primary";
+        img.className = "thumb border " + (idx === (primaryIndex||0) ? "border-green-500" : "border-gray-300");
+        img.title = (idx === (primaryIndex||0)) ? "Primary photo" : "Click to set as primary";
         img.addEventListener("click", () => {
           agentListing.primaryIndex = idx;
           saveAgentListing();
@@ -173,16 +163,12 @@
       const comm = Number($("commission").value || 0);
       const type = $("commissionType").value;
       let calc = 0;
-      if (type === "%") {
-        calc = Math.round(price * (comm / 100));
-      } else {
-        calc = Math.round(comm);
-      }
-      $("commissionCalc").textContent = `$${(calc || 0).toLocaleString()}`;
+      if (type === "%") calc = Math.round(price * (comm / 100));
+      else calc = Math.round(comm);
+      $("commissionCalc").textContent = "$" + (calc || 0).toLocaleString();
     }
 
     function saveAgentListing() {
-      // Clamp photo count based on plan
       const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
       const maxPhotos = isPlus ? 20 : 1;
 
@@ -190,20 +176,49 @@
         price: $("price").value,
         commission: $("commission").value,
         commissionType: $("commissionType").value,
+        apn: $("apn").value,
+        status: $("status").value,
         description: $("description").value,
         bannerText: $("bannerText").value,
+        preferredArea: $("preferredArea").value,
+        pinArea: $("pinArea").value,
         photos: (agentListing.photos || []).slice(0, maxPhotos),
         primaryIndex: (agentListing.primaryIndex || 0)
       };
       localStorage.setItem(AGENT_KEY, JSON.stringify(payload));
     }
 
-    // ---------- Events ----------
-    ["price","commission","commissionType","description","bannerText"].forEach(id => {
-      $(id).addEventListener("input", () => {
-        if (id === "price" || id === "commission" || id === "commissionType") {
-          computeCommission();
-        }
+    function init() {
+      $("planPill").textContent = plan;
+      $("fullAddress").value = formData.address || "";
+
+      $("apn").value = agentListing.apn ?? (formData.apn || "");
+      $("status").value = agentListing.status || "";
+
+      $("price").value = agentListing.price ?? "";
+      $("commission").value = agentListing.commission ?? (formData.commission || "");
+      $("commissionType").value = agentListing.commissionType ?? (formData.commissionType || "%");
+
+      const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
+      $("descBlock").style.display = isPlus ? "block" : "none";
+      $("description").value = agentListing.description ?? "";
+
+      $("bannerText").value = agentListing.bannerText ?? "";
+      $("preferredArea").value = agentListing.preferredArea ?? (formData.preferredArea || "");
+      $("pinArea").value = agentListing.pinArea ?? (formData.pinArea || "");
+
+      const canUpload = isPlus ? 20 : 1;
+      $("photoHelp").textContent = isPlus
+        ? "You can upload up to 20 photos."
+        : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+
+      renderThumbs(agentListing.photos || [], agentListing.primaryIndex || 0);
+      computeCommission();
+    }
+
+    ["price","commission","commissionType","apn","status","description","bannerText","preferredArea","pinArea"].forEach(id => {
+      document.getElementById(id).addEventListener("input", () => {
+        if (id === "price" || id === "commission" || id === "commissionType") computeCommission();
         saveAgentListing();
       });
     });
@@ -223,13 +238,12 @@
       const existing = agentListing.photos || [];
       let spaceLeft = maxPhotos - existing.length;
       if (spaceLeft <= 0) {
-        alert(`You have reached the photo limit for your plan (${maxPhotos}).`);
+        alert(\`You have reached the photo limit (\${maxPhotos}).\`);
         e.target.value = "";
         return;
       }
 
       const toRead = files.slice(0, spaceLeft);
-
       const readAsDataURL = (file) => new Promise((res, rej) => {
         const reader = new FileReader();
         reader.onload = () => res(reader.result);
@@ -256,18 +270,16 @@
     });
 
     $("upgradePlusBtn").addEventListener("click", () => {
-      // Build a minimal checkout payload for an agent upgrade to Plus
       const checkoutData = {
         plan: "Listed Property Plus",
-        upgrades: [],            // no add-ons here; pure plan upgrade
+        upgrades: [],
         totalCost: 20,
-        payer: "agent"           // 👈 this returns to agent-detail after Stripe
+        payer: "agent"
       };
       localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
       window.location.href = "/checkout.html";
     });
 
-    // ---------- Start ----------
     init();
   </script>
   <script src="/intake-followups.js"></script>
