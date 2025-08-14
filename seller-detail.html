@@ -3,312 +3,240 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Complete Your Listing Details</title>
+  <title>Listing Detail Intake (Seller)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; }
-    .font-cursive { font-family: "Brush Script MT", cursive; }
+    .dimmed { opacity: 0.5; pointer-events: none; }
+    .lock-note { font-size: 12px; color:#6b7280; }
+    .pill { font-size: 11px; padding: 2px 6px; border-radius: 9999px; background:#eef2ff; color:#3730a3; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded-2xl shadow">
+  <div class="max-w-6xl mx-auto mt-8 px-3">
     <div class="flex items-start justify-between">
-      <h1 class="text-2xl font-bold">Complete Your Listing Details</h1>
+      <h1 class="text-2xl font-bold">Listing Detail Intake</h1>
       <a href="/index.html" class="text-sm text-blue-600 hover:underline">Back to Home</a>
     </div>
+  </div>
 
-    <p class="text-sm text-gray-600 mt-1">
-      These details appear on your public listing. You can edit most fields later. (Commission changes require a new ISC.)
-    </p>
-
-    <hr class="my-5"/>
-
-    <!-- Plan pill -->
-    <div id="planPill" class="inline-block text-xs font-semibold px-2 py-1 rounded bg-gray-200 text-gray-700"></div>
-
-    <!-- Optional upgrade card for Basic -->
-    <div id="upgradeCard" class="hidden mt-4 bg-blue-50 border border-blue-200 rounded p-3">
-      <p class="text-sm">
-        <strong>Upgrade (Seller Pays):</strong>
-        <span class="text-gray-700">Upgrade to Listed Property Plus ($20) to display a full property description and up to 20 photos.</span>
-      </p>
-      <div class="mt-2">
-        <button id="upgradePlusBtn" type="button" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">Upgrade to Plus</button>
-      </div>
-    </div>
-
-    <form id="sellerForm" class="mt-4 space-y-4" autocomplete="off">
-      <!-- Address (read-only from Box 2) -->
-      <div>
-        <label class="block text-sm font-semibold mb-1">Full Property Address</label>
-        <input id="fullAddress" class="w-full border p-2 rounded bg-gray-50" type="text" readonly>
+  <div class="max-w-6xl mx-auto mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6 px-3">
+    <!-- LEFT: Intake form -->
+    <section class="lg:col-span-2 bg-white rounded shadow p-5">
+      <div class="flex items-center justify-between">
+        <p class="text-sm">
+          Plan:
+          <span id="planPill" class="pill">—</span>
+        </p>
+        <p id="payerBadge" class="text-xs text-gray-600"></p>
       </div>
 
-      <!-- APN / Parcel -->
-      <div>
-        <label class="block text-sm font-semibold mb-1">Parcel # / PIN # / Tax ID # / Folio # / APN #</label>
-        <input id="apn" type="text" class="w-full border p-2 rounded" placeholder="Optional (required for FSBO Plus)">
-        <p id="apnHelp" class="text-xs text-gray-500 mt-1"></p>
-      </div>
+      <hr class="my-4"/>
 
-      <!-- Status (required) -->
-      <div>
-        <label class="block text-sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
-        <select id="status" required class="w-full border p-2 rounded">
-          <option value="">Select status…</option>
-          <option value="active">Active</option>
-          <option value="in_contract">In Contract</option>
-          <option value="sold">Sold</option>
-        </select>
-      </div>
-
-      <!-- Price & Commission (commission locked; price editable) -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form id="sellerForm" class="space-y-5" autocomplete="off">
+        <!-- Address (read-only from Box 2) -->
         <div>
-          <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
-          <input id="price" type="number" min="0" step="1000" placeholder="e.g., 850000" class="w-full border p-2 rounded">
+          <label class="block text-sm font-semibold mb-1">Full Property Address</label>
+          <input id="fullAddress" class="w-full border p-2 rounded bg-gray-50" type="text" readonly>
         </div>
 
+        <!-- Status (required) -->
         <div>
-          <label class="block text-sm font-semibold mb-1">Commission (locked)</label>
-          <div class="flex gap-2">
-            <input id="commission" type="number" min="0" step="0.01" class="w-full border p-2 rounded bg-gray-50" readonly>
-            <select id="commissionType" class="border p-2 rounded bg-gray-50" disabled>
-              <option value="%">%</option>
-              <option value="$">$</option>
-            </select>
+          <label class="block text-sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
+          <select id="status" class="w-full border p-2 rounded" required>
+            <option value="">Select…</option>
+            <option>Active</option>
+            <option>In Contract</option>
+            <option>Sold</option>
+          </select>
+        </div>
+
+        <!-- Price & Commission (commission locked: change requires new listing) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
+            <input id="price" type="number" min="0" step="1000" placeholder="e.g., 850000" class="w-full border p-2 rounded">
           </div>
-          <p class="text-xs text-gray-500 mt-1">To change commission, you must cancel and create a new listing.</p>
+
+          <div>
+            <label class="block text-sm font-semibold mb-1">Commission (locked)</label>
+            <div class="flex gap-2">
+              <input id="commission" class="w-full border p-2 rounded bg-gray-50" readonly>
+              <input id="commissionType" class="w-20 border p-2 rounded bg-gray-50 text-center" readonly>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">To change commission, cancel this listing and create a new Plus listing.</p>
+          </div>
         </div>
-      </div>
 
-      <!-- Calculated Commission -->
-      <div class="bg-gray-50 border rounded p-3 text-sm">
-        <strong>Calculated Commission: </strong>
-        <span id="commissionCalc">$0</span>
-      </div>
-
-      <!-- Description (Plus / FSBO Plus only) -->
-      <div id="descBlock">
-        <label class="block text-sm font-semibold mb-1">Full Property Description</label>
-        <textarea id="description" rows="6" placeholder="Enter full property description (Plus only)" class="w-full border p-2 rounded"></textarea>
-        <p class="text-xs text-gray-500 mt-1">Up to 2,500 characters.</p>
-      </div>
-
-      <!-- Banner (optional) -->
-      <div>
-        <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
-        <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
-        <p class="text-xs text-gray-500 mt-1">Appears as a small ribbon on the listing tile.</p>
-      </div>
-
-      <!-- Beds / Baths / SqFt -->
-      <div class="grid grid-cols-3 gap-4">
+        <!-- APN / Parcel (required for FSBO, optional otherwise) -->
         <div>
-          <label class="block text-sm font-semibold mb-1">Bedrooms</label>
-          <input id="beds" type="number" min="0" step="1" class="w-full border p-2 rounded" placeholder="e.g., 3">
+          <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
+          <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
+          <p id="apnReqMsg" class="text-xs text-gray-500 mt-1 hidden">FSBO requires an APN/Parcel value.</p>
         </div>
-        <div>
-          <label class="block text-sm font-semibold mb-1">Bathrooms</label>
-          <input id="baths" type="number" min="0" step="0.5" class="w-full border p-2 rounded" placeholder="e.g., 2">
-        </div>
-        <div>
-          <label class="block text-sm font-semibold mb-1">Square Feet</label>
-          <input id="sqft" type="number" min="0" step="10" class="w-full border p-2 rounded" placeholder="e.g., 1800">
-        </div>
-      </div>
 
-      <!-- Photos -->
-      <div>
-        <label class="block text-sm font-semibold mb-2">Photos</label>
-        <div class="text-xs text-gray-600 mb-2" id="photoHelp"></div>
-        <input id="photoInput" type="file" accept="image/*" multiple class="block">
-        <div id="photoGrid" class="flex flex-wrap gap-2 mt-3"></div>
-        <p class="text-xs text-gray-500 mt-2">Tip: click a thumbnail to set it as the primary photo.</p>
-      </div>
+        <!-- Photos -->
+        <div>
+          <label class="block text-sm font-semibold mb-1">Photos</label>
+          <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
+          <input id="photoInput" type="file" accept="image/*" multiple class="block">
+          <div id="photoGrid" class="flex flex-wrap gap-2 mt-3"></div>
+          <p class="text-xs text-gray-500 mt-2">Tip: click a thumbnail to set it as the primary photo.</p>
+        </div>
 
-      <!-- Actions -->
-      <div class="flex items-center gap-2 pt-2">
-        <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
-        <a href="/seller-preview.html" class="bg-green-600 text-white px-4 py-2 rounded">Preview</a>
+        <!-- Description (Plus only; disabled for Basic) -->
+        <div>
+          <label class="block text-sm font-semibold mb-1">Full Property Description</label>
+          <textarea id="description" rows="6" placeholder="Enter full property description" class="w-full border p-2 rounded"></textarea>
+          <p id="descGateNote" class="lock-note mt-1 hidden">Upgrade to Listed Property Plus to enable Description.</p>
+        </div>
+
+        <!-- Banner (upsell-driven) -->
+        <div>
+          <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
+          <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
+          <p id="bannerGateNote" class="lock-note mt-1 hidden">Purchase Banner to enable this field.</p>
+        </div>
+
+        <!-- Preferred Placement (Premium) -->
+        <div>
+          <label class="block text-sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
+          <input id="preferredArea" placeholder="e.g., Laguna Beach, Top of the World" class="w-full border p-2 rounded">
+          <p id="premiumGateNote" class="lock-note mt-1 hidden">Purchase Premium Placement to enable this field.</p>
+        </div>
+
+        <!-- Pin Placement -->
+        <div>
+          <label class="block text-sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
+          <input id="pinArea" placeholder="e.g., Laguna Beach, Village" class="w-full border p-2 rounded">
+          <p id="pinGateNote" class="lock-note mt-1 hidden">Purchase Pin Placement to enable this field.</p>
+        </div>
+
+        <!-- Listed-only: Brokerage/Agent confirms -->
+        <div id="listedBlock">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold mb-1">Listing Brokerage</label>
+              <input id="brokerage" class="w-full border p-2 rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold mb-1">Listing Agent Name</label>
+              <input id="agentName" class="w-full border p-2 rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold mb-1">Listing Agent Email</label>
+              <input id="agentEmail" type="email" class="w-full border p-2 rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold mb-1">Listing Agent Phone</label>
+              <input id="agentPhone" class="w-full border p-2 rounded">
+            </div>
+          </div>
+        </div>
+
+        <!-- FSBO-only contact is already captured at Box 2; nothing to show here -->
+
+        <div class="pt-2 flex items-center gap-2">
+          <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
+          <a href="/listing.html" class="bg-green-600 text-white px-4 py-2 rounded">Preview Full Listing Detail</a>
+        </div>
+      </form>
+    </section>
+
+    <!-- RIGHT: Upgrades panel -->
+    <aside class="bg-white rounded shadow p-5">
+      <h2 class="text-lg font-semibold">Upgrades</h2>
+      <p class="text-sm text-gray-600">Select available upgrades or see what’s already paid.</p>
+
+      <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
+
+      <div class="mt-4 flex items-center gap-2">
+        <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
+        <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
       </div>
-    </form>
+      <p class="text-xs text-gray-500 mt-2">“Paid by agent” items are locked and final.</p>
+    </aside>
   </div>
 
   <script>
-    // ---------- State / helpers ----------
-    const PLAN = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const formData = (function(){ try { return JSON.parse(localStorage.getItem("formData") || "{}"); } catch { return {}; } })();
-    const SELLER_KEY = "sellerListing";
-
-    const sellerListing = (function(){
-      try { return JSON.parse(localStorage.getItem(SELLER_KEY) || "{}"); }
-      catch { return {}; }
-    })();
-
+    // ---------- helpers ----------
     const $ = (id) => document.getElementById(id);
+    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+    const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-    function saveSellerListing(payload){
-      localStorage.setItem(SELLER_KEY, JSON.stringify(payload || {}));
-    }
+    // Source data
+    const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+    const formData = getJSON("formData", {});  // box 2
+    const agentListing = getJSON("agentListing", {}); // photos/desc/banner possibly from agent page
+    const checkoutData = getJSON("checkoutData", null) || {
+      plan,
+      base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
+      upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
+      prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
+      meta: {},
+      payer: "seller"
+    };
+    const flags = getJSON("intakeFollowups", {}); // may hold preferred/pin notes
+    const isFSBO = plan.includes("FSBO");
+    const isPlus = plan === "Listed Property Plus" || isFSBO;
 
-    function computeCommissionAmount(price, commission, type){
-      const p = Number(price || 0);
-      const c = Number(commission || 0);
-      if (type === "%") return Math.round(p * (c / 100));
-      return Math.round(c);
-    }
+    // ---------- init UI ----------
+    $("planPill").textContent = plan;
+    $("payerBadge").textContent = checkoutData.payer === "agent" ? "Some upgrades paid by agent." : "";
 
-    // ---------- Init ----------
-    function init(){
-      $("planPill").textContent = PLAN;
+    $("fullAddress").value = formData.address || "";
+    $("status").value = agentListing.status || "";
 
-      // Upgrade card shown only for Basic
-      if (PLAN === "Listed Property Basic") {
-        $("upgradeCard").classList.remove("hidden");
-      }
+    // price
+    $("price").value = agentListing.price ?? "";
 
-      // Address from Box 2
-      $("fullAddress").value = formData.address || "";
+    // commission (locked)
+    const commission = agentListing.commission ?? (formData.commission || "");
+    const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
+    $("commission").value = commission;
+    $("commissionType").value = commissionType;
 
-      // APN (prefill from Box 2 if present)
-      $("apn").value = sellerListing.apn ?? (formData.apn || "");
-      $("apnHelp").textContent = (PLAN === "FSBO Plus")
-        ? "Required for FSBO Plus."
-        : "Optional (your agent can add this later).";
+    // APN
+    $("apn").value = formData.apn || agentListing.apn || "";
+    if (isFSBO) $("apnReqMsg").classList.remove("hidden");
 
-      // Status
-      $("status").value = sellerListing.status ?? "";
+    // Photos (limit based on plan)
+    const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
+    let primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
+    const maxPhotos = isPlus ? 20 : 1;
+    $("photoHelp").textContent = isPlus
+      ? "You can upload up to 20 photos."
+      : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
 
-      // Commission (locked) from Box 2
-      $("commission").value = sellerListing.commission ?? (formData.commission || "");
-      $("commissionType").value = sellerListing.commissionType ?? (formData.commissionType || "%");
-
-      // Price (editable)
-      $("price").value = sellerListing.price ?? "";
-
-      // Description gate (Plus / FSBO Plus only)
-      const isPlus = (PLAN === "Listed Property Plus" || PLAN === "FSBO Plus");
-      $("descBlock").style.display = isPlus ? "block" : "none";
-      $("description").value = sellerListing.description ?? "";
-
-      // Banner
-      $("bannerText").value = sellerListing.bannerText ?? "";
-
-      // Beds/Baths/Sqft
-      $("beds").value  = sellerListing.beds ?? "";
-      $("baths").value = sellerListing.baths ?? "";
-      $("sqft").value  = sellerListing.sqft ?? "";
-
-      // Photos help & limit
-      const maxPhotos = isPlus ? 20 : 1;
-      $("photoHelp").textContent = isPlus
-        ? "You can upload up to 20 photos."
-        : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
-
-      // Render thumbs
-      renderThumbs(sellerListing.photos || [], sellerListing.primaryIndex || 0);
-
-      // Initial commission calc
-      refreshCommissionCalc();
-    }
-
-    function renderThumbs(photos, primaryIndex) {
+    function renderThumbs() {
       const grid = $("photoGrid");
       grid.innerHTML = "";
-      photos.forEach((src, idx) => {
+      (photos || []).forEach((src, idx) => {
         const img = new Image();
         img.src = src;
         img.alt = "Photo " + (idx + 1);
         img.className = "thumb border " + (idx === primaryIndex ? "border-green-500" : "border-gray-300");
         img.title = (idx === primaryIndex) ? "Primary photo" : "Click to set as primary";
         img.addEventListener("click", () => {
-          const data = getPayload();
-          data.primaryIndex = idx;
-          saveSellerListing(data);
-          renderThumbs(data.photos || [], data.primaryIndex || 0);
+          primaryIndex = idx;
+          saveDraft();
+          renderThumbs();
         });
         grid.appendChild(img);
       });
     }
-
-    function getPayload(){
-      const isPlus = (PLAN === "Listed Property Plus" || PLAN === "FSBO Plus");
-      const maxPhotos = isPlus ? 20 : 1;
-
-      const data = {
-        // identity
-        plan: PLAN,
-        address: formData.address || "",
-        // listing fields
-        apn: $("apn").value.trim(),
-        status: $("status").value,
-        price: $("price").value,
-        commission: $("commission").value,         // locked
-        commissionType: $("commissionType").value, // locked
-        description: $("description").value,
-        bannerText: $("bannerText").value,
-        beds: $("beds").value,
-        baths: $("baths").value,
-        sqft: $("sqft").value,
-        // photos
-        photos: (sellerListing.photos || []).slice(0, maxPhotos),
-        primaryIndex: typeof sellerListing.primaryIndex === "number" ? sellerListing.primaryIndex : 0
-      };
-      return data;
-    }
-
-    function refreshCommissionCalc(){
-      const amt = computeCommissionAmount($("price").value, $("commission").value, $("commissionType").value);
-      $("commissionCalc").textContent = `$${(amt || 0).toLocaleString()}`;
-    }
-
-    // ---------- Events ----------
-    ["status","price","description","bannerText","beds","baths","sqft","apn"].forEach(id => {
-      $(id).addEventListener("input", () => {
-        if (id === "price") refreshCommissionCalc();
-        const data = getPayload();
-        // For photos, we keep the existing arrays already in sellerListing; this keeps typed fields in sync
-        data.photos = sellerListing.photos || [];
-        data.primaryIndex = sellerListing.primaryIndex || 0;
-        saveSellerListing(data);
-      });
-    });
-
-    $("saveBtn").addEventListener("click", () => {
-      // Validate APN for FSBO Plus
-      if (PLAN === "FSBO Plus" && !$("apn").value.trim()) {
-        alert("Please enter the Parcel / APN (required for FSBO Plus).");
-        $("apn").focus();
-        return;
-      }
-      // Validate status
-      if (!$("status").value) {
-        alert("Please select a Status (Active, In Contract, or Sold).");
-        $("status").focus();
-        return;
-      }
-      const data = getPayload();
-      saveSellerListing(data);
-      alert("Saved.");
-    });
+    renderThumbs();
 
     $("photoInput").addEventListener("change", async (e) => {
-      const isPlus = (PLAN === "Listed Property Plus" || PLAN === "FSBO Plus");
-      const maxPhotos = isPlus ? 20 : 1;
-
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
-
-      const existing = sellerListing.photos || [];
-      let spaceLeft = maxPhotos - existing.length;
+      let spaceLeft = maxPhotos - (photos.length || 0);
       if (spaceLeft <= 0) {
         alert(`You have reached the photo limit for your plan (${maxPhotos}).`);
         e.target.value = "";
         return;
       }
-
       const toRead = files.slice(0, spaceLeft);
       const readAsDataURL = (file) => new Promise((res, rej) => {
         const reader = new FileReader();
@@ -316,45 +244,158 @@
         reader.onerror = rej;
         reader.readAsDataURL(file);
       });
-
       for (const f of toRead) {
         try {
           const dataUrl = await readAsDataURL(f);
-          existing.push(dataUrl);
-        } catch (err) {
-          console.error("Failed to read file", err);
-        }
+          photos.push(dataUrl);
+        } catch(e) { console.error(e); }
       }
-
-      sellerListing.photos = existing.slice(0, maxPhotos);
-      if (typeof sellerListing.primaryIndex !== "number") sellerListing.primaryIndex = 0;
-
-      // persist + re-render
-      const data = getPayload();
-      data.photos = sellerListing.photos;
-      data.primaryIndex = sellerListing.primaryIndex;
-      saveSellerListing(data);
-      renderThumbs(data.photos, data.primaryIndex);
-
+      saveDraft();
+      renderThumbs();
       e.target.value = "";
     });
 
-    // Upgrade to Plus (Seller pays)
-    $("upgradePlusBtn").addEventListener("click", () => {
-      const checkoutData = {
-        plan: "Listed Property Plus",
-        upgrades: {},           // no add-ons here; pure plan upgrade
-        prices: { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
-        base: 20,
-        total: 20,
-        payer: "seller"         // return path: seller-detail
-      };
-      localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
-      window.location.href = "/checkout.html";
+    // Description gate
+    const desc = agentListing.description ?? "";
+    $("description").value = desc;
+    if (!isPlus) {
+      $("description").classList.add("dimmed");
+      $("description").setAttribute("disabled","disabled");
+      $("descGateNote").classList.remove("hidden");
+    }
+
+    // Banner field (requires banner upgrade)
+    $("bannerText").value = agentListing.bannerText ?? "";
+    if (!checkoutData.upgrades.banner) {
+      $("bannerText").classList.add("dimmed");
+      $("bannerText").setAttribute("disabled","disabled");
+      $("bannerGateNote").classList.remove("hidden");
+    }
+
+    // Preferred area (requires premium)
+    $("preferredArea").value = agentListing.preferredArea
+      ?? checkoutData.meta.preferredArea
+      ?? flags.preferredArea
+      ?? "";
+    if (!checkoutData.upgrades.premium && !checkoutData.upgrades.pin) {
+      $("preferredArea").classList.add("dimmed");
+      $("preferredArea").setAttribute("disabled","disabled");
+      $("premiumGateNote").classList.remove("hidden");
+    }
+
+    // Pin area (requires pin)
+    $("pinArea").value = agentListing.pinArea
+      ?? checkoutData.meta.pinArea
+      ?? flags.pinArea
+      ?? "";
+    if (!checkoutData.upgrades.pin) {
+      $("pinArea").classList.add("dimmed");
+      $("pinArea").setAttribute("disabled","disabled");
+      $("pinGateNote").classList.remove("hidden");
+    }
+
+    // Listed-only agent fields
+    const listedBlock = $("listedBlock");
+    if (isFSBO) {
+      listedBlock.style.display = "none";
+    } else {
+      $("brokerage").value = formData.brokerage || agentListing.brokerage || "";
+      $("agentName").value = formData.agent || agentListing.agentName || "";
+      // agent email was not in Box2; leave blank if unknown
+      $("agentEmail").value = agentListing.agentEmail || "";
+      $("agentPhone").value = formData.agentPhone || agentListing.agentPhone || "";
+    }
+
+    // Wire inputs
+    ["status","price","description","bannerText","preferredArea","pinArea","brokerage","agentName","agentEmail","agentPhone","apn"].forEach(id=>{
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener("input", saveDraft);
     });
 
-    // ---------- Start ----------
-    init();
+    function saveDraft() {
+      const payload = {
+        status: $("status").value || "",
+        price: $("price").value || "",
+        commission: commission,
+        commissionType: commissionType,
+        apn: $("apn").value || "",
+        description: $("description").disabled ? (agentListing.description || "") : ($("description").value || ""),
+        bannerText: $("bannerText").disabled ? (agentListing.bannerText || "") : ($("bannerText").value || ""),
+        preferredArea: $("preferredArea").disabled ? (agentListing.preferredArea || "") : ($("preferredArea").value || ""),
+        pinArea: $("pinArea").disabled ? (agentListing.pinArea || "") : ($("pinArea").value || ""),
+        brokerage: isFSBO ? "" : ($("brokerage").value || ""),
+        agentName: isFSBO ? "" : ($("agentName").value || ""),
+        agentEmail: isFSBO ? "" : ($("agentEmail").value || ""),
+        agentPhone: isFSBO ? "" : ($("agentPhone").value || ""),
+        photos: photos.slice(0, maxPhotos),
+        primaryIndex: primaryIndex
+      };
+      localStorage.setItem("agentListing", JSON.stringify(payload));
+    }
+
+    $("saveBtn").addEventListener("click", () => { saveDraft(); alert("Saved."); });
+
+    // ---------- Upgrades panel ----------
+    function row(label, price, key, opts={}) {
+      const checked = !!checkoutData.upgrades[key];
+      const paid = opts.paid === true;
+      const note = paid ? `<span class="text-green-700 ml-2">(paid by ${checkoutData.payer === "agent" ? "agent" : "you"})</span>` : "";
+      return `
+        <label class="flex items-center justify-between border rounded-lg px-3 py-2 ${paid?'bg-gray-50':''}">
+          <div>
+            <span class="font-medium">${label}</span>
+            <span class="text-gray-500"> — $${price}</span>
+            ${note}
+          </div>
+          <input type="checkbox" data-key="${key}" class="h-4 w-4" ${checked?'checked':''} ${paid?'disabled':''}/>
+        </label>
+      `;
+    }
+    function paintUpgrades() {
+      const box = $("upgradesBox");
+      const isBasic = plan === "Listed Property Basic";
+      const html = [
+        isBasic || checkoutData.upgrades.upgradeToPlus
+          ? row("Upgrade to Listed Property Plus", checkoutData.prices.plus, "upgradeToPlus", {paid:false})
+          : "",
+        row("Banner", checkoutData.prices.banner, "banner", {paid: checkoutData.upgrades.banner && checkoutData.payer}),
+        row("Premium Placement", checkoutData.prices.premium, "premium", {paid: checkoutData.upgrades.premium && checkoutData.payer}),
+        row("Pin Placement", checkoutData.prices.pin, "pin", {paid: checkoutData.upgrades.pin && checkoutData.payer}),
+        isFSBO ? row("Confidential FSBO Upgrade", checkoutData.prices.confidential, "confidential", {paid: checkoutData.upgrades.confidential && checkoutData.payer}) : ""
+      ].join("");
+      box.innerHTML = html;
+      box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+        cb.addEventListener("change", (e)=>{
+          const k = e.target.getAttribute("data-key");
+          const checked = e.target.checked;
+          if (k === "upgradeToPlus") {
+            checkoutData.upgrades.upgradeToPlus = checked;
+            localStorage.setItem("selectedPlan", checked ? "Listed Property Plus" : "Listed Property Basic");
+          } else if (k === "banner") {
+            checkoutData.upgrades.banner = checked;
+          } else if (k === "premium") {
+            checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
+          } else if (k === "pin") {
+            checkoutData.upgrades.pin = checked;
+            if (checked) checkoutData.upgrades.premium = true; // included
+          } else if (k === "confidential") {
+            checkoutData.upgrades.confidential = checked;
+          }
+          setJSON("checkoutData", checkoutData);
+        });
+      });
+    }
+    paintUpgrades();
+
+    $("updateUpgradesBtn").addEventListener("click", () => {
+      // reflect meta fields if typed while locked (store for later)
+      checkoutData.meta.preferredArea = $("preferredArea").value || checkoutData.meta.preferredArea || "";
+      checkoutData.meta.pinArea = $("pinArea").value || checkoutData.meta.pinArea || "";
+      setJSON("checkoutData", checkoutData);
+      alert("Upgrades updated. Go to Checkout to pay (if needed).");
+    });
+    $("goCheckoutBtn").addEventListener("click", () => { window.location.href = "/checkout.html"; });
   </script>
 </body>
 </html>
