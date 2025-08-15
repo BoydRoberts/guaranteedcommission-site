@@ -33,6 +33,33 @@
     </button>
   </div>
 </header>
+<!-- ... truncated for brevity ... -->
+<!-- Box 2 -->
+<div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
+  <h2 id="formTitle" class="text-lg font-bold mb-4 text-center">Listed Property Communication Form</h2>
+  <form id="listingForm" class="space-y-2" autocomplete="off">
+    <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded" required>
+    <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-1 rounded" autocomplete="street-address" spellcheck="false" required>
+    <!-- Commission field moved here -->
+    <div class="flex gap-2">
+      <input type="text" id="commission" placeholder="Commission" class="w-full border p-1 rounded">
+      <select id="commissionType" class="border p-1 rounded">
+        <option value="%">%</option>
+        <option value="$">$</option>
+      </select>
+    </div>
+    <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
+    <div id="listedPhoneRow" class="relative">
+      <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
+      <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (123-456-7890)</span>
+    </div>
+    <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
+    <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
+    <div id="fsboEmailRow" class="hidden">
+      <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border p-1 rounded">
+    </div>
+    <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-2">Submit Guaranteed Commission</button>
+  </form>
 
 <!-- Investor Modal -->
 <div id="investorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
@@ -136,9 +163,6 @@
       <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-1 rounded" autocomplete="street-address" spellcheck="false" required>
       <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
       <!-- apnMode field removed -->
-
-<!-- The <select id="apnMode"> has been removed from here -->
-
       <div id="listedPhoneRow" class="relative">
         <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
         <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (123-456-7890)</span>
