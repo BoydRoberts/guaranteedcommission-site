@@ -65,10 +65,17 @@
       <div class="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
         <button id="backBtn" class="px-4 py-2 rounded border">Back</button>
         <div class="flex gap-3 justify-end">
-          <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">
+          <!-- Now green, matching Pay button, only shown for $0 totals -->
+          <a id="goSignatureZero"
+             href="/signature.html"
+             class="hidden px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition text-center">
             Continue (no payment due)
           </a>
-          <button id="payNowBtn" class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition">
+
+          <button
+            id="payNowBtn"
+            class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition"
+          >
             Pay Now with Stripe
           </button>
         </div>
