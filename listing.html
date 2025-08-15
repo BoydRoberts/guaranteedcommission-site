@@ -94,7 +94,8 @@
 
           <div class="mt-4 flex flex-col gap-2">
             <a href="/printable-isc.html" class="w-full text-center bg-gray-700 text-white py-2 rounded">View / Print ISC</a>
-            <a href="/login.html" class="w-full text-center bg-blue-600 text-white py-2 rounded">Log in to Message</a>
+            <a href="#" data-isc-pdf class="w-full text-center bg-blue-600 text-white py-2 rounded">Download ISC PDF</a>
+            <a href="/login.html" class="w-full text-center bg-green-600 text-white py-2 rounded">Log in to Message</a>
           </div>
         </div>
 
@@ -113,8 +114,6 @@
       return "$" + n.toLocaleString();
     };
 
-    // Get local "listing data" from prior steps (until Firestore is wired)
-    // We accept any ?id for now; for local preview we just read from localStorage.
     const url = new URL(window.location.href);
     const id = url.searchParams.get("id") || "local-preview";
 
@@ -134,7 +133,6 @@
     const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
     const primaryPhoto = photos[primaryIndex] || "";
 
-    // Compute commission display and estimated dollar
     const commissionDisplay = commissionType === "$"
       ? (commission ? ("$" + Number(commission || 0).toLocaleString()) : "[commission]")
       : (commission ? (commission + "%") : "[commission]");
@@ -150,11 +148,9 @@
       }
     }
 
-    // Populate header/address
     document.getElementById("addrLine").textContent = fullAddress;
     document.getElementById("priceLine").textContent = fmtUSD(price);
 
-    // Hero
     const heroImg = document.getElementById("heroImg");
     heroImg.src = primaryPhoto || "";
     const ribbon = document.getElementById("ribbon");
@@ -172,7 +168,6 @@
       badge.classList.remove("hidden");
     }
 
-    // Details
     document.getElementById("detailAddress").textContent = fullAddress;
     document.getElementById("detailPrice").textContent = fmtUSD(price);
     document.getElementById("detailCommission").textContent = commissionDisplay;
@@ -180,7 +175,6 @@
     document.getElementById("detailAPN").textContent = apn;
     document.getElementById("detailPlan").textContent = plan || "—";
 
-    // Description & Gallery cards
     const descCard = document.getElementById("descCard");
     const descEl = document.getElementById("detailDescription");
     if (description) {
@@ -202,13 +196,11 @@
       galleryCard.classList.remove("hidden");
     }
 
-    // Contact (Listed vs FSBO)
     const isFSBO = (plan || "").includes("FSBO");
     const listedContact = document.getElementById("listedContact");
     const fsboContact = document.getElementById("fsboContact");
 
     if (isFSBO) {
-      // FSBO: phone/email came from Box 2 (we re-used fields)
       document.getElementById("cOwnerPhone").textContent = formData.agentPhone || "[owner/seller phone number]";
       document.getElementById("cOwnerEmail").textContent = formData.brokerage || "[owner/seller email]";
       fsboContact.classList.remove("hidden");
@@ -219,16 +211,10 @@
       listedContact.classList.remove("hidden");
     }
   </script>
-  <script>
-  (function(){
-    try {
-      const fd = JSON.parse(localStorage.getItem('formData') || '{}');
-      const short = (fd.address || '').split(',')[0] || 'Listing';
-      const h1 = document.querySelector('[data-role="listing-title"]') || document.querySelector('h1');
-      if (h1) h1.textContent = short + ' — Full Listing Detail';
-      document.title = short + ' — Full Listing Detail';
-    } catch {}
-  })();
-</script>
+
+  <!-- jsPDF + ISC PDF Helper -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="/scripts/isc-pdf.js"></script>
+
 </body>
 </html>
