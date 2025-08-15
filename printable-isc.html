@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Irrevocable Seller Communication — Printable</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- jsPDF for PDF export (text-based, crisp) -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
     @media print {
@@ -20,7 +24,8 @@
     <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
       <a href="/signature.html" class="text-sm text-blue-600 hover:underline">&larr; Back</a>
       <div class="flex items-center gap-3">
-        <span class="text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">printable-isc build 2025-08-14b</span>
+        <span class="text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">printable-isc build 2025-08-14c</span>
+        <button id="btnPdf" class="px-3 py-1 rounded bg-blue-600 text-white">Download PDF</button>
         <button onclick="window.print()" class="px-3 py-1 rounded bg-gray-800 text-white">Print</button>
       </div>
     </div>
@@ -32,12 +37,12 @@
       <p class="text-xs text-gray-500 text-center mb-6">For escrow/closing agent use.</p>
 
       <!-- ISC body -->
-      <div class="text-sm leading-6 text-gray-800">
+      <div class="text-sm leading-6 text-gray-800" id="iscBody">
         <p>To the escrow holder/closing agent,</p>
 
         <!-- Listed -->
         <div id="iscListed" class="hidden">
-          <p class="mt-3">
+          <p class="mt-3" id="listedP1">
             I, <span id="L_name">[name]</span>, am the owner/seller of
             <span id="L_addrFull">[full address]</span><span id="L_parcelBlock">, # <span id="L_apn">[APN]</span></span>.
             <span id="L_addrShort1">[short address]</span> is listed for sale by
@@ -45,7 +50,7 @@
             <span id="L_agent">[listing agent]</span>, listing agent,
             <span id="L_agentPhone">[agent phone]</span>.
           </p>
-          <p class="mt-3">
+          <p class="mt-3" id="listedP2">
             Let it be known: if a buyer’s agent/broker facilitates the sale of
             <span id="L_addrShort2">[short address]</span>, you (the escrow holder/closing agent)
             are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the
@@ -58,13 +63,13 @@
 
         <!-- FSBO -->
         <div id="iscFSBO" class="hidden">
-          <p class="mt-3">
+          <p class="mt-3" id="fsboP1">
             I, <span id="F_name">[name]</span>, am the owner/seller of
             <span id="F_addrFull">[full address]</span><span id="F_parcelBlock">, # <span id="F_apn">[APN]</span></span>.
             <span id="F_addrShort1">[short address]</span> is listed for sale by owner (Me).
             My phone number is <span id="F_phone">[owner/seller phone]</span>. My email address is <span id="F_email">[owner/seller email]</span>.
           </p>
-          <p class="mt-3">
+          <p class="mt-3" id="fsboP2">
             Let it be known: if a buyer’s agent/broker facilitates the sale of
             <span id="F_addrShort2">[short address]</span>, you (the escrow holder/closing agent)
             are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed
@@ -74,7 +79,7 @@
         </div>
 
         <!-- Signature row -->
-        <div class="mt-8">
+        <div class="mt-8" id="sigRow">
           <div class="flex items-center justify-between">
             <div>
               <div class="text-base">
@@ -96,7 +101,7 @@
   </main>
 
   <script>
-    console.log("[printable-isc] build 2025-08-14b");
+    console.log("[printable-isc] build 2025-08-14c");
 
     // Helpers
     const $ = (id) => document.getElementById(id);
@@ -114,7 +119,7 @@
 
     // APN handling
     const apn = (fd.apn || "").trim();
-    const apnMode = (fd.apnMode || "").trim(); // for listed only ("agent" if agent to provide)
+    const apnMode = (fd.apnMode || "").trim(); // listed only ("agent" means omit parcel bit)
 
     // Commission text
     const comm = (fd.commission || "").trim();
@@ -122,8 +127,9 @@
     const commDisplay = cType === "$" ? (comm ? ("$" + Number(comm).toLocaleString()) : "") : (comm ? (comm + "%") : "");
     const commSuffix = (cType === "%") ? "of the total purchase price" : "";
 
-    // Paint ISC
+    // Which variant
     const isFSBO = plan === "FSBO Plus";
+
     if (isFSBO) {
       $("iscFSBO").classList.remove("hidden");
       $("F_name").textContent = fd.name || "[name]";
@@ -132,11 +138,8 @@
       $("F_parcelBlock").style.display = apn ? "inline" : "none";
       $("F_addrShort1").textContent = shortAddr || "[short address]";
       $("F_addrShort2").textContent = shortAddr || "[short address]";
-
-      // FSBO contact stored in Box 2 as agentPhone/brokerage
       $("F_phone").textContent = fd.agentPhone || "[owner/seller phone]";
       $("F_email").textContent = fd.brokerage || "[owner/seller email]";
-
       $("F_commDisplay").textContent = commDisplay || "[commission]";
       $("F_commSuffix").textContent = commDisplay ? (" " + commSuffix) : "";
     } else {
@@ -144,10 +147,8 @@
       $("L_name").textContent = fd.name || "[name]";
       $("L_addrFull").textContent = fullAddr || "[full address]";
       $("L_apn").textContent = apn || "[APN]";
-      // Hide parcel punctuation if agent selected "agent to provide"
       const showParcel = !!apn && apnMode !== "agent";
       $("L_parcelBlock").style.display = showParcel ? "inline" : "none";
-
       $("L_addrShort1").textContent = shortAddr || "[short address]";
       $("L_addrShort2").textContent = shortAddr || "[short address]";
       $("L_brokerage").textContent = fd.brokerage || "[listing brokerage]";
@@ -157,14 +158,13 @@
       $("L_commSuffix").textContent = commDisplay ? (" " + commSuffix) : "";
     }
 
-    // Signature render (from signature step)
+    // Signature render
     const signerName = (sig && sig.name) ? sig.name : (fd.name || "");
     const sigDate = (sig && sig.date) ? sig.date : new Date().toISOString().slice(0,10);
     $("sigRender").textContent = signerName || "[Name]";
     $("sigDate").textContent = sigDate;
 
     // --------- Per-ISC view counter ----------
-    // Keyed by plan + full address + signer (so each listing/doc is independent)
     function counterKey() {
       const addrKey = (fullAddr || "").toLowerCase().trim();
       const signerKey = (signerName || "").toLowerCase().trim();
@@ -179,6 +179,74 @@
     }
     const count = incrementCounter();
     $("viewCounter").textContent = `Viewed ${count} ${count === 1 ? "time" : "times"}`;
+
+    // --------- PDF Export (jsPDF) ----------
+    document.getElementById("btnPdf").addEventListener("click", () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: "pt", format: "letter" }); // 612x792
+
+      const marginL = 54;  // 0.75"
+      const marginR = 54;
+      let y = 64;
+
+      const pageW = doc.internal.pageSize.getWidth();
+
+      function line(txt, opts={}) {
+        const maxW = pageW - marginL - marginR;
+        const lines = doc.splitTextToSize(txt, maxW);
+        lines.forEach((ln) => { doc.text(ln, marginL, y); y += (opts.leading || 16); });
+      }
+      function sectionGap(px=10) { y += px; }
+      function h1(txt) { doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(txt, pageW/2, y, { align:"center" }); y += 18; }
+      function smallCenter(txt) { doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text(txt, pageW/2, y, { align:"center" }); y += 14; }
+      function setBody() { doc.setFont("helvetica","normal"); doc.setFontSize(11); }
+
+      // Header
+      h1("Irrevocable Seller Communication");
+      smallCenter("For escrow/closing agent use.");
+      sectionGap(8);
+      setBody();
+
+      line("To the escrow holder/closing agent,");
+      sectionGap(8);
+
+      if (isFSBO) {
+        const p1 = document.getElementById("fsboP1").innerText;
+        const p2 = document.getElementById("fsboP2").innerText;
+        line(p1);
+        sectionGap(6);
+        line(p2);
+      } else {
+        const p1 = document.getElementById("listedP1").innerText;
+        const p2 = document.getElementById("listedP2").innerText;
+        line(p1);
+        sectionGap(6);
+        line(p2);
+      }
+
+      // Signature block
+      sectionGap(18);
+      doc.setFont("helvetica","normal");
+      doc.setFontSize(12);
+      doc.text((signerName || "[Name]"), marginL, y);
+      doc.setFontSize(9);
+      doc.text("Electronic Signature", marginL, y + 12);
+      doc.setFontSize(11);
+      doc.text(sigDate || "[YYYY-MM-DD]", pageW - marginR, y, { align:"right" });
+      y += 24;
+
+      // Footer
+      const footerY = 792 - 40;
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text("GuaranteedCommission.com · Document for escrow/closing agent", marginL, footerY);
+      doc.text(`Viewed ${count} ${count === 1 ? "time" : "times"}`, pageW - marginR, footerY, { align: "right" });
+
+      // File name: short-address + date
+      const short = (fd.address || "listing").split(",")[0].trim().replace(/\s+/g,"_");
+      const fname = `ISC_${short}_${sigDate || "signed"}.pdf`;
+      doc.save(fname);
+    });
   </script>
 </body>
 </html>
