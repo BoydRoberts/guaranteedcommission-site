@@ -117,14 +117,16 @@
     const url = new URL(window.location.href);
     const id = url.searchParams.get("id") || "local-preview";
 
-    const formData = JSON.parse(localStorage.getItem("formData") || "{}");
-    const agentListing = JSON.parse(localStorage.getItem("agentListing") || "{}");
+    // Try local sources first (seller/agent flow); fall back to empty objects
+    const formData = (() => { try { return JSON.parse(localStorage.getItem("formData") || "{}"); } catch { return {}; } })();
+    const agentListing = (() => { try { return JSON.parse(localStorage.getItem("agentListing") || "{}"); } catch { return {}; } })();
     const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
 
+    // Compose display values with safe fallbacks (so cold visitors still see a complete page)
     const fullAddress = formData.address || "[full address]";
-    const price = agentListing.price ?? "";
-    const commission = agentListing.commission ?? (formData.commission || "");
-    const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
+    const price = (agentListing.price ?? "");
+    const commission = (agentListing.commission ?? (formData.commission || ""));
+    const commissionType = (agentListing.commissionType ?? (formData.commissionType || "%"));
     const apn = formData.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
     const bannerText = (agentListing.bannerText || "").trim();
     const description = (agentListing.description || "").trim();
@@ -148,9 +150,11 @@
       }
     }
 
+    // Paint header
     document.getElementById("addrLine").textContent = fullAddress;
     document.getElementById("priceLine").textContent = fmtUSD(price);
 
+    // Hero
     const heroImg = document.getElementById("heroImg");
     heroImg.src = primaryPhoto || "";
     const ribbon = document.getElementById("ribbon");
@@ -168,6 +172,7 @@
       badge.classList.remove("hidden");
     }
 
+    // Details card
     document.getElementById("detailAddress").textContent = fullAddress;
     document.getElementById("detailPrice").textContent = fmtUSD(price);
     document.getElementById("detailCommission").textContent = commissionDisplay;
@@ -175,6 +180,7 @@
     document.getElementById("detailAPN").textContent = apn;
     document.getElementById("detailPlan").textContent = plan || "—";
 
+    // Description & Gallery cards
     const descCard = document.getElementById("descCard");
     const descEl = document.getElementById("detailDescription");
     if (description) {
@@ -196,6 +202,7 @@
       galleryCard.classList.remove("hidden");
     }
 
+    // Contact (Listed vs FSBO)
     const isFSBO = (plan || "").includes("FSBO");
     const listedContact = document.getElementById("listedContact");
     const fsboContact = document.getElementById("fsboContact");
@@ -210,11 +217,64 @@
       document.getElementById("cAgentPhone").textContent = formData.agentPhone || "[agent phone]";
       listedContact.classList.remove("hidden");
     }
+
+    // ------ Provide a complete, public-safe ISC context for the PDF helper ------
+    // Fallbacks ensure a cold visitor still downloads a coherent ISC.
+    const sellerName = formData.name || formData.sellerName || "[Name]";
+    const addressShort = (fullAddress || "").split(",")[0] || "[short address]";
+
+    window.__ISC_CONTEXT = {
+      // which template branch to render
+      variant: isFSBO ? "fsbo" : "listed",
+
+      // shared
+      sellerName,
+      signatureName: sellerName,
+      addressFull: fullAddress,
+      addressShort,
+      apn: apn,
+
+      commissionValue: String(commission || ""),
+      commissionType: commissionType === "$" ? "$" : "%",
+
+      // listed branch
+      brokerage: formData.brokerage || "",
+      agent: formData.agent || "",
+      agentPhone: formData.agentPhone || "",
+
+      // fsbo branch (we re-used these fields in Box 2)
+      fsboPhone: formData.agentPhone || "",
+      fsboEmail: formData.brokerage || "",
+
+      // nice-to-haves for headers/footers
+      plan,
+      source: "listing.html",
+      // a stable-ish key for per-ISC view counters, etc.
+      counterKey: "iscViewCount:" + (fullAddress || "unknown")
+    };
+
+    // Optional: warn if helper script is missing
+    document.querySelector('[data-isc-pdf]')?.addEventListener('click', (e) => {
+      if (!window.gcBuildIscPdf) {
+        e.preventDefault();
+        alert("PDF helper not loaded yet. Please try again in a moment.");
+      }
+    });
   </script>
 
   <!-- jsPDF + ISC PDF Helper -->
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="/scripts/isc-pdf.js"></script>
 
+  <!-- Title polish -->
+  <script>
+    (function(){
+      try {
+        const fd = JSON.parse(localStorage.getItem('formData') || '{}');
+        const short = (fd.address || '').split(',')[0] || 'Listing';
+        document.title = short + ' — Full Listing Detail';
+      } catch {}
+    })();
+  </script>
 </body>
 </html>
