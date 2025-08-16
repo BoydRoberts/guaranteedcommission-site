@@ -13,7 +13,7 @@
     /* Keep menus hidden by default */
     #commissionMenu { display: none; }
 
-    /* --- Strip 2 tile styles (lightweight) --- */
+    /* --- Strip 2 tile styles --- */
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.7); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
@@ -122,7 +122,7 @@
         <!-- Address -->
         <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-1 rounded" autocomplete="street-address" spellcheck="false" required >
 
-        <!-- Parcel (dropdown removed) -->
+        <!-- Parcel -->
         <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
 
         <!-- Phone/Broker/Agent -->
@@ -130,10 +130,14 @@
           <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
           <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (123-456-7890)</span>
         </div>
+
+        <!-- Brokerage (HIDDEN for FSBO) -->
         <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
+
+        <!-- Agent (HIDDEN for FSBO) -->
         <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
 
-        <!-- FSBO-only contact -->
+        <!-- FSBO-only contact (the ONLY email field for FSBO) -->
         <div id="fsboEmailRow" class="hidden">
           <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border p-1 rounded">
         </div>
@@ -199,9 +203,16 @@
     </div>
   </section>
 
-  <!-- Strip 2: Search / Tiles demo -->
+  <!-- Strip 2: Search / Tiles -->
   <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12">
-    <h2 class="text-xl font-bold mb-3">Explore Listings</h2>
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-xl font-bold">Explore Listings</h2>
+      <!-- Restored search bar -->
+      <div class="flex items-center gap-2">
+        <input id="searchBox" type="text" placeholder="Search address, city, or state…" class="border rounded px-3 py-2 w-64">
+        <button id="searchBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Search</button>
+      </div>
+    </div>
     <p class="text-sm text-gray-600 mb-4">These tiles are generated from your current session data (or sample data for demo).</p>
     <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </section>
@@ -243,18 +254,26 @@
         title.textContent = 'FSBO Communication Form';
         listedPhoneRow.classList.remove('hidden');
         phoneInput.placeholder = 'Owner/Seller phone number';
-        brokerageInput.placeholder = 'Owner/Seller email (also shown on ISC if not confidential)';
+
+        // Hide brokerage + agent for FSBO; show the single FSBO email input
+        brokerageInput.style.display = 'none';
         agentInput.style.display = 'none';
         fsboEmailRow.classList.remove('hidden');
+
+        // Toggle ISC variants
         document.getElementById('iscTextListed').classList.add('hidden');
         document.getElementById('iscTextFSBO').classList.remove('hidden');
       } else {
         title.textContent = (type === 'plus' ? 'Listed Property Plus Communication Form' : 'Listed Property Communication Form');
         listedPhoneRow.classList.remove('hidden');
         phoneInput.placeholder = 'Agent’s direct phone only – NOT your number';
-        brokerageInput.placeholder = 'Listing Brokerage';
+
+        // Show brokerage + agent; hide FSBO email field
+        brokerageInput.style.display = 'block';
         agentInput.style.display = 'block';
         fsboEmailRow.classList.add('hidden');
+
+        // Toggle ISC variants
         document.getElementById('iscTextListed').classList.remove('hidden');
         document.getElementById('iscTextFSBO').classList.add('hidden');
       }
@@ -325,15 +344,17 @@
         document.getElementById('letterAddressShort2FSBO').textContent = short || '[short address]';
         document.getElementById('letterAPNFSBO').textContent = apnVal || '[Parcel # / Pin # / Tax ID # / Folio # / APN #]';
         document.getElementById('fsboPhone').textContent = phoneVal || '[owner/seller phone number]';
-        document.getElementById('fsboEmail').textContent = (fsboEmailInput && fsboEmailInput.value) || brokerageVal || '[owner/seller email]';
+        document.getElementById('fsboEmail').textContent = (fsboEmailInput && fsboEmailInput.value) || '[owner/seller email]';
         document.getElementById('letterCommissionDisplayFSBO').textContent = display || '[commission]';
         document.getElementById('commissionSuffixFSBO').textContent = display ? (' ' + suffix) : '';
         document.getElementById('signatureNameFSBO').textContent = nameVal || '[Name]';
       }
       syncAll();
 
-      // ---- Strip 2 demo tiles ----
+      // ---- Strip 2 tiles + search ----
+      buildTilesDataset();
       renderStrip2Tiles();
+      wireSearch();
     });
 
     /* Submit */
@@ -433,28 +454,23 @@
       return card;
     }
 
-    function renderStrip2Tiles(){
-      const grid = document.getElementById('tileGrid');
-      grid.innerHTML = '';
-
-      // Prefer live session data if present
+    let _tilesData = [];
+    function buildTilesDataset(){
+      _tilesData = [];
       const formData = JSON.parse(localStorage.getItem('formData') || '{}');
       const agentListing = JSON.parse(localStorage.getItem('agentListing') || '{}');
       const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
 
       const hasLive = formData && formData.address;
-
       if (hasLive) {
-        const primaryIndex = typeof agentListing.primaryIndex==='number' ? agentListing.primaryIndex : 0;
-        const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
-        const data = {
+        _tilesData.push({
           address: formData.address,
           price: agentListing.price,
           commission: agentListing.commission ?? formData.commission,
           commissionType: agentListing.commissionType ?? formData.commissionType ?? '%',
           bannerText: agentListing.bannerText,
-          photos,
-          primaryIndex,
+          photos: Array.isArray(agentListing.photos) ? agentListing.photos : [],
+          primaryIndex: typeof agentListing.primaryIndex==='number' ? agentListing.primaryIndex : 0,
           status: agentListing.status || 'Active',
           brokerage: formData.brokerage,
           agent: formData.agent,
@@ -462,56 +478,63 @@
           bedrooms: agentListing.bedrooms,
           bathrooms: agentListing.bathrooms,
           sqft: agentListing.sqft,
-        };
-        grid.appendChild(renderTile(data));
-      } else {
-        // Demo samples
-        const samples = [
-          {
-            address: "237 San Joaquin Street, Laguna Beach, CA 92651",
-            price: 1895000,
-            commission: 2.5,
-            commissionType: '%',
-            bannerText: "Open Sunday 1–4",
-            photos: ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop"],
-            primaryIndex: 0,
-            status: "Active",
-            brokerage: "Pacific Estates",
-            agent: "Jordan Crisp",
-            plan: "Listed Property Plus",
-            bedrooms: 3, bathrooms: 2, sqft: 2000
-          },
-          {
-            address: "14 Maple Ave, Montclair, NJ 07042",
-            price: 925000,
-            commission: 25000,
-            commissionType: '$',
-            bannerText: "",
-            photos: ["https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop"],
-            primaryIndex: 0,
-            status: "In Contract",
-            brokerage: "HomeWorks Realty",
-            agent: "A. Brooks",
-            plan: "Listed Property Basic",
-            bedrooms: 4, bathrooms: 3, sqft: 2400
-          },
-          {
-            address: "1020 Cedar Dr, Austin, TX 78704",
-            price: 650000,
-            commission: 3.0,
-            commissionType: '%',
-            bannerText: "Hot Home",
-            photos: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop"],
-            primaryIndex: 0,
-            status: "Active",
-            brokerage: "",
-            agent: "",
-            plan: "FSBO Plus",
-            bedrooms: 3, bathrooms: 2, sqft: 1680
-          }
-        ];
-        samples.forEach(s => grid.appendChild(renderTile(s)));
+        });
       }
+
+      // Samples for demo
+      const samples = [
+        {
+          address: "237 San Joaquin Street, Laguna Beach, CA 92651",
+          price: 1895000, commission: 2.5, commissionType: '%',
+          bannerText: "Open Sunday 1–4",
+          photos: ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop"],
+          primaryIndex: 0, status: "Active",
+          brokerage: "Pacific Estates", agent: "Jordan Crisp",
+          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000
+        },
+        {
+          address: "14 Maple Ave, Montclair, NJ 07042",
+          price: 925000, commission: 25000, commissionType: '$',
+          photos: ["https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop"],
+          primaryIndex: 0, status: "In Contract",
+          brokerage: "HomeWorks Realty", agent: "A. Brooks",
+          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400
+        },
+        {
+          address: "1020 Cedar Dr, Austin, TX 78704",
+          price: 650000, commission: 3.0, commissionType: '%',
+          bannerText: "Hot Home",
+          photos: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop"],
+          primaryIndex: 0, status: "Active",
+          brokerage: "", agent: "",
+          plan: "FSBO Plus", bedrooms: 3, bathrooms: 2, sqft: 1680
+        }
+      ];
+      // Only add samples if not duplicated with exact same address
+      const haveAddr = new Set(_tilesData.map(d => (d.address||'').toLowerCase()));
+      samples.forEach(s => { if(!haveAddr.has((s.address||'').toLowerCase())) _tilesData.push(s); });
+    }
+
+    function renderStrip2Tiles(filterText=""){
+      const grid = document.getElementById('tileGrid');
+      grid.innerHTML = '';
+      const q = (filterText || '').toLowerCase();
+      const list = q
+        ? _tilesData.filter(d => (d.address||'').toLowerCase().includes(q))
+        : _tilesData;
+      if (!list.length) {
+        grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
+        return;
+      }
+      list.forEach(d => grid.appendChild(renderTile(d)));
+    }
+
+    function wireSearch(){
+      const box = document.getElementById('searchBox');
+      const btn = document.getElementById('searchBtn');
+      const doSearch = () => renderStrip2Tiles(box.value);
+      btn.addEventListener('click', doSearch);
+      box.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); }});
     }
   </script>
 </body>
