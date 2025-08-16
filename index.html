@@ -12,6 +12,14 @@
     .group:focus-within #commissionMenu { display: block; }
     /* Keep menus hidden by default */
     #commissionMenu { display: none; }
+
+    /* --- Strip 2 tile styles (lightweight) --- */
+    .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+    .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
+    .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.7); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
+    .gc-line1 { font-weight:700; }
+    .gc-meta  { color:#4b5563; font-size:14px; }
+    .gc-broker { color:#6b7280; font-size:12px; text-transform:uppercase; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -73,7 +81,7 @@
           <li><a href="#" onclick="selectPlan('FSBO Plus')" class="block px-4 py-2 hover:bg-gray-100">FSBO Plus</a></li>
         </ul>
       </li>
-      <li><a href="/search.html" class="hover:underline">Search Guaranteed Commission</a></li>
+      <li><a href="#strip2Search" class="hover:underline">Search Guaranteed Commission</a></li>
       <li><a href="/login.html" class="hover:underline">Log In</a></li>
     </ul>
   </nav>
@@ -114,10 +122,10 @@
         <!-- Address -->
         <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-1 rounded" autocomplete="street-address" spellcheck="false" required >
 
-        <!-- Parcel (APN Mode dropdown REMOVED for Basic/Plus) -->
+        <!-- Parcel (dropdown removed) -->
         <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
 
-        <!-- Commission row -->
+        <!-- Phone/Broker/Agent -->
         <div id="listedPhoneRow" class="relative">
           <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
           <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (123-456-7890)</span>
@@ -130,7 +138,7 @@
           <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border p-1 rounded">
         </div>
 
-        <!-- Commission field -->
+        <!-- Commission -->
         <div class="flex gap-2">
           <input type="text" id="commission" placeholder="Commission" class="w-full border p-1 rounded">
           <select id="commissionType" class="border p-1 rounded">
@@ -167,7 +175,7 @@
           broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed
           <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
         </p>
-        <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature date</p>
+        <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
       </div>
 
       <!-- FSBO ISC -->
@@ -186,12 +194,17 @@
           instructed to credit/compensate the buyer’s broker a commission not to exceed
           <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
         </p>
-        <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature date</p>
+        <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
       </div>
     </div>
   </section>
 
-  <!-- (Strip 2 lives at /search.html now) -->
+  <!-- Strip 2: Search / Tiles demo -->
+  <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12">
+    <h2 class="text-xl font-bold mb-3">Explore Listings</h2>
+    <p class="text-sm text-gray-600 mb-4">These tiles are generated from your current session data (or sample data for demo).</p>
+    <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+  </section>
 
   <!-- Scripts -->
   <script>
@@ -318,6 +331,9 @@
         document.getElementById('signatureNameFSBO').textContent = nameVal || '[Name]';
       }
       syncAll();
+
+      // ---- Strip 2 demo tiles ----
+      renderStrip2Tiles();
     });
 
     /* Submit */
@@ -362,6 +378,140 @@
       localStorage.setItem('postSignatureOptions',plan.includes('FSBO')?'fsbo':'listed');
       localStorage.setItem('nextAfterLogin','/verify-code.html');
       window.location.href="/login.html";
+    }
+
+    // ---------- Strip 2 helpers ----------
+    function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
+    function commissionDollars(price, val, type){
+      const p=Number(price||0), c=Number(val||0);
+      if(!c) return null;
+      if(type==='$') return Math.round(c);
+      if(p) return Math.round(p*(c/100));
+      return null;
+    }
+
+    function renderTile(data){
+      const {
+        address="[full address]",
+        price,
+        commission,
+        commissionType="%",
+        bannerText="",
+        photos=[],
+        primaryIndex=0,
+        status="Active",
+        brokerage="[listing brokerage]",
+        agent="[listing agent]",
+        plan="Listed Property Basic",
+        bedrooms, bathrooms, sqft
+      } = data || {};
+
+      const calc = commissionDollars(price, commission, commissionType);
+      const line1Left = fmtUSD(price);
+      const line1Mid  = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
+      const line1Right= (calc!=null) ? `$${calc.toLocaleString()}` : '—';
+
+      const img = (photos && photos.length ? photos[primaryIndex||0] : "");
+
+      const card = document.createElement('article');
+      card.className = "gc-tile";
+      card.innerHTML = `
+        <div class="relative">
+          <img class="gc-photo" src="${img || ''}" alt="Listing photo">
+          ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ``}
+        </div>
+        <div class="p-3 space-y-1">
+          <div class="gc-line1 text-base">${line1Left} &nbsp;|&nbsp; ${line1Mid} &nbsp;|&nbsp; ${line1Right}</div>
+          <div class="gc-meta">${[bedrooms?`${bedrooms} bds`:null, bathrooms?`${bathrooms} ba`:null, sqft?`${Number(sqft).toLocaleString()} sqft`:null, status||null].filter(Boolean).join(' | ')}</div>
+          <div class="text-sm font-medium">${address}</div>
+          <div class="gc-broker">${(plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : `${(brokerage||'').toUpperCase()}${agent ? ' — '+agent : ''}`}</div>
+          <div class="pt-2">
+            <a class="inline-block text-sm bg-blue-600 text-white px-3 py-1 rounded" href="/listing.html">View Full Listing Detail</a>
+          </div>
+        </div>
+      `;
+      return card;
+    }
+
+    function renderStrip2Tiles(){
+      const grid = document.getElementById('tileGrid');
+      grid.innerHTML = '';
+
+      // Prefer live session data if present
+      const formData = JSON.parse(localStorage.getItem('formData') || '{}');
+      const agentListing = JSON.parse(localStorage.getItem('agentListing') || '{}');
+      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+
+      const hasLive = formData && formData.address;
+
+      if (hasLive) {
+        const primaryIndex = typeof agentListing.primaryIndex==='number' ? agentListing.primaryIndex : 0;
+        const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
+        const data = {
+          address: formData.address,
+          price: agentListing.price,
+          commission: agentListing.commission ?? formData.commission,
+          commissionType: agentListing.commissionType ?? formData.commissionType ?? '%',
+          bannerText: agentListing.bannerText,
+          photos,
+          primaryIndex,
+          status: agentListing.status || 'Active',
+          brokerage: formData.brokerage,
+          agent: formData.agent,
+          plan,
+          bedrooms: agentListing.bedrooms,
+          bathrooms: agentListing.bathrooms,
+          sqft: agentListing.sqft,
+        };
+        grid.appendChild(renderTile(data));
+      } else {
+        // Demo samples
+        const samples = [
+          {
+            address: "237 San Joaquin Street, Laguna Beach, CA 92651",
+            price: 1895000,
+            commission: 2.5,
+            commissionType: '%',
+            bannerText: "Open Sunday 1–4",
+            photos: ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop"],
+            primaryIndex: 0,
+            status: "Active",
+            brokerage: "Pacific Estates",
+            agent: "Jordan Crisp",
+            plan: "Listed Property Plus",
+            bedrooms: 3, bathrooms: 2, sqft: 2000
+          },
+          {
+            address: "14 Maple Ave, Montclair, NJ 07042",
+            price: 925000,
+            commission: 25000,
+            commissionType: '$',
+            bannerText: "",
+            photos: ["https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop"],
+            primaryIndex: 0,
+            status: "In Contract",
+            brokerage: "HomeWorks Realty",
+            agent: "A. Brooks",
+            plan: "Listed Property Basic",
+            bedrooms: 4, bathrooms: 3, sqft: 2400
+          },
+          {
+            address: "1020 Cedar Dr, Austin, TX 78704",
+            price: 650000,
+            commission: 3.0,
+            commissionType: '%',
+            bannerText: "Hot Home",
+            photos: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop"],
+            primaryIndex: 0,
+            status: "Active",
+            brokerage: "",
+            agent: "",
+            plan: "FSBO Plus",
+            bedrooms: 3, bathrooms: 2, sqft: 1680
+          }
+        ];
+        samples.forEach(s => grid.appendChild(renderTile(s)));
+      }
     }
   </script>
 </body>
