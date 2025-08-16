@@ -74,7 +74,6 @@
         <li><a href="#" onclick="selectPlan('FSBO Plus')" class="block px-4 py-2 hover:bg-gray-100">FSBO Plus</a></li>
       </ul>
     </li>
-    <li><a href="#strip2Search" class="hover:underline">Search Guaranteed Commission</a></li>
     <li><a href="/search.html" class="hover:underline">Search Guaranteed Commission</a></li>
     <li><a href="/login.html" class="hover:underline">Log In</a></li>
   </ul>
@@ -109,14 +108,10 @@
 
   <!-- Box 2 -->
   <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
-    <h2 class="text-lg font-bold mb-4 text-center">Listed Property Communication Form</h2>
     <h2 id="formTitle" class="text-lg font-bold mb-4 text-center">Listed Property Communication Form</h2>
     <form id="listingForm" class="space-y-2" autocomplete="off">
       <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded" required>
 
-      <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-1 rounded" required pattern="^\\s*\\d+\\s+[^,]+,\\s*[A-Za-z .'-]+,\\s*[A-Z]{2}\\s+\\d{5}\\s*$">
-
-      <!-- APN + APN Mode (for Listed / Plus) -->
       <!-- Address (robust validator handled in JS) -->
       <input
         type="text"
@@ -131,28 +126,16 @@
       <!-- Parcel + APN Mode (APN Mode hidden for FSBO) -->
       <div class="flex gap-2">
         <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
-        <select id="apnMode" class="w-40 border p-1 rounded">
-          <option value="">APN Mode…</option>
-          <option value="exact">Exact</option>
-          <option value="tbd">Agent to provide</option>
-        </select>
-      </div>
-
-      <!-- Commission (moved under APN for FSBO via JS) -->
-      <div id="commissionRow" class="flex gap-2">
-        <input type="text" id="commission" placeholder="Commission" class="w-full border p-1 rounded">
-        <select id="commissionType" class="border p-1 rounded">
-          <option value="%">%</option>
-          <option value="$">$</option>
         <select id="apnMode" class="border p-1 rounded w-40">
           <option value="provided">Provided</option>
           <option value="agent_to_provide">Agent to provide</option>
         </select>
       </div>
 
-      <div class="relative">
-        <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded" required>
       <!-- Commission row (Listed uses agent phone; FSBO re-purposes fields below) -->
+      <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-1 rounded" autocomplete="street-address" spellcheck="false" required>
+      <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
+      <!-- apnMode field removed -->
       <div id="listedPhoneRow" class="relative">
         <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
         <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (123-456-7890)</span>
@@ -161,14 +144,11 @@
       <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
       <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
 
-      <!-- FSBO-only extra email row (restored) -->
-      <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email (FSBO only)" class="w-full border p-1 rounded hidden">
       <!-- FSBO-only contact (hidden for Listed/Plus) -->
       <div id="fsboEmailRow" class="hidden">
         <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border p-1 rounded">
       </div>
 
-      <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-4">
       <!-- Commission field shared (for FSBO we keep it directly under APN per earlier request) -->
       <div class="flex gap-2">
         <input type="text" id="commission" placeholder="Commission" class="w-full border p-1 rounded">
@@ -181,21 +161,22 @@
       <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-2">
         Submit Guaranteed Commission
       </button>
+      <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-2">Submit Guaranteed Commission</button>
     </form>
   </div>
+  <!-- Box 3 -->
+  <!-- ISC section continues... -->
+
 
   <!-- Box 3 -->
   <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
     <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
 
     <!-- LISTED ISC -->
-    <div id="iscTextListed" class="">
     <div id="iscTextListed">
       <p>To the escrow holder/closing agent,</p>
       <p class="mt-2">
         I, <span id="letterName">[name]</span>, am the owner/seller of
-        <span id="letterAddressFull">[full address]</span>
-        <span id="listedApnChunk">, # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span></span>.
         <span id="letterAddressFull">[full address]</span><span id="apnSpanListed">, # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span></span>.
         <span id="letterAddressShort1">[short address]</span> is listed for sale by
         <span id="letterBrokerage">[listing brokerage]</span>,
@@ -219,8 +200,6 @@
       <p>To the escrow holder/closing agent,</p>
       <p class="mt-2">
         I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
-        <span id="letterAddressFullFSBO">[full address]</span>, #
-        <span id="letterAPNFSBO">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
         <span id="letterAddressFullFSBO">[full address]</span>, # <span id="letterAPNFSBO">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
         <span id="letterAddressShort1FSBO">[short address]</span> is listed for sale by owner (Me).
         My phone number is <span id="fsboPhone"></span>. My email address is <span id="fsboEmail"></span>.
@@ -237,10 +216,6 @@
   </div>
 </section>
 
-<!-- Strip 2 (placeholder; your search grid/map lives elsewhere for now) -->
-<section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12">
-  <!-- Keep whatever you already have for search/map/tiles -->
-</section>
 <!-- (Strip 2 lives at /search.html now) -->
 
 <!-- Scripts -->
@@ -263,23 +238,17 @@
   /* Plan switcher */
   function selectPlan(planName){
     localStorage.setItem("selectedPlan", planName);
-    localStorage.setItem("lastPlanChosenAt", String(Date.now()));
     // Always switch form explicitly (FSBO vs Listed/Plus)
     showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
   }
 
   /* Toggle which form text appears */
   function showForm(type){
-    const title = document.querySelector("#formBlock h2");
     const title = document.getElementById("formTitle");
     const phoneInput = document.getElementById('agentPhone');
     const brokerageInput = document.getElementById('brokerage');
     const agentInput = document.getElementById('agent');
     const apnMode = document.getElementById('apnMode');
-    const fsboEmailInput = document.getElementById('fsboEmailInput');
-    const commissionRow = document.getElementById('commissionRow');
-    const apnInput = document.getElementById('apn');
-    const form = document.getElementById('listingForm');
     const fsboEmailRow = document.getElementById('fsboEmailRow');
     const listedPhoneRow = document.getElementById('listedPhoneRow');
 
@@ -288,16 +257,8 @@
       // Field semantics for FSBO (reuse fields for owner contact)
       listedPhoneRow.classList.remove('hidden');
       phoneInput.placeholder = 'Owner/Seller phone number';
-      brokerageInput.placeholder = 'Owner/Seller email';
       brokerageInput.placeholder = 'Owner/Seller email (also shown on ISC if not confidential)';
       agentInput.style.display = 'none';
-      fsboEmailInput.classList.remove('hidden');    // show FSBO email field
-      apnMode.style.display = 'none';               // remove APN Mode for FSBO
-
-      // Move Commission row just BELOW APN input (visual requirement)
-      if (commissionRow && apnInput && commissionRow.previousElementSibling !== apnInput) {
-        apnInput.parentElement.insertAdjacentElement('afterend', commissionRow);
-      }
       apnMode.classList.add('hidden'); // no APN mode for FSBO
       fsboEmailRow.classList.remove('hidden');
 
@@ -310,14 +271,6 @@
       phoneInput.placeholder = 'Agent’s direct phone only – NOT your number';
       brokerageInput.placeholder = 'Listing Brokerage';
       agentInput.style.display = 'block';
-      fsboEmailInput.classList.add('hidden');      // hide FSBO-only field
-      apnMode.style.display = 'block';             // show APN Mode for Listed/Plus
-
-      // Put Commission row back after APN+APNMode group (default)
-      const apnRow = apnInput.parentElement;
-      if (commissionRow && apnRow && commissionRow.previousElementSibling !== apnRow) {
-        apnRow.insertAdjacentElement('afterend', commissionRow);
-      }
       apnMode.classList.remove('hidden');
       fsboEmailRow.classList.add('hidden');
 
@@ -327,18 +280,8 @@
     }
   }
 
-  /* On load: default to LISTED unless user just selected something */
   /* On load: set default form (always Listed by default even if last session was FSBO) */
   window.addEventListener('DOMContentLoaded', () => {
-    // Force default to Listed unless a selection was made very recently (last 30 minutes)
-    const last = Number(localStorage.getItem('lastPlanChosenAt') || '0');
-    const freshChoice = Date.now() - last < 30 * 60 * 1000;
-    const chosen = freshChoice ? (localStorage.getItem('selectedPlan') || 'Listed Property Basic') : 'Listed Property Basic';
-    localStorage.setItem('selectedPlan', chosen);
-
-    if(chosen === 'FSBO Plus') showForm('fsbo');
-    else if(chosen === 'Listed Property Plus') showForm('plus');
-    else showForm('listed');
     const lastSelected = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
     // Force default UI to Listed mode on a fresh load
     showForm('listed');
@@ -364,22 +307,18 @@
       if(!el) return;
       el.addEventListener('input', syncAll);
     });
-
     document.getElementById('commissionType').addEventListener('change', syncAll);
     document.getElementById('apnMode').addEventListener('change', syncAll);
 
     function syncAll(){
       const fullAddr = (document.getElementById('address').value || '').trim();
       const short = fullAddr.split(',')[0] || '';
-      const isFSBO = document.querySelector("#formBlock h2").textContent.includes("FSBO");
       const nameVal = document.getElementById('name').value || '';
       const apnVal = document.getElementById('apn').value || '';
-      const apnMode = document.getElementById('apnMode').value || '';
       const apnMode = document.getElementById('apnMode').value;
       const phoneVal = document.getElementById('agentPhone').value || '';
       const brokerageVal = document.getElementById('brokerage').value || '';
       const agentVal = document.getElementById('agent').value || '';
-      const fsboEmailVal = document.getElementById('fsboEmailInput').value || brokerageVal;
       const fsboEmailInput = document.getElementById('fsboEmailInput');
 
       // Commission display
@@ -388,11 +327,6 @@
       const suffix = type === '%' ? 'of the total purchase price' : '';
       const display = type === '$' ? ('$' + amount) : (amount ? amount + '%' : '');
 
-      // Listed: show APN chunk unless APN mode is "tbd"
-      const showApnChunk = apnMode !== 'tbd' && !!apnVal;
-      document.getElementById('listedApnChunk').style.display = showApnChunk ? 'inline' : 'none';
-
-      // Listed bindings
       // Listed bindings (+ APN optional sentence)
       document.getElementById('letterName').textContent = nameVal || '[name]';
       document.getElementById('letterAddressFull').textContent = fullAddr || '[full address]';
@@ -407,14 +341,11 @@
 
       document.getElementById('letterAddressShort1').textContent = short || '[short address]';
       document.getElementById('letterAddressShort2').textContent = short || '[short address]';
-      document.getElementById('letterAPN').textContent = apnVal || '[Parcel # / Pin # / Tax ID # / Folio # / APN #]';
       document.getElementById('letterBrokerage').textContent = brokerageVal || '[listing brokerage]';
       document.getElementById('letterAgent').textContent = agentVal || '[listing agent]';
       document.getElementById('letterAgentPhone').textContent = phoneVal || '[agent phone]';
       document.getElementById('letterCommissionDisplay').textContent = display || '[commission]';
       document.getElementById('commissionSuffix').textContent = display ? (' ' + suffix) : '';
-
-      // Signature name (Listed)
       document.getElementById('signatureName').textContent = nameVal || '[Name]';
 
       // FSBO bindings
@@ -424,25 +355,18 @@
       document.getElementById('letterAddressShort2FSBO').textContent = short || '[short address]';
       document.getElementById('letterAPNFSBO').textContent = apnVal || '[Parcel # / Pin # / Tax ID # / Folio # / APN #]';
       document.getElementById('fsboPhone').textContent = phoneVal || '[owner/seller phone number]';
-      document.getElementById('fsboEmail').textContent = fsboEmailVal || '[owner/seller email]';
       document.getElementById('fsboEmail').textContent = (fsboEmailInput && fsboEmailInput.value) || brokerageVal || '[owner/seller email]';
       document.getElementById('letterCommissionDisplayFSBO').textContent = display || '[commission]';
       document.getElementById('commissionSuffixFSBO').textContent = display ? (' ' + suffix) : '';
-
-      // Signature name (FSBO)
       document.getElementById('signatureNameFSBO').textContent = nameVal || '[Name]';
     }
 
-    // Initial sync to paint placeholders right away
     // Initial paint
     syncAll();
   });
 
-  /* Submit -> verify/create account path with address validation */
   /* Submit -> verify/create account path with robust address validation */
   function submitForm(){
-    const required = ['name','address','agentPhone'];
-    let ok = true;
     // Determine current mode
     const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
 
@@ -451,13 +375,9 @@
     // FSBO requires APN and owner email
     if (isFSBO) requiredIds.push('apn','fsboEmailInput');
 
-    // Basic non-empty checks
-    for(const id of required){
     let ok = true;
     for(const id of requiredIds){
       const el = document.getElementById(id);
-      if(!el.value.trim()){
-        el.classList.add('border-red-500');
       if(!el || !el.value.trim()){
         if (el) el.classList.add('border-red-500');
         ok = false;
@@ -467,12 +387,8 @@
     }
     if(!ok){ alert('Please complete all required fields.'); return; }
 
-    // Address pattern check (Street, City, ST 12345)
     // Address format check (Street, City, ST 12345)
     const addressEl = document.getElementById('address');
-    const pattern = addressEl.getAttribute('pattern');
-    const addrOk = new RegExp(pattern).test(addressEl.value.trim());
-    if(!addrOk){
     const addrVal = (addressEl.value || '').trim();
     if (!isValidFullAddress(addrVal)) {
       addressEl.classList.add('border-red-500');
@@ -486,17 +402,14 @@
     const fsboEmailEl = document.getElementById('fsboEmailInput');
     const formData = {
       name: document.getElementById('name').value.trim(),
-      address: document.getElementById('address').value.trim(),
       address: addrVal,
       apn: document.getElementById('apn').value.trim(),
-      apnMode: document.getElementById('apnMode').value,
       apnMode: document.getElementById('apnMode').classList.contains('hidden') ? 'provided' : document.getElementById('apnMode').value,
       commission: document.getElementById('commission').value.trim(),
       commissionType: document.getElementById('commissionType').value,
       phone: document.getElementById('agentPhone').value.trim(),
       brokerage: document.getElementById('brokerage').value.trim(),
       agent: document.getElementById('agent').value.trim(),
-      fsboEmail: document.getElementById('fsboEmailInput').classList.contains('hidden') ? '' : (document.getElementById('fsboEmailInput').value.trim())
       fsboEmail: fsboEmailEl ? fsboEmailEl.value.trim() : ''
     };
     localStorage.setItem("formData", JSON.stringify(formData));
@@ -515,8 +428,8 @@
     localStorage.setItem('nextAfterLogin', '/verify-code.html');
 
     // Go create account / verification
-    window.location.href = "/create-account.html";
     window.location.href = "/login.html";
   }
 </script>
 </body>
+</html>
