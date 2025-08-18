@@ -1,9 +1,14 @@
-// checkout.js — build 2025-08-14a
+// checkout.js — build 2025-08-14b
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-14a");
+  console.log("[checkout.js] build 2025-08-14b");
 
   // ---------- Stripe (test) ----------
-  const stripe = Stripe("pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD");
+  let stripe;
+  try {
+    stripe = Stripe("pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD");
+  } catch (e) {
+    console.error("Stripe init error:", e);
+  }
 
   // ---------- helpers ----------
   const $ = (id) => document.getElementById(id);
@@ -16,33 +21,27 @@ document.addEventListener("DOMContentLoaded", () => {
   function commissionDisplay(fd, agentListing) {
     const type = (agentListing?.commissionType || fd?.commissionType || "%");
     const val  = Number(agentListing?.commission ?? fd?.commission ?? 0);
-    const price= Number(agentListing?.price ?? 0);
     if (!val) return "[commission]";
     if (type === "$") return "$" + Math.round(val).toLocaleString();
-    // percentage
-    let approx = "";
-    if (price) approx = ` (~$${Math.round(price * (val/100)).toLocaleString()})`;
-    return `${val}%${approx}`;
+    return `${val}%`; // no approximation
   }
 
-  // Confidence line — show different fields based on plan
+  // Who-line (FSBO vs Listed); remove (~$…)
   (function renderWhoRow(){
     const plan = planLS;
     const addr = formData.address || "[Full Address]";
     const name = formData.name || "[Name]";
+    const comm = commissionDisplay(formData, getJSON("agentListing", {}));
 
-    let parts = [addr, name];
-
+    let parts;
     if (plan.includes("FSBO")) {
       const email = formData.fsboEmail || "[owner/seller email]";
       const phone = formData.phone || formData.agentPhone || "[owner/seller phone]";
-      const comm  = commissionDisplay(formData, getJSON("agentListing", {}));
       parts = [addr, name, email, phone, comm];
     } else {
       const brokerage = formData.brokerage || "[Listing Brokerage]";
       const agent     = formData.agent || "[Listing Agent]";
       const agentPh   = formData.phone || formData.agentPhone || "[Listing Agent phone]";
-      const comm      = commissionDisplay(formData, getJSON("agentListing", {}));
       parts = [addr, name, brokerage, agent, agentPh, comm];
     }
 
@@ -50,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
     $("whoRow").classList.remove("hidden");
   })();
 
-  // ---------- load checkout data (supports old & new schemas) ----------
+  // ---------- load checkout data ----------
   let data = getJSON("checkoutData", null);
   if (!data) {
     const plan = planLS;
@@ -86,7 +85,6 @@ document.addEventListener("DOMContentLoaded", () => {
     let plan = d.plan;
     let base = d.base;
 
-    // If Basic + upgradeToPlus → treat as Plus
     if (plan === "Listed Property Basic" && d.upgrades.upgradeToPlus) {
       plan = "Listed Property Plus";
       base = d.prices.plus;
@@ -95,11 +93,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let total = base;
     if (d.upgrades.banner) total += d.prices.banner;
-    if (d.upgrades.pin) {
-      total += d.prices.pin;            // includes Premium
-    } else if (d.upgrades.premium) {
-      total += d.prices.premium;
-    }
+    if (d.upgrades.pin) total += d.prices.pin;
+    else if (d.upgrades.premium) total += d.prices.premium;
     if (d.upgrades.confidential) total += d.prices.confidential;
 
     d.plan = plan;
@@ -126,7 +121,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const ul = $("selectedList");
     ul.innerHTML = sel.length ? sel.map(s => `<li>${s}</li>`).join("") : `<li class="text-gray-400">None</li>`;
 
-    // Toggle $0 flow (button stays green)
     if ((data.total || 0) <= 0) {
       $("goSignatureZero").classList.remove("hidden");
       $("payNowBtn").classList.add("hidden");
@@ -136,7 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---------- last-chance toggles (always allow uncheck) ----------
+  // ---------- last-chance toggles (allow uncheck) ----------
   function renderLastChance() {
     const box = $("upsellChoices");
     box.innerHTML = "";
@@ -174,7 +168,6 @@ document.addEventListener("DOMContentLoaded", () => {
             data.base = data.prices.plus;
             localStorage.setItem("selectedPlan", "Listed Property Plus");
           } else {
-            // If user unchecked, revert to Basic only if they originally were Basic
             const originallyBasic = (localStorage.getItem("originalPlan") || "Listed Property Basic");
             if (originallyBasic === "Listed Property Basic") {
               data.plan = "Listed Property Basic";
@@ -185,10 +178,10 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (k === "banner") {
           data.upgrades.banner = checked;
         } else if (k === "premium") {
-          data.upgrades.premium = checked && !data.upgrades.pin; // pin includes premium
+          data.upgrades.premium = checked && !data.upgrades.pin;
         } else if (k === "pin") {
           data.upgrades.pin = checked;
-          if (checked) data.upgrades.premium = true; // included
+          if (checked) data.upgrades.premium = true;
         } else if (k === "confidential") {
           data.upgrades.confidential = checked;
         }
@@ -196,73 +189,70 @@ document.addEventListener("DOMContentLoaded", () => {
         data = recompute(data);
         setJSON("checkoutData", data);
         renderSummary();
-        renderLastChance(); // re-render to keep dependencies (premium/pin) tidy
+        renderLastChance();
       });
     });
   }
 
-  // Preserve original plan if not set
   if (!localStorage.getItem("originalPlan")) {
     localStorage.setItem("originalPlan", planLS);
   }
 
-  // ---------- actions ----------
   $("backBtn").addEventListener("click", () => {
     window.location.href = "/upsell.html";
   });
 
   $("payNowBtn").addEventListener("click", async () => {
-    // Skip Stripe if $0
-    if ((data.total || 0) <= 0) {
-      window.location.href = "/signature.html";
-      return;
+    try {
+      if (!stripe) { alert("Stripe failed to initialize."); return; }
+
+      if ((data.total || 0) <= 0) {
+        window.location.href = "/signature.html";
+        return;
+      }
+
+      const PRICE_IDS = {
+        PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
+        FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
+        BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR",
+        PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h",
+        PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
+        CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm"
+      };
+
+      const items = [];
+      const isFSBO = data.plan === "FSBO Plus";
+      const isPlus = data.plan === "Listed Property Plus";
+      const isBasic= data.plan === "Listed Property Basic";
+
+      if (isFSBO && (data.base ?? data.prices.fsbo) > 0) items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
+      else if (isPlus && (data.base ?? data.prices.plus) > 0) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
+      else if (isBasic && data.upgrades.upgradeToPlus && data.prices.plus > 0) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
+
+      if (data.upgrades.banner && data.prices.banner > 0) items.push({ price: PRICE_IDS.BANNER, quantity: 1 });
+      if (data.upgrades.pin) {
+        if (data.prices.pin > 0) items.push({ price: PRICE_IDS.PIN, quantity: 1 });
+      } else if (data.upgrades.premium && data.prices.premium > 0) {
+        items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
+      }
+      if (data.upgrades.confidential && data.prices.confidential > 0) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
+
+      if (!items.length) { alert("Nothing selected to purchase."); return; }
+
+      console.log("[checkout] redirectToCheckout lineItems=", items);
+      const { error } = await stripe.redirectToCheckout({
+        lineItems: items,
+        mode: "payment",
+        successUrl: window.location.origin + "/signature.html",
+        cancelUrl:  window.location.origin + "/checkout.html"
+      });
+      if (error) alert("Stripe error: " + error.message);
+    } catch (err) {
+      console.error("Stripe flow error:", err);
+      alert("Payment could not start. Check console logs for details.");
     }
-
-    // Stripe Price IDs (your test IDs)
-    const PRICE_IDS = {
-      PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu", // $20 Listed Property Plus
-      FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ", // $100 FSBO Plus
-      BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR", // $10 Banner
-      PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h", // $10 Premium
-      PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW", // $50 Pin
-      CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm"  // $100 Confidential
-    };
-
-    const items = [];
-    const isFSBO = data.plan === "FSBO Plus";
-    const isPlus = data.plan === "Listed Property Plus";
-    const isBasic= data.plan === "Listed Property Basic";
-
-    // Base
-    if (isFSBO && (data.base ?? data.prices.fsbo) > 0) items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
-    else if (isPlus && (data.base ?? data.prices.plus) > 0) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-    else if (isBasic && data.upgrades.upgradeToPlus && data.prices.plus > 0) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-
-    // Upsells
-    if (data.upgrades.banner && data.prices.banner > 0) items.push({ price: PRICE_IDS.BANNER, quantity: 1 });
-    if (data.upgrades.pin) {
-      if (data.prices.pin > 0) items.push({ price: PRICE_IDS.PIN, quantity: 1 });
-    } else if (data.upgrades.premium && data.prices.premium > 0) {
-      items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
-    }
-    if (data.upgrades.confidential && data.prices.confidential > 0) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
-
-    if (!items.length) {
-      alert("Nothing selected to purchase.");
-      return;
-    }
-
-    const { error } = await stripe.redirectToCheckout({
-      lineItems: items,
-      mode: "payment",
-      successUrl: window.location.origin + "/signature.html",
-      cancelUrl:  window.location.origin + "/checkout.html"
-    });
-
-    if (error) alert("Stripe error: " + error.message);
   });
 
-  // ---------- initial paint ----------
   renderSummary();
   renderLastChance();
 });
