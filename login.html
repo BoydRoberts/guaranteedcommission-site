@@ -10,22 +10,18 @@
 <body class="bg-gray-100 text-gray-900">
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
-      <!-- Build/version badge -->
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">build 2025-08-14a</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">login build 2025-08-14b</span>
       </div>
 
-      <!-- Debug toggle -->
       <button id="dbgToggle" class="absolute top-2 right-2 text-[11px] px-2 py-1 rounded border">Debug</button>
       <div id="dbgPanel" class="hidden mt-2 text-[11px] bg-gray-50 border rounded p-2 whitespace-pre-wrap break-all"></div>
 
-      <!-- Header -->
       <div class="text-center mb-4">
         <h1 class="text-2xl font-bold">Secure Access</h1>
         <p class="text-sm text-gray-600 mt-1">State-of-the-art security & verification</p>
       </div>
 
-      <!-- Tabs -->
       <div class="flex border-b mb-4" role="tablist" aria-label="Auth Tabs">
         <button type="button" id="tab-signin"
           class="flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700"
@@ -39,7 +35,6 @@
         </button>
       </div>
 
-      <!-- Status -->
       <div id="status" class="hidden mb-4 text-sm rounded-lg p-3" role="alert"></div>
 
       <!-- SIGN IN -->
@@ -111,7 +106,6 @@
             </button>
           </div>
 
-          <!-- Strength -->
           <div class="mt-2">
             <div class="h-2 w-full bg-gray-200 rounded" aria-hidden="true">
               <div id="strengthBar" class="h-2 w-0 rounded"></div>
@@ -156,13 +150,12 @@
   </div>
 
   <script>
-    console.log('[login] build 2025-08-14a');
+    console.log('[login] build 2025-08-14b');
 
-    // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
     const statusBox = $('status');
+    const safeJSON = (s)=>{ try { return JSON.parse(s); } catch { return null; } };
 
-    function safeJSONParse(s) { try { return JSON.parse(s); } catch { return null; } }
     function setStatus(msg, ok=false) {
       statusBox.classList.remove('hidden');
       statusBox.textContent = msg;
@@ -171,54 +164,31 @@
         : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
     }
 
-    // Storage accessors
-    function getAccounts() { return safeJSONParse(localStorage.getItem('accounts')) || {}; }
+    function getAccounts() { return safeJSON(localStorage.getItem('accounts')) || {}; }
     function saveAccounts(obj) { localStorage.setItem('accounts', JSON.stringify(obj || {})); }
-    function getLegacyAccount() { return safeJSONParse(localStorage.getItem('userAccount')); }
+    function getLegacyAccount() { return safeJSON(localStorage.getItem('userAccount')); }
     function setLegacyAccount(acct) { localStorage.setItem('userAccount', JSON.stringify(acct)); }
 
-    // Debug panel
     function renderDebug() {
-      const dbg = $('dbgPanel');
       const dump = {
-        accounts: getAccounts(),
-        userAccount: getLegacyAccount(),
-        accountData: safeJSONParse(localStorage.getItem('accountData')),
+        formData: safeJSON(localStorage.getItem('formData')),
+        selectedPlan: localStorage.getItem('selectedPlan'),
         loggedInEmail: localStorage.getItem('loggedInEmail'),
-        isLoggedIn: localStorage.getItem('isLoggedIn'),
         verificationCode: localStorage.getItem('verificationCode'),
-        verifyTarget: localStorage.getItem('verifyTarget'),
+        verifyTarget: localStorage.getItem('verifyTarget')
       };
-      dbg.textContent = JSON.stringify(dump, null, 2);
+      $('dbgPanel').textContent = JSON.stringify(dump, null, 2);
     }
     $('dbgToggle').addEventListener('click', () => {
       $('dbgPanel').classList.toggle('hidden');
       renderDebug();
     });
 
-    // ---------- Remove any stale role field (defensive) ----------
-    (function nukeRoleFieldEverywhere() {
-      const idCandidates = ['role', 'roleSelect', 'userRole'];
-      idCandidates.forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.parentElement) el.parentElement.remove();
-      });
-      document.querySelectorAll('label').forEach(lab => {
-        if (lab.textContent && /i am a/i.test(lab.textContent)) {
-          const wrap = lab.closest('div') || lab;
-          wrap.remove();
-        }
-      });
-      document.querySelectorAll('select').forEach(sel => {
-        const text = Array.from(sel.options).map(o => (o.text || '').toLowerCase()).join('|');
-        if (/seller|agent|buyer/.test(text)) {
-          const wrap = sel.closest('div') || sel;
-          wrap.remove();
-        }
-      });
+    // remove any old "role" fields (defensive)
+    (function nukeRole() {
+      ['role','roleSelect','userRole'].forEach(id => { const el = document.getElementById(id); if (el) (el.closest('div')||el).remove(); });
     })();
 
-    // ---------- Phone helpers ----------
     function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
     function formatPhone(s){
       const d = onlyDigits(s).slice(0,10);
@@ -226,42 +196,19 @@
       if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
       return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
     }
-    function isValidPhone(s){
-      return onlyDigits(s).length === 10;
-    }
+    function isValidPhone(s){ return onlyDigits(s).length === 10; }
 
-    // ---------- MIGRATE old accounts into the new store ----------
-    function migrateAll() {
+    // migrate legacy account shards into accounts object
+    (function migrate() {
       const accounts = getAccounts();
-
-      // From old create-account.html
-      const ad = safeJSONParse(localStorage.getItem('accountData'));
-      if (ad && ad.email && ad.password) {
-        const email = String(ad.email).toLowerCase().trim();
-        accounts[email] = { name: ad.name || '', email, password: ad.password, phone: ad.phone || '' };
-      }
-
-      // Legacy single record
+      const ad = safeJSON(localStorage.getItem('accountData'));
+      if (ad?.email && ad?.password) accounts[ad.email.toLowerCase()] = { name: ad.name||'', email: ad.email.toLowerCase(), password: ad.password, phone: ad.phone||'' };
       const legacy = getLegacyAccount();
-      if (legacy && legacy.email && legacy.password) {
-        const email = String(legacy.email).toLowerCase().trim();
-        accounts[email] = { name: legacy.name || '', email, password: legacy.password, phone: legacy.phone || '' };
-      }
-
-      // Any other prior keys
-      ['acct','account','user','gc_user','gc_account'].forEach(k => {
-        const obj = safeJSONParse(localStorage.getItem(k));
-        if (obj && obj.email && obj.password) {
-          const email = String(obj.email).toLowerCase().trim();
-          accounts[email] = { name: obj.name || '', email, password: obj.password, phone: obj.phone || '' };
-        }
-      });
-
+      if (legacy?.email && legacy?.password) accounts[legacy.email.toLowerCase()] = { name: legacy.name||'', email: legacy.email.toLowerCase(), password: legacy.password, phone: legacy.phone||'' };
       saveAccounts(accounts);
-    }
-    migrateAll();
+    })();
 
-    // ---------- Tabs ----------
+    // tabs
     const tabSignin = $('tab-signin');
     const tabCreate = $('tab-create');
     const loginForm = $('loginForm');
@@ -271,77 +218,56 @@
 
     function showSignin() {
       tabSignin.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
-      tabSignin.setAttribute('aria-selected', 'true');
+      tabSignin.setAttribute('aria-selected','true');
       tabCreate.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-      tabCreate.setAttribute('aria-selected', 'false');
-      loginForm.classList.remove('hidden');
-      createForm.classList.add('hidden');
+      tabCreate.setAttribute('aria-selected','false');
+      loginForm.classList.remove('hidden'); createForm.classList.add('hidden');
     }
     function showCreate() {
       tabCreate.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
-      tabCreate.setAttribute('aria-selected', 'true');
+      tabCreate.setAttribute('aria-selected','true');
       tabSignin.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-      tabSignin.setAttribute('aria-selected', 'false');
-      createForm.classList.remove('hidden');
-      loginForm.classList.add('hidden');
+      tabSignin.setAttribute('aria-selected','false');
+      createForm.classList.remove('hidden'); loginForm.classList.add('hidden');
     }
-
     tabSignin.addEventListener('click', showSignin);
     tabCreate.addEventListener('click', showCreate);
-    if (goCreate) goCreate.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
-    if (goSignin) goSignin.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
+    goCreate?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
+    goSignin?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
 
-    // ---------- Prefill from Box 2 ----------
-    (function prefillFromBox2() {
-      const candidateKeysName  = ['sellerName','ownerName','contactName','name'];
-      const candidateKeysEmail = ['fsboEmail','sellerEmail','email','contactEmail','pendingEmail']; // 👈 added fsboEmail
-      const candidateKeysPhone = ['sellerPhone','phone','contactPhone'];
+    // prefill from Box 2 — FSBO-only phone; email pulls fsboEmail if present
+    (function prefill() {
+      const formData = safeJSON(localStorage.getItem('formData')) || {};
+      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
 
-      let formData = safeJSONParse(localStorage.getItem('formData')) || {};
-      let name = '';
-      let email = '';
-      let phone = '';
+      // Name (neutral)
+      const name = formData.name || localStorage.getItem('sellerName') || '';
+      if (name) { const n = $('c_name'); if (n) n.value = name; }
 
-      for (const k of candidateKeysName) {
-        if (formData[k]) { name = formData[k]; break; }
-        const v = localStorage.getItem(k);
-        if (v) { name = v; break; }
-      }
-      for (const k of candidateKeysEmail) {
-        if (formData[k]) { email = formData[k]; break; }
-        const v = localStorage.getItem(k);
-        if (v) { email = v; break; }
-      }
-      for (const k of candidateKeysPhone) {
-        if (formData[k]) { phone = formData[k]; break; }
-        const v = localStorage.getItem(k);
-        if (v) { phone = v; break; }
-      }
-
-      if (name) { const f = $('c_name'); if (f) f.value = name; }
+      // Email: prefer fsboEmail if present; else any provided email
+      const email = formData.fsboEmail || formData.email || localStorage.getItem('sellerEmail') || '';
       if (email) {
-        const ce = $('c_email'); if (ce) ce.value = email;
-        const se = $('email');   if (se) se.value = email;
-      }
-      if (phone) {
-        const cp = $('c_phone'); if (cp) cp.value = formatPhone(phone);
+        $('email').value = email;
+        $('c_email').value = email;
       }
 
-      // If coming from Box 2, default to Create tab
-      const reason = localStorage.getItem('nextAfterLogin');
-      if (reason) showCreate();
+      // Phone: FSBO ONLY. Do not prefill for Basic/Plus to avoid agent phone bleed.
+      if (plan.includes('FSBO')) {
+        const phone = formData.phone || formData.agentPhone || localStorage.getItem('sellerPhone') || '';
+        if (phone) $('c_phone').value = formatPhone(phone);
+      }
+
+      if (localStorage.getItem('nextAfterLogin')) showCreate();
     })();
 
-    // ---------- Show/Hide toggles ----------
     function wireToggle(inputId, btnId) {
-      const input = $(inputId);
-      const btn = $(btnId);
+      const input = $(inputId); const btn = $(btnId);
       if (!input || !btn) return;
       btn.addEventListener('click', (e) => {
         e.preventDefault();
-        const showing = input.type === 'text';
-        input.type = showing ? 'password' : 'text';
-        btn.textContent = showing ? 'Show' : 'Hide';
+        const vis = input.type === 'text';
+        input.type = vis ? 'password' : 'text';
+        btn.textContent = vis ? 'Show' : 'Hide';
         input.focus({ preventScroll: true });
       });
     }
@@ -349,138 +275,56 @@
     wireToggle('c_password','togglePwdC1');
     wireToggle('c_password2','togglePwdC2');
 
-    // ---------- Phone mask ----------
     const phoneEl = $('c_phone');
-    if (phoneEl) {
-      phoneEl.addEventListener('input', () => {
-        const cur = phoneEl.selectionStart;
-        const before = phoneEl.value;
-        phoneEl.value = formatPhone(before);
-        phoneEl.selectionStart = phoneEl.selectionEnd = Math.min(cur + (phoneEl.value.length - before.length), phoneEl.value.length);
-      });
-    }
-
-    // ---------- Strength meter + match ----------
-    const cPwd = $('c_password');
-    const cPwd2 = $('c_password2');
-    const strengthBar = $('strengthBar');
-    const strengthText = $('strengthText');
-    const matchMsg = $('matchMsg');
-
-    function scorePassword(p) {
-      let score = 0;
-      if (!p) return 0;
-      if (p.length >= 10) score += 1;
-      if (/[a-z]/.test(p) && /[A-Z]/.test(p)) score += 1;
-      if (/\d/.test(p)) score += 1;
-      if (/[^A-Za-z0-9]/.test(p)) score += 1;
-      if (p.length >= 14) score += 1; // bonus
-      return Math.min(score, 4);
-    }
-    function updateStrength() {
-      if (!cPwd || !strengthBar || !strengthText) return;
-      const s = scorePassword(cPwd.value);
-      const widths = ['0%','25%','50%','75%','100%'];
-      const colors = ['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'];
-      const labels = ['—','Weak','Fair','Good','Strong'];
-      strengthBar.style.width = widths[s];
-      strengthBar.style.backgroundColor = colors[s];
-      strengthText.textContent = 'Password strength: ' + labels[s];
-
-      if (!cPwd2) return;
-      if (cPwd2.value.length) {
-        if (cPwd.value === cPwd2.value) {
-          matchMsg.textContent = 'Passwords match';
-          matchMsg.className = 'text-xs mt-1 text-green-600';
-        } else {
-          matchMsg.textContent = 'Passwords do not match';
-          matchMsg.className = 'text-xs mt-1 text-red-600';
-        }
-      } else {
-        matchMsg.textContent = '';
-        matchMsg.className = 'text-xs mt-1';
-      }
-    }
-    if (cPwd) cPwd.addEventListener('input', updateStrength);
-    if (cPwd2) cPwd2.addEventListener('input', updateStrength);
-
-    // ---------- CREATE ACCOUNT ----------
-    $('createForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      migrateAll();
-      const name = $('c_name').value.trim();
-      const email = $('c_email').value.trim().toLowerCase();
-      const phone = $('c_phone').value.trim();
-      const p1 = cPwd ? cPwd.value : '';
-      const p2 = cPwd2 ? cPwd2.value : '';
-
-      if (!isValidPhone(phone)) {
-        setStatus('Please enter a valid 10-digit phone number.', false);
-        $('c_phone').focus();
-        return;
-      }
-
-      const s = scorePassword(p1);
-      if (s < 3) { setStatus('Please use a stronger password (aim for Good or Strong).'); showCreate(); return; }
-      if (p1 !== p2) { setStatus('Passwords do not match.'); showCreate(); return; }
-
-      const accounts = getAccounts();
-      accounts[email] = { name, email, password: p1, phone };
-      saveAccounts(accounts);
-      setLegacyAccount({ name, email, password: p1, phone });
-
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('loggedInEmail', email);
-
-      // Send code (simulated) + show it for testing
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      localStorage.setItem('verificationCode', code);
-      localStorage.setItem('verifyTarget', email);
-
-      setStatus(`Account created for ${email}. 6-digit code: ${code}. Redirecting…`, true);
-      renderDebug();
-
-      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
-      setTimeout(()=>{ window.location.href = next; }, 800);
+    phoneEl?.addEventListener('input', () => {
+      const cur = phoneEl.selectionStart;
+      const before = phoneEl.value;
+      phoneEl.value = formatPhone(before);
+      phoneEl.selectionStart = phoneEl.selectionEnd = Math.min(cur + (phoneEl.value.length - before.length), phoneEl.value.length);
     });
 
-    // ---------- SIGN IN ----------
+    function scorePassword(p) {
+      let s=0; if (!p) return 0;
+      if (p.length>=10) s++; if (/[a-z]/.test(p)&&/[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; if (p.length>=14) s++;
+      return Math.min(s,4);
+    }
+    const cPwd = $('c_password'), cPwd2=$('c_password2'), bar=$('strengthBar'), st=$('strengthText'), mm=$('matchMsg');
+    function updateStrength(){
+      const s=scorePassword(cPwd.value), widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
+      bar.style.width=widths[s]; bar.style.backgroundColor=colors[s]; st.textContent='Password strength: '+labels[s];
+      if (!cPwd2.value.length){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
+      if (cPwd.value===cPwd2.value){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
+      else { mm.textContent='Passwords do not match'; mm.className='text-xs mt-1 text-red-600'; }
+    }
+    cPwd?.addEventListener('input', updateStrength);
+    cPwd2?.addEventListener('input', updateStrength);
+
+    // CREATE
+    $('createForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name=$('c_name').value.trim(), email=$('c_email').value.trim().toLowerCase(), phone=$('c_phone').value.trim();
+      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
+      if (scorePassword(cPwd.value)<3){ setStatus('Please use a stronger password (aim for Good or Strong).'); showCreate(); return; }
+      if (cPwd.value!==cPwd2.value){ setStatus('Passwords do not match.'); showCreate(); return; }
+      const accounts=getAccounts(); accounts[email]={ name,email,password:cPwd.value,phone }; saveAccounts(accounts); setLegacyAccount({name,email,password:cPwd.value,phone});
+      localStorage.setItem('isLoggedIn','true'); localStorage.setItem('loggedInEmail',email);
+      const code = Math.floor(100000+Math.random()*900000).toString(); localStorage.setItem('verificationCode',code); localStorage.setItem('verifyTarget',email);
+      setStatus(`Account created for ${email}. 6-digit code: ${code}. Redirecting…`, true); renderDebug();
+      const next=localStorage.getItem('nextAfterLogin')||'/verify-code.html'; setTimeout(()=>{ window.location.href=next; }, 800);
+    });
+
+    // SIGN IN
     $('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      migrateAll();
-
-      const email = $('email').value.trim().toLowerCase();
-      const password = $('password').value;
-
-      const accounts = getAccounts();
-      let acct = accounts[email];
-
-      if (!acct) {
-        const legacy = getLegacyAccount();
-        if (legacy && legacy.email && legacy.password && legacy.email.toLowerCase() === email) {
-          acct = legacy;
-          accounts[email] = legacy;
-          saveAccounts(accounts);
-        }
-      }
-
-      if (!acct) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); renderDebug(); return; }
-      if (acct.password !== password) { setStatus(`Invalid email or password for ${email}.`); renderDebug(); return; }
-
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('loggedInEmail', email);
-
-      if (!localStorage.getItem('verificationCode')) {
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        localStorage.setItem('verificationCode', code);
-      }
+      const email=$('email').value.trim().toLowerCase(), password=$('password').value;
+      const accounts=getAccounts(); const acct=accounts[email] || getLegacyAccount();
+      if (!acct || (acct.email && acct.email.toLowerCase()!==email)) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); renderDebug(); return; }
+      if (acct.password!==password){ setStatus(`Invalid email or password for ${email}.`); renderDebug(); return; }
+      localStorage.setItem('isLoggedIn','true'); localStorage.setItem('loggedInEmail',email);
+      if (!localStorage.getItem('verificationCode')) localStorage.setItem('verificationCode', Math.floor(100000+Math.random()*900000).toString());
       localStorage.setItem('verifyTarget', email);
-
-      setStatus(`Login successful for ${email}. Redirecting…`, true);
-      renderDebug();
-
-      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
-      setTimeout(()=>{ window.location.href = next; }, 600);
+      setStatus(`Login successful for ${email}. Redirecting…`, true); renderDebug();
+      const next=localStorage.getItem('nextAfterLogin')||'/verify-code.html'; setTimeout(()=>{ window.location.href=next; }, 600);
     });
   </script>
 </body>
