@@ -1,55 +1,47 @@
-// checkout.js — build 2025-08-14s (server-session)
+// checkout.js — build 2025-08-14t
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-14s");
+  console.log("[checkout.js] build 2025-08-14t");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
   const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-  // Stripe publishable key (client-side)
   const PUBLISHABLE_KEY = "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
   let stripe = null;
-  try {
-    stripe = Stripe(PUBLISHABLE_KEY);
-  } catch (e) {
-    console.error("Stripe init error:", e);
-  }
+  try { stripe = Stripe(PUBLISHABLE_KEY); } catch(e) { console.error("Stripe init error:", e); }
 
-  // Who line (commission without ~$ estimate)
+  // ----- Who line (no ~$ estimate) -----
   const formData = getJSON("formData", {});
+  const agentListing = getJSON("agentListing", {});
   const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
 
-  const commissionDisplay = (fd, agentListing) => {
-    const type = (agentListing?.commissionType || fd?.commissionType || "%");
-    const raw  = (agentListing?.commission ?? fd?.commission ?? "");
-    const n = Number(raw);
+  const commissionDisplay = () => {
+    const type = (agentListing?.commissionType || formData?.commissionType || "%");
+    const raw  = (agentListing?.commission ?? formData?.commission ?? "");
     if (!raw) return "[commission]";
-    if (type === "$") return "$" + Math.round(n).toLocaleString();
-    return `${raw}%`;
+    const n = Number(raw);
+    return type === "$" ? "$" + Math.round(n).toLocaleString() : `${raw}%`;
   };
 
   (function renderWhoRow(){
     const addr = formData.address || "[Full Address]";
     const name = formData.name || "[Name]";
-    const comm = commissionDisplay(formData, getJSON("agentListing", {}));
-    let parts;
+    const comm = commissionDisplay();
 
     if (planLS.includes("FSBO")) {
       const email = formData.fsboEmail || "[owner/seller email]";
       const phone = formData.phone || formData.agentPhone || "[owner/seller phone]";
-      parts = [addr, name, email, phone, comm];
+      $("whoLine").textContent = [addr, name, email, phone, comm].join(" • ");
     } else {
       const brokerage = formData.brokerage || "[Listing Brokerage]";
       const agent     = formData.agent || "[Listing Agent]";
       const agentPh   = formData.phone || formData.agentPhone || "[Listing Agent phone]";
-      parts = [addr, name, brokerage, agent, agentPh, comm];
+      $("whoLine").textContent = [addr, name, brokerage, agent, agentPh, comm].join(" • ");
     }
-
-    $("whoLine").textContent = parts.join(" • ");
     $("whoRow").classList.remove("hidden");
   })();
 
-  // checkoutData normalize
+  // ----- checkoutData normalize -----
   let data = getJSON("checkoutData", null);
   if (!data) {
     const plan = planLS;
@@ -207,17 +199,22 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Create a session on our server
       const resp = await fetch("/api/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan: data.plan,
-          upgrades: data.upgrades
-        })
+        body: JSON.stringify({ plan: data.plan, upgrades: data.upgrades })
       });
 
-      const out = await resp.json();
+      const ct = resp.headers.get('content-type') || '';
+      let out;
+      if (ct.includes('application/json')) {
+        out = await resp.json();
+      } else {
+        const text = await resp.text();
+        console.error("Non-JSON response from server:", text);
+        throw new Error("Server returned non-JSON. Check server logs & package.json/ENV.");
+      }
+
       if (!resp.ok) {
         console.error("create-checkout-session failed:", out);
         throw new Error(out.error || "Server failed to create session.");
