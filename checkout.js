@@ -1,29 +1,21 @@
-// checkout.js — build 2025-08-14d
+// checkout.js — build 2025-08-14s (server-session)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-14d");
+  console.log("[checkout.js] build 2025-08-14s");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
   const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-  // ---- Stripe init checks ----
+  // Stripe publishable key (client-side)
   const PUBLISHABLE_KEY = "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
   let stripe = null;
-  let stripeReady = false;
   try {
-    if (typeof Stripe !== "function") {
-      throw new Error("Stripe.js not loaded (window.Stripe missing). Check <script src=\"https://js.stripe.com/v3/\"></script> and CSP.");
-    }
-    if (!/^pk_(test|live)_/.test(PUBLISHABLE_KEY)) {
-      throw new Error("Publishable key format looks wrong.");
-    }
     stripe = Stripe(PUBLISHABLE_KEY);
-    stripeReady = true;
   } catch (e) {
-    console.error("[checkout] Stripe init error:", e);
+    console.error("Stripe init error:", e);
   }
 
-  // ---- Who line (no ~$ approx after commission) ----
+  // Who line (commission without ~$ estimate)
   const formData = getJSON("formData", {});
   const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
 
@@ -40,8 +32,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const addr = formData.address || "[Full Address]";
     const name = formData.name || "[Name]";
     const comm = commissionDisplay(formData, getJSON("agentListing", {}));
-
     let parts;
+
     if (planLS.includes("FSBO")) {
       const email = formData.fsboEmail || "[owner/seller email]";
       const phone = formData.phone || formData.agentPhone || "[owner/seller phone]";
@@ -57,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
     $("whoRow").classList.remove("hidden");
   })();
 
-  // ---- checkoutData load/normalize ----
+  // checkoutData normalize
   let data = getJSON("checkoutData", null);
   if (!data) {
     const plan = planLS;
@@ -88,7 +80,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---- totals ----
   function recompute(d) {
     let plan = d.plan;
     let base = d.base;
@@ -112,7 +103,6 @@ document.addEventListener("DOMContentLoaded", () => {
   data = recompute(data);
   setJSON("checkoutData", data);
 
-  // ---- UI summary ----
   function renderSummary() {
     $("planName").textContent = data.plan;
     $("basePrice").textContent = (data.base || 0);
@@ -136,7 +126,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---- last chance toggles (allow uncheck) ----
   function renderLastChance() {
     const box = $("upsellChoices");
     box.innerHTML = "";
@@ -201,76 +190,48 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ---- Stripe redirect handler ----
   $("backBtn").addEventListener("click", () => {
     window.location.href = "/upsell.html";
   });
 
   $("payNowBtn").addEventListener("click", async () => {
-    // Disable to prevent double clicks
     const btn = $("payNowBtn");
     btn.disabled = true;
-    btn.textContent = "Redirecting…";
+    btn.textContent = "Creating checkout…";
 
     try {
-      if (!stripeReady || !stripe) {
-        throw new Error("Stripe failed to initialize. See console for details.");
-      }
+      if (!stripe) throw new Error("Stripe not available on this page.");
 
       if ((data.total || 0) <= 0) {
         window.location.href = "/signature.html";
         return;
       }
 
-      // Your Stripe Price IDs (must belong to the same account as the publishable key)
-      const PRICE_IDS = {
-        PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
-        FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
-        BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR",
-        PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h",
-        PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
-        CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm"
-      };
-
-      const items = [];
-      const isFSBO = data.plan === "FSBO Plus";
-      const isPlus = data.plan === "Listed Property Plus";
-      const isBasic= data.plan === "Listed Property Basic";
-
-      if (isFSBO && (data.base ?? data.prices.fsbo) > 0) items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
-      else if (isPlus && (data.base ?? data.prices.plus) > 0) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-      else if (isBasic && data.upgrades.upgradeToPlus && data.prices.plus > 0) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-
-      if (data.upgrades.banner && data.prices.banner > 0) items.push({ price: PRICE_IDS.BANNER, quantity: 1 });
-      if (data.upgrades.pin) {
-        if (data.prices.pin > 0) items.push({ price: PRICE_IDS.PIN, quantity: 1 });
-      } else if (data.upgrades.premium && data.prices.premium > 0) {
-        items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
-      }
-      if (data.upgrades.confidential && data.prices.confidential > 0) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
-
-      // Preflight validations
-      if (!items.length) throw new Error("Nothing selected to purchase.");
-      const bad = items.find(x => !/^price_/.test(x.price));
-      if (bad) throw new Error("One or more Price IDs look invalid: " + bad.price);
-
-      // Update diagnostics
-      updateDiagnostics(items);
-
-      const { error } = await stripe.redirectToCheckout({
-        lineItems: items,
-        mode: "payment",
-        successUrl: window.location.origin + "/signature.html",
-        cancelUrl:  window.location.origin + "/checkout.html"
+      // Create a session on our server
+      const resp = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan: data.plan,
+          upgrades: data.upgrades
+        })
       });
 
+      const out = await resp.json();
+      if (!resp.ok) {
+        console.error("create-checkout-session failed:", out);
+        throw new Error(out.error || "Server failed to create session.");
+      }
+
+      if (!out.id) throw new Error("No session id returned.");
+
+      const { error } = await stripe.redirectToCheckout({ sessionId: out.id });
       if (error) {
-        // Stripe responded with an error
-        console.error("[checkout] redirectToCheckout error:", error);
-        alert("Stripe error: " + (error.message || "Unknown error"));
+        console.error("redirectToCheckout error:", error);
+        throw new Error(error.message || "Stripe redirect failed.");
       }
     } catch (err) {
-      console.error("[checkout] Payment start error:", err);
+      console.error("[checkout] payment error:", err);
       alert(err.message || "Payment could not start.");
     } finally {
       btn.disabled = false;
@@ -278,26 +239,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ---- Diagnostics block ----
-  function updateDiagnostics(lineItems) {
+  function updateDiagnostics() {
     const diag = $("diag");
+    if (!diag) return;
     const dump = {
-      selectedPlan: data.plan,
-      totals: { base: data.base, total: data.total },
+      plan: data.plan,
+      total: data.total,
       upgrades: data.upgrades,
       prices: data.prices,
-      origin: window.location.origin,
-      successUrl: window.location.origin + "/signature.html",
-      cancelUrl: window.location.origin + "/checkout.html",
-      stripeJsLoaded: typeof Stripe === "function",
-      stripeReady,
-      publishableKeyPrefix: PUBLISHABLE_KEY.slice(0, 8) + "…",
-      lineItems: lineItems || "(not built yet)"
+      usingServerSession: true,
+      apiEndpoint: "/api/create-checkout-session",
+      origin: window.location.origin
     };
     diag.textContent = JSON.stringify(dump, null, 2);
   }
 
-  // ---- Initial paint ----
   if (!localStorage.getItem("originalPlan")) {
     localStorage.setItem("originalPlan", planLS);
   }
