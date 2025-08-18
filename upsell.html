@@ -11,116 +11,44 @@
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-  <div class="max-w-3xl mx-auto p-4">
+  <div class="max-w-xl mx-auto p-4">
     <div class="text-center mb-3">
-      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell build 2025-08-14a</span>
+      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell wizard build 2025-08-14b</span>
     </div>
 
     <h1 class="text-2xl font-bold text-center">Pick Your Upgrades</h1>
     <p class="text-sm text-center muted mt-1">You will be able to review all upgrades and upsells at Review &amp; Checkout.</p>
+    <div id="planRow" class="text-center text-xs muted mt-2"></div>
 
-    <div id="planRow" class="text-center text-xs muted mt-3"></div>
+    <!-- Progress -->
+    <div id="prog" class="text-xs text-center muted mt-4"></div>
 
-    <div class="grid gap-4 mt-6">
-      <!-- UPGRADE TO PLUS (Basic only) -->
-      <section id="card-upgrade" class="card hidden">
-        <h2 class="text-lg font-semibold">Upgrade to Listed Property Plus ($20)</h2>
-        <p class="text-sm muted mt-1">
-          Add 20 photos and a full property description to your listing.
-        </p>
-        <div class="mt-3 flex items-center justify-between">
-          <label class="flex items-center gap-2 text-sm">
-            <input id="ck-upgrade" type="checkbox" class="h-4 w-4"/>
-            <span>Select Upgrade</span>
-          </label>
-          <span class="font-semibold">$20</span>
-        </div>
-      </section>
+    <!-- Step container -->
+    <div id="stepHost" class="mt-4"></div>
 
-      <!-- BANNER (all plans) -->
-      <section id="card-banner" class="card">
-        <h2 class="text-lg font-semibold">Add Banner ($10)</h2>
-        <p class="text-sm muted mt-1">
-          Add a 30-character banner. Highlight special features, open houses, or whatever you like – as often as you like – until your home is sold.
-        </p>
-        <div class="mt-3 flex items-center justify-between">
-          <label class="flex items-center gap-2 text-sm">
-            <input id="ck-banner" type="checkbox" class="h-4 w-4"/>
-            <span>Select Banner</span>
-          </label>
-          <span class="font-semibold">$10</span>
-        </div>
-      </section>
-
-      <!-- PREMIUM (all plans) -->
-      <section id="card-premium" class="card">
-        <h2 class="text-lg font-semibold">Add Premium Placement ($10)</h2>
-        <p class="text-sm muted mt-1">
-          Boost visibility so your listing is seen sooner by buyers and agents.
-        </p>
-        <!-- Removed Search area UI per request -->
-        <div class="mt-3 flex items-center justify-between">
-          <label class="flex items-center gap-2 text-sm">
-            <input id="ck-premium" type="checkbox" class="h-4 w-4"/>
-            <span>Select Premium Placement</span>
-          </label>
-          <span class="font-semibold">$10</span>
-        </div>
-      </section>
-
-      <!-- PIN (all plans) -->
-      <section id="card-pin" class="card">
-        <h2 class="text-lg font-semibold">Add Pin Placement ($50)</h2>
-        <p class="text-sm muted mt-1">
-          Pin your listing to the top of results in key areas. Includes Premium Placement free.
-        </p>
-        <!-- Removed Search area UI per request -->
-        <div class="mt-3 flex items-center justify-between">
-          <label class="flex items-center gap-2 text-sm">
-            <input id="ck-pin" type="checkbox" class="h-4 w-4"/>
-            <span>Select Pin Placement</span>
-          </label>
-          <span class="font-semibold">$50</span>
-        </div>
-      </section>
-
-      <!-- CONFIDENTIAL (FSBO only) -->
-      <section id="card-confidential" class="card hidden">
-        <h2 class="text-lg font-semibold">Confidential FSBO Upgrade ($100)</h2>
-        <p class="text-sm muted mt-1">
-          Keep your contact information private and avoid solicitation. GuaranteedCommission.com will not sell your information to third parties.
-        </p>
-        <div class="mt-3 flex items-center justify-between">
-          <label class="flex items-center gap-2 text-sm">
-            <input id="ck-confidential" type="checkbox" class="h-4 w-4"/>
-            <span>Select Confidential Upgrade</span>
-          </label>
-          <span class="font-semibold">$100</span>
-        </div>
-      </section>
-    </div>
-
+    <!-- Nav actions -->
     <div class="mt-6 flex items-center justify-between">
       <a href="/index.html" class="px-4 py-2 rounded border">Back</a>
-      <a id="goCheckout" href="/checkout.html" class="px-5 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Review &amp; Checkout</a>
+      <div class="flex gap-2">
+        <button id="btnSkip" class="px-4 py-2 rounded border">Skip</button>
+        <button id="btnAdd" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Add &amp; Continue</button>
+        <a id="btnCheckout" href="/checkout.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">Review &amp; Checkout</a>
+      </div>
     </div>
   </div>
 
   <script>
-    console.log('[upsell] build 2025-08-14a');
-
+    console.log('[upsell wizard] 2025-08-14b');
     const $ = s => document.querySelector(s);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-
     const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
     $('#planRow').textContent = 'Current plan: ' + plan;
 
-    // Show/hide cards by plan
-    if (plan === 'Listed Property Basic') $('#card-upgrade').classList.remove('hidden');
-    if (plan.includes('FSBO')) $('#card-confidential').classList.remove('hidden');
+    // ensure originalPlan saved for potential revert at checkout
+    if (!localStorage.getItem('originalPlan')) localStorage.setItem('originalPlan', plan);
 
-    // Load existing checkoutData
+    // state
     let data = getJSON('checkoutData', {
       plan,
       base: plan === 'FSBO Plus' ? 100 : (plan === 'Listed Property Plus' ? 20 : 0),
@@ -130,32 +58,128 @@
       total: 0
     });
 
-    // Pre-check from data
-    $('#ck-upgrade') && ($('#ck-upgrade').checked = !!data.upgrades.upgradeToPlus);
-    $('#ck-banner').checked  = !!data.upgrades.banner;
-    $('#ck-premium').checked = !!data.upgrades.premium;
-    $('#ck-pin').checked     = !!data.upgrades.pin;
-    $('#ck-confidential') && ($('#ck-confidential').checked = !!data.upgrades.confidential);
+    // build wizard steps by plan
+    const steps = (function() {
+      if (plan === 'Listed Property Basic') return ['upgrade','banner','premium','pin'];
+      if (plan === 'Listed Property Plus')  return ['banner','premium','pin'];
+      if (plan === 'FSBO Plus')             return ['confidential','banner','premium','pin'];
+      return ['banner','premium','pin'];
+    })();
+    let idx = 0;
 
-    function saveFromUI() {
+    const copies = {
+      upgrade: {
+        title: 'Upgrade to Listed Property Plus ($20)',
+        body: 'Add 20 photos and a full property description to your listing.',
+        price: 20,
+        key: 'upgradeToPlus'
+      },
+      banner: {
+        title: 'Add Banner ($10)',
+        body: 'Add a 30-character banner. Highlight special features, open houses, or whatever you like – as often as you like – until your home is sold.',
+        price: 10,
+        key: 'banner'
+      },
+      premium: {
+        title: 'Add Premium Placement ($10)',
+        body: 'Boost visibility so your listing is seen sooner by buyers and agents.',
+        price: 10,
+        key: 'premium'
+      },
+      pin: {
+        title: 'Add Pin Placement ($50)',
+        body: 'Pin your listing to the top of results in key areas. Includes Premium Placement free.',
+        price: 50,
+        key: 'pin'
+      },
+      confidential: {
+        title: 'Confidential FSBO Upgrade ($100)',
+        body: 'Keep your contact information private and avoid solicitation. GuaranteedCommission.com will not sell your information to third parties.',
+        price: 100,
+        key: 'confidential'
+      }
+    };
+
+    function renderStep() {
+      const host = $('#stepHost');
+      host.innerHTML = '';
+      $('#prog').textContent = `Step ${idx+1} of ${steps.length}`;
+      const sid = steps[idx];
+      const c = copies[sid];
+
+      // FSBO-only guard for confidential (should never be in steps for non-FSBO, but just in case)
+      if (sid === 'confidential' && plan !== 'FSBO Plus') {
+        nextStep(); return;
+      }
+
+      const checked = !!data.upgrades[c.key];
+
+      const el = document.createElement('section');
+      el.className = 'card';
+      el.innerHTML = `
+        <h2 class="text-lg font-semibold">${c.title}</h2>
+        <p class="text-sm muted mt-1">${c.body}</p>
+        <div class="mt-3 flex items-center justify-between">
+          <label class="flex items-center gap-2 text-sm">
+            <input id="ck" type="checkbox" class="h-4 w-4" ${checked ? 'checked':''}/>
+            <span>Select</span>
+          </label>
+          <span class="font-semibold">$${c.price}</span>
+        </div>
+      `;
+      host.appendChild(el);
+
+      $('#btnCheckout').classList.add('hidden');
+      $('#btnSkip').classList.remove('hidden');
+      $('#btnAdd').classList.remove('hidden');
+    }
+
+    function nextStep() {
+      idx++;
+      if (idx >= steps.length) {
+        // end
+        $('#prog').textContent = 'All set.';
+        $('#stepHost').innerHTML = '<div class="card"><p class="text-sm muted">Your selections are saved. Proceed to Review & Checkout.</p></div>';
+        $('#btnSkip').classList.add('hidden');
+        $('#btnAdd').classList.add('hidden');
+        $('#btnCheckout').classList.remove('hidden');
+        setJSON('checkoutData', data);
+        return;
+      }
+      renderStep();
+    }
+
+    function saveCurrent(addSelected) {
+      const sid = steps[idx];
+      const c = copies[sid];
+      const uiChecked = !!document.querySelector('#ck')?.checked;
+      const final = addSelected ? (uiChecked || true) : uiChecked; // Add & Continue forces true
       data.plan = plan;
       data.base = plan === 'FSBO Plus' ? 100 : (plan === 'Listed Property Plus' ? 20 : 0);
-      data.upgrades.upgradeToPlus = $('#ck-upgrade') ? $('#ck-upgrade').checked : data.upgrades.upgradeToPlus;
-      data.upgrades.banner  = $('#ck-banner').checked;
-      data.upgrades.premium = $('#ck-premium').checked;
-      data.upgrades.pin     = $('#ck-pin').checked;
-      data.upgrades.confidential = $('#ck-confidential') ? $('#ck-confidential').checked : data.upgrades.confidential;
+
+      // apply
+      if (sid === 'upgrade') {
+        data.upgrades.upgradeToPlus = !!final;
+        if (final) {
+          localStorage.setItem('selectedPlan','Listed Property Plus');
+          data.plan = 'Listed Property Plus';
+          data.base = 20;
+        }
+      } else if (sid === 'banner') data.upgrades.banner = !!final;
+      else if (sid === 'premium') data.upgrades.premium = !!final;
+      else if (sid === 'pin') { data.upgrades.pin = !!final; if (final) data.upgrades.premium = true; }
+      else if (sid === 'confidential') data.upgrades.confidential = !!final;
+
       setJSON('checkoutData', data);
     }
 
-    ['#ck-upgrade','#ck-banner','#ck-premium','#ck-pin','#ck-confidential'].forEach(sel=>{
-      const el = $(sel);
-      if (el) el.addEventListener('change', saveFromUI);
-    });
+    // events
+    $('#btnSkip').addEventListener('click', () => { saveCurrent(false); nextStep(); });
+    $('#btnAdd').addEventListener('click', () => { saveCurrent(true); nextStep(); });
+    $('#btnCheckout').addEventListener('click', () => { setJSON('checkoutData', data); });
 
-    $('#goCheckout').addEventListener('click', () => {
-      saveFromUI();
-    });
+    // start
+    renderStep();
   </script>
 </body>
 </html>
