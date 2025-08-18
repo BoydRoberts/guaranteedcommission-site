@@ -1,40 +1,48 @@
-// checkout.js — build 2025-08-14b
+// checkout.js — build 2025-08-14d
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-14b");
+  console.log("[checkout.js] build 2025-08-14d");
 
-  // ---------- Stripe (test) ----------
-  let stripe;
-  try {
-    stripe = Stripe("pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD");
-  } catch (e) {
-    console.error("Stripe init error:", e);
-  }
-
-  // ---------- helpers ----------
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
   const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
+  // ---- Stripe init checks ----
+  const PUBLISHABLE_KEY = "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
+  let stripe = null;
+  let stripeReady = false;
+  try {
+    if (typeof Stripe !== "function") {
+      throw new Error("Stripe.js not loaded (window.Stripe missing). Check <script src=\"https://js.stripe.com/v3/\"></script> and CSP.");
+    }
+    if (!/^pk_(test|live)_/.test(PUBLISHABLE_KEY)) {
+      throw new Error("Publishable key format looks wrong.");
+    }
+    stripe = Stripe(PUBLISHABLE_KEY);
+    stripeReady = true;
+  } catch (e) {
+    console.error("[checkout] Stripe init error:", e);
+  }
+
+  // ---- Who line (no ~$ approx after commission) ----
   const formData = getJSON("formData", {});
   const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
 
-  function commissionDisplay(fd, agentListing) {
+  const commissionDisplay = (fd, agentListing) => {
     const type = (agentListing?.commissionType || fd?.commissionType || "%");
-    const val  = Number(agentListing?.commission ?? fd?.commission ?? 0);
-    if (!val) return "[commission]";
-    if (type === "$") return "$" + Math.round(val).toLocaleString();
-    return `${val}%`; // no approximation
-  }
+    const raw  = (agentListing?.commission ?? fd?.commission ?? "");
+    const n = Number(raw);
+    if (!raw) return "[commission]";
+    if (type === "$") return "$" + Math.round(n).toLocaleString();
+    return `${raw}%`;
+  };
 
-  // Who-line (FSBO vs Listed); remove (~$…)
   (function renderWhoRow(){
-    const plan = planLS;
     const addr = formData.address || "[Full Address]";
     const name = formData.name || "[Name]";
     const comm = commissionDisplay(formData, getJSON("agentListing", {}));
 
     let parts;
-    if (plan.includes("FSBO")) {
+    if (planLS.includes("FSBO")) {
       const email = formData.fsboEmail || "[owner/seller email]";
       const phone = formData.phone || formData.agentPhone || "[owner/seller phone]";
       parts = [addr, name, email, phone, comm];
@@ -49,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     $("whoRow").classList.remove("hidden");
   })();
 
-  // ---------- load checkout data ----------
+  // ---- checkoutData load/normalize ----
   let data = getJSON("checkoutData", null);
   if (!data) {
     const plan = planLS;
@@ -80,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---------- compute totals ----------
+  // ---- totals ----
   function recompute(d) {
     let plan = d.plan;
     let base = d.base;
@@ -90,7 +98,6 @@ document.addEventListener("DOMContentLoaded", () => {
       base = d.prices.plus;
       localStorage.setItem("selectedPlan", "Listed Property Plus");
     }
-
     let total = base;
     if (d.upgrades.banner) total += d.prices.banner;
     if (d.upgrades.pin) total += d.prices.pin;
@@ -105,7 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
   data = recompute(data);
   setJSON("checkoutData", data);
 
-  // ---------- render summary ----------
+  // ---- UI summary ----
   function renderSummary() {
     $("planName").textContent = data.plan;
     $("basePrice").textContent = (data.base || 0);
@@ -118,8 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
     else if (data.upgrades.premium) sel.push(`Premium Placement ($${data.prices.premium})`);
     if (data.upgrades.confidential) sel.push(`Confidential FSBO Upgrade ($${data.prices.confidential})`);
 
-    const ul = $("selectedList");
-    ul.innerHTML = sel.length ? sel.map(s => `<li>${s}</li>`).join("") : `<li class="text-gray-400">None</li>`;
+    $("selectedList").innerHTML = sel.length ? sel.map(s => `<li>${s}</li>`).join("") : `<li class="text-gray-400">None</li>`;
 
     if ((data.total || 0) <= 0) {
       $("goSignatureZero").classList.remove("hidden");
@@ -130,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---------- last-chance toggles (allow uncheck) ----------
+  // ---- last chance toggles (allow uncheck) ----
   function renderLastChance() {
     const box = $("upsellChoices");
     box.innerHTML = "";
@@ -190,27 +196,33 @@ document.addEventListener("DOMContentLoaded", () => {
         setJSON("checkoutData", data);
         renderSummary();
         renderLastChance();
+        updateDiagnostics();
       });
     });
   }
 
-  if (!localStorage.getItem("originalPlan")) {
-    localStorage.setItem("originalPlan", planLS);
-  }
-
+  // ---- Stripe redirect handler ----
   $("backBtn").addEventListener("click", () => {
     window.location.href = "/upsell.html";
   });
 
   $("payNowBtn").addEventListener("click", async () => {
+    // Disable to prevent double clicks
+    const btn = $("payNowBtn");
+    btn.disabled = true;
+    btn.textContent = "Redirecting…";
+
     try {
-      if (!stripe) { alert("Stripe failed to initialize."); return; }
+      if (!stripeReady || !stripe) {
+        throw new Error("Stripe failed to initialize. See console for details.");
+      }
 
       if ((data.total || 0) <= 0) {
         window.location.href = "/signature.html";
         return;
       }
 
+      // Your Stripe Price IDs (must belong to the same account as the publishable key)
       const PRICE_IDS = {
         PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
         FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
@@ -237,22 +249,59 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (data.upgrades.confidential && data.prices.confidential > 0) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
 
-      if (!items.length) { alert("Nothing selected to purchase."); return; }
+      // Preflight validations
+      if (!items.length) throw new Error("Nothing selected to purchase.");
+      const bad = items.find(x => !/^price_/.test(x.price));
+      if (bad) throw new Error("One or more Price IDs look invalid: " + bad.price);
 
-      console.log("[checkout] redirectToCheckout lineItems=", items);
+      // Update diagnostics
+      updateDiagnostics(items);
+
       const { error } = await stripe.redirectToCheckout({
         lineItems: items,
         mode: "payment",
         successUrl: window.location.origin + "/signature.html",
         cancelUrl:  window.location.origin + "/checkout.html"
       });
-      if (error) alert("Stripe error: " + error.message);
+
+      if (error) {
+        // Stripe responded with an error
+        console.error("[checkout] redirectToCheckout error:", error);
+        alert("Stripe error: " + (error.message || "Unknown error"));
+      }
     } catch (err) {
-      console.error("Stripe flow error:", err);
-      alert("Payment could not start. Check console logs for details.");
+      console.error("[checkout] Payment start error:", err);
+      alert(err.message || "Payment could not start.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Pay Now with Stripe";
     }
   });
 
+  // ---- Diagnostics block ----
+  function updateDiagnostics(lineItems) {
+    const diag = $("diag");
+    const dump = {
+      selectedPlan: data.plan,
+      totals: { base: data.base, total: data.total },
+      upgrades: data.upgrades,
+      prices: data.prices,
+      origin: window.location.origin,
+      successUrl: window.location.origin + "/signature.html",
+      cancelUrl: window.location.origin + "/checkout.html",
+      stripeJsLoaded: typeof Stripe === "function",
+      stripeReady,
+      publishableKeyPrefix: PUBLISHABLE_KEY.slice(0, 8) + "…",
+      lineItems: lineItems || "(not built yet)"
+    };
+    diag.textContent = JSON.stringify(dump, null, 2);
+  }
+
+  // ---- Initial paint ----
+  if (!localStorage.getItem("originalPlan")) {
+    localStorage.setItem("originalPlan", planLS);
+  }
   renderSummary();
   renderLastChance();
+  updateDiagnostics();
 });
