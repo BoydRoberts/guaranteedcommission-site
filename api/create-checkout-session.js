@@ -1,19 +1,18 @@
 // /api/create-checkout-session.js
-// build 2025-08-14s
+// build 2025-08-14t
 //
-// REQUIREMENTS
-// - In Vercel Project Settings > Environment Variables, add:
-//     STRIPE_SECRET_KEY = sk_test_... (your Secret Key)
-// - Re-deploy.
-// - Make sure the price IDs below match your Stripe account (test mode if testing).
+// SETUP (one-time):
+//   1) Vercel → Project Settings → Environment Variables:
+//        STRIPE_SECRET_KEY = sk_test_xxx  (or sk_live_xxx in prod)
+//   2) Ensure your repo has a package.json that includes "stripe" dependency.
+//   3) Redeploy.
 //
-// NOTES
-// - This uses the official Stripe Node SDK (server function).
-// - If your repo doesn’t have a package.json yet, add one with "stripe" as a dependency
-//   (see sample package.json at the bottom of this file’s comment).
+// This handler ALWAYS returns JSON (even on errors) so the client never chokes
+// on an HTML "Server Error" page.
 
 const Stripe = require('stripe');
 
+// Your Stripe Price IDs
 const PRICE_IDS = {
   PLUS:         'price_1RsQFlPTiT2zuxx0414nGtTu', // $20 Listed Property Plus
   FSBO_PLUS:    'price_1RsQJbPTiT2zuxx0w3GUIdxJ', // $100 FSBO Plus
@@ -23,64 +22,65 @@ const PRICE_IDS = {
   CONFIDENTIAL: 'price_1RsRP4PTiT2zuxx0eoOGEDvm'  // $100 Confidential FSBO Upgrade
 };
 
-function buildLineItems({ plan, upgrades, prices }) {
+function buildLineItems(plan, upgrades = {}) {
   const li = [];
-
-  // Base (plan)
   if (plan === 'FSBO Plus') {
     li.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
   } else if (plan === 'Listed Property Plus') {
     li.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-  } else if (plan === 'Listed Property Basic' && upgrades?.upgradeToPlus) {
+  } else if (plan === 'Listed Property Basic' && upgrades.upgradeToPlus) {
     li.push({ price: PRICE_IDS.PLUS, quantity: 1 });
   }
 
-  // Upsells
-  if (upgrades?.banner) {
-    li.push({ price: PRICE_IDS.BANNER, quantity: 1 });
-  }
-  if (upgrades?.pin) {
-    li.push({ price: PRICE_IDS.PIN, quantity: 1 });     // includes Premium
-  } else if (upgrades?.premium) {
-    li.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
-  }
+  if (upgrades.banner)   li.push({ price: PRICE_IDS.BANNER, quantity: 1 });
+  if (upgrades.pin)      li.push({ price: PRICE_IDS.PIN, quantity: 1 });      // includes Premium
+  else if (upgrades.premium) li.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
 
-  // FSBO-only
-  if (plan === 'FSBO Plus' && upgrades?.confidential) {
+  if (plan === 'FSBO Plus' && upgrades.confidential) {
     li.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
   }
-
   return li;
 }
 
 module.exports = async (req, res) => {
-  // Enforce POST
+  res.setHeader('Content-Type', 'application/json');
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return res.status(405).end(JSON.stringify({ error: 'Method Not Allowed' }));
   }
 
   try {
     const sk = process.env.STRIPE_SECRET_KEY;
     if (!sk) {
-      return res.status(500).json({ error: 'Missing STRIPE_SECRET_KEY env var.' });
+      return res.status(500).end(JSON.stringify({
+        error: 'Missing STRIPE_SECRET_KEY. Set it in Vercel → Project Settings → Environment Variables.'
+      }));
+    }
+
+    // Vercel body can be object or string
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch { body = {}; }
+    }
+    const plan = body?.plan;
+    const upgrades = body?.upgrades || {};
+
+    if (!plan) {
+      return res.status(400).end(JSON.stringify({ error: 'Missing required "plan".' }));
+    }
+
+    const line_items = buildLineItems(plan, upgrades);
+    if (!line_items.length) {
+      return res.status(400).end(JSON.stringify({
+        error: 'No purchasable items derived from plan/upgrades.',
+        debug: { plan, upgrades }
+      }));
     }
 
     const stripe = new Stripe(sk, { apiVersion: '2024-06-20' });
 
-    // Parse input
-    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-    const { plan, upgrades } = body || {};
-
-    if (!plan) return res.status(400).json({ error: 'Missing plan.' });
-
-    const line_items = buildLineItems({ plan, upgrades });
-
-    if (!line_items.length) {
-      return res.status(400).json({ error: 'No purchasable items derived from plan/upgrades.' });
-    }
-
-    // Success/Cancel URLs (derive from request host)
+    // Build origin from headers
     const origin =
       (req.headers['x-forwarded-proto'] ? req.headers['x-forwarded-proto'] + '://' : 'https://') +
       (req.headers['x-forwarded-host'] || req.headers.host);
@@ -89,32 +89,17 @@ module.exports = async (req, res) => {
       mode: 'payment',
       line_items,
       success_url: `${origin}/signature.html`,
-      cancel_url: `${origin}/checkout.html`,
-      // Optional niceties:
+      cancel_url:  `${origin}/checkout.html`,
       billing_address_collection: 'auto',
       phone_number_collection: { enabled: false },
-      metadata: { plan },
-      // automatic_tax: { enabled: true }, // enable if you’ve configured tax settings
+      metadata: { plan }
     });
 
-    return res.status(200).json({ id: session.id });
+    return res.status(200).end(JSON.stringify({ id: session.id }));
   } catch (err) {
-    console.error('[create-checkout-session] error:', err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    console.error('[create-checkout-session] crash:', err);
+    return res.status(500).end(JSON.stringify({
+      error: err?.message || 'Server error creating checkout session.'
+    }));
   }
 };
-
-/*
-If you don't already have a package.json in your repo, add one like:
-
-{
-  "name": "guaranteedcommission",
-  "version": "1.0.0",
-  "private": true,
-  "dependencies": {
-    "stripe": "^16.6.0"
-  }
-}
-
-Vercel will detect the serverless function and install dependencies on deploy.
-*/
