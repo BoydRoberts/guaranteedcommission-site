@@ -1,330 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login / Create Account | GuaranteedCommission.com</title>
-  <meta name="description" content="Secure login and account creation with strong password protection and verification." />
+  <title>Log In | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 text-gray-900">
-  <div class="min-h-screen flex items-center justify-center px-4">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
-      <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">login build 2025-08-14b</span>
+<body class="bg-gray-100 text-gray-800">
+
+  <!-- Header -->
+  <header class="bg-white shadow">
+    <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
+      <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
+        Accredited Investors Only
+      </button>
+      <div class="text-center flex-1">
+        <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
+        <p class="text-sm text-red-600 mt-1 px-2">
+          Guaranteeing commissions so your home will sell quickly at a higher price.
+        </p>
       </div>
-
-      <button id="dbgToggle" class="absolute top-2 right-2 text-[11px] px-2 py-1 rounded border">Debug</button>
-      <div id="dbgPanel" class="hidden mt-2 text-[11px] bg-gray-50 border rounded p-2 whitespace-pre-wrap break-all"></div>
-
-      <div class="text-center mb-4">
-        <h1 class="text-2xl font-bold">Secure Access</h1>
-        <p class="text-sm text-gray-600 mt-1">State-of-the-art security & verification</p>
-      </div>
-
-      <div class="flex border-b mb-4" role="tablist" aria-label="Auth Tabs">
-        <button type="button" id="tab-signin"
-          class="flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700"
-          aria-selected="true" aria-controls="panel-signin">
-          Sign In
-        </button>
-        <button type="button" id="tab-create"
-          class="flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700"
-          aria-selected="false" aria-controls="panel-create">
-          Create Account
-        </button>
-      </div>
-
-      <div id="status" class="hidden mb-4 text-sm rounded-lg p-3" role="alert"></div>
-
-      <!-- SIGN IN -->
-      <form id="loginForm" class="space-y-4" autocomplete="off" aria-labelledby="tab-signin">
-        <div>
-          <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-          <input id="email" name="email" type="email" required
-                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                 placeholder="you@example.com" />
-        </div>
-
-        <div>
-          <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-          <div class="relative mt-1">
-            <input id="password" name="password" type="password" required
-                   class="w-full border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                   placeholder="Your password" />
-            <button type="button" id="togglePwd"
-                    class="absolute inset-y-0 right-0 px-3 text-sm text-blue-600 hover:underline select-none">
-              Show
-            </button>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between text-sm">
-          <a href="/forgot-password.html" class="text-blue-600 hover:underline">Forgot password?</a>
-          <a href="#" id="goCreate" class="text-blue-600 hover:underline">Create account</a>
-        </div>
-
-        <button type="submit"
-                class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition">
-          Log In
-        </button>
-      </form>
-
-      <!-- CREATE ACCOUNT -->
-      <form id="createForm" class="space-y-4 hidden" autocomplete="off" aria-labelledby="tab-create">
-        <div>
-          <label for="c_name" class="block text-sm font-medium text-gray-700">Full Name</label>
-          <input id="c_name" type="text" required
-                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                 placeholder="First Last" />
-        </div>
-
-        <div>
-          <label for="c_email" class="block text-sm font-medium text-gray-700">Email</label>
-          <input id="c_email" type="email" required
-                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                 placeholder="you@example.com" />
-        </div>
-
-        <div>
-          <label for="c_phone" class="block text-sm font-medium text-gray-700">Phone</label>
-          <input id="c_phone" type="tel" required
-                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                 placeholder="123-456-7890" inputmode="numeric" />
-          <p class="text-xs text-gray-500 mt-1">Format: 123-456-7890</p>
-        </div>
-
-        <div>
-          <label for="c_password" class="block text-sm font-medium text-gray-700">Create Password</label>
-          <div class="relative mt-1">
-            <input id="c_password" type="password" required
-                   class="w-full border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                   placeholder="At least 10 characters, letters, numbers, symbol" />
-            <button type="button" id="togglePwdC1"
-                    class="absolute inset-y-0 right-0 px-3 text-sm text-blue-600 hover:underline select-none">
-              Show
-            </button>
-          </div>
-
-          <div class="mt-2">
-            <div class="h-2 w-full bg-gray-200 rounded" aria-hidden="true">
-              <div id="strengthBar" class="h-2 w-0 rounded"></div>
-            </div>
-            <p id="strengthText" class="text-xs mt-1 text-gray-600">Password strength: —</p>
-            <ul class="text-[11px] text-gray-600 mt-2 list-disc list-inside">
-              <li>At least 10 characters</li>
-              <li>Include UPPER &amp; lower case letters</li>
-              <li>Include a number and a symbol</li>
-            </ul>
-          </div>
-        </div>
-
-        <div>
-          <label for="c_password2" class="block text-sm font-medium text-gray-700">Confirm Password</label>
-          <div class="relative mt-1">
-            <input id="c_password2" type="password" required
-                   class="w-full border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                   placeholder="Re-type your password" />
-            <button type="button" id="togglePwdC2"
-                    class="absolute inset-y-0 right-0 px-3 text-sm text-blue-600 hover:underline select-none">
-              Show
-            </button>
-          </div>
-          <p id="matchMsg" class="text-xs mt-1"></p>
-        </div>
-
-        <div class="flex items-center justify-between text-sm">
-          <a href="#" id="goSignin" class="text-blue-600 hover:underline">Already have an account? Sign in</a>
-        </div>
-
-        <button type="submit"
-                class="w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition">
-          Create Account
-        </button>
-      </form>
-
-      <p class="text-[11px] text-gray-500 text-center mt-4">
-        We never sell your data. Used only for escrow &amp; identification.
-      </p>
+      <button onclick="openPressModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded">
+        Press Inquiry
+      </button>
     </div>
-  </div>
+  </header>
+
+  <main class="max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
+    <h2 class="text-xl font-bold mb-4">Secure Access</h2>
+    <form id="loginForm" class="space-y-3">
+      <input type="email" id="email" placeholder="Email" class="w-full border p-2 rounded" required>
+      <div class="relative">
+        <input type="password" id="password" placeholder="Password" class="w-full border p-2 rounded" required>
+        <button type="button" onclick="togglePassword()" class="absolute right-2 top-2 text-xs text-blue-600">Show</button>
+      </div>
+      <button type="submit" class="w-full bg-green-600 text-white py-2 rounded">Log In</button>
+    </form>
+    <div class="flex justify-between text-sm mt-3">
+      <a href="/create-account.html" class="text-blue-600 hover:underline">Create New Account</a>
+      <a href="/forgot-password.html" class="text-blue-600 hover:underline">Forgot Password?</a>
+    </div>
+  </main>
 
   <script>
-    console.log('[login] build 2025-08-14b');
-
-    const $ = (id) => document.getElementById(id);
-    const statusBox = $('status');
-    const safeJSON = (s)=>{ try { return JSON.parse(s); } catch { return null; } };
-
-    function setStatus(msg, ok=false) {
-      statusBox.classList.remove('hidden');
-      statusBox.textContent = msg;
-      statusBox.className = ok
-        ? 'mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
-        : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
+    function togglePassword(){
+      const input = document.getElementById('password');
+      if(input.type === 'password'){ input.type = 'text'; } else { input.type = 'password'; }
     }
 
-    function getAccounts() { return safeJSON(localStorage.getItem('accounts')) || {}; }
-    function saveAccounts(obj) { localStorage.setItem('accounts', JSON.stringify(obj || {})); }
-    function getLegacyAccount() { return safeJSON(localStorage.getItem('userAccount')); }
-    function setLegacyAccount(acct) { localStorage.setItem('userAccount', JSON.stringify(acct)); }
-
-    function renderDebug() {
-      const dump = {
-        formData: safeJSON(localStorage.getItem('formData')),
-        selectedPlan: localStorage.getItem('selectedPlan'),
-        loggedInEmail: localStorage.getItem('loggedInEmail'),
-        verificationCode: localStorage.getItem('verificationCode'),
-        verifyTarget: localStorage.getItem('verifyTarget')
-      };
-      $('dbgPanel').textContent = JSON.stringify(dump, null, 2);
-    }
-    $('dbgToggle').addEventListener('click', () => {
-      $('dbgPanel').classList.toggle('hidden');
-      renderDebug();
-    });
-
-    // remove any old "role" fields (defensive)
-    (function nukeRole() {
-      ['role','roleSelect','userRole'].forEach(id => { const el = document.getElementById(id); if (el) (el.closest('div')||el).remove(); });
-    })();
-
-    function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
-    function formatPhone(s){
-      const d = onlyDigits(s).slice(0,10);
-      if (d.length <= 3) return d;
-      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
-      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
-    }
-    function isValidPhone(s){ return onlyDigits(s).length === 10; }
-
-    // migrate legacy account shards into accounts object
-    (function migrate() {
-      const accounts = getAccounts();
-      const ad = safeJSON(localStorage.getItem('accountData'));
-      if (ad?.email && ad?.password) accounts[ad.email.toLowerCase()] = { name: ad.name||'', email: ad.email.toLowerCase(), password: ad.password, phone: ad.phone||'' };
-      const legacy = getLegacyAccount();
-      if (legacy?.email && legacy?.password) accounts[legacy.email.toLowerCase()] = { name: legacy.name||'', email: legacy.email.toLowerCase(), password: legacy.password, phone: legacy.phone||'' };
-      saveAccounts(accounts);
-    })();
-
-    // tabs
-    const tabSignin = $('tab-signin');
-    const tabCreate = $('tab-create');
-    const loginForm = $('loginForm');
-    const createForm = $('createForm');
-    const goCreate = $('goCreate');
-    const goSignin = $('goSignin');
-
-    function showSignin() {
-      tabSignin.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
-      tabSignin.setAttribute('aria-selected','true');
-      tabCreate.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-      tabCreate.setAttribute('aria-selected','false');
-      loginForm.classList.remove('hidden'); createForm.classList.add('hidden');
-    }
-    function showCreate() {
-      tabCreate.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
-      tabCreate.setAttribute('aria-selected','true');
-      tabSignin.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-      tabSignin.setAttribute('aria-selected','false');
-      createForm.classList.remove('hidden'); loginForm.classList.add('hidden');
-    }
-    tabSignin.addEventListener('click', showSignin);
-    tabCreate.addEventListener('click', showCreate);
-    goCreate?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
-    goSignin?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
-
-    // prefill from Box 2 — FSBO-only phone; email pulls fsboEmail if present
-    (function prefill() {
-      const formData = safeJSON(localStorage.getItem('formData')) || {};
-      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-
-      // Name (neutral)
-      const name = formData.name || localStorage.getItem('sellerName') || '';
-      if (name) { const n = $('c_name'); if (n) n.value = name; }
-
-      // Email: prefer fsboEmail if present; else any provided email
-      const email = formData.fsboEmail || formData.email || localStorage.getItem('sellerEmail') || '';
-      if (email) {
-        $('email').value = email;
-        $('c_email').value = email;
-      }
-
-      // Phone: FSBO ONLY. Do not prefill for Basic/Plus to avoid agent phone bleed.
-      if (plan.includes('FSBO')) {
-        const phone = formData.phone || formData.agentPhone || localStorage.getItem('sellerPhone') || '';
-        if (phone) $('c_phone').value = formatPhone(phone);
-      }
-
-      if (localStorage.getItem('nextAfterLogin')) showCreate();
-    })();
-
-    function wireToggle(inputId, btnId) {
-      const input = $(inputId); const btn = $(btnId);
-      if (!input || !btn) return;
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const vis = input.type === 'text';
-        input.type = vis ? 'password' : 'text';
-        btn.textContent = vis ? 'Show' : 'Hide';
-        input.focus({ preventScroll: true });
-      });
-    }
-    wireToggle('password','togglePwd');
-    wireToggle('c_password','togglePwdC1');
-    wireToggle('c_password2','togglePwdC2');
-
-    const phoneEl = $('c_phone');
-    phoneEl?.addEventListener('input', () => {
-      const cur = phoneEl.selectionStart;
-      const before = phoneEl.value;
-      phoneEl.value = formatPhone(before);
-      phoneEl.selectionStart = phoneEl.selectionEnd = Math.min(cur + (phoneEl.value.length - before.length), phoneEl.value.length);
-    });
-
-    function scorePassword(p) {
-      let s=0; if (!p) return 0;
-      if (p.length>=10) s++; if (/[a-z]/.test(p)&&/[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; if (p.length>=14) s++;
-      return Math.min(s,4);
-    }
-    const cPwd = $('c_password'), cPwd2=$('c_password2'), bar=$('strengthBar'), st=$('strengthText'), mm=$('matchMsg');
-    function updateStrength(){
-      const s=scorePassword(cPwd.value), widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
-      bar.style.width=widths[s]; bar.style.backgroundColor=colors[s]; st.textContent='Password strength: '+labels[s];
-      if (!cPwd2.value.length){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
-      if (cPwd.value===cPwd2.value){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
-      else { mm.textContent='Passwords do not match'; mm.className='text-xs mt-1 text-red-600'; }
-    }
-    cPwd?.addEventListener('input', updateStrength);
-    cPwd2?.addEventListener('input', updateStrength);
-
-    // CREATE
-    $('createForm').addEventListener('submit', (e) => {
+    document.getElementById('loginForm').addEventListener('submit', (e)=>{
       e.preventDefault();
-      const name=$('c_name').value.trim(), email=$('c_email').value.trim().toLowerCase(), phone=$('c_phone').value.trim();
-      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
-      if (scorePassword(cPwd.value)<3){ setStatus('Please use a stronger password (aim for Good or Strong).'); showCreate(); return; }
-      if (cPwd.value!==cPwd2.value){ setStatus('Passwords do not match.'); showCreate(); return; }
-      const accounts=getAccounts(); accounts[email]={ name,email,password:cPwd.value,phone }; saveAccounts(accounts); setLegacyAccount({name,email,password:cPwd.value,phone});
-      localStorage.setItem('isLoggedIn','true'); localStorage.setItem('loggedInEmail',email);
-      const code = Math.floor(100000+Math.random()*900000).toString(); localStorage.setItem('verificationCode',code); localStorage.setItem('verifyTarget',email);
-      setStatus(`Account created for ${email}. 6-digit code: ${code}. Redirecting…`, true); renderDebug();
-      const next=localStorage.getItem('nextAfterLogin')||'/verify-code.html'; setTimeout(()=>{ window.location.href=next; }, 800);
-    });
-
-    // SIGN IN
-    $('loginForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const email=$('email').value.trim().toLowerCase(), password=$('password').value;
-      const accounts=getAccounts(); const acct=accounts[email] || getLegacyAccount();
-      if (!acct || (acct.email && acct.email.toLowerCase()!==email)) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); renderDebug(); return; }
-      if (acct.password!==password){ setStatus(`Invalid email or password for ${email}.`); renderDebug(); return; }
-      localStorage.setItem('isLoggedIn','true'); localStorage.setItem('loggedInEmail',email);
-      if (!localStorage.getItem('verificationCode')) localStorage.setItem('verificationCode', Math.floor(100000+Math.random()*900000).toString());
-      localStorage.setItem('verifyTarget', email);
-      setStatus(`Login successful for ${email}. Redirecting…`, true); renderDebug();
-      const next=localStorage.getItem('nextAfterLogin')||'/verify-code.html'; setTimeout(()=>{ window.location.href=next; }, 600);
+      // Stub login logic
+      const email = document.getElementById('email').value.trim();
+      localStorage.setItem('loggedInEmail', email);
+      const next = localStorage.getItem('nextAfterLogin') || '/upsell.html';
+      window.location.href = next;
     });
   </script>
 </body>
