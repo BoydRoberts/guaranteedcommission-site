@@ -3,58 +3,340 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Log In | GuaranteedCommission.com</title>
+  <title>Login / Create Account | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .badge { font-size:11px; background:#f3f4f6; color:#4b5563; padding:.1rem .5rem; border-radius:.375rem; }
+  </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-900">
 
   <!-- Header -->
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
-      <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
-        Accredited Investors Only
-      </button>
-      <div class="text-center flex-1">
-        <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
-        <p class="text-sm text-red-600 mt-1 px-2">
+      <a href="/index.html" class="text-xs text-blue-600 hover:underline">&larr; Home</a>
+      <div class="text-center">
+        <h1 class="text-2xl font-bold">GuaranteedCommission.com</h1>
+        <p class="text-xs text-gray-600">
           Guaranteeing commissions so your home will sell quickly at a higher price.
         </p>
       </div>
-      <button onclick="openPressModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded">
-        Press Inquiry
-      </button>
+      <span></span>
     </div>
   </header>
 
-  <main class="max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
-    <h2 class="text-xl font-bold mb-4">Secure Access</h2>
-    <form id="loginForm" class="space-y-3">
-      <input type="email" id="email" placeholder="Email" class="w-full border p-2 rounded" required>
-      <div class="relative">
-        <input type="password" id="password" placeholder="Password" class="w-full border p-2 rounded" required>
-        <button type="button" onclick="togglePassword()" class="absolute right-2 top-2 text-xs text-blue-600">Show</button>
+  <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
+      <div class="text-center mb-3">
+        <span class="badge">secure access build 2025-08-21</span>
       </div>
-      <button type="submit" class="w-full bg-green-600 text-white py-2 rounded">Log In</button>
-    </form>
-    <div class="flex justify-between text-sm mt-3">
-      <a href="/create-account.html" class="text-blue-600 hover:underline">Create New Account</a>
-      <a href="/forgot-password.html" class="text-blue-600 hover:underline">Forgot Password?</a>
+
+      <!-- Tabs -->
+      <div class="flex border-b mb-4" role="tablist" aria-label="Auth Tabs">
+        <button type="button" id="tab-signin"
+          class="flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700"
+          aria-selected="true" aria-controls="panel-signin">
+          Sign In
+        </button>
+        <button type="button" id="tab-create"
+          class="flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700"
+          aria-selected="false" aria-controls="panel-create">
+          Create Account
+        </button>
+      </div>
+
+      <!-- Status -->
+      <div id="status" class="hidden mb-4 text-sm rounded-lg p-3" role="alert"></div>
+
+      <!-- SIGN IN -->
+      <form id="loginForm" class="space-y-4" autocomplete="off" aria-labelledby="tab-signin">
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+          <input id="email" name="email" type="email" required
+                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 placeholder="you@example.com" />
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+          <div class="relative mt-1">
+            <input id="password" name="password" type="password" required
+                   class="w-full border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="Your password" />
+            <button type="button" id="togglePwd"
+                    class="absolute inset-y-0 right-0 px-3 text-sm text-blue-600 hover:underline select-none">
+              Show
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-sm">
+          <a href="/forgot-password.html" class="text-blue-600 hover:underline">Forgot password?</a>
+          <a href="#" id="goCreate" class="text-blue-600 hover:underline">Create account</a>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition">
+          Log In
+        </button>
+      </form>
+
+      <!-- CREATE ACCOUNT -->
+      <form id="createForm" class="space-y-4 hidden" autocomplete="off" aria-labelledby="tab-create">
+        <div>
+          <label for="c_name" class="block text-sm font-medium text-gray-700">Full Name</label>
+          <input id="c_name" type="text" required
+                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 placeholder="First Last" />
+        </div>
+
+        <div>
+          <label for="c_email" class="block text-sm font-medium text-gray-700">Email</label>
+          <input id="c_email" type="email" required
+                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 placeholder="you@example.com" />
+        </div>
+
+        <div>
+          <label for="c_phone" class="block text-sm font-medium text-gray-700">Phone</label>
+          <input id="c_phone" type="tel" required
+                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 placeholder="123-456-7890" inputmode="numeric" />
+          <p class="text-xs text-gray-500 mt-1">Format: 123-456-7890</p>
+        </div>
+
+        <div>
+          <label for="c_password" class="block text-sm font-medium text-gray-700">Create Password</label>
+          <div class="relative mt-1">
+            <input id="c_password" type="password" required
+                   class="w-full border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="At least 10 characters, letters, numbers, symbol" />
+            <button type="button" id="togglePwdC1"
+                    class="absolute inset-y-0 right-0 px-3 text-sm text-blue-600 hover:underline select-none">
+              Show
+            </button>
+          </div>
+
+          <!-- Strength -->
+          <div class="mt-2">
+            <div class="h-2 w-full bg-gray-200 rounded" aria-hidden="true">
+              <div id="strengthBar" class="h-2 w-0 rounded"></div>
+            </div>
+            <p id="strengthText" class="text-xs mt-1 text-gray-600">Password strength: —</p>
+            <ul class="text-[11px] text-gray-600 mt-2 list-disc list-inside">
+              <li>At least 10 characters</li>
+              <li>Include UPPER &amp; lower case letters</li>
+              <li>Include a number and a symbol</li>
+            </ul>
+          </div>
+        </div>
+
+        <div>
+          <label for="c_password2" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+          <div class="relative mt-1">
+            <input id="c_password2" type="password" required
+                   class="w-full border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="Re-type your password" />
+            <button type="button" id="togglePwdC2"
+                    class="absolute inset-y-0 right-0 px-3 text-sm text-blue-600 hover:underline select-none">
+              Show
+            </button>
+          </div>
+          <p id="matchMsg" class="text-xs mt-1"></p>
+        </div>
+
+        <div class="flex items-center justify-between text-sm">
+          <a href="#" id="goSignin" class="text-blue-600 hover:underline">Already have an account? Sign in</a>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition">
+          Create Account
+        </button>
+      </form>
+
+      <p class="text-[11px] text-gray-500 text-center mt-4">
+        We never sell your data. Used only for escrow &amp; identification.
+      </p>
+
+      <!-- Debug toggle -->
+      <button id="dbgToggle" class="absolute top-2 right-2 text-[11px] px-2 py-1 rounded border">Debug</button>
+      <pre id="dbgPanel" class="hidden mt-2 text-[11px] bg-gray-50 border rounded p-2 whitespace-pre-wrap break-all"></pre>
     </div>
   </main>
 
   <script>
-    function togglePassword(){
-      const input = document.getElementById('password');
-      if(input.type === 'password'){ input.type = 'text'; } else { input.type = 'password'; }
+    console.log('[login] secure access build 2025-08-21');
+
+    // ------------- helpers -------------
+    const $ = (id) => document.getElementById(id);
+    const safeJSON = (s)=>{ try { return JSON.parse(s); } catch { return null; } };
+    const setStatus = (msg, ok=false) => {
+      const el = $('status');
+      el.classList.remove('hidden');
+      el.textContent = msg;
+      el.className = ok
+        ? 'mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
+        : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
+    };
+
+    // password show/hide
+    function wireToggle(inputId, btnId) {
+      const input = $(inputId);
+      const btn = $(btnId);
+      if (!input || !btn) return;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const vis = input.type === 'text';
+        input.type = vis ? 'password' : 'text';
+        btn.textContent = vis ? 'Show' : 'Hide';
+        input.focus({ preventScroll: true });
+      });
     }
 
-    document.getElementById('loginForm').addEventListener('submit', (e)=>{
+    // phone mask
+    function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
+    function formatPhone(s){
+      const d = onlyDigits(s).slice(0,10);
+      if (d.length <= 3) return d;
+      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
+      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
+    }
+    function isValidPhone(s){ return onlyDigits(s).length === 10; }
+
+    // password strength
+    function scorePassword(p) {
+      let s=0; if (!p) return 0;
+      if (p.length>=10) s++; if (/[a-z]/.test(p)&&/[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; if (p.length>=14) s++;
+      return Math.min(s,4);
+    }
+    function updateStrength(){
+      const p1 = $('c_password')?.value || '';
+      const p2 = $('c_password2')?.value || '';
+      const bar = $('strengthBar'), st=$('strengthText'), mm=$('matchMsg');
+      if (!bar || !st || !mm) return;
+      const s=scorePassword(p1), widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
+      bar.style.width=widths[s]; bar.style.backgroundColor=colors[s]; st.textContent='Password strength: '+labels[s];
+      if (!p2){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
+      if (p1===p2){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
+      else { mm.textContent='Passwords do not match'; mm.className='text-xs mt-1 text-red-600'; }
+    }
+
+    // tabs
+    const tabSignin=$('tab-signin'), tabCreate=$('tab-create'), loginForm=$('loginForm'), createForm=$('createForm');
+    function showSignin(){
+      tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
+      tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+      loginForm.classList.remove('hidden'); createForm.classList.add('hidden');
+      tabSignin.setAttribute('aria-selected','true'); tabCreate.setAttribute('aria-selected','false');
+    }
+    function showCreate(){
+      tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
+      tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+      createForm.classList.remove('hidden'); loginForm.classList.add('hidden');
+      tabCreate.setAttribute('aria-selected','true'); tabSignin.setAttribute('aria-selected','false');
+    }
+    tabSignin.addEventListener('click', showSignin);
+    tabCreate.addEventListener('click', showCreate);
+    $('goCreate')?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
+    $('goSignin')?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
+
+    // prefill from Box 2 — FSBO-only phone; email prefers fsboEmail if present
+    (function prefill() {
+      const fd = safeJSON(localStorage.getItem('formData')) || {};
+      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+
+      // name
+      if (fd.name) $('c_name').value = fd.name;
+
+      // email priority: fsboEmail, then any previous email
+      const email = fd.fsboEmail || localStorage.getItem('loggedInEmail') || '';
+      if (email) { $('email').value = email; $('c_email').value = email; }
+
+      // phone (FSBO only to avoid agent phone bleeding into seller)
+      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
+        $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
+      }
+      if (localStorage.getItem('nextAfterLogin')) showCreate();
+    })();
+
+    // wire toggles
+    wireToggle('password','togglePwd');
+    wireToggle('c_password','togglePwdC1');
+    wireToggle('c_password2','togglePwdC2');
+    $('c_password')?.addEventListener('input', updateStrength);
+    $('c_password2')?.addEventListener('input', updateStrength);
+    $('c_phone')?.addEventListener('input', ()=>{ const el=$('c_phone'); const cur=el.selectionStart; const before=el.value; el.value=formatPhone(before); el.selectionStart=el.selectionEnd=Math.min(cur+(el.value.length-before.length), el.value.length) });
+
+    // Basic local account store (in-browser demo)
+    const ACC_KEY='accounts';
+    const getAccounts = ()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
+    const saveAccounts = (obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
+
+    // Sign In
+    loginForm.addEventListener('submit', (e)=>{
       e.preventDefault();
-      // Stub login logic
-      const email = document.getElementById('email').value.trim();
+      const email=$('email').value.trim().toLowerCase();
+      const password=$('password').value;
+      const accounts=getAccounts();
+      const acct=accounts[email];
+      if(!acct){ setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); return; }
+      if(acct.password!==password){ setStatus('Invalid email or password.'); return; }
+      localStorage.setItem('isLoggedIn','true');
       localStorage.setItem('loggedInEmail', email);
-      const next = localStorage.getItem('nextAfterLogin') || '/upsell.html';
+
+      // ensure verification code exists
+      if(!localStorage.getItem('verificationCode')){
+        const code = String(Math.floor(100000+Math.random()*900000));
+        localStorage.setItem('verificationCode', code);
+        localStorage.setItem('verifyTarget', email);
+      }
+      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
       window.location.href = next;
+    });
+
+    // Create Account
+    createForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const name=$('c_name').value.trim();
+      const email=$('c_email').value.trim().toLowerCase();
+      const phone=$('c_phone').value.trim();
+      const p1=$('c_password').value, p2=$('c_password2').value;
+
+      if(!isValidPhone(phone)){ setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
+      if(scorePassword(p1)<3){ setStatus('Please use a stronger password (aim for Good or Strong).'); return; }
+      if(p1!==p2){ setStatus('Passwords do not match.'); return; }
+
+      const accounts=getAccounts();
+      accounts[email]={ name, email, password:p1, phone };
+      saveAccounts(accounts);
+
+      localStorage.setItem('isLoggedIn','true');
+      localStorage.setItem('loggedInEmail', email);
+
+      // Set verification code
+      const code = String(Math.floor(100000+Math.random()*900000));
+      localStorage.setItem('verificationCode', code);
+      localStorage.setItem('verifyTarget', email);
+
+      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
+      window.location.href = next;
+    });
+
+    // Debug panel
+    $('dbgToggle').addEventListener('click', ()=>{
+      const fd = safeJSON(localStorage.getItem('formData'));
+      const dump = {
+        formData: fd,
+        selectedPlan: localStorage.getItem('selectedPlan'),
+        loggedInEmail: localStorage.getItem('loggedInEmail'),
+        verificationCode: localStorage.getItem('verificationCode'),
+        verifyTarget: localStorage.getItem('verifyTarget'),
+        nextAfterLogin: localStorage.getItem('nextAfterLogin')
+      };
+      const p = $('dbgPanel');
+      p.classList.toggle('hidden');
+      p.textContent = JSON.stringify(dump, null, 2);
     });
   </script>
 </body>
