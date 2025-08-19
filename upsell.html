@@ -13,14 +13,14 @@
 <body class="bg-gray-100 text-gray-900">
   <div class="max-w-xl mx-auto p-4">
     <div class="text-center mb-3">
-      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell wizard build 2025-08-20b</span>
+      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell wizard build 2025-08-21a</span>
     </div>
 
     <!-- Always use same heading -->
     <h1 class="text-2xl font-bold text-center">Upgrade Your Listing</h1>
     <p class="text-sm text-center muted mt-1">You will be able to review all upgrades and upsells at Review &amp; Checkout.</p>
 
-    <!-- Current plan (shown only on Basic upgrade step) -->
+    <!-- Current plan (only on Basic/Upgrade step) -->
     <div id="planRow" class="text-center text-xs muted mt-4"></div>
 
     <!-- Progress -->
@@ -42,7 +42,7 @@
   </div>
 
   <script>
-    console.log('[upsell wizard] 2025-08-20b');
+    console.log('[upsell wizard] 2025-08-21a');
     const $ = s => document.querySelector(s);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
@@ -59,13 +59,17 @@
       total: 0
     });
 
-    // Wizard step order
-    const steps = (() => {
-      if (plan === 'Listed Property Basic') return ['upgrade','banner','premium','pin'];
-      if (plan === 'Listed Property Plus')  return ['banner','premium','pin'];
-      if (plan === 'FSBO Plus')             return ['confidential','banner','premium','pin'];
-      return ['banner','premium','pin'];
-    })();
+    // Wizard step order – force Basic to always include 'upgrade' first
+    let steps = [];
+    if (plan === 'Listed Property Basic') {
+      steps = ['upgrade','banner','premium','pin'];
+    } else if (plan === 'Listed Property Plus') {
+      steps = ['banner','premium','pin'];
+    } else if (plan === 'FSBO Plus') {
+      steps = ['confidential','banner','premium','pin'];
+    } else {
+      steps = ['banner','premium','pin'];
+    }
     let idx = 0;
 
     const copies = {
@@ -83,13 +87,13 @@
       },
       premium: {
         title: 'Add Premium Placement ($10)',
-        body: 'Your listing will appear ahead of non-premium listings in your search area until your home is sold.',
+        body: 'Your listing will appear ahead of non-premium listings until your home is sold.',
         price: 10,
         key: 'premium'
       },
       pin: {
         title: 'Add Pin Placement ($50)',
-        body: 'Your listing will be pinned ahead of all listings in your search area until your home is sold. Includes Premium Placement for free.',
+        body: 'Your listing will be pinned ahead of all listings until your home is sold. Includes Premium Placement for free.',
         price: 50,
         key: 'pin'
       },
@@ -108,7 +112,7 @@
       const sid = steps[idx];
       const c = copies[sid];
 
-      // Current plan description for Basic on first step only
+      // Current plan description for Basic only on Upgrade step
       const planRow = $('#planRow');
       if (plan === 'Listed Property Basic' && sid === 'upgrade') {
         planRow.innerHTML = `
@@ -116,7 +120,7 @@
             <strong>Current plan: Listed Property Basic – FREE</strong>
             <br>
             <span class="muted">
-              (Includes: printable commission communication letter, map search, listing price, main photo, address, parcel number, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone.  Does not include full property description.)
+              (Includes: printable commission communication letter, map search, listing price, main photo, address, parcel number, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone. Does not include full property description.)
             </span>
           </div>
         `;
