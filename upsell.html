@@ -3,206 +3,103 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Upgrade Your Listing | GuaranteedCommission.com</title>
+  <title>Upsells | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .card { background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); padding:1rem 1.25rem; }
-    .muted { color:#6b7280; }
-  </style>
 </head>
-<body class="bg-gray-100 text-gray-900">
-  <div class="max-w-xl mx-auto p-4">
-    <div class="text-center mb-3">
-      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell wizard build 2025-08-21a</span>
-    </div>
+<body class="bg-gray-100 text-gray-800">
 
-    <!-- Always use same heading -->
-    <h1 class="text-2xl font-bold text-center">Upgrade Your Listing</h1>
-    <p class="text-sm text-center muted mt-1">You will be able to review all upgrades and upsells at Review &amp; Checkout.</p>
-
-    <!-- Current plan (only on Basic/Upgrade step) -->
-    <div id="planRow" class="text-center text-xs muted mt-4"></div>
-
-    <!-- Progress -->
-    <div id="prog" class="text-xs text-center muted mt-4"></div>
-
-    <!-- Step container -->
-    <div id="stepHost" class="mt-4"></div>
-
-    <!-- Nav actions -->
-    <div class="mt-6 flex items-center justify-between">
-      <a href="/index.html" class="px-4 py-2 rounded border">Back</a>
-      <div class="flex gap-2">
-        <button id="btnSkip" class="px-4 py-2 rounded border">Skip</button>
-        <button id="btnAdd" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Add &amp; Continue</button>
-        <!-- Shown only on last step -->
-        <a id="btnCheckout" href="/checkout.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">Review &amp; Checkout</a>
+  <!-- Header -->
+  <header class="bg-white shadow">
+    <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
+      <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
+        Accredited Investors Only
+      </button>
+      <div class="text-center flex-1">
+        <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
+        <p class="text-sm text-red-600 mt-1 px-2">
+          Guaranteeing commissions so your home will sell quickly at a higher price.
+        </p>
       </div>
+      <button onclick="openPressModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded">
+        Press Inquiry
+      </button>
     </div>
-  </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto bg-white p-6 rounded shadow mt-8">
+    <h2 id="upsellTitle" class="text-xl font-bold mb-4">Upgrade Your Listing</h2>
+    <p id="currentPlan" class="text-sm text-gray-600 mb-6"></p>
+
+    <div id="upsellContent" class="space-y-6"></div>
+
+    <div class="mt-8 flex justify-between">
+      <button id="backBtn" class="px-4 py-2 rounded border">Back</button>
+      <button id="nextBtn" class="px-6 py-2 rounded bg-green-600 text-white">Next</button>
+    </div>
+  </main>
 
   <script>
-    console.log('[upsell wizard] 2025-08-21a');
-    const $ = s => document.querySelector(s);
-    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
-    const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-
-    const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-    if (!localStorage.getItem('originalPlan')) localStorage.setItem('originalPlan', plan);
-
-    let data = getJSON('checkoutData', {
-      plan,
-      base: plan === 'FSBO Plus' ? 100 : (plan === 'Listed Property Plus' ? 20 : 0),
-      upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
-      prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
-      meta: {},
-      total: 0
-    });
-
-    // Wizard step order – force Basic to always include 'upgrade' first
-    let steps = [];
-    if (plan === 'Listed Property Basic') {
-      steps = ['upgrade','banner','premium','pin'];
-    } else if (plan === 'Listed Property Plus') {
-      steps = ['banner','premium','pin'];
-    } else if (plan === 'FSBO Plus') {
-      steps = ['confidential','banner','premium','pin'];
-    } else {
-      steps = ['banner','premium','pin'];
-    }
-    let idx = 0;
-
-    const copies = {
-      upgrade: {
-        title: 'Upgrade to Listed Property Plus ($20)',
-        body: 'Display full property description and up to 20 photos until your home is sold.',
-        price: 20,
-        key: 'upgradeToPlus'
+    const upsells = [
+      {
+        id: "upgradeToPlus",
+        title: "Upgrade to Listed Property Plus ($20)",
+        desc: "Upgrade Your Listing",
+        planNote: "Current plan: Listed Property Basic – FREE (Includes: printable commission communication letter, map search, listing price, main photo, address, parcel number, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone.  Does not include full property description.)"
       },
-      banner: {
-        title: 'Add Banner ($10)',
-        body: 'Add a 30-character banner. Highlight special features, open houses, or whatever you like – as often as you like – until your home is sold.',
-        price: 10,
-        key: 'banner'
+      {
+        id: "banner",
+        title: "Add Banner ($10)",
+        desc: "Upgrade Your Listing",
+        planNote: ""
       },
-      premium: {
-        title: 'Add Premium Placement ($10)',
-        body: 'Your listing will appear ahead of non-premium listings until your home is sold.',
-        price: 10,
-        key: 'premium'
+      {
+        id: "premium",
+        title: "Add Premium Placement ($10)",
+        desc: "Upgrade Your Listing",
+        planNote: ""
       },
-      pin: {
-        title: 'Add Pin Placement ($50)',
-        body: 'Your listing will be pinned ahead of all listings until your home is sold. Includes Premium Placement for free.',
-        price: 50,
-        key: 'pin'
-      },
-      confidential: {
-        title: 'Confidential FSBO Upgrade ($100)',
-        body: 'Keep your contact information private and avoid solicitation. GuaranteedCommission.com will not sell your information to third parties.',
-        price: 100,
-        key: 'confidential'
+      {
+        id: "pin",
+        title: "Add Pin Placement ($50)",
+        desc: "Upgrade Your Listing",
+        planNote: ""
       }
-    };
+    ];
+
+    let step = 0;
+    const data = JSON.parse(localStorage.getItem("checkoutData") || "{}");
 
     function renderStep() {
-      const host = $('#stepHost');
-      host.innerHTML = '';
-      $('#prog').textContent = `Step ${idx+1} of ${steps.length}`;
-      const sid = steps[idx];
-      const c = copies[sid];
-
-      // Current plan description for Basic only on Upgrade step
-      const planRow = $('#planRow');
-      if (plan === 'Listed Property Basic' && sid === 'upgrade') {
-        planRow.innerHTML = `
-          <div class="text-xs text-gray-700">
-            <strong>Current plan: Listed Property Basic – FREE</strong>
-            <br>
-            <span class="muted">
-              (Includes: printable commission communication letter, map search, listing price, main photo, address, parcel number, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone. Does not include full property description.)
-            </span>
-          </div>
-        `;
-        planRow.classList.remove('hidden');
-      } else {
-        planRow.classList.add('hidden');
-        planRow.innerHTML = '';
-      }
-
-      const checked = !!data.upgrades[c.key];
-      const el = document.createElement('section');
-      el.className = 'card';
-      el.innerHTML = `
-        <h2 class="text-lg font-semibold">${c.title}</h2>
-        <p class="text-sm muted mt-1">${c.body}</p>
-        <div class="mt-3 flex items-center justify-between">
-          <label class="flex items-center gap-2 text-sm">
-            <input id="ck" type="checkbox" class="h-4 w-4" ${checked ? 'checked':''}/>
-            <span>Select</span>
-          </label>
-          <span class="font-semibold">$${c.price}</span>
-        </div>
-      `;
-      host.appendChild(el);
-
-      if (idx === steps.length - 1) $('#btnCheckout').classList.remove('hidden');
-      else $('#btnCheckout').classList.add('hidden');
-    }
-
-    function saveCurrent(addSelected) {
-      const sid = steps[idx];
-      const c = copies[sid];
-      const uiChecked = !!document.querySelector('#ck')?.checked;
-      const final = addSelected ? (uiChecked || true) : uiChecked;
-
-      if (sid === 'upgrade') {
-        data.upgrades.upgradeToPlus = !!final;
-        if (final) {
-          localStorage.setItem('selectedPlan','Listed Property Plus');
-          data.plan = 'Listed Property Plus';
-          data.base = 20;
-        }
-      } else if (sid === 'banner') data.upgrades.banner = !!final;
-      else if (sid === 'premium') data.upgrades.premium = !!final;
-      else if (sid === 'pin') { data.upgrades.pin = !!final; if (final) data.upgrades.premium = true; }
-      else if (sid === 'confidential') data.upgrades.confidential = !!final;
-
-      setJSON('checkoutData', data);
-    }
-
-    function nextStep() {
-      if (idx >= steps.length - 1) {
-        setJSON('checkoutData', data);
-        window.location.href = '/checkout.html';
+      const u = upsells[step];
+      if (!u) {
+        window.location.href = "/checkout.html";
         return;
       }
-      idx++;
-      renderStep();
+      document.getElementById("upsellTitle").textContent = u.desc;
+      document.getElementById("currentPlan").textContent = u.planNote || "";
+
+      document.getElementById("upsellContent").innerHTML = `
+        <h3 class="text-lg font-semibold mb-2">${u.title}</h3>
+        <p class="text-sm text-gray-600">${u.desc}</p>
+        <label class="flex items-center mt-4">
+          <input type="checkbox" id="upsellChk" class="mr-2" ${data.upgrades?.[u.id] ? "checked" : ""}/>
+          <span>Select this upgrade</span>
+        </label>
+      `;
     }
 
-    $('#btnSkip').addEventListener('click', () => {
-      if (idx === steps.length - 1) {
-        setJSON('checkoutData', data);
-        window.location.href = '/checkout.html';
-      } else {
-        saveCurrent(false);
-        nextStep();
-      }
+    document.getElementById("backBtn").addEventListener("click", ()=>{
+      if (step > 0) step--;
+      renderStep();
     });
-
-    $('#btnAdd').addEventListener('click', () => {
-      saveCurrent(true);
-      if (idx === steps.length - 1) {
-        window.location.href = '/checkout.html';
-      } else {
-        nextStep();
-      }
-    });
-
-    $('#btnCheckout').addEventListener('click', () => {
-      setJSON('checkoutData', data);
-      window.location.href = '/checkout.html';
+    document.getElementById("nextBtn").addEventListener("click", ()=>{
+      const u = upsells[step];
+      const chk = document.getElementById("upsellChk").checked;
+      data.upgrades = data.upgrades || {};
+      data.upgrades[u.id] = chk;
+      localStorage.setItem("checkoutData", JSON.stringify(data));
+      step++;
+      renderStep();
     });
 
     renderStep();
