@@ -2,41 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login / Create Account | GuaranteedCommission.com</title>
-  <meta name="description" content="Secure login and account creation with strong password protection and verification." />
-  <title>Log In | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .badge { font-size:11px; background:#f3f4f6; color:#4b5563; padding:.1rem .5rem; border-radius:.375rem; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-  <div class="min-h-screen flex items-center justify-center px-4">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
-      <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">login build 2025-08-14b</span>
-<body class="bg-gray-100 text-gray-800">
-
-  <!-- Header -->
+  <!-- Header (original copy restored) -->
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
-      <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
-        Accredited Investors Only
-      </button>
-      <div class="text-center flex-1">
-        <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
-        <p class="text-sm text-red-600 mt-1 px-2">
-          Guaranteeing commissions so your home will sell quickly at a higher price.
+      <a href="/index.html" class="text-xs text-blue-600 hover:underline">&larr; Home</a>
+      <div class="text-center">
+        <h1 class="text-2xl font-bold">GuaranteedCommission.com</h1>
+        <p class="text-xs text-gray-600">
+          Guaranteeing buyer agent’s commissions so your home will sell quickly at a higher price.
         </p>
       </div>
+      <span></span>
+    </div>
+  </header>
 
-      <button id="dbgToggle" class="absolute top-2 right-2 text-[11px] px-2 py-1 rounded border">Debug</button>
-      <div id="dbgPanel" class="hidden mt-2 text-[11px] bg-gray-50 border rounded p-2 whitespace-pre-wrap break-all"></div>
-
-      <div class="text-center mb-4">
-        <h1 class="text-2xl font-bold">Secure Access</h1>
-        <p class="text-sm text-gray-600 mt-1">State-of-the-art security & verification</p>
+  <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
+      <div class="text-center mb-3">
+        <span class="badge">secure access build 2025-08-14b</span>
       </div>
 
+      <!-- Tabs -->
       <div class="flex border-b mb-4" role="tablist" aria-label="Auth Tabs">
         <button type="button" id="tab-signin"
           class="flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700"
@@ -48,19 +42,6 @@
           aria-selected="false" aria-controls="panel-create">
           Create Account
         </button>
-      <button onclick="openPressModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded">
-        Press Inquiry
-      </button>
-    </div>
-  </header>
-
-  <main class="max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
-    <h2 class="text-xl font-bold mb-4">Secure Access</h2>
-    <form id="loginForm" class="space-y-3">
-      <input type="email" id="email" placeholder="Email" class="w-full border p-2 rounded" required>
-      <div class="relative">
-        <input type="password" id="password" placeholder="Password" class="w-full border p-2 rounded" required>
-        <button type="button" onclick="togglePassword()" class="absolute right-2 top-2 text-xs text-blue-600">Show</button>
       </div>
 
       <div id="status" class="hidden mb-4 text-sm rounded-lg p-3" role="alert"></div>
@@ -174,200 +155,111 @@
       <p class="text-[11px] text-gray-500 text-center mt-4">
         We never sell your data. Used only for escrow &amp; identification.
       </p>
-      <button type="submit" class="w-full bg-green-600 text-white py-2 rounded">Log In</button>
-    </form>
-    <div class="flex justify-between text-sm mt-3">
-      <a href="/create-account.html" class="text-blue-600 hover:underline">Create New Account</a>
-      <a href="/forgot-password.html" class="text-blue-600 hover:underline">Forgot Password?</a>
     </div>
-  </div>
   </main>
 
   <script>
     console.log('[login] build 2025-08-14b');
 
     const $ = (id) => document.getElementById(id);
-    const statusBox = $('status');
     const safeJSON = (s)=>{ try { return JSON.parse(s); } catch { return null; } };
-
     function setStatus(msg, ok=false) {
-      statusBox.classList.remove('hidden');
-      statusBox.textContent = msg;
-      statusBox.className = ok
+      const el = $('status');
+      el.classList.remove('hidden');
+      el.textContent = msg;
+      el.className = ok
         ? 'mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
         : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
     }
+    function onlyDigits(s){ return (s||'').replace(/\D/g,''); }
+    function formatPhone(s){ const d=onlyDigits(s).slice(0,10); if(d.length<=3)return d; if(d.length<=6)return d.slice(0,3)+'-'+d.slice(3); return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6); }
+    function isValidPhone(s){ return onlyDigits(s).length===10; }
 
-    function getAccounts() { return safeJSON(localStorage.getItem('accounts')) || {}; }
-    function saveAccounts(obj) { localStorage.setItem('accounts', JSON.stringify(obj || {})); }
-    function getLegacyAccount() { return safeJSON(localStorage.getItem('userAccount')); }
-    function setLegacyAccount(acct) { localStorage.setItem('userAccount', JSON.stringify(acct)); }
-
-    function renderDebug() {
-      const dump = {
-        formData: safeJSON(localStorage.getItem('formData')),
-        selectedPlan: localStorage.getItem('selectedPlan'),
-        loggedInEmail: localStorage.getItem('loggedInEmail'),
-        verificationCode: localStorage.getItem('verificationCode'),
-        verifyTarget: localStorage.getItem('verifyTarget')
-      };
-      $('dbgPanel').textContent = JSON.stringify(dump, null, 2);
-    function togglePassword(){
-      const input = document.getElementById('password');
-      if(input.type === 'password'){ input.type = 'text'; } else { input.type = 'password'; }
-    }
-    $('dbgToggle').addEventListener('click', () => {
-      $('dbgPanel').classList.toggle('hidden');
-      renderDebug();
-    });
-
-    // remove any old "role" fields (defensive)
-    (function nukeRole() {
-      ['role','roleSelect','userRole'].forEach(id => { const el = document.getElementById(id); if (el) (el.closest('div')||el).remove(); });
-    })();
-
-    function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
-    function formatPhone(s){
-      const d = onlyDigits(s).slice(0,10);
-      if (d.length <= 3) return d;
-      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
-      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
-    }
-    function isValidPhone(s){ return onlyDigits(s).length === 10; }
-
-    // migrate legacy account shards into accounts object
-    (function migrate() {
-      const accounts = getAccounts();
-      const ad = safeJSON(localStorage.getItem('accountData'));
-      if (ad?.email && ad?.password) accounts[ad.email.toLowerCase()] = { name: ad.name||'', email: ad.email.toLowerCase(), password: ad.password, phone: ad.phone||'' };
-      const legacy = getLegacyAccount();
-      if (legacy?.email && legacy?.password) accounts[legacy.email.toLowerCase()] = { name: legacy.name||'', email: legacy.email.toLowerCase(), password: legacy.password, phone: legacy.phone||'' };
-      saveAccounts(accounts);
-    })();
-
-    // tabs
-    const tabSignin = $('tab-signin');
-    const tabCreate = $('tab-create');
-    const loginForm = $('loginForm');
-    const createForm = $('createForm');
-    const goCreate = $('goCreate');
-    const goSignin = $('goSignin');
-
-    function showSignin() {
-      tabSignin.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
-      tabSignin.setAttribute('aria-selected','true');
-      tabCreate.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-      tabCreate.setAttribute('aria-selected','false');
-      loginForm.classList.remove('hidden'); createForm.classList.add('hidden');
-    }
-    function showCreate() {
-      tabCreate.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
-      tabCreate.setAttribute('aria-selected','true');
-      tabSignin.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-      tabSignin.setAttribute('aria-selected','false');
-      createForm.classList.remove('hidden'); loginForm.classList.add('hidden');
-    }
+    // Tabs
+    const tabSignin=$('tab-signin'), tabCreate=$('tab-create'), loginForm=$('loginForm'), createForm=$('createForm');
+    function showSignin(){ tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700'; tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700'; loginForm.classList.remove('hidden'); createForm.classList.add('hidden'); }
+    function showCreate(){ tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700'; tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700'; createForm.classList.remove('hidden'); loginForm.classList.add('hidden'); }
     tabSignin.addEventListener('click', showSignin);
     tabCreate.addEventListener('click', showCreate);
-    goCreate?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
-    goSignin?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
+    $('goCreate')?.addEventListener('click',(e)=>{e.preventDefault();showCreate();});
+    $('goSignin')?.addEventListener('click',(e)=>{e.preventDefault();showSignin();});
 
-    // prefill from Box 2 — FSBO-only phone; email pulls fsboEmail if present
-    (function prefill() {
-      const formData = safeJSON(localStorage.getItem('formData')) || {};
+    // Prefill from Box 2 (working baseline)
+    (function prefill(){
+      const fd = safeJSON(localStorage.getItem('formData')) || {};
       const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-
-      // Name (neutral)
-      const name = formData.name || localStorage.getItem('sellerName') || '';
-      if (name) { const n = $('c_name'); if (n) n.value = name; }
-
-      // Email: prefer fsboEmail if present; else any provided email
-      const email = formData.fsboEmail || formData.email || localStorage.getItem('sellerEmail') || '';
-      if (email) {
-        $('email').value = email;
-        $('c_email').value = email;
+      const name = fd.name || '';
+      if (name) $('c_name').value = name;
+      const email = fd.fsboEmail || localStorage.getItem('loggedInEmail') || '';
+      if (email) { $('email').value = email; $('c_email').value = email; }
+      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
+        $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
-
-      // Phone: FSBO ONLY. Do not prefill for Basic/Plus to avoid agent phone bleed.
-      if (plan.includes('FSBO')) {
-        const phone = formData.phone || formData.agentPhone || localStorage.getItem('sellerPhone') || '';
-        if (phone) $('c_phone').value = formatPhone(phone);
-      }
-
-      if (localStorage.getItem('nextAfterLogin')) showCreate();
     })();
 
-    function wireToggle(inputId, btnId) {
-      const input = $(inputId); const btn = $(btnId);
-      if (!input || !btn) return;
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const vis = input.type === 'text';
-        input.type = vis ? 'password' : 'text';
-        btn.textContent = vis ? 'Show' : 'Hide';
-        input.focus({ preventScroll: true });
-      });
-    }
-    wireToggle('password','togglePwd');
-    wireToggle('c_password','togglePwdC1');
-    wireToggle('c_password2','togglePwdC2');
+    // Show/hide pw
+    (function wireToggle(id,btn){const i=$(id),b=$(btn); if(i&&b){ b.addEventListener('click',(e)=>{e.preventDefault(); const v=i.type==='text'; i.type=v?'password':'text'; b.textContent=v?'Show':'Hide';}); }})('password','togglePwd');
 
-    const phoneEl = $('c_phone');
-    phoneEl?.addEventListener('input', () => {
-      const cur = phoneEl.selectionStart;
-      const before = phoneEl.value;
-      phoneEl.value = formatPhone(before);
-      phoneEl.selectionStart = phoneEl.selectionEnd = Math.min(cur + (phoneEl.value.length - before.length), phoneEl.value.length);
-    });
-
-    function scorePassword(p) {
-      let s=0; if (!p) return 0;
-      if (p.length>=10) s++; if (/[a-z]/.test(p)&&/[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; if (p.length>=14) s++;
-      return Math.min(s,4);
-    }
-    const cPwd = $('c_password'), cPwd2=$('c_password2'), bar=$('strengthBar'), st=$('strengthText'), mm=$('matchMsg');
+    // Strength meter
+    const cPwd=$('c_password'), cPwd2=$('c_password2'), bar=(id=>{const d=document.createElement('div');return d;})();
+    function scorePassword(p){ let s=0; if(!p)return 0; if(p.length>=10)s++; if(/[a-z]/.test(p)&&/[A-Z]/.test(p))s++; if(/\d/.test(p))s++; if(/[^A-Za-z0-9]/.test(p))s++; if(p.length>=14)s++; return Math.min(s,4); }
     function updateStrength(){
-      const s=scorePassword(cPwd.value), widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
-      bar.style.width=widths[s]; bar.style.backgroundColor=colors[s]; st.textContent='Password strength: '+labels[s];
-      if (!cPwd2.value.length){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
-      if (cPwd.value===cPwd2.value){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
+      const p1=$('c_password').value, p2=$('c_password2').value;
+      const widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
+      const s=scorePassword(p1);
+      $('strengthBar').style.width=widths[s];
+      $('strengthBar').style.backgroundColor=colors[s];
+      $('strengthText').textContent='Password strength: '+labels[s];
+      const mm=$('matchMsg');
+      if(!p2){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
+      if(p1===p2){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
       else { mm.textContent='Passwords do not match'; mm.className='text-xs mt-1 text-red-600'; }
     }
-    cPwd?.addEventListener('input', updateStrength);
-    cPwd2?.addEventListener('input', updateStrength);
+    $('c_password')?.addEventListener('input', updateStrength);
+    $('c_password2')?.addEventListener('input', updateStrength);
+    $('c_phone')?.addEventListener('input', ()=>{ const el=$('c_phone'); const cur=el.selectionStart; const before=el.value; el.value=formatPhone(before); el.selectionStart=el.selectionEnd=Math.min(cur+(el.value.length-before.length), el.value.length); });
 
-    // CREATE
-    $('createForm').addEventListener('submit', (e) => {
+    // Local accounts (demo)
+    const getAccounts=()=> safeJSON(localStorage.getItem('accounts')) || {};
+    const saveAccounts=(obj)=> localStorage.setItem('accounts', JSON.stringify(obj||{}));
+
+    // Sign In
+    loginForm.addEventListener('submit', (e)=>{
       e.preventDefault();
-      const name=$('c_name').value.trim(), email=$('c_email').value.trim().toLowerCase(), phone=$('c_phone').value.trim();
-      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
-      if (scorePassword(cPwd.value)<3){ setStatus('Please use a stronger password (aim for Good or Strong).'); showCreate(); return; }
-      if (cPwd.value!==cPwd2.value){ setStatus('Passwords do not match.'); showCreate(); return; }
-      const accounts=getAccounts(); accounts[email]={ name,email,password:cPwd.value,phone }; saveAccounts(accounts); setLegacyAccount({name,email,password:cPwd.value,phone});
-      localStorage.setItem('isLoggedIn','true'); localStorage.setItem('loggedInEmail',email);
-      const code = Math.floor(100000+Math.random()*900000).toString(); localStorage.setItem('verificationCode',code); localStorage.setItem('verifyTarget',email);
-      setStatus(`Account created for ${email}. 6-digit code: ${code}. Redirecting…`, true); renderDebug();
-      const next=localStorage.getItem('nextAfterLogin')||'/verify-code.html'; setTimeout(()=>{ window.location.href=next; }, 800);
+      const email=$('email').value.trim().toLowerCase();
+      const password=$('password').value;
+      const accounts=getAccounts();
+      const acct=accounts[email];
+      if(!acct){ setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); return; }
+      if(acct.password!==password){ setStatus('Invalid email or password.'); return; }
+      localStorage.setItem('isLoggedIn','true');
+      localStorage.setItem('loggedInEmail', email);
+      if(!localStorage.getItem('verificationCode')){
+        const code = String(Math.floor(100000+Math.random()*900000));
+        localStorage.setItem('verificationCode', code);
+        localStorage.setItem('verifyTarget', email);
+      }
+      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
+      window.location.href = next;
     });
 
-    // SIGN IN
-    $('loginForm').addEventListener('submit', (e) => {
-    document.getElementById('loginForm').addEventListener('submit', (e)=>{
+    // Create Account
+    createForm.addEventListener('submit', (e)=>{
       e.preventDefault();
-      const email=$('email').value.trim().toLowerCase(), password=$('password').value;
-      const accounts=getAccounts(); const acct=accounts[email] || getLegacyAccount();
-      if (!acct || (acct.email && acct.email.toLowerCase()!==email)) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); renderDebug(); return; }
-      if (acct.password!==password){ setStatus(`Invalid email or password for ${email}.`); renderDebug(); return; }
-      localStorage.setItem('isLoggedIn','true'); localStorage.setItem('loggedInEmail',email);
-      if (!localStorage.getItem('verificationCode')) localStorage.setItem('verificationCode', Math.floor(100000+Math.random()*900000).toString());
-      localStorage.setItem('verifyTarget', email);
-      setStatus(`Login successful for ${email}. Redirecting…`, true); renderDebug();
-      const next=localStorage.getItem('nextAfterLogin')||'/verify-code.html'; setTimeout(()=>{ window.location.href=next; }, 600);
-      // Stub login logic
-      const email = document.getElementById('email').value.trim();
-      localStorage.setItem('loggedInEmail', email);
-      const next = localStorage.getItem('nextAfterLogin') || '/upsell.html';
+      const name=$('c_name').value.trim();
+      const email=$('c_email').value.trim().toLowerCase();
+      const phone=$('c_phone').value.trim();
+      const p1=$('c_password').value, p2=$('c_password2').value;
+      if(!isValidPhone(phone)){ setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
+      if(scorePassword(p1)<3){ setStatus('Please use a stronger password (aim for Good or Strong).'); return; }
+      if(p1!==p2){ setStatus('Passwords do not match.'); return; }
+      const accounts=getAccounts(); accounts[email]={ name,email,password:p1,phone }; saveAccounts(accounts);
+      localStorage.setItem('isLoggedIn','true'); localStorage.setItem('loggedInEmail', email);
+      const code = String(Math.floor(100000+Math.random()*900000));
+      localStorage.setItem('verificationCode', code); localStorage.setItem('verifyTarget', email);
+      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
       window.location.href = next;
     });
   </script>
 </body>
+</html>
