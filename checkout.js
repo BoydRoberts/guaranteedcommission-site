@@ -1,17 +1,16 @@
-// /checkout.js — build 2025-08-21c (Stripe server session; robust id/url; FSBO confidential sanitized)
+// /checkout.js — build 2025-08-21d (client builds lineItems -> server { lineItems, successUrl, cancelUrl })
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-21c");
+  console.log("[checkout.js] build 2025-08-21d");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
-  const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-  // Publishable key — safe on client (test mode)
+  // Publishable key (test)
   const STRIPE_PUBLISHABLE_KEY = "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
   let stripe = null;
   try { stripe = Stripe(STRIPE_PUBLISHABLE_KEY); } catch (e) { console.error("Stripe init error:", e); }
 
-  // ----- Who line (no ~$ approx) -----
+  // ---- Who line (no ~$) ----
   const formData = getJSON("formData", {});
   const agentListing = getJSON("agentListing", {});
   const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
@@ -28,7 +27,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const addr = formData.address || "[Full Address]";
     const name = formData.name || "[Name]";
     const comm = commissionDisplay();
-
     if (planLS.includes("FSBO")) {
       const email = formData.fsboEmail || "[owner/seller email]";
       const phone = formData.phone || formData.agentPhone || "[owner/seller phone]";
@@ -42,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
     $("whoRow").classList.remove("hidden");
   })();
 
-  // ----- checkoutData normalize -----
+  // ---- checkoutData normalize ----
   let data = getJSON("checkoutData", null);
   if (!data) {
     const plan = planLS;
@@ -55,7 +53,6 @@ document.addEventListener("DOMContentLoaded", () => {
       total: 0
     };
   } else {
-    // normalize upgrades
     if (Array.isArray(data.upgrades)) {
       const arr = data.upgrades.map(s => (s||"").toLowerCase());
       data.upgrades = {
@@ -71,7 +68,6 @@ document.addEventListener("DOMContentLoaded", () => {
         data.upgrades || {}
       );
     }
-    // normalize prices
     data.prices = Object.assign(
       { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
       data.prices || {}
@@ -81,39 +77,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ----- totals -----
+  // ---- totals ----
   function recompute(d) {
     let plan = d.plan;
     let base = d.base;
-
-    // Basic -> Plus if upgrade toggled
     if (plan === "Listed Property Basic" && d.upgrades.upgradeToPlus) {
       plan = "Listed Property Plus";
       base = d.prices.plus;
       localStorage.setItem("selectedPlan", "Listed Property Plus");
     }
-
     let total = base;
     if (d.upgrades.banner) total += d.prices.banner;
     if (d.upgrades.pin) total += d.prices.pin;
     else if (d.upgrades.premium) total += d.prices.premium;
 
-    // SANITIZE: confidential is FSBO-only (prevents accidental add for Basic/Plus)
+    // Confidential is **FSBO only** (sanitize)
     if (plan === "FSBO Plus") {
       if (d.upgrades.confidential) total += d.prices.confidential;
     } else {
       d.upgrades.confidential = false;
     }
 
-    d.plan = plan;
-    d.base = base;
-    d.total = total;
+    d.plan = plan; d.base = base; d.total = total;
     return d;
   }
   data = recompute(data);
-  setJSON("checkoutData", data);
+  localStorage.setItem("checkoutData", JSON.stringify(data));
 
-  // ----- summary -----
+  // ---- summary ----
   function renderSummary() {
     $("planName").textContent = data.plan;
     $("basePrice").textContent = (data.base || 0);
@@ -125,7 +116,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (data.upgrades.pin) sel.push(`Pin Placement ($${data.prices.pin})`);
     else if (data.upgrades.premium) sel.push(`Premium Placement ($${data.prices.premium})`);
     if (data.plan === "FSBO Plus" && data.upgrades.confidential) sel.push(`Confidential FSBO Upgrade ($${data.prices.confidential})`);
-
     $("selectedList").innerHTML = sel.length ? sel.map(s => `<li>${s}</li>`).join("") : `<li class="text-gray-400">None</li>`;
 
     if ((data.total || 0) <= 0) {
@@ -137,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ----- toggles -----
+  // ---- toggles ----
   function renderLastChance() {
     const box = $("upsellChoices");
     box.innerHTML = "";
@@ -190,24 +180,22 @@ document.addEventListener("DOMContentLoaded", () => {
           data.upgrades.pin = checked;
           if (checked) data.upgrades.premium = true;
         } else if (k === "confidential") {
-          // only allow toggle if FSBO plan; otherwise ignore
-          data.upgrades.confidential = data.plan === "FSBO Plus" ? checked : false;
+          data.upgrades.confidential = (data.plan === "FSBO Plus") ? checked : false;
         }
 
         data = recompute(data);
-        setJSON("checkoutData", data);
+        localStorage.setItem("checkoutData", JSON.stringify(data));
         renderSummary();
-        renderLastChance(); // keep dependencies clean
+        renderLastChance();
       });
     });
   }
 
-  // ----- back -----
   $("backBtn").addEventListener("click", () => {
     window.location.href = "/upsell.html";
   });
 
-  // ----- pay now -----
+  // ---- Pay Now: build lineItems and call server ----
   $("payNowBtn").addEventListener("click", async () => {
     const btn = $("payNowBtn");
     btn.disabled = true;
@@ -215,22 +203,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       if (!stripe) throw new Error("Stripe not available on this page.");
+      if ((data.total || 0) <= 0) { window.location.href = "/signature.html"; return; }
 
-      if ((data.total || 0) <= 0) {
-        window.location.href = "/signature.html";
-        return;
-      }
+      // Stripe Price IDs (test)
+      const PRICE_IDS = {
+        PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
+        FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
+        BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR",
+        PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h",
+        PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
+        CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm"
+      };
 
-      // Payload for server (plan + sanitized upgrades)
+      // Build lineItems per current plan/upgrades
+      const items = [];
+      const isFSBO = data.plan === "FSBO Plus";
+      const isPlus = data.plan === "Listed Property Plus";
+      const isBasic= data.plan === "Listed Property Basic";
+
+      if (isFSBO && (data.base ?? data.prices.fsbo) > 0) items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
+      else if (isPlus && (data.base ?? data.prices.plus) > 0) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
+      else if (isBasic && data.upgrades.upgradeToPlus) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
+
+      if (data.upgrades.banner)  items.push({ price: PRICE_IDS.BANNER,  quantity: 1 });
+      if (data.upgrades.pin)     items.push({ price: PRICE_IDS.PIN,     quantity: 1 });
+      else if (data.upgrades.premium) items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
+
+      if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
+
+      if (!items.length) throw new Error("No purchasable line items.");
+
       const payload = {
-        plan: data.plan,
-        upgrades: {
-          upgradeToPlus: !!data.upgrades.upgradeToPlus,
-          banner:        !!data.upgrades.banner,
-          premium:       !!data.upgrades.premium,
-          pin:           !!data.upgrades.pin,
-          confidential:  data.plan === "FSBO Plus" ? !!data.upgrades.confidential : false
-        }
+        lineItems: items,
+        successUrl: window.location.origin + "/signature.html",
+        cancelUrl:  window.location.origin + "/checkout.html"
       };
 
       const resp = await fetch("/api/create-checkout-session", {
@@ -243,18 +249,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const out = ct.includes('application/json') ? await resp.json() : { error: "Non-JSON server response" };
       if (!resp.ok) throw new Error(out.error || "Server failed to create session.");
 
-      // Support both { id } and { url } responses
-      if (out.url) {
-        window.location.href = out.url;
-        return;
-      }
-      if (out.id) {
+      // Support both { url } and { id } returns
+      if (out.url) { window.location.href = out.url; return; }
+      if (out.id)  {
         const { error } = await stripe.redirectToCheckout({ sessionId: out.id });
         if (error) throw new Error(error.message || "Stripe redirect failed.");
         return;
       }
 
-      throw new Error("Server did not return a session id or url.");
+      throw new Error("Server returned neither url nor id.");
     } catch (err) {
       console.error("[checkout] payment error:", err);
       alert(err.message || "Payment could not start.");
@@ -264,7 +267,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ----- initial paint -----
+  // ---- initial paint ----
   if (!localStorage.getItem("originalPlan")) {
     localStorage.setItem("originalPlan", planLS);
   }
