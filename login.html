@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login / Create Account | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -10,15 +10,14 @@
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-
-  <!-- Header -->
+  <!-- Header (original copy restored) -->
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
       <a href="/index.html" class="text-xs text-blue-600 hover:underline">&larr; Home</a>
       <div class="text-center">
         <h1 class="text-2xl font-bold">GuaranteedCommission.com</h1>
         <p class="text-xs text-gray-600">
-          Guaranteeing commissions so your home will sell quickly at a higher price.
+          Guaranteeing buyer agent’s commissions so your home will sell quickly at a higher price.
         </p>
       </div>
       <span></span>
@@ -28,7 +27,7 @@
   <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-3">
-        <span class="badge">secure access build 2025-08-21</span>
+        <span class="badge">secure access build 2025-08-14b</span>
       </div>
 
       <!-- Tabs -->
@@ -45,7 +44,6 @@
         </button>
       </div>
 
-      <!-- Status -->
       <div id="status" class="hidden mb-4 text-sm rounded-lg p-3" role="alert"></div>
 
       <!-- SIGN IN -->
@@ -117,7 +115,6 @@
             </button>
           </div>
 
-          <!-- Strength -->
           <div class="mt-2">
             <div class="h-2 w-full bg-gray-200 rounded" aria-hidden="true">
               <div id="strengthBar" class="h-2 w-0 rounded"></div>
@@ -158,120 +155,73 @@
       <p class="text-[11px] text-gray-500 text-center mt-4">
         We never sell your data. Used only for escrow &amp; identification.
       </p>
-
-      <!-- Debug toggle -->
-      <button id="dbgToggle" class="absolute top-2 right-2 text-[11px] px-2 py-1 rounded border">Debug</button>
-      <pre id="dbgPanel" class="hidden mt-2 text-[11px] bg-gray-50 border rounded p-2 whitespace-pre-wrap break-all"></pre>
     </div>
   </main>
 
   <script>
-    console.log('[login] secure access build 2025-08-21');
+    console.log('[login] build 2025-08-14b');
 
-    // ------------- helpers -------------
     const $ = (id) => document.getElementById(id);
     const safeJSON = (s)=>{ try { return JSON.parse(s); } catch { return null; } };
-    const setStatus = (msg, ok=false) => {
+    function setStatus(msg, ok=false) {
       const el = $('status');
       el.classList.remove('hidden');
       el.textContent = msg;
       el.className = ok
         ? 'mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
         : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
-    };
-
-    // password show/hide
-    function wireToggle(inputId, btnId) {
-      const input = $(inputId);
-      const btn = $(btnId);
-      if (!input || !btn) return;
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const vis = input.type === 'text';
-        input.type = vis ? 'password' : 'text';
-        btn.textContent = vis ? 'Show' : 'Hide';
-        input.focus({ preventScroll: true });
-      });
     }
+    function onlyDigits(s){ return (s||'').replace(/\D/g,''); }
+    function formatPhone(s){ const d=onlyDigits(s).slice(0,10); if(d.length<=3)return d; if(d.length<=6)return d.slice(0,3)+'-'+d.slice(3); return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6); }
+    function isValidPhone(s){ return onlyDigits(s).length===10; }
 
-    // phone mask
-    function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
-    function formatPhone(s){
-      const d = onlyDigits(s).slice(0,10);
-      if (d.length <= 3) return d;
-      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
-      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
-    }
-    function isValidPhone(s){ return onlyDigits(s).length === 10; }
-
-    // password strength
-    function scorePassword(p) {
-      let s=0; if (!p) return 0;
-      if (p.length>=10) s++; if (/[a-z]/.test(p)&&/[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; if (p.length>=14) s++;
-      return Math.min(s,4);
-    }
-    function updateStrength(){
-      const p1 = $('c_password')?.value || '';
-      const p2 = $('c_password2')?.value || '';
-      const bar = $('strengthBar'), st=$('strengthText'), mm=$('matchMsg');
-      if (!bar || !st || !mm) return;
-      const s=scorePassword(p1), widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
-      bar.style.width=widths[s]; bar.style.backgroundColor=colors[s]; st.textContent='Password strength: '+labels[s];
-      if (!p2){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
-      if (p1===p2){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
-      else { mm.textContent='Passwords do not match'; mm.className='text-xs mt-1 text-red-600'; }
-    }
-
-    // tabs
+    // Tabs
     const tabSignin=$('tab-signin'), tabCreate=$('tab-create'), loginForm=$('loginForm'), createForm=$('createForm');
-    function showSignin(){
-      tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
-      tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-      loginForm.classList.remove('hidden'); createForm.classList.add('hidden');
-      tabSignin.setAttribute('aria-selected','true'); tabCreate.setAttribute('aria-selected','false');
-    }
-    function showCreate(){
-      tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
-      tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-      createForm.classList.remove('hidden'); loginForm.classList.add('hidden');
-      tabCreate.setAttribute('aria-selected','true'); tabSignin.setAttribute('aria-selected','false');
-    }
+    function showSignin(){ tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700'; tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700'; loginForm.classList.remove('hidden'); createForm.classList.add('hidden'); }
+    function showCreate(){ tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700'; tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700'; createForm.classList.remove('hidden'); loginForm.classList.add('hidden'); }
     tabSignin.addEventListener('click', showSignin);
     tabCreate.addEventListener('click', showCreate);
-    $('goCreate')?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
-    $('goSignin')?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
+    $('goCreate')?.addEventListener('click',(e)=>{e.preventDefault();showCreate();});
+    $('goSignin')?.addEventListener('click',(e)=>{e.preventDefault();showSignin();});
 
-    // prefill from Box 2 — FSBO-only phone; email prefers fsboEmail if present
-    (function prefill() {
+    // Prefill from Box 2 (working baseline)
+    (function prefill(){
       const fd = safeJSON(localStorage.getItem('formData')) || {};
       const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-
-      // name
-      if (fd.name) $('c_name').value = fd.name;
-
-      // email priority: fsboEmail, then any previous email
+      const name = fd.name || '';
+      if (name) $('c_name').value = name;
       const email = fd.fsboEmail || localStorage.getItem('loggedInEmail') || '';
       if (email) { $('email').value = email; $('c_email').value = email; }
-
-      // phone (FSBO only to avoid agent phone bleeding into seller)
       if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
         $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
-      if (localStorage.getItem('nextAfterLogin')) showCreate();
     })();
 
-    // wire toggles
-    wireToggle('password','togglePwd');
-    wireToggle('c_password','togglePwdC1');
-    wireToggle('c_password2','togglePwdC2');
+    // Show/hide pw
+    (function wireToggle(id,btn){const i=$(id),b=$(btn); if(i&&b){ b.addEventListener('click',(e)=>{e.preventDefault(); const v=i.type==='text'; i.type=v?'password':'text'; b.textContent=v?'Show':'Hide';}); }})('password','togglePwd');
+
+    // Strength meter
+    const cPwd=$('c_password'), cPwd2=$('c_password2'), bar=(id=>{const d=document.createElement('div');return d;})();
+    function scorePassword(p){ let s=0; if(!p)return 0; if(p.length>=10)s++; if(/[a-z]/.test(p)&&/[A-Z]/.test(p))s++; if(/\d/.test(p))s++; if(/[^A-Za-z0-9]/.test(p))s++; if(p.length>=14)s++; return Math.min(s,4); }
+    function updateStrength(){
+      const p1=$('c_password').value, p2=$('c_password2').value;
+      const widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
+      const s=scorePassword(p1);
+      $('strengthBar').style.width=widths[s];
+      $('strengthBar').style.backgroundColor=colors[s];
+      $('strengthText').textContent='Password strength: '+labels[s];
+      const mm=$('matchMsg');
+      if(!p2){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
+      if(p1===p2){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
+      else { mm.textContent='Passwords do not match'; mm.className='text-xs mt-1 text-red-600'; }
+    }
     $('c_password')?.addEventListener('input', updateStrength);
     $('c_password2')?.addEventListener('input', updateStrength);
-    $('c_phone')?.addEventListener('input', ()=>{ const el=$('c_phone'); const cur=el.selectionStart; const before=el.value; el.value=formatPhone(before); el.selectionStart=el.selectionEnd=Math.min(cur+(el.value.length-before.length), el.value.length) });
+    $('c_phone')?.addEventListener('input', ()=>{ const el=$('c_phone'); const cur=el.selectionStart; const before=el.value; el.value=formatPhone(before); el.selectionStart=el.selectionEnd=Math.min(cur+(el.value.length-before.length), el.value.length); });
 
-    // Basic local account store (in-browser demo)
-    const ACC_KEY='accounts';
-    const getAccounts = ()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
-    const saveAccounts = (obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
+    // Local accounts (demo)
+    const getAccounts=()=> safeJSON(localStorage.getItem('accounts')) || {};
+    const saveAccounts=(obj)=> localStorage.setItem('accounts', JSON.stringify(obj||{}));
 
     // Sign In
     loginForm.addEventListener('submit', (e)=>{
@@ -284,8 +234,6 @@
       if(acct.password!==password){ setStatus('Invalid email or password.'); return; }
       localStorage.setItem('isLoggedIn','true');
       localStorage.setItem('loggedInEmail', email);
-
-      // ensure verification code exists
       if(!localStorage.getItem('verificationCode')){
         const code = String(Math.floor(100000+Math.random()*900000));
         localStorage.setItem('verificationCode', code);
@@ -302,41 +250,15 @@
       const email=$('c_email').value.trim().toLowerCase();
       const phone=$('c_phone').value.trim();
       const p1=$('c_password').value, p2=$('c_password2').value;
-
       if(!isValidPhone(phone)){ setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
       if(scorePassword(p1)<3){ setStatus('Please use a stronger password (aim for Good or Strong).'); return; }
       if(p1!==p2){ setStatus('Passwords do not match.'); return; }
-
-      const accounts=getAccounts();
-      accounts[email]={ name, email, password:p1, phone };
-      saveAccounts(accounts);
-
-      localStorage.setItem('isLoggedIn','true');
-      localStorage.setItem('loggedInEmail', email);
-
-      // Set verification code
+      const accounts=getAccounts(); accounts[email]={ name,email,password:p1,phone }; saveAccounts(accounts);
+      localStorage.setItem('isLoggedIn','true'); localStorage.setItem('loggedInEmail', email);
       const code = String(Math.floor(100000+Math.random()*900000));
-      localStorage.setItem('verificationCode', code);
-      localStorage.setItem('verifyTarget', email);
-
+      localStorage.setItem('verificationCode', code); localStorage.setItem('verifyTarget', email);
       const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
       window.location.href = next;
-    });
-
-    // Debug panel
-    $('dbgToggle').addEventListener('click', ()=>{
-      const fd = safeJSON(localStorage.getItem('formData'));
-      const dump = {
-        formData: fd,
-        selectedPlan: localStorage.getItem('selectedPlan'),
-        loggedInEmail: localStorage.getItem('loggedInEmail'),
-        verificationCode: localStorage.getItem('verificationCode'),
-        verifyTarget: localStorage.getItem('verifyTarget'),
-        nextAfterLogin: localStorage.getItem('nextAfterLogin')
-      };
-      const p = $('dbgPanel');
-      p.classList.toggle('hidden');
-      p.textContent = JSON.stringify(dump, null, 2);
     });
   </script>
 </body>
