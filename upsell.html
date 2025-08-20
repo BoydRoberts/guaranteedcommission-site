@@ -11,43 +11,41 @@
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-  <!-- Header (original copy) -->
-  <header class="bg-white shadow">
-    <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
-      <a href="/index.html" class="text-xs text-blue-600 hover:underline">&larr; Home</a>
-      <div class="text-center">
-        <h1 class="text-2xl font-bold">GuaranteedCommission.com</h1>
-        <p class="text-xs text-gray-600">
-          Guaranteeing buyer agent’s commissions so your home will sell quickly at a higher price.
-        </p>
-      </div>
-      <span></span>
-    </div>
-  </header>
-
   <div class="max-w-xl mx-auto p-4">
     <div class="text-center mb-3">
-      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell wizard baseline</span>
+      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell wizard build 2025-08-20b</span>
+      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell wizard build 2025-08-21a</span>
     </div>
 
+    <!-- Always use same heading -->
     <h1 class="text-2xl font-bold text-center">Upgrade Your Listing</h1>
     <p class="text-sm text-center muted mt-1">You will be able to review all upgrades and upsells at Review &amp; Checkout.</p>
 
+    <!-- Current plan (shown only on Basic upgrade step) -->
+    <!-- Current plan (only on Basic/Upgrade step) -->
     <div id="planRow" class="text-center text-xs muted mt-4"></div>
+
+    <!-- Progress -->
     <div id="prog" class="text-xs text-center muted mt-4"></div>
+
+    <!-- Step container -->
     <div id="stepHost" class="mt-4"></div>
 
+    <!-- Nav actions -->
     <div class="mt-6 flex items-center justify-between">
       <a href="/index.html" class="px-4 py-2 rounded border">Back</a>
       <div class="flex gap-2">
         <button id="btnSkip" class="px-4 py-2 rounded border">Skip</button>
         <button id="btnAdd" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Add &amp; Continue</button>
+        <!-- Shown only on last step -->
         <a id="btnCheckout" href="/checkout.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">Review &amp; Checkout</a>
       </div>
     </div>
   </div>
 
   <script>
+    console.log('[upsell wizard] 2025-08-20b');
+    console.log('[upsell wizard] 2025-08-21a');
     const $ = s => document.querySelector(s);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
@@ -64,13 +62,24 @@
       total: 0
     });
 
-    // Steps
+    // Wizard step order
     const steps = (() => {
       if (plan === 'Listed Property Basic') return ['upgrade','banner','premium','pin'];
       if (plan === 'Listed Property Plus')  return ['banner','premium','pin'];
       if (plan === 'FSBO Plus')             return ['confidential','banner','premium','pin'];
       return ['banner','premium','pin'];
     })();
+    // Wizard step order – force Basic to always include 'upgrade' first
+    let steps = [];
+    if (plan === 'Listed Property Basic') {
+      steps = ['upgrade','banner','premium','pin'];
+    } else if (plan === 'Listed Property Plus') {
+      steps = ['banner','premium','pin'];
+    } else if (plan === 'FSBO Plus') {
+      steps = ['confidential','banner','premium','pin'];
+    } else {
+      steps = ['banner','premium','pin'];
+    }
     let idx = 0;
 
     const copies = {
@@ -88,13 +97,15 @@
       },
       premium: {
         title: 'Add Premium Placement ($10)',
-        body: 'Boost visibility so your listing is seen sooner by buyers and agents.',
+        body: 'Your listing will appear ahead of non-premium listings in your search area until your home is sold.',
+        body: 'Your listing will appear ahead of non-premium listings until your home is sold.',
         price: 10,
         key: 'premium'
       },
       pin: {
         title: 'Add Pin Placement ($50)',
-        body: 'Pin your listing to the top of results in key areas. Includes Premium Placement free.',
+        body: 'Your listing will be pinned ahead of all listings in your search area until your home is sold. Includes Premium Placement for free.',
+        body: 'Your listing will be pinned ahead of all listings until your home is sold. Includes Premium Placement for free.',
         price: 50,
         key: 'pin'
       },
@@ -113,6 +124,8 @@
       const sid = steps[idx];
       const c = copies[sid];
 
+      // Current plan description for Basic on first step only
+      // Current plan description for Basic only on Upgrade step
       const planRow = $('#planRow');
       if (plan === 'Listed Property Basic' && sid === 'upgrade') {
         planRow.innerHTML = `
@@ -121,6 +134,7 @@
             <br>
             <span class="muted">
               (Includes: printable commission communication letter, map search, listing price, main photo, address, parcel number, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone.  Does not include full property description.)
+              (Includes: printable commission communication letter, map search, listing price, main photo, address, parcel number, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone. Does not include full property description.)
             </span>
           </div>
         `;
@@ -208,4 +222,3 @@
     renderStep();
   </script>
 </body>
-</html>
