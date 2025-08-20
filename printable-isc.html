@@ -3,164 +3,59 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Irrevocable Seller Communication — Printable</title>
+  <title>Printable ISC</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .font-cursive { font-family: 'Brush Script MT', cursive; }
-    @media print {
-      .no-print { display: none !important; }
-      body { background: #fff; }
-      .page { box-shadow: none !important; }
-    }
-  </style>
 </head>
-<body class="bg-gray-100 text-gray-900">
-  <!-- Top bar (hidden when printing) -->
-  <header class="bg-white border-b no-print">
-    <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
-      <a href="/signature.html" class="text-sm text-blue-600 hover:underline">&larr; Back</a>
-      <div class="text-center">
-        <h1 class="text-lg font-semibold">GuaranteedCommission.com</h1>
-        <p class="text-xs text-gray-600">Guaranteeing commissions so your home will sell quickly at a higher price.</p>
-      </div>
-      <button onclick="window.print()" class="px-3 py-1 rounded border">Print</button>
+<body class="bg-white text-black p-8">
+  <div class="max-w-3xl mx-auto border p-6 rounded shadow">
+    <h1 class="text-xl font-bold text-center mb-4">Irrevocable Seller Communication (ISC)</h1>
+
+    <div id="iscContent" class="text-sm space-y-4">
+      <p>To the escrow holder/closing agent,</p>
+
+      <p>I, <span id="sellerName">[seller name]</span>, am the owner/seller of <span id="propertyAddress">[full address]</span>, #<span id="propertyAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN#]</span>. <span id="shortAddress">[short address]</span> is listed for sale by <span id="listingLabel">[listing label]</span> <span id="listingBrokerage">[listing brokerage]</span><span id="ownerSelfLabel"></span><span id="listingAgent">[listing agent]</span>, listing agent, <span id="agentPhone">[agent phone]</span>.</p>
+
+      <p>Let it be known: if a buyer’s agent/broker facilitates the sale of <span id="shortAddress2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed <span id="commissionAmount">[commission]</span> <span id="commissionSuffix">[suffix]</span>.</p>
+
+      <p><span class="font-cursive">Electronic Signature</span>       <span id="printDate">[date]</span></p>
+
+      <p class="text-xs text-gray-500 mt-8" id="counters"></p>
     </div>
-  </header>
-
-  <main class="max-w-3xl mx-auto px-4 py-6">
-    <section class="page bg-white rounded-2xl shadow p-6">
-      <h1 class="text-xl font-bold text-center mb-1">Irrevocable Seller Communication</h1>
-      <!-- Subtitle removed per request -->
-      <!-- <p class="text-xs text-gray-500 text-center mb-6">For escrow/closing agent use.</p> -->
-
-      <!-- ISC body -->
-      <div class="text-sm leading-6 text-gray-800">
-        <p>To the escrow holder/closing agent,</p>
-
-        <!-- Listed -->
-        <div id="iscListed" class="hidden">
-          <p class="mt-3">
-            I, <span id="L_name">[name]</span>, am the owner/seller of
-            <span id="L_addrFull">[full address]</span><span id="L_parcelBlock">, # <span id="L_apn">[APN]</span></span>.
-            <span id="L_addrShort1">[short address]</span> is listed for sale by
-            <span id="L_brokerage">[listing brokerage]</span>,
-            <span id="L_agent">[listing agent]</span>, listing agent,
-            <span id="L_agentPhone">[agent phone]</span>.
-          </p>
-          <p class="mt-3">
-            Let it be known: if a buyer’s agent/broker facilitates the sale of
-            <span id="L_addrShort2">[short address]</span>, you (the escrow holder/closing agent)
-            are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the
-            listing brokerage (if there is an agreement for broker-to-broker compensation) and second by
-            debiting me, the seller – a commission not to exceed
-            <span id="L_commDisplay">[commission]</span>
-            <span id="L_commSuffix"></span>.
-          </p>
-        </div>
-
-        <!-- FSBO -->
-        <div id="iscFSBO" class="hidden">
-          <p class="mt-3">
-            I, <span id="F_name">[name]</span>, am the owner/seller of
-            <span id="F_addrFull">[full address]</span><span id="F_parcelBlock">, # <span id="F_apn">[APN]</span></span>.
-            <span id="F_addrShort1">[short address]</span> is listed for sale by owner (Me).
-            My phone number is <span id="F_phone">[owner/seller phone]</span>. My email address is <span id="F_email">[owner/seller email]</span>.
-          </p>
-          <p class="mt-3">
-            Let it be known: if a buyer’s agent/broker facilitates the sale of
-            <span id="F_addrShort2">[short address]</span>, you (the escrow holder/closing agent)
-            are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed
-            <span id="F_commDisplay">[commission]</span>
-            <span id="F_commSuffix"></span>.
-          </p>
-        </div>
-
-        <!-- Signature row -->
-        <div class="mt-8">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="text-base">
-                <span id="sigRender" class="font-cursive">[Name]</span>
-              </div>
-              <div class="text-xs text-gray-600">Electronic Signature</div>
-            </div>
-            <div class="text-sm"><span id="sigDate">[YYYY-MM-DD]</span></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Footer line (updated text) -->
-      <div class="mt-8 pt-4 border-t text-[11px] text-gray-500 flex items-center justify-between">
-        <span>This document created by GuaranteedCommission.com.</span>
-        <span id="viewCounter">Viewed 0 times</span>
-      </div>
-    </section>
-  </main>
+  </div>
 
   <script>
-    console.log("[printable-isc] build 2025-08-21a");
+    const data = JSON.parse(localStorage.getItem("formData") || "{}");
+    const plan = localStorage.getItem("selectedPlan") || "Listed Property Basic";
 
-    const $ = (id) => document.getElementById(id);
-    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+    document.getElementById("sellerName").textContent = data.name || "[seller name]";
+    document.getElementById("propertyAddress").textContent = data.address || "[full address]";
+    document.getElementById("propertyAPN").textContent = data.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN#]";
 
-    const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const fd = getJSON("formData", {});
-    const sig = getJSON("signedISC", null);
+    const short = data.address ? data.address.split(",")[0] : "[short address]";
+    document.getElementById("shortAddress").textContent = short;
+    document.getElementById("shortAddress2").textContent = short;
 
-    const fullAddr = (fd.address || "").trim();
-    const shortAddr = fullAddr.split(",")[0] || "";
-    const apn = (fd.apn || "").trim();
+    document.getElementById("commissionAmount").textContent = data.commissionType === "$" ? "$" + data.commission : data.commission + "%";
+    document.getElementById("commissionSuffix").textContent = data.commissionType === "%" ? "of the total purchase price" : "";
 
-    // agent phone autofill: prefer fd.agentPhone then fd.phone
-    const listedPhone = fd.agentPhone || fd.phone || "[agent phone]";
-    const fsboPhone   = fd.phone || fd.agentPhone || "[owner/seller phone]";
+    // prefer agentPhone then phone
+    document.getElementById("agentPhone").textContent = data.agentPhone || data.phone || "[agent phone]";
+    document.getElementById("printDate").textContent = new Date().toLocaleString();
 
-    const comm = (fd.commission || '').trim();
-    const type = fd.commissionType || '%';
-    const commDisplay = comm ? (type === '$' ? ('$' + Number(comm).toLocaleString()) : (comm + '%')) : '';
-    const commSuffix  = type === '%' ? ' of the total purchase price' : '';
-
-    const isFSBO = plan === "FSBO Plus";
-    if (isFSBO) {
-      $("iscFSBO").classList.remove("hidden");
-      $("F_name").textContent = fd.name || "[name]";
-      $("F_addrFull").textContent = fullAddr || "[full address]";
-      $("F_apn").textContent = apn || "[APN]";
-      $("F_parcelBlock").style.display = apn ? "inline" : "none";
-      $("F_addrShort1").textContent = shortAddr || "[short address]";
-      $("F_addrShort2").textContent = shortAddr || "[short address]";
-      $("F_phone").textContent = fsboPhone;
-      $("F_email").textContent = fd.fsboEmail || "[owner/seller email]";
-      $("F_commDisplay").textContent = commDisplay || "[commission]";
-      $("F_commSuffix").textContent = commDisplay ? commSuffix : "";
+    if (plan.includes("FSBO")) {
+      document.getElementById("listingLabel").textContent = "owner (Me).";
+      document.getElementById("ownerSelfLabel").textContent = ` My phone number is ${data.agentPhone || data.phone || '[owner/seller phone number]'}. My email address is ${data.brokerage || data.fsboEmail || '[owner/seller email]'}.`;
+      document.getElementById("listingBrokerage").remove();
+      document.getElementById("listingAgent").remove();
     } else {
-      $("iscListed").classList.remove("hidden");
-      $("L_name").textContent = fd.name || "[name]";
-      $("L_addrFull").textContent = fullAddr || "[full address]";
-      $("L_apn").textContent = apn || "[APN]";
-      $("L_parcelBlock").style.display = apn ? "inline" : "none";
-      $("L_addrShort1").textContent = shortAddr || "[short address]";
-      $("L_addrShort2").textContent = shortAddr || "[short address]";
-      $("L_brokerage").textContent = fd.brokerage || "[listing brokerage]";
-      $("L_agent").textContent = fd.agent || "[listing agent]";
-      $("L_agentPhone").textContent = listedPhone;
-      $("L_commDisplay").textContent = commDisplay || "[commission]";
-      $("L_commSuffix").textContent = commDisplay ? commSuffix : "";
+      document.getElementById("listingLabel").textContent = "sale by";
+      document.getElementById("listingBrokerage").textContent = data.brokerage || "[listing brokerage]";
+      document.getElementById("listingAgent").textContent = data.agent || "[listing agent]";
     }
 
-    const signerName = (sig && sig.name) ? sig.name : (fd.name || "");
-    const sigDate = (sig && sig.date) ? sig.date : new Date().toISOString().slice(0,10);
-    $("sigRender").textContent = signerName || "[Name]";
-    $("sigDate").textContent = sigDate;
-
-    // View counter: per doc
-    const key = 'iscCounters';
-    const all = getJSON(key, {});
-    const docKey = (fullAddr || 'isc') + '|' + (signerName || '') + '|' + plan;
-    const next = (all[docKey] || 0) + 1;
-    all[docKey] = next;
-    localStorage.setItem(key, JSON.stringify(all));
-    $("viewCounter").textContent = `Viewed ${next} ${next===1 ? 'time' : 'times'}`;
+    const views = parseInt(localStorage.getItem("iscViews") || "0") + 1;
+    localStorage.setItem("iscViews", views);
+    document.getElementById("counters").textContent = `This Irrevocable Seller Communication has been viewed ${views} time(s).`;
   </script>
 </body>
 </html>
