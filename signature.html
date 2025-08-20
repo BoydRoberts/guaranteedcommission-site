@@ -5,292 +5,82 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Irrevocable Seller Communication — Review & Sign</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- jsPDF for inline PDF export -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-
-  <style>
-    .font-cursive { font-family: 'Brush Script MT', cursive; }
-    @media print { .no-print { display:none !important; } }
-  </style>
+  <style>.font-cursive{font-family:'Brush Script MT',cursive}</style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-  <header class="bg-white border-b no-print">
-    <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-      <a href="/checkout.html" class="text-sm text-blue-600 hover:underline">&larr; Back</a>
-      <span class="text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">signature build 2025-08-14b</span>
-      <div class="text-center">
-        <h1 class="text-lg font-semibold">GuaranteedCommission.com</h1>
-        <p class="text-xs text-gray-600">Guaranteeing commissions so your home will sell quickly at a higher price.</p>
-      </div>
-      <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log in</a>
+  <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow">
+    <h1 class="text-2xl font-bold text-center mb-6">Irrevocable Seller Communication</h1>
+
+    <div id="iscText" class="text-sm leading-relaxed whitespace-pre-line">
+      Loading ISC...
     </div>
-  </header>
 
-  <main class="max-w-3xl mx-auto px-4 py-6">
-    <section class="bg-white rounded-2xl shadow p-6">
-      <h1 class="text-xl font-bold text-center">Irrevocable Seller Communication</h1>
-      <h2 class="text-xl font-bold text-center">Irrevocable Seller Communication</h2>
-      <p class="text-xs text-gray-500 text-center mb-6">Please review and sign below.</p>
+    <div class="mt-6">
+      <label class="block mb-2 text-sm font-semibold">Electronic Signature:</label>
+      <input type="text" id="signature" placeholder="Type your full name here" class="font-cursive w-full border p-2 rounded" required>
+    </div>
 
-      <!-- ISC body (mirrors printable-isc wording exactly) -->
-      <!-- ISC body -->
-      <div class="text-sm leading-6 text-gray-800" id="iscBody">
-        <p>To the escrow holder/closing agent,</p>
+    <div class="mt-4">
+      <label class="block text-sm font-semibold">Date:</label>
+      <p id="date" class="text-sm"></p>
+    </div>
 
-        <!-- Listed -->
-        <div id="iscListed" class="hidden">
-          <p class="mt-3" id="listedP1">
-          <p class="mt-3">
-            I, <span id="L_name">[name]</span>, am the owner/seller of
-            <span id="L_addrFull">[full address]</span><span id="L_parcelBlock">, # <span id="L_apn">[APN]</span></span>.
-            <span id="L_addrShort1">[short address]</span> is listed for sale by
-            <span id="L_brokerage">[listing brokerage]</span>,
-            <span id="L_agent">[listing agent]</span>, listing agent,
-            <span id="L_agentPhone">[agent phone]</span>.
-          </p>
-          <p class="mt-3" id="listedP2">
-          <p class="mt-3">
-            Let it be known: if a buyer’s agent/broker facilitates the sale of
-            <span id="L_addrShort2">[short address]</span>, you (the escrow holder/closing agent)
-            are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the
-            listing brokerage (if there is an agreement for broker-to-broker compensation) and second by
-            debiting me, the seller – a commission not to exceed
-            <span id="L_commDisplay">[commission]</span>
-            <span id="L_commSuffix"></span>.
-          </p>
-        </div>
-
-        <!-- FSBO -->
-        <div id="iscFSBO" class="hidden">
-          <p class="mt-3" id="fsboP1">
-          <p class="mt-3">
-            I, <span id="F_name">[name]</span>, am the owner/seller of
-            <span id="F_addrFull">[full address]</span><span id="F_parcelBlock">, # <span id="F_apn">[APN]</span></span>.
-            <span id="F_addrShort1">[short address]</span> is listed for sale by owner (Me).
-            My phone number is <span id="F_phone">[owner/seller phone]</span>. My email address is <span id="F_email">[owner/seller email]</span>.
-          </p>
-          <p class="mt-3" id="fsboP2">
-          <p class="mt-3">
-            Let it be known: if a buyer’s agent/broker facilitates the sale of
-            <span id="F_addrShort2">[short address]</span>, you (the escrow holder/closing agent)
-            are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed
-            <span id="F_commDisplay">[commission]</span>
-            <span id="F_commSuffix"></span>.
-          </p>
-        </div>
-      </div>
-
-      <!-- Sign block -->
-      <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-semibold mb-1">Type Your Full Name (Signature)</label>
-          <input id="sigName" class="w-full border p-2 rounded" placeholder="First Last"/>
-          <p class="text-xs text-gray-500 mt-1">This will be rendered as an electronic signature.</p>
-        </div>
-        <div>
-          <label class="block text-sm font-semibold mb-1">Date</label>
-          <input id="sigDate" type="date" class="w-full border p-2 rounded"/>
-        </div>
-      </div>
-
-      <div class="mt-6 flex items-center justify-between">
-        <div class="text-base">
-          <span id="sigPreview" class="font-cursive">[Name]</span>
-          <span class="text-xs text-gray-600 ml-2 align-middle">Electronic Signature</span>
-        </div>
-        <div class="text-sm"><span id="sigPreviewDate">[YYYY-MM-DD]</span></div>
-      </div>
-
-      <!-- Actions -->
-      <div class="no-print mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div class="flex gap-2">
-          <button id="btnPdf" class="px-4 py-2 rounded bg-blue-600 text-white">Download PDF</button>
-          <button onclick="window.print()" class="px-4 py-2 rounded border">Print</button>
-        </div>
-        <div class="flex gap-2">
-          <a id="btnViewDoc" href="/printable-isc.html" class="px-4 py-2 rounded bg-gray-700 text-white">Sign and View Document</a>
-          <a id="btnContinue" href="/agent-invite.html" class="px-4 py-2 rounded bg-green-600 text-white">Continue</a>
-        </div>
-      <!-- Actions (download/print removed; single primary CTA) -->
-      <div class="no-print mt-8 flex items-center justify-end gap-2">
-        <button id="btnContinue" class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700">Sign &amp; Continue</button>
-      </div>
-
-      <p class="text-[11px] text-gray-500 text-center mt-4">
-        GuaranteedCommission.com uses your information for escrow and identification only.
-      </p>
-    </section>
-  </main>
+    <div class="flex justify-between mt-6">
+      <button onclick="window.location.href='/printable-isc.html'" class="bg-gray-600 text-white px-4 py-2 rounded">
+        View / Print ISC
+      </button>
+      <button id="btnDownload" class="bg-blue-600 text-white px-4 py-2 rounded">Download PDF</button>
+      <button onclick="continueFlow()" class="bg-green-600 text-white px-6 py-2 rounded">
+        Continue
+      </button>
+    </div>
+  </div>
 
   <script>
-    console.log("[signature] build 2025-08-14b");
-    console.log('[signature] build 2025-08-21a');
+    function fillISC() {
+      const planType = (localStorage.getItem("postSignatureOptions") || (localStorage.getItem("selectedPlan")||"")).toLowerCase().includes("fsbo") ? "fsbo" : "listed";
+      const data = JSON.parse(localStorage.getItem("formData") || "{}");
+      const commissionType = data.commissionType || "%";
+      const commission = data.commission || "";
+      const fullAddress = data.address || "";
+      const shortAddress = fullAddress.split(",")[0] || "[short address]";
+      const apn = data.apn || "[APN]";
+      const name = data.name || "[name]";
+      const agentPhone = data.agentPhone || data.phone || "[agent phone]";
+      const brokerage = data.brokerage || "[listing brokerage]";
+      const agent = data.agent || "[listing agent]";
+      const suffix = commissionType === "%" ? " of the total purchase price" : "";
+      const commissionDisplay = commissionType === "$" ? `$${commission}` : `${commission}%`;
 
-    // Helpers
-    const $ = (id) => document.getElementById(id);
-    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
-    const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+      let text = `To the escrow holder/closing agent,\n\n`;
 
-    // Context
-    const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const fd = getJSON("formData", {});
-    const isFSBO = plan === "FSBO Plus";
-    const short = (fd.address || '').split(',')[0] || '[short address]';
-    const apn  = (fd.apn || '').trim();
-
-    // agent phone autofill fix: use fd.agentPhone first, then fd.phone
-    const listedPhone = fd.agentPhone || fd.phone || "[agent phone]";
-    const fsboPhone   = fd.phone || fd.agentPhone || "[owner/seller phone]";
-
-    // Address / APN
-    const fullAddr = (fd.address || "").trim();
-    const shortAddr = fullAddr.split(",")[0] || "";
-    const apn = (fd.apn || "").trim();
-    const apnMode = (fd.apnMode || "").trim(); // "agent" hides parcel (listed only)
-
-    // Commission display
-    const comm = (fd.commission || "").trim();
-    const cType = fd.commissionType || "%";
-    const commDisplay = cType === "$"
-      ? (comm ? ("$" + Number(comm).toLocaleString()) : "")
-      : (comm ? (comm + "%") : "");
-    const commSuffix = (cType === "%") ? "of the total purchase price" : "";
-
-    // Paint ISC text
-    const amount = (fd.commission || '').trim();
-    const type = fd.commissionType || '%';
-    const suffix = type === '%' ? ' of the total purchase price' : '';
-    const display = amount ? (type === '$' ? ('$' + Number(amount).toLocaleString()) : (amount + '%')) : '';
-
-    const isFSBO = plan === "FSBO Plus";
-    if (isFSBO) {
-      $("iscFSBO").classList.remove("hidden");
-      $("F_name").textContent = fd.name || "[name]";
-      $("F_addrFull").textContent = fullAddr || "[full address]";
-      $("F_addrFull").textContent = fd.address || "[full address]";
-      $("F_apn").textContent = apn || "[APN]";
-      $("F_parcelBlock").style.display = apn ? "inline" : "none";
-      $("F_addrShort1").textContent = shortAddr || "[short address]";
-      $("F_addrShort2").textContent = shortAddr || "[short address]";
-      $("F_phone").textContent = fd.agentPhone || "[owner/seller phone]";
-      $("F_email").textContent = fd.brokerage || "[owner/seller email]";
-      $("F_commDisplay").textContent = commDisplay || "[commission]";
-      $("F_commSuffix").textContent = commDisplay ? (" " + commSuffix) : "";
-      $("F_addrShort1").textContent = short;
-      $("F_addrShort2").textContent = short;
-      $("F_phone").textContent = fsboPhone;
-      $("F_email").textContent = fd.fsboEmail || "[owner/seller email]";
-      $("F_commDisplay").textContent = display || "[commission]";
-      $("F_commSuffix").textContent = display ? suffix : "";
-    } else {
-      $("iscListed").classList.remove("hidden");
-      $("L_name").textContent = fd.name || "[name]";
-      $("L_addrFull").textContent = fullAddr || "[full address]";
-      $("L_addrFull").textContent = fd.address || "[full address]";
-      $("L_apn").textContent = apn || "[APN]";
-      const showParcel = !!apn && apnMode !== "agent";
-      $("L_parcelBlock").style.display = showParcel ? "inline" : "none";
-      $("L_addrShort1").textContent = shortAddr || "[short address]";
-      $("L_addrShort2").textContent = shortAddr || "[short address]";
-      $("L_parcelBlock").style.display = apn ? "inline" : "none";
-      $("L_addrShort1").textContent = short;
-      $("L_addrShort2").textContent = short;
-      $("L_brokerage").textContent = fd.brokerage || "[listing brokerage]";
-      $("L_agent").textContent = fd.agent || "[listing agent]";
-      $("L_agentPhone").textContent = fd.agentPhone || "[agent phone]";
-      $("L_commDisplay").textContent = commDisplay || "[commission]";
-      $("L_commSuffix").textContent = commDisplay ? (" " + commSuffix) : "";
-      $("L_agentPhone").textContent = listedPhone;
-      $("L_commDisplay").textContent = display || "[commission]";
-      $("L_commSuffix").textContent = display ? suffix : "";
-    }
-
-    // Signature defaults
-    const today = new Date().toISOString().slice(0,10);
-    $("sigDate").value = today;
-    $("sigPreviewDate").textContent = today;
-
-    $("sigName").addEventListener("input", () => {
-      $("sigPreview").textContent = $("sigName").value || "[Name]";
-    });
-    $("sigDate").addEventListener("change", () => {
-      $("sigPreviewDate").textContent = $("sigDate").value || today;
-    });
-
-    // Save signature before navigation
-    function saveSignature() {
-      const payload = {
-        name: $("sigName").value.trim(),
-        date: $("sigDate").value || today
-      };
-      setJSON("signedISC", payload);
-      // Small flag to mark verified
-      localStorage.setItem("isVerified", "true");
-      const name = $("sigName").value.trim();
-      const date = $("sigDate").value || today;
-      if (!name) { alert("Please type your full name to sign."); return false; }
-      localStorage.setItem("signedISC", JSON.stringify({ name, date }));
-      return true;
-    }
-
-    $("btnViewDoc").addEventListener("click", () => saveSignature());
-    $("btnContinue").addEventListener("click", () => saveSignature());
-
-    // PDF export (mirrors printable-isc generation)
-    $("btnPdf").addEventListener("click", () => {
-      saveSignature();
-      const signerName = $("sigName").value.trim() || fd.name || "[Name]";
-      const sigDate = $("sigDate").value || today;
-
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ unit: "pt", format: "letter" }); // 612x792
-
-      const marginL = 54, marginR = 54;
-      let y = 64;
-      const pageW = doc.internal.pageSize.getWidth();
-
-      function line(txt, opts={}) {
-        const maxW = pageW - marginL - marginR;
-        const lines = doc.splitTextToSize(txt, maxW);
-        lines.forEach(ln => { doc.text(ln, marginL, y); y += (opts.leading || 16); });
+      if (planType === "fsbo") {
+        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by owner (Me). My phone number is ${agentPhone}. My email address is ${data.fsboEmail || "[owner/seller email]"}.\n\n`;
+        text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${suffix}.`;
+      } else {
+        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by ${brokerage}, ${agent}, listing agent, ${agentPhone}.\n\n`;
+        text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${suffix}.`;
       }
-      function gap(px=10){ y += px; }
-      function h1(txt){ doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.text(txt, pageW/2, y, {align:"center"}); y += 18; }
-      function smCenter(txt){ doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text(txt, pageW/2, y, {align:"center"}); y += 14; }
-      function bodyFont(){ doc.setFont("helvetica","normal"); doc.setFontSize(11); }
 
-      h1("Irrevocable Seller Communication");
-      smCenter("For escrow/closing agent use.");
-      gap(8); bodyFont();
-      line("To the escrow holder/closing agent,");
-      gap(8);
+      document.getElementById("iscText").textContent = text;
+    }
 
-      const p1 = (isFSBO ? document.getElementById("fsboP1") : document.getElementById("listedP1")).innerText;
-      const p2 = (isFSBO ? document.getElementById("fsboP2") : document.getElementById("listedP2")).innerText;
-      line(p1); gap(6); line(p2);
+    function continueFlow() {
+      const signature = document.getElementById("signature").value.trim();
+      if (!signature) {
+        alert("Please type your full name to sign the ISC.");
+        return;
+      }
+      localStorage.setItem("signature", signature);
+      window.location.href = (localStorage.getItem("selectedPlan")||"").includes("FSBO") ? "/seller-detail.html" : "/agent-invite.html";
+    }
 
-      // Signature row
-      gap(18);
-      doc.setFont("helvetica","normal"); doc.setFontSize(12);
-      doc.text(signerName, marginL, y);
-      doc.setFontSize(9); doc.text("Electronic Signature", marginL, y + 12);
-      doc.setFontSize(11); doc.text(sigDate, pageW - marginR, y, {align:"right"}); y += 24;
-
-      // Footer (no counters here; those live on printable page)
-      const footerY = 792 - 40;
-      doc.setFontSize(9); doc.setTextColor(120);
-      doc.text("GuaranteedCommission.com · Document for escrow/closing agent", marginL, footerY);
-
-      const short = (fd.address || "listing").split(",")[0].trim().replace(/\s+/g,"_");
-      const fname = `ISC_${short}_${sigDate}.pdf`;
-      doc.save(fname);
-    $("btnContinue").addEventListener("click", () => {
-      if (!saveSignature()) return;
-      // route: FSBO → seller-detail, Listed → agent-invite
-      if (isFSBO) window.location.href = "/seller-detail.html";
-      else window.location.href = "/agent-invite.html";
+    document.getElementById("btnDownload").addEventListener("click", ()=>{
+      window.location.href='/printable-isc.html';
     });
+
+    document.getElementById("date").textContent = new Date().toLocaleDateString();
+    window.addEventListener("DOMContentLoaded", fillISC);
   </script>
 </body>
+</html>
