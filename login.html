@@ -11,7 +11,7 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <!-- Header (unchanged copy) -->
+  <!-- Header (original copy) -->
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
       <a href="/index.html" class="text-xs text-blue-600 hover:underline">&larr; Home</a>
@@ -28,7 +28,7 @@
   <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-3">
-        <span class="badge">secure access build 2025-08-21-restore</span>
+        <span class="badge">secure access build 2025-08-14b</span>
       </div>
 
       <!-- Tabs -->
@@ -158,105 +158,147 @@
       <p class="text-[11px] text-gray-500 text-center mt-4">
         We never sell your data. Used only for escrow &amp; identification.
       </p>
+
+      <!-- Debug toggle -->
+      <button id="dbgToggle" class="absolute top-2 right-2 text-[11px] px-2 py-1 rounded border">Debug</button>
+      <pre id="dbgPanel" class="hidden mt-2 text-[11px] bg-gray-50 border rounded p-2 whitespace-pre-wrap break-all"></pre>
     </div>
   </main>
 
   <script>
-    console.log('[login] restore 2025-08-21');
+    console.log('[login] secure access build 2025-08-14b');
 
+    // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
+    const statusBox = $('status');
     const safeJSON = (s)=>{ try { return JSON.parse(s); } catch { return null; } };
-
     function setStatus(msg, ok=false) {
-      const el = $('status');
-      el.classList.remove('hidden');
-      el.textContent = msg;
-      el.className = ok
+      statusBox.classList.remove('hidden');
+      statusBox.textContent = msg;
+      statusBox.className = ok
         ? 'mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
         : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
     }
 
-    function onlyDigits(s){ return (s||'').replace(/\D/g,''); }
+    function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
     function formatPhone(s){
-      const d=onlyDigits(s).slice(0,10);
-      if(d.length<=3)return d;
-      if(d.length<=6)return d.slice(0,3)+'-'+d.slice(3);
-      return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6);
+      const d = onlyDigits(s).slice(0,10);
+      if (d.length <= 3) return d;
+      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
+      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
     }
-    function isValidPhone(s){ return onlyDigits(s).length===10; }
+    function isValidPhone(s){ return onlyDigits(s).length === 10; }
 
     // Tabs
-    const tabSignin=$('tab-signin'), tabCreate=$('tab-create'), loginForm=$('loginForm'), createForm=$('createForm');
-    function showSignin(){ tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700'; tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700'; loginForm.classList.remove('hidden'); createForm.classList.add('hidden'); }
-    function showCreate(){ tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700'; tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700'; createForm.classList.remove('hidden'); loginForm.classList.add('hidden'); }
+    const tabSignin = $('tab-signin');
+    const tabCreate = $('tab-create');
+    const loginForm = $('loginForm');
+    const createForm = $('createForm');
+    function showSignin() {
+      tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
+      tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+      loginForm.classList.remove('hidden'); createForm.classList.add('hidden');
+      tabSignin.setAttribute('aria-selected','true'); tabCreate.setAttribute('aria-selected','false');
+    }
+    function showCreate() {
+      tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
+      tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+      createForm.classList.remove('hidden'); loginForm.classList.add('hidden');
+      tabCreate.setAttribute('aria-selected','true'); tabSignin.setAttribute('aria-selected','false');
+    }
     tabSignin.addEventListener('click', showSignin);
     tabCreate.addEventListener('click', showCreate);
-    $('goCreate')?.addEventListener('click',(e)=>{e.preventDefault();showCreate();});
-    $('goSignin')?.addEventListener('click',(e)=>{e.preventDefault();showSignin();});
+    $('goCreate')?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
+    $('goSignin')?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
 
-    // Prefill from Box 2 — FSBO-only phone; email prefers fsboEmail
-    (function prefill(){
+    // Prefill from Box 2 — FSBO-only phone; email prefers fsboEmail if present
+    (function prefill() {
       const fd = safeJSON(localStorage.getItem('formData')) || {};
       const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
 
+      // Name (neutral)
       if (fd.name) $('c_name').value = fd.name;
 
-      // Email priority: fsboEmail, else last logged in email
+      // Email: fsboEmail preferred; otherwise last logged-in email if any
       const email = fd.fsboEmail || localStorage.getItem('loggedInEmail') || '';
       if (email) { $('email').value = email; $('c_email').value = email; }
 
-      // PHONE: FSBO ONLY (avoid agent phone filling for Basic/Plus)
+      // Phone: FSBO ONLY. Avoid agent-phone bleed for Basic/Plus
       if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
         $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
+
+      // If coming from Box 2 flow, default to Create tab
+      if (localStorage.getItem('nextAfterLogin')) showCreate();
     })();
 
-    // Show/hide passwords
-    (function wireToggle(id,btn){const i=$(id),b=$(btn); if(i&&b){ b.addEventListener('click',(e)=>{e.preventDefault(); const v=i.type==='text'; i.type=v?'password':'text'; b.textContent=v?'Show':'Hide';}); }})('password','togglePwd');
-    (function wireToggle(id,btn){const i=$(id),b=$(btn); if(i&&b){ b.addEventListener('click',(e)=>{e.preventDefault(); const v=i.type==='text'; i.type=v?'password':'text'; b.textContent=v?'Show':'Hide';}); }})('c_password','togglePwdC1');
-    (function wireToggle(id,btn){const i=$(id),b=$(btn); if(i&&b){ b.addEventListener('click',(e)=>{e.preventDefault(); const v=i.type==='text'; i.type=v?'password':'text'; b.textContent=v?'Show':'Hide';}); }})('c_password2','togglePwdC2');
+    // Show/Hide toggles
+    function wireToggle(inputId, btnId) {
+      const input = $(inputId);
+      const btn = $(btnId);
+      if (!input || !btn) return;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const vis = input.type === 'text';
+        input.type = vis ? 'password' : 'text';
+        btn.textContent = vis ? 'Show' : 'Hide';
+        input.focus({ preventScroll: true });
+      });
+    }
+    wireToggle('password','togglePwd');
+    wireToggle('c_password','togglePwdC1');
+    wireToggle('c_password2','togglePwdC2');
 
-    // Strength meter
-    function scorePassword(p){ let s=0; if(!p)return 0; if(p.length>=10)s++; if(/[a-z]/.test(p)&&/[A-Z]/.test(p))s++; if(/\d/.test(p))s++; if(/[^A-Za-z0-9]/.test(p))s++; if(p.length>=14)s++; return Math.min(s,4); }
+    // Strength + match
+    function scorePassword(p) {
+      let s=0; if (!p) return 0;
+      if (p.length>=10) s++; if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++;
+      if (/[^A-Za-z0-9]/.test(p)) s++; if (p.length>=14) s++;
+      return Math.min(s,4);
+    }
     function updateStrength(){
-      const p1=$('c_password')?.value||''; const p2=$('c_password2')?.value||'';
-      const widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
-      const s=scorePassword(p1);
-      $('strengthBar').style.width=widths[s];
-      $('strengthBar').style.backgroundColor=colors[s];
-      $('strengthText').textContent='Password strength: '+labels[s];
-      const mm=$('matchMsg');
-      if(!p2){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
-      if(p1===p2){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
+      const p1 = $('c_password')?.value || '';
+      const p2 = $('c_password2')?.value || '';
+      const bar = $('strengthBar'), st=$('strengthText'), mm=$('matchMsg');
+      if (!bar || !st || !mm) return;
+      const s=scorePassword(p1), widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
+      bar.style.width=widths[s]; bar.style.backgroundColor=colors[s]; st.textContent='Password strength: '+labels[s];
+      if (!p2){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
+      if (p1===p2){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
       else { mm.textContent='Passwords do not match'; mm.className='text-xs mt-1 text-red-600'; }
     }
     $('c_password')?.addEventListener('input', updateStrength);
     $('c_password2')?.addEventListener('input', updateStrength);
 
-    $('c_phone')?.addEventListener('input', ()=>{
-      const el=$('c_phone'); const cur=el.selectionStart; const before=el.value;
+    // Phone mask (create)
+    $('c_phone')?.addEventListener('input', () => {
+      const el = $('c_phone');
+      const cur = el.selectionStart;
+      const before = el.value;
       el.value = formatPhone(before);
-      el.selectionStart=el.selectionEnd=Math.min(cur+(el.value.length-before.length), el.value.length);
+      el.selectionStart = el.selectionEnd = Math.min(cur + (el.value.length - before.length), el.value.length);
     });
 
-    // Local accounts (in-browser demo store)
+    // Local accounts (demo in-browser)
     const ACC_KEY='accounts';
-    const getAccounts=()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
-    const saveAccounts=(obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
+    const getAccounts = ()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
+    const saveAccounts = (obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
 
     // Sign In
-    $('loginForm').addEventListener('submit', (e)=>{
+    $('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const email=$('email').value.trim().toLowerCase();
-      const password=$('password').value;
-      const accounts=getAccounts();
-      const acct=accounts[email];
-      if(!acct){ setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); return; }
-      if(acct.password!==password){ setStatus('Invalid email or password.'); return; }
+      const email = $('email').value.trim().toLowerCase();
+      const password = $('password').value;
+      const accounts = getAccounts();
+      const acct = accounts[email];
+      if (!acct) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); return; }
+      if (acct.password !== password) { setStatus('Invalid email or password.'); return; }
       localStorage.setItem('isLoggedIn','true');
       localStorage.setItem('loggedInEmail', email);
-      if(!localStorage.getItem('verificationCode')){
-        const code = String(Math.floor(100000+Math.random()*900000));
+
+      // Ensure code exists and route to verification
+      if (!localStorage.getItem('verificationCode')) {
+        const code = String(Math.floor(100000 + Math.random()*900000));
         localStorage.setItem('verificationCode', code);
         localStorage.setItem('verifyTarget', email);
       }
@@ -265,21 +307,48 @@
     });
 
     // Create Account
-    $('createForm').addEventListener('submit', (e)=>{
+    $('createForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const name=$('c_name').value.trim();
-      const email=$('c_email').value.trim().toLowerCase();
-      const phone=$('c_phone').value.trim();
-      const p1=$('c_password').value, p2=$('c_password2').value;
-      if(!isValidPhone(phone)){ setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
-      if(scorePassword(p1)<3){ setStatus('Please use a stronger password (aim for Good or Strong).'); return; }
-      if(p1!==p2){ setStatus('Passwords do not match.'); return; }
-      const accounts=getAccounts(); accounts[email]={ name,email,password:p1,phone }; saveAccounts(accounts);
-      localStorage.setItem('isLoggedIn','true'); localStorage.setItem('loggedInEmail', email);
-      const code = String(Math.floor(100000+Math.random()*900000));
-      localStorage.setItem('verificationCode', code); localStorage.setItem('verifyTarget', email);
+      const name  = $('c_name').value.trim();
+      const email = $('c_email').value.trim().toLowerCase();
+      const phone = $('c_phone').value.trim();
+      const p1 = $('c_password').value;
+      const p2 = $('c_password2').value;
+
+      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
+      if (scorePassword(p1) < 3) { setStatus('Please use a stronger password (aim for Good or Strong).'); return; }
+      if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
+
+      const accounts = getAccounts();
+      accounts[email] = { name, email, password: p1, phone };
+      saveAccounts(accounts);
+
+      localStorage.setItem('isLoggedIn','true');
+      localStorage.setItem('loggedInEmail', email);
+
+      // Send code (simulated) + verify handoff
+      const code = String(Math.floor(100000 + Math.random()*900000));
+      localStorage.setItem('verificationCode', code);
+      localStorage.setItem('verifyTarget', email);
+
       const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
       window.location.href = next;
+    });
+
+    // Debug panel
+    $('dbgToggle').addEventListener('click', () => {
+      const fd = safeJSON(localStorage.getItem('formData'));
+      const dump = {
+        formData: fd,
+        selectedPlan: localStorage.getItem('selectedPlan'),
+        loggedInEmail: localStorage.getItem('loggedInEmail'),
+        verificationCode: localStorage.getItem('verificationCode'),
+        verifyTarget: localStorage.getItem('verifyTarget'),
+        nextAfterLogin: localStorage.getItem('nextAfterLogin')
+      };
+      const p = $('dbgPanel');
+      p.classList.toggle('hidden');
+      p.textContent = JSON.stringify(dump, null, 2);
     });
   </script>
 </body>
