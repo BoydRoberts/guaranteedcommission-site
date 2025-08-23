@@ -1,4 +1,4 @@
-// /checkout.js — build 2025-08-21f (Keep Upgrade-to-Plus toggle visible so it can be unchecked)
+// /checkout.js — build 2025-08-21f (Basic can add/remove Plus at checkout; no other changes)
 document.addEventListener("DOMContentLoaded", () => {
   console.log("[checkout.js] build 2025-08-21f");
 
@@ -89,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
       d.base = d.prices.fsbo;
       d.upgrades.upgradeToPlus = false; // not applicable to FSBO
     } else {
-      // Listed flows
+      // Listed flows (Basic can toggle Plus at checkout)
       if (d.upgrades.upgradeToPlus) {
         d.plan = "Listed Property Plus";
         d.base = d.prices.plus;
@@ -127,7 +127,6 @@ document.addEventListener("DOMContentLoaded", () => {
     $("totalAmount").textContent = (data.total || 0);
 
     const sel = [];
-    // Show upgrade selection if the user has it turned on OR if we are currently on Plus while original was Basic
     const originalWasBasic = (ORIGINAL_PLAN === "Listed Property Basic");
     if (originalWasBasic && (data.upgrades.upgradeToPlus || data.plan === "Listed Property Plus")) {
       sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
@@ -148,7 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---- toggles (last chance)
+  // ---- toggles (last chance) ----
   function renderLastChance() {
     const box = $("upsellChoices");
     box.innerHTML = "";
@@ -157,13 +156,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const originalWasBasic = (ORIGINAL_PLAN === "Listed Property Basic");
 
     const toggles = [];
-    // KEEP Upgrade-to-Plus visible if the original plan was Basic
+    // KEEP Upgrade-to-Plus visible if the original plan was Basic (so it can be checked/unchecked here)
     if (originalWasBasic) {
       toggles.push({
         key:"upgradeToPlus",
         label:"Upgrade to Listed Property Plus",
         price:data.prices.plus,
-        // Checked if user has it on OR if plan is currently Plus
         checked:(data.upgrades.upgradeToPlus || data.plan === "Listed Property Plus")
       });
     }
@@ -189,8 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const checked = e.target.checked;
 
         if (k === "upgradeToPlus") {
-          data.upgrades.upgradeToPlus = checked;
-          // recompute() will set plan/base and sync selectedPlan
+          data.upgrades.upgradeToPlus = checked;  // ← can check OR uncheck at checkout
         } else if (k === "banner") {
           data.upgrades.banner = checked;
         } else if (k === "premium") {
@@ -205,7 +202,7 @@ document.addEventListener("DOMContentLoaded", () => {
         data = recompute(data);
         localStorage.setItem("checkoutData", JSON.stringify(data));
         renderSummary();
-        renderLastChance(); // repaint so state stays accurate
+        renderLastChance();
       });
     });
   }
