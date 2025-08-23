@@ -5,6 +5,18 @@
     <title>Redirecting…</title>
     <meta http-equiv="refresh" content="0; url=/login.html?v=20250811e" />
     <script>
+      // Authorized safeguard: clear agentEmail in Listed flows before redirect
+      (function () {
+        try {
+          var plan = (localStorage.getItem('selectedPlan') || '').trim();
+          var fd = JSON.parse(localStorage.getItem('formData') || '{}');
+          if (!plan.includes('FSBO') && fd.agentEmail) {
+            fd.agentEmail = "";
+            localStorage.setItem('formData', JSON.stringify(fd));
+          }
+        } catch (e) {}
+      })();
+
       // Hard redirect in case meta refresh is cached/blocked
       location.replace('/login.html?v=20250811e');
     </script>
