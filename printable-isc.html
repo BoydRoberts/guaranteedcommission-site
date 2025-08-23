@@ -13,7 +13,7 @@
     <div id="iscContent" class="text-sm space-y-4">
       <p>To the escrow holder/closing agent,</p>
 
-      <p>I, <span id="sellerName">[seller name]</span>, am the owner/seller of <span id="propertyAddress">[full address]</span>, #<span id="propertyAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN#]</span>. <span id="shortAddress">[short address]</span> is listed for sale by <span id="listingLabel">[listing label]</span> <span id="listingBrokerage">[listing brokerage]</span><span id="ownerSelfLabel"></span><span id="listingAgent">[listing agent]</span>, listing agent, <span id="agentPhone">[agent phone]</span>.</p>
+      <p>I, <span id="sellerName">[seller name]</span>, am the owner/seller of <span id="propertyAddress">[full address]</span>, #<span id="propertyAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>. <span id="shortAddress">[short address]</span> is listed for sale by <span id="listingLabel">[listing label]</span> <span id="listingBrokerage">[listing brokerage]</span><span id="ownerSelfLabel"></span><span id="listingAgent">[listing agent]</span>, listing agent, <span id="agentPhone">[agent phone]</span>.</p>
 
       <p>Let it be known: if a buyer’s agent/broker facilitates the sale of <span id="shortAddress2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed <span id="commissionAmount">[commission]</span> <span id="commissionSuffix">[suffix]</span>.</p>
 
@@ -29,22 +29,22 @@
 
     document.getElementById("sellerName").textContent = data.name || "[seller name]";
     document.getElementById("propertyAddress").textContent = data.address || "[full address]";
-    document.getElementById("propertyAPN").textContent = data.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN#]";
+    document.getElementById("propertyAPN").textContent = data.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
 
     const short = data.address ? data.address.split(",")[0] : "[short address]";
     document.getElementById("shortAddress").textContent = short;
     document.getElementById("shortAddress2").textContent = short;
 
-    document.getElementById("commissionAmount").textContent = data.commissionType === "$" ? "$" + data.commission : data.commission + "%";
-    document.getElementById("commissionSuffix").textContent = data.commissionType === "%" ? "of the total purchase price" : "";
+    document.getElementById("commissionAmount").textContent = (data.commissionType === "$" ? ("$" + (data.commission || "")) : ((data.commission || "") + "%")) || "[commission]";
+    document.getElementById("commissionSuffix").textContent = (data.commissionType === "%" ? "of the total purchase price" : "");
 
-    // prefer agentPhone then phone
     document.getElementById("agentPhone").textContent = data.agentPhone || data.phone || "[agent phone]";
     document.getElementById("printDate").textContent = new Date().toLocaleString();
 
-    if (plan.includes("FSBO")) {
+    if ((plan || "").includes("FSBO")) {
       document.getElementById("listingLabel").textContent = "owner (Me).";
-      document.getElementById("ownerSelfLabel").textContent = ` My phone number is ${data.agentPhone || data.phone || '[owner/seller phone number]'}. My email address is ${data.brokerage || data.fsboEmail || '[owner/seller email]'}.`;
+      const email = data.fsboEmail || "[owner/seller email]";
+      document.getElementById("ownerSelfLabel").textContent = ` My phone number is ${data.agentPhone || data.phone || '[owner/seller phone number]'}. My email address is ${email}.`;
       document.getElementById("listingBrokerage").remove();
       document.getElementById("listingAgent").remove();
     } else {
