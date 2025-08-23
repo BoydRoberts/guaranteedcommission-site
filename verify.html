@@ -36,18 +36,21 @@
 
   <script>
     window.addEventListener("DOMContentLoaded", () => {
-      const data = JSON.parse(localStorage.getItem("formData") || "{}");
+      const fd = JSON.parse(localStorage.getItem("formData") || "{}");
+      const plan = (localStorage.getItem("selectedPlan") || "").trim();
 
-      if (data.name) document.getElementById("name").value = data.name;
-
-      // Auto-fill FSBO fields only
-      const isFSBO = (data.brokerage || "").toLowerCase().includes("@" || "email");
-
-      if (isFSBO && data.phone) {
-        document.getElementById("phone").value = data.phone;
+      // --- Clear agentEmail in Listed flows (safety) ---
+      if (!plan.includes("FSBO") && fd.agentEmail) {
+        fd.agentEmail = "";
+        localStorage.setItem("formData", JSON.stringify(fd));
       }
-      if (isFSBO && data.brokerage) {
-        document.getElementById("email").value = data.brokerage;
+
+      if (fd.name) document.getElementById("name").value = fd.name;
+
+      // FSBO-only auto-fill
+      if (plan.includes("FSBO")) {
+        if (fd.phone) document.getElementById("phone").value = fd.phone;
+        if (fd.fsboEmail) document.getElementById("email").value = fd.fsboEmail;
       }
     });
 
@@ -63,16 +66,13 @@
         return;
       }
 
-      // Save to localStorage
       const verifyData = { name, phone, email, password, verifyMethod };
       localStorage.setItem("verifyData", JSON.stringify(verifyData));
 
-      // Simulate verification code
       const code = Math.floor(100000 + Math.random() * 900000);
       localStorage.setItem("verificationCode", code);
 
       alert(`Verification code sent to your ${verifyMethod}: ${code}`);
-      window.location.href = "/upsell.html";
       window.location.href = "/verify-code.html";
     }
   </script>
