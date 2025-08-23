@@ -110,3 +110,93 @@
     }
 
     // Paint who-line and badge
+    $('who').textContent = target
+      ? `We sent a 6-digit code to ${maskEmail(target)}.`
+      : `We sent a 6-digit code.`;
+    $('codeBadge').textContent = code;
+
+    // ---------- input behavior ----------
+    const codeInput = $('code');
+
+    // Sanitize: keep only digits; auto-submit on 6
+    codeInput.addEventListener('input', (e) => {
+      const digits = (e.target.value || '').replace(/\D/g, '').slice(0, 6);
+      if (e.target.value !== digits) e.target.value = digits;
+      // clear any prior custom validity
+      e.target.setCustomValidity('');
+      if (digits.length === 6) {
+        // small delay to allow UI paint, then submit
+        setTimeout(() => $('verifyForm').requestSubmit(), 10);
+      }
+    });
+
+    // Also catch Enter on the field (desktop)
+    codeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        $('verifyForm').requestSubmit();
+      }
+    });
+
+    // ---------- buttons ----------
+    $('resend').addEventListener('click', (e) => {
+      e.preventDefault();
+      code = generateCode();
+      safeSet('verificationCode', code);
+      $('codeBadge').textContent = code;
+      setStatus('A new code has been generated.', true);
+      codeInput.value = '';
+      codeInput.focus();
+    });
+
+    $('copy').addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        await navigator.clipboard.writeText(code);
+        setStatus('Code copied to clipboard.', true);
+      } catch {
+        setStatus('Could not copy. Please type it in.', false);
+      }
+    });
+
+    // Fill & verify (one-click for testing)
+    $('fill').addEventListener('click', (e) => {
+      e.preventDefault();
+      codeInput.value = code;
+      $('verifyForm').requestSubmit();
+    });
+
+    // ---------- verify submit ----------
+    $('verifyForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const entered = (codeInput.value || '').trim();
+      if (!/^\d{6}$/.test(entered)) {
+        codeInput.setCustomValidity('Enter 6 digits');
+        codeInput.reportValidity();
+        return;
+      }
+
+      const saved = safeGet('verificationCode');
+      if (!saved) {
+        setStatus('No code found. Click “Resend code” and try again.', false);
+        return;
+      }
+      if (entered !== saved) {
+        setStatus('Incorrect code. Please try again or click “Resend code”.', false);
+        return;
+      }
+
+      // Mark verified and continue
+      safeSet('isVerified', 'true');
+      setStatus('Verified! Redirecting…', true);
+
+      const next =
+        safeGet('nextAfterVerify') ||
+        safeGet('nextAfterLogin')  ||
+        '/upsell.html';
+
+      setTimeout(() => { window.location.href = next; }, 400);
+    });
+  </script>
+</body>
+</html>
