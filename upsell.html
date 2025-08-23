@@ -64,7 +64,7 @@
       total: 0
     });
 
-    // Steps
+    // --- STEPS (ensure Basic shows Upgrade first) ---
     const steps = (() => {
       if (plan === 'Listed Property Basic') return ['upgrade','banner','premium','pin'];
       if (plan === 'Listed Property Plus')  return ['banner','premium','pin'];
@@ -120,7 +120,7 @@
             <strong>Current plan: Listed Property Basic – FREE</strong>
             <br>
             <span class="muted">
-              (Includes: printable commission communication letter, map search, listing price, main photo, address, parcel number, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone.  Does not include full property description.)
+              (Includes: printable commission communication letter, map search, listing price, main photo, address, parcel number, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone. Does not include full property description.)
             </span>
           </div>
         `;
