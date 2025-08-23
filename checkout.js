@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-08-21f (Basic can add/remove Plus at checkout; no other changes)
+// /checkout.js — build 2025-08-21g (Basic can add/remove Plus at checkout; all checkboxes default unchecked)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-21f");
+  console.log("[checkout.js] build 2025-08-21g");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -128,7 +128,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const sel = [];
     const originalWasBasic = (ORIGINAL_PLAN === "Listed Property Basic");
-    if (originalWasBasic && (data.upgrades.upgradeToPlus || data.plan === "Listed Property Plus")) {
+    // Show "Upgrade to Plus" in the selected list ONLY if the user explicitly checked it
+    if (originalWasBasic && data.upgrades.upgradeToPlus) {
       sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
     }
     if (data.upgrades.banner)  sel.push(`Banner ($${data.prices.banner})`);
@@ -156,19 +157,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const originalWasBasic = (ORIGINAL_PLAN === "Listed Property Basic");
 
     const toggles = [];
-    // KEEP Upgrade-to-Plus visible if the original plan was Basic (so it can be checked/unchecked here)
+    // KEEP Upgrade-to-Plus visible for Basic checkout, default UNCHECKED unless user explicitly selected it
     if (originalWasBasic) {
       toggles.push({
         key:"upgradeToPlus",
         label:"Upgrade to Listed Property Plus",
         price:data.prices.plus,
-        checked:(data.upgrades.upgradeToPlus || data.plan === "Listed Property Plus")
+        checked: !!data.upgrades.upgradeToPlus // ← do NOT auto-check based on plan
       });
     }
-    toggles.push({ key:"banner",  label:"Banner",  price:data.prices.banner,  checked:data.upgrades.banner });
-    toggles.push({ key:"premium", label:"Premium Placement", price:data.prices.premium, checked:data.upgrades.premium && !data.upgrades.pin });
-    toggles.push({ key:"pin",     label:"Pin Placement", price:data.prices.pin, checked:data.upgrades.pin, note:"(includes Premium free)" });
-    if (isFSBO) toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price:data.prices.confidential, checked:data.upgrades.confidential });
+    // All other toggles default to unchecked unless user explicitly selected them earlier
+    toggles.push({ key:"banner",  label:"Banner",  price:data.prices.banner,  checked: !!data.upgrades.banner });
+    toggles.push({ key:"premium", label:"Premium Placement", price:data.prices.premium, checked: (!!data.upgrades.premium && !data.upgrades.pin) });
+    toggles.push({ key:"pin",     label:"Pin Placement", price:data.prices.pin, checked: !!data.upgrades.pin, note:"(includes Premium free)" });
+    if (isFSBO) toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price:data.prices.confidential, checked: !!data.upgrades.confidential });
 
     box.innerHTML = toggles.map(t => `
       <label class="flex items-center justify-between border rounded-lg px-3 py-2 bg-white">
