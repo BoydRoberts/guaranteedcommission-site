@@ -144,6 +144,7 @@
 
         <!-- Commission -->
         <div class="flex gap-2">
+          <input type="text" id="commission" placeholder="Commission" class="w-full border p-1 rounded">
           <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border p-1 rounded">
           <select id="commissionType" class="border p-1 rounded">
             <option value="%">%</option>
@@ -166,7 +167,8 @@
         <p>To the escrow holder/closing agent,</p>
         <p class="mt-2">
           I, <span id="letterName">[name]</span>, am the owner/seller of
-          <span id="letterAddressFull">[full address]</span>.
+          <span id="letterAddressFull">[full address]</span>
+          <span id="apnSpanListed">, # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span></span>.
           <span id="letterAddressShort1">[short address]</span> is listed for sale by
           <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent,
           <span id="letterAgentPhone">[agent phone]</span>.
