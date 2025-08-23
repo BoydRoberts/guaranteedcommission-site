@@ -233,7 +233,7 @@ function loadFromLocalStorage() {
       agent: formData.agent || "",
       agentPhone: formData.agentPhone || "",
       ownerPhone: formData.agentPhone || "", // FSBO reuse
-      ownerEmail: formData.brokerage || "",  // FSBO reuse (email captured in brokerage field during FSBO)
+      ownerEmail: formData.fsboEmail || "",  // FIXED: read FSBO email from fsboEmail
     },
   };
 
@@ -243,7 +243,7 @@ function loadFromLocalStorage() {
     agent: formData.agent || "",
     agentPhone: formData.agentPhone || "",
     ownerPhone: formData.agentPhone || "",
-    ownerEmail: formData.brokerage || "",
+    ownerEmail: formData.fsboEmail || "",   // FIXED: read FSBO email from fsboEmail
   };
 
   return { data, context };
