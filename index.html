@@ -231,7 +231,7 @@
     // Robust US address validator
     function isValidFullAddress(s) {
       if (!s) return false;
-      const re = /^\\s*.+?,\\s*[A-Za-z .'\\-]+,\\s*[A-Za-z]{2}\\s+\\d{5}(?:-\\d{4})?\\s*$/;
+      const re = /^\s*.+?,\s*[A-Za-z .'\-]+,\s*[A-Za-z]{2}\s+\d{5}(?:-\d{4})?\s*$/;
       return re.test(s.trim());
     }
 
@@ -289,11 +289,11 @@
       const phoneInput = document.getElementById('agentPhone');
       const phoneError = document.getElementById('phoneError');
       phoneInput.addEventListener('input', function(){
-        let v = this.value.replace(/\\D/g,'').slice(0,10);
-        if(v.length>3 && v.length<=6) v = v.replace(/(\\d{3})(\\d+)/,'$1-$2');
-        else if(v.length>6) v = v.replace(/(\\d{3})(\\d{3})(\\d+)/,'$1-$2-$3');
+        let v = this.value.replace(/\D/g,'').slice(0,10);
+        if(v.length>3 && v.length<=6) v = v.replace(/(\d{3})(\d+)/,'$1-$2');
+        else if(v.length>6) v = v.replace(/(\d{3})(\d{3})(\d+)/,'$1-$2-$3');
         this.value = v;
-        const ok = /^\\d{3}-\\d{3}-\\d{4}$/.test(this.value);
+        const ok = /^\d{3}-\d{3}-\d{4}$/.test(this.value);
         phoneInput.classList.toggle('border-red-500', !ok);
         phoneError.classList.toggle('hidden', ok);
       });
@@ -443,7 +443,7 @@
         </div>
         <div class="p-3 space-y-1">
           <div class="gc-line1 text-base">${line1Left} &nbsp;|&nbsp; ${line1Mid} &nbsp;|&nbsp; ${line1Right}</div>
-          <div class="gc-meta">${[bedrooms?\`${'${bedrooms}'} bds\`:null, bathrooms?\`${'${bathrooms}'} ba\`:null, sqft?`${'${Number(sqft).toLocaleString()}'} sqft`:null, status||null].filter(Boolean).join(' | ')}</div>
+          <div class="gc-meta">${[bedrooms?`${bedrooms} bds`:null, bathrooms?`${bathrooms} ba`:null, sqft?`${Number(sqft).toLocaleString()} sqft`:null, status||null].filter(Boolean).join(' | ')}</div>
           <div class="text-sm font-medium">${address}</div>
           <div class="gc-broker">${(plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : `${(brokerage||'').toUpperCase()}${agent ? ' — '+agent : ''}`}</div>
           <div class="pt-2">
