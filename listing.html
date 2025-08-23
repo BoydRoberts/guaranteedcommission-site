@@ -122,7 +122,7 @@
     const agentListing = (() => { try { return JSON.parse(localStorage.getItem("agentListing") || "{}"); } catch { return {}; } })();
     const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
 
-    // Compose display values with safe fallbacks (so cold visitors still see a complete page)
+    // Compose display values
     const fullAddress = formData.address || "[full address]";
     const price = (agentListing.price ?? "");
     const commission = (agentListing.commission ?? (formData.commission || ""));
@@ -209,7 +209,7 @@
 
     if (isFSBO) {
       document.getElementById("cOwnerPhone").textContent = formData.agentPhone || "[owner/seller phone number]";
-      document.getElementById("cOwnerEmail").textContent = formData.brokerage || "[owner/seller email]";
+      document.getElementById("cOwnerEmail").textContent = formData.fsboEmail || "[owner/seller email]";
       fsboContact.classList.remove("hidden");
     } else {
       document.getElementById("cBrokerage").textContent = formData.brokerage || "[listing brokerage]";
@@ -219,15 +219,12 @@
     }
 
     // ------ Provide a complete, public-safe ISC context for the PDF helper ------
-    // Fallbacks ensure a cold visitor still downloads a coherent ISC.
     const sellerName = formData.name || formData.sellerName || "[Name]";
     const addressShort = (fullAddress || "").split(",")[0] || "[short address]";
 
     window.__ISC_CONTEXT = {
-      // which template branch to render
       variant: isFSBO ? "fsbo" : "listed",
 
-      // shared
       sellerName,
       signatureName: sellerName,
       addressFull: fullAddress,
@@ -242,18 +239,15 @@
       agent: formData.agent || "",
       agentPhone: formData.agentPhone || "",
 
-      // fsbo branch (we re-used these fields in Box 2)
+      // fsbo branch (now using fsboEmail)
       fsboPhone: formData.agentPhone || "",
-      fsboEmail: formData.brokerage || "",
+      fsboEmail: formData.fsboEmail || "",
 
-      // nice-to-haves for headers/footers
       plan,
       source: "listing.html",
-      // a stable-ish key for per-ISC view counters, etc.
       counterKey: "iscViewCount:" + (fullAddress || "unknown")
     };
 
-    // Optional: warn if helper script is missing
     document.querySelector('[data-isc-pdf]')?.addEventListener('click', (e) => {
       if (!window.gcBuildIscPdf) {
         e.preventDefault();
