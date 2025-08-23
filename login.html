@@ -219,9 +219,24 @@
       // Name (neutral)
       if (fd.name) $('c_name').value = fd.name;
 
-      // Email: fsboEmail preferred; otherwise last logged-in email if any
-      const email = fd.fsboEmail || localStorage.getItem('loggedInEmail') || '';
-      if (email) { $('email').value = email; $('c_email').value = email; }
+      // ----- EMAIL PREFILL RULES (adjusted) -----
+      // FSBO: prefill from fsboEmail (owner email captured in Box 2)
+      // Listed (Basic/Plus): DO NOT use agentEmail; only consider a prior loggedInEmail (and skip if it equals agentEmail)
+      (function setEmailPrefill(){
+        let emailToUse = '';
+        if (plan.includes('FSBO')) {
+          emailToUse = fd.fsboEmail || '';
+        } else {
+          const candidate = localStorage.getItem('loggedInEmail') || '';
+          if (candidate && candidate !== (fd.agentEmail || '')) {
+            emailToUse = candidate;
+          }
+        }
+        if (emailToUse) {
+          $('email').value = emailToUse;
+          $('c_email').value = emailToUse;
+        }
+      })();
 
       // Phone: FSBO ONLY. Avoid agent-phone bleed for Basic/Plus
       if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
