@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-08-21d (client builds lineItems -> server { lineItems, successUrl, cancelUrl })
+// /checkout.js — build 2025-08-21e (FSBO pricing lock; Basic shows Upgrade; no other changes)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-21d");
+  console.log("[checkout.js] build 2025-08-21e");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const formData = getJSON("formData", {});
   const agentListing = getJSON("agentListing", {});
   const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+  const IS_FSBO = planLS.includes("FSBO");
 
   const commissionDisplay = () => {
     const type = (agentListing?.commissionType || formData?.commissionType || "%");
@@ -53,6 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
       total: 0
     };
   } else {
+    // back-compat / harden
     if (Array.isArray(data.upgrades)) {
       const arr = data.upgrades.map(s => (s||"").toLowerCase());
       data.upgrades = {
@@ -72,35 +74,49 @@ document.addEventListener("DOMContentLoaded", () => {
       { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
       data.prices || {}
     );
+
     if (typeof data.base !== "number") {
       data.base = (data.plan === "FSBO Plus" ? data.prices.fsbo : (data.plan === "Listed Property Plus" ? data.prices.plus : 0));
     }
   }
 
-  // ---- totals ----
+  // ---- totals (FSBO lock; Basic shows Upgrade) ----
   function recompute(d) {
-    let plan = d.plan;
-    let base = d.base;
-    if (plan === "Listed Property Basic" && d.upgrades.upgradeToPlus) {
-      plan = "Listed Property Plus";
-      base = d.prices.plus;
-      localStorage.setItem("selectedPlan", "Listed Property Plus");
+    // Lock FSBO flows to FSBO plan/pricing, regardless of other flags
+    if (IS_FSBO || d.plan === "FSBO Plus") {
+      d.plan = "FSBO Plus";
+      d.base = d.prices.fsbo;
+      // Upgrade-to-Plus is not applicable to FSBO
+      d.upgrades.upgradeToPlus = false;
+    } else {
+      // Listed flows
+      if (d.plan === "Listed Property Basic" && d.upgrades.upgradeToPlus) {
+        d.plan = "Listed Property Plus";
+        d.base = d.prices.plus;
+        localStorage.setItem("selectedPlan", "Listed Property Plus");
+      } else if (d.plan === "Listed Property Basic" && !d.upgrades.upgradeToPlus) {
+        d.base = 0;
+      } else if (d.plan === "Listed Property Plus") {
+        d.base = d.prices.plus;
+      }
     }
-    let total = base;
+
+    let total = d.base;
     if (d.upgrades.banner) total += d.prices.banner;
     if (d.upgrades.pin) total += d.prices.pin;
     else if (d.upgrades.premium) total += d.prices.premium;
 
-    // Confidential is **FSBO only** (sanitize)
-    if (plan === "FSBO Plus") {
+    // Confidential allowed only for FSBO
+    if (d.plan === "FSBO Plus") {
       if (d.upgrades.confidential) total += d.prices.confidential;
     } else {
       d.upgrades.confidential = false;
     }
 
-    d.plan = plan; d.base = base; d.total = total;
+    d.total = total;
     return d;
   }
+  data.plan = planLS; // ensure we start from the active plan
   data = recompute(data);
   localStorage.setItem("checkoutData", JSON.stringify(data));
 
@@ -111,11 +127,12 @@ document.addEventListener("DOMContentLoaded", () => {
     $("totalAmount").textContent = (data.total || 0);
 
     const sel = [];
-    if (data.upgrades.upgradeToPlus) sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
-    if (data.upgrades.banner) sel.push(`Banner ($${data.prices.banner})`);
-    if (data.upgrades.pin) sel.push(`Pin Placement ($${data.prices.pin})`);
+    if (data.plan === "Listed Property Basic" && data.upgrades.upgradeToPlus) sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
+    if (data.upgrades.banner)  sel.push(`Banner ($${data.prices.banner})`);
+    if (data.upgrades.pin)     sel.push(`Pin Placement ($${data.prices.pin})`);
     else if (data.upgrades.premium) sel.push(`Premium Placement ($${data.prices.premium})`);
     if (data.plan === "FSBO Plus" && data.upgrades.confidential) sel.push(`Confidential FSBO Upgrade ($${data.prices.confidential})`);
+
     $("selectedList").innerHTML = sel.length ? sel.map(s => `<li>${s}</li>`).join("") : `<li class="text-gray-400">None</li>`;
 
     if ((data.total || 0) <= 0) {
@@ -127,7 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---- toggles ----
+  // ---- toggles (last chance) ----
   function renderLastChance() {
     const box = $("upsellChoices");
     box.innerHTML = "";
@@ -165,12 +182,10 @@ document.addEventListener("DOMContentLoaded", () => {
             data.base = data.prices.plus;
             localStorage.setItem("selectedPlan", "Listed Property Plus");
           } else {
-            const originallyBasic = (localStorage.getItem("originalPlan") || "Listed Property Basic");
-            if (originallyBasic === "Listed Property Basic") {
-              data.plan = "Listed Property Basic";
-              data.base = 0;
-              localStorage.setItem("selectedPlan", "Listed Property Basic");
-            }
+            // revert to Basic baseline
+            data.plan = "Listed Property Basic";
+            data.base = 0;
+            localStorage.setItem("selectedPlan", "Listed Property Basic");
           }
         } else if (k === "banner") {
           data.upgrades.banner = checked;
@@ -249,7 +264,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const out = ct.includes('application/json') ? await resp.json() : { error: "Non-JSON server response" };
       if (!resp.ok) throw new Error(out.error || "Server failed to create session.");
 
-      // Support both { url } and { id } returns
       if (out.url) { window.location.href = out.url; return; }
       if (out.id)  {
         const { error } = await stripe.redirectToCheckout({ sessionId: out.id });
