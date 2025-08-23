@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-08-21g (Basic can add/remove Plus at checkout; all checkboxes default unchecked)
+// /checkout.js — build 2025-08-21i (Basic checkout shows a toggle to add/remove Plus)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-21g");
+  console.log("[checkout.js] build 2025-08-21i");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -55,7 +55,6 @@ document.addEventListener("DOMContentLoaded", () => {
       total: 0
     };
   } else {
-    // back-compat / harden
     if (Array.isArray(data.upgrades)) {
       const arr = data.upgrades.map(s => (s||"").toLowerCase());
       data.upgrades = {
@@ -75,7 +74,6 @@ document.addEventListener("DOMContentLoaded", () => {
       { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
       data.prices || {}
     );
-
     if (typeof data.base !== "number") {
       data.base = (data.plan === "FSBO Plus" ? data.prices.fsbo : (data.plan === "Listed Property Plus" ? data.prices.plus : 0));
     }
@@ -83,13 +81,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ---- totals (FSBO lock; Basic can Upgrade/Un-upgrade) ----
   function recompute(d) {
-    // Lock FSBO flows to FSBO plan/pricing
     if (IS_FSBO || d.plan === "FSBO Plus") {
       d.plan = "FSBO Plus";
       d.base = d.prices.fsbo;
-      d.upgrades.upgradeToPlus = false; // not applicable to FSBO
+      d.upgrades.upgradeToPlus = false;
     } else {
-      // Listed flows (Basic can toggle Plus at checkout)
       if (d.upgrades.upgradeToPlus) {
         d.plan = "Listed Property Plus";
         d.base = d.prices.plus;
@@ -103,10 +99,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let total = d.base;
     if (d.upgrades.banner) total += d.prices.banner;
-    if (d.upgrades.pin)     total += d.prices.pin;
+    if (d.upgrades.pin) total += d.prices.pin;
     else if (d.upgrades.premium) total += d.prices.premium;
 
-    // Confidential only for FSBO
     if (d.plan === "FSBO Plus") {
       if (d.upgrades.confidential) total += d.prices.confidential;
     } else {
@@ -116,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     d.total = total;
     return d;
   }
-  data.plan = planLS; // ensure we start from the active plan
+  data.plan = planLS;
   data = recompute(data);
   localStorage.setItem("checkoutData", JSON.stringify(data));
 
@@ -128,7 +123,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const sel = [];
     const originalWasBasic = (ORIGINAL_PLAN === "Listed Property Basic");
-    // Show "Upgrade to Plus" in the selected list ONLY if the user explicitly checked it
     if (originalWasBasic && data.upgrades.upgradeToPlus) {
       sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
     }
@@ -157,18 +151,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const originalWasBasic = (ORIGINAL_PLAN === "Listed Property Basic");
 
     const toggles = [];
-    // KEEP Upgrade-to-Plus visible for Basic checkout, default UNCHECKED unless user explicitly selected it
+    // SHOW Upgrade-to-Plus for Basic checkout; checkbox can be checked/unchecked by user
     if (originalWasBasic) {
       toggles.push({
         key:"upgradeToPlus",
         label:"Upgrade to Listed Property Plus",
         price:data.prices.plus,
-        checked: !!data.upgrades.upgradeToPlus // ← do NOT auto-check based on plan
+        checked: !!data.upgrades.upgradeToPlus
       });
     }
-    // All other toggles default to unchecked unless user explicitly selected them earlier
     toggles.push({ key:"banner",  label:"Banner",  price:data.prices.banner,  checked: !!data.upgrades.banner });
-    toggles.push({ key:"premium", label:"Premium Placement", price:data.prices.premium, checked: (!!data.upgrades.premium && !data.upgrades.pin) });
+    toggles.push({ key:"premium", label:"Premium Placement", price:data.prices.premium, checked: !!data.upgrades.premium });
     toggles.push({ key:"pin",     label:"Pin Placement", price:data.prices.pin, checked: !!data.upgrades.pin, note:"(includes Premium free)" });
     if (isFSBO) toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price:data.prices.confidential, checked: !!data.upgrades.confidential });
 
@@ -189,14 +182,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const checked = e.target.checked;
 
         if (k === "upgradeToPlus") {
-          data.upgrades.upgradeToPlus = checked;  // ← can check OR uncheck at checkout
+          data.upgrades.upgradeToPlus = checked;
         } else if (k === "banner") {
           data.upgrades.banner = checked;
         } else if (k === "premium") {
-          data.upgrades.premium = checked && !data.upgrades.pin;
+          data.upgrades.premium = checked;
         } else if (k === "pin") {
           data.upgrades.pin = checked;
-          if (checked) data.upgrades.premium = true;
+          if (checked) data.upgrades.premium = true; // Pin includes Premium (free)
         } else if (k === "confidential") {
           data.upgrades.confidential = (data.plan === "FSBO Plus") ? checked : false;
         }
@@ -223,7 +216,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!stripe) throw new Error("Stripe not available on this page.");
       if ((data.total || 0) <= 0) { window.location.href = "/signature.html"; return; }
 
-      // Stripe Price IDs (test)
       const PRICE_IDS = {
         PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
         FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
@@ -233,7 +225,6 @@ document.addEventListener("DOMContentLoaded", () => {
         CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm"
       };
 
-      // Build lineItems per current plan/upgrades
       const items = [];
       const isFSBO = data.plan === "FSBO Plus";
       const isPlus = data.plan === "Listed Property Plus";
