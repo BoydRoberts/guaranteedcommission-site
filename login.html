@@ -168,15 +168,53 @@
   <script>
     console.log('[login] secure access build 2025-08-14b');
 
+    // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
+    const statusBox = $('status');
     const safeJSON = (s)=>{ try { return JSON.parse(s); } catch { return null; } };
+    function setStatus(msg, ok=false) {
+      statusBox.classList.remove('hidden');
+      statusBox.textContent = msg;
+      statusBox.className = ok
+        ? 'mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
+        : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
+    }
 
-    // Prefill from Box 2
+    function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
+    function formatPhone(s){
+      const d = onlyDigits(s).slice(0,10);
+      if (d.length <= 3) return d;
+      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
+      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
+    }
+    function isValidPhone(s){ return onlyDigits(s).length === 10; }
+
+    // Tabs
+    const tabSignin = $('tab-signin');
+    const tabCreate = $('tab-create');
+    const loginForm = $('loginForm');
+    const createForm = $('createForm');
+    function showSignin() {
+      tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
+      tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+      loginForm.classList.remove('hidden'); createForm.classList.add('hidden');
+      tabSignin.setAttribute('aria-selected','true'); tabCreate.setAttribute('aria-selected','false');
+    }
+    function showCreate() {
+      tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
+      tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+      createForm.classList.remove('hidden'); loginForm.classList.add('hidden');
+      tabCreate.setAttribute('aria-selected','true'); tabSignin.setAttribute('aria-selected','false');
+    }
+    tabSignin.addEventListener('click', showSignin);
+    tabCreate.addEventListener('click', showCreate);
+    $('goCreate')?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
+    $('goSignin')?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
+
+    // Prefill from Box 2 — FSBO-only; and clear agentEmail on Listed flows (authorized change)
     (function prefill() {
       const fd = safeJSON(localStorage.getItem('formData')) || {};
       const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-
-      if (fd.name) $('c_name').value = fd.name;
 
       // --- Clear agentEmail in Listed flows (safety step) ---
       if (!plan.includes('FSBO') && fd.agentEmail) {
@@ -184,26 +222,155 @@
         localStorage.setItem('formData', JSON.stringify(fd));
       }
 
-      // Email prefill
-      let emailToUse = '';
-      if (plan.includes('FSBO')) {
-        emailToUse = fd.fsboEmail || '';
-      } else {
-        const candidate = localStorage.getItem('loggedInEmail') || '';
-        if (candidate && candidate !== (fd.agentEmail || '')) {
-          emailToUse = candidate;
+      // Name (neutral)
+      if (fd.name) $('c_name').value = fd.name;
+
+      // EMAIL PREFILL RULES:
+      // FSBO: use fsboEmail (owner email captured in Box 2)
+      // Listed (Basic/Plus): DO NOT use agentEmail; only consider a prior loggedInEmail (and skip if it equals agentEmail)
+      (function setEmailPrefill(){
+        let emailToUse = '';
+        if (plan.includes('FSBO')) {
+          emailToUse = fd.fsboEmail || '';
+        } else {
+          const candidate = localStorage.getItem('loggedInEmail') || '';
+          if (candidate && candidate !== (fd.agentEmail || '')) {
+            emailToUse = candidate;
+          }
         }
-      }
-      if (emailToUse) {
-        $('email').value = emailToUse;
-        $('c_email').value = emailToUse;
+        if (emailToUse) {
+          $('email').value = emailToUse;
+          $('c_email').value = emailToUse;
+        }
+      })();
+
+      // Phone: FSBO ONLY. Avoid agent-phone bleed for Basic/Plus
+      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
+        $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
 
-      // Phone (FSBO only)
-      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
-        $('c_phone').value = (fd.phone || fd.agentPhone);
-      }
+      // If coming from Box 2 flow, default to Create tab
+      if (localStorage.getItem('nextAfterLogin')) showCreate();
     })();
+
+    // Show/Hide toggles
+    function wireToggle(inputId, btnId) {
+      const input = $(inputId);
+      const btn = $(btnId);
+      if (!input || !btn) return;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const vis = input.type === 'text';
+        input.type = vis ? 'password' : 'text';
+        btn.textContent = vis ? 'Show' : 'Hide';
+        input.focus({ preventScroll: true });
+      });
+    }
+    wireToggle('password','togglePwd');
+    wireToggle('c_password','togglePwdC1');
+    wireToggle('c_password2','togglePwdC2');
+
+    // Strength + match
+    function scorePassword(p) {
+      let s=0; if (!p) return 0;
+      if (p.length>=10) s++; if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++;
+      if (/[^A-Za-z0-9]/.test(p)) s++; if (p.length>=14) s++;
+      return Math.min(s,4);
+    }
+    function updateStrength(){
+      const p1 = $('c_password')?.value || '';
+      const p2 = $('c_password2')?.value || '';
+      const bar = $('strengthBar'), st=$('strengthText'), mm=$('matchMsg');
+      if (!bar || !st || !mm) return;
+      const s=scorePassword(p1), widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
+      bar.style.width=widths[s]; bar.style.backgroundColor=colors[s]; st.textContent='Password strength: '+labels[s];
+      if (!p2){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
+      if (p1===p2){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
+      else { mm.textContent='Passwords do not match'; mm.className='text-xs mt-1 text-red-600'; }
+    }
+    $('c_password')?.addEventListener('input', updateStrength);
+    $('c_password2')?.addEventListener('input', updateStrength);
+
+    // Phone mask (create)
+    $('c_phone')?.addEventListener('input', () => {
+      const el = $('c_phone');
+      const cur = el.selectionStart;
+      const before = el.value;
+      el.value = formatPhone(before);
+      el.selectionStart = el.selectionEnd = Math.min(cur + (el.value.length - before.length), el.value.length);
+    });
+
+    // Local accounts (demo in-browser)
+    const ACC_KEY='accounts';
+    const getAccounts = ()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
+    const saveAccounts = (obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
+
+    // Sign In
+    $('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = $('email').value.trim().toLowerCase();
+      const password = $('password').value;
+      const accounts = getAccounts();
+      const acct = accounts[email];
+      if (!acct) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); return; }
+      if (acct.password !== password) { setStatus('Invalid email or password.'); return; }
+      localStorage.setItem('isLoggedIn','true');
+      localStorage.setItem('loggedInEmail', email);
+
+      // Ensure code exists and route to verification
+      if (!localStorage.getItem('verificationCode')) {
+        const code = String(Math.floor(100000 + Math.random()*900000));
+        localStorage.setItem('verificationCode', code);
+        localStorage.setItem('verifyTarget', email);
+      }
+      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
+      window.location.href = next;
+    });
+
+    // Create Account
+    $('createForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name  = $('c_name').value.trim();
+      const email = $('c_email').value.trim().toLowerCase();
+      const phone = $('c_phone').value.trim();
+      const p1 = $('c_password').value;
+      const p2 = $('c_password2').value;
+
+      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
+      if (scorePassword(p1) < 3) { setStatus('Please use a stronger password (aim for Good or Strong).'); return; }
+      if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
+
+      const accounts = getAccounts();
+      accounts[email] = { name, email, password: p1, phone };
+      saveAccounts(accounts);
+
+      localStorage.setItem('isLoggedIn','true');
+      localStorage.setItem('loggedInEmail', email);
+
+      // Send code (simulated) + verify handoff
+      const code = String(Math.floor(100000 + Math.random()*900000));
+      localStorage.setItem('verificationCode', code);
+      localStorage.setItem('verifyTarget', email);
+
+      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
+      window.location.href = next;
+    });
+
+    // Debug panel
+    $('dbgToggle').addEventListener('click', () => {
+      const fd = safeJSON(localStorage.getItem('formData'));
+      const dump = {
+        formData: fd,
+        selectedPlan: localStorage.getItem('selectedPlan'),
+        loggedInEmail: localStorage.getItem('loggedInEmail'),
+        verificationCode: localStorage.getItem('verificationCode'),
+        verifyTarget: localStorage.getItem('verifyTarget'),
+        nextAfterLogin: localStorage.getItem('nextAfterLogin')
+      };
+      const p = $('dbgPanel');
+      p.classList.toggle('hidden');
+      p.textContent = JSON.stringify(dump, null, 2);
+    });
   </script>
 </body>
 </html>
