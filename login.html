@@ -98,7 +98,7 @@
         </div>
 
         <div>
-          <label for="c_phone" class="block text-sm font-medium text-gray-700">Phone</label>
+          <label for="c_phone" class="block text sm font-medium text-gray-700">Phone</label>
           <input id="c_phone" type="tel" required
                  class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                  placeholder="123-456-7890" inputmode="numeric" />
@@ -211,12 +211,12 @@
     $('goCreate')?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
     $('goSignin')?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
 
-    // Prefill from Box 2 — FSBO-only; and clear agentEmail on Listed flows (authorized change)
+    // Prefill — FSBO only; Listed stays blank. Also clear agentEmail in Listed flows (safety).
     (function prefill() {
       const fd = safeJSON(localStorage.getItem('formData')) || {};
       const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
 
-      // --- Clear agentEmail in Listed flows (safety step) ---
+      // Clear agentEmail for Listed (prevents any bleed)
       if (!plan.includes('FSBO') && fd.agentEmail) {
         fd.agentEmail = "";
         localStorage.setItem('formData', JSON.stringify(fd));
@@ -225,26 +225,18 @@
       // Name (neutral)
       if (fd.name) $('c_name').value = fd.name;
 
-      // EMAIL PREFILL RULES:
-      // FSBO: use fsboEmail (owner email captured in Box 2)
-      // Listed (Basic/Plus): DO NOT use agentEmail; only consider a prior loggedInEmail (and skip if it equals agentEmail)
-      (function setEmailPrefill(){
-        let emailToUse = '';
-        if (plan.includes('FSBO')) {
-          emailToUse = fd.fsboEmail || '';
-        } else {
-          const candidate = localStorage.getItem('loggedInEmail') || '';
-          if (candidate && candidate !== (fd.agentEmail || '')) {
-            emailToUse = candidate;
-          }
+      // EMAIL:
+      // FSBO: prefill from fsboEmail
+      // Listed (Basic/Plus): FORCE BLANK (do not pull from agentEmail or loggedInEmail)
+      if (plan.includes('FSBO')) {
+        if (fd.fsboEmail) {
+          $('c_email').value = fd.fsboEmail;
         }
-        if (emailToUse) {
-          $('email').value = emailToUse;
-          $('c_email').value = emailToUse;
-        }
-      })();
+      } else {
+        $('c_email').value = '';
+      }
 
-      // Phone: FSBO ONLY. Avoid agent-phone bleed for Basic/Plus
+      // Phone: FSBO ONLY
       if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
         $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
