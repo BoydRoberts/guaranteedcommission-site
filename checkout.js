@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-08-21j (Basic checkout shows reversible Upgrade-to-Plus; nothing else changed)
+// /checkout.js — build 2025-08-24a (Plus shows Downgrade option; Basic keeps Upgrade; FSBO hides both)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-21j");
+  console.log("[checkout.js] build 2025-08-24a");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -14,7 +14,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
   const ORIGINAL_PLAN = localStorage.getItem("originalPlan") || planLS;
   const IS_FSBO = planLS.includes("FSBO");
+  const originalWasBasic = (ORIGINAL_PLAN === "Listed Property Basic");
+  const originalWasPlus  = (ORIGINAL_PLAN === "Listed Property Plus");
 
+  // Who line
   (function renderWhoRow(){
     const addr = formData.address || "[Full Address]";
     const name = formData.name || "[Name]";
@@ -34,34 +37,23 @@ document.addEventListener("DOMContentLoaded", () => {
     $("whoRow").classList.remove("hidden");
   })();
 
-  // ---- checkoutData normalize ----
+  // checkoutData normalize (add downgrade flag for Plus flows)
   let data = getJSON("checkoutData", null);
   if (!data) {
     const plan = planLS;
     data = {
       plan,
       base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
-      upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
+      upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false, downgradeToBasic:false },
       prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
       meta: {},
       total: 0
     };
   } else {
-    if (Array.isArray(data.upgrades)) {
-      const arr = data.upgrades.map(s => (s||"").toLowerCase());
-      data.upgrades = {
-        upgradeToPlus: arr.some(s => s.includes("upgrade to listed property plus")),
-        banner:        arr.some(s => s.includes("banner")),
-        premium:       arr.some(s => s.includes("premium placement")),
-        pin:           arr.some(s => s.includes("pin placement")),
-        confidential:  arr.some(s => s.includes("confidential"))
-      };
-    } else {
-      data.upgrades = Object.assign(
-        { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
-        data.upgrades || {}
-      );
-    }
+    data.upgrades = Object.assign(
+      { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false, downgradeToBasic:false },
+      data.upgrades || {}
+    );
     data.prices = Object.assign(
       { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
       data.prices || {}
@@ -71,13 +63,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---- totals (FSBO locked; Basic can toggle Plus at checkout) ----
+  // totals
   function recompute(d) {
-    if (IS_FSBO || d.plan === "FSBO Plus") {
-      d.plan = "FSBO Plus";
-      d.base = d.prices.fsbo;
+    if (IS_FSBO || d.plan === "FSBO Plus" || originalWasBasic === false && originalWasPlus === false) {
+      // FSBO (or unknown) is locked to FSBO Plus pricing; no upgrade/downgrade toggles apply
+      if (planLS.includes("FSBO")) {
+        d.plan = "FSBO Plus";
+        d.base = d.prices.fsbo;
+      }
+      d.upgrades.upgradeToPlus = false;
+      d.upgrades.downgradeToBasic = false;
+    } else if (originalWasPlus) {
+      // PLUS FLOW: default is Plus; allow "Downgrade to Basic — FREE"
+      if (d.upgrades.downgradeToBasic) {
+        d.plan = "Listed Property Basic";
+        d.base = 0;
+        localStorage.setItem("selectedPlan", "Listed Property Basic");
+      } else {
+        d.plan = "Listed Property Plus";
+        d.base = d.prices.plus;
+        localStorage.setItem("selectedPlan", "Listed Property Plus");
+      }
+      // ignore upgradeToPlus in Plus flow
       d.upgrades.upgradeToPlus = false;
     } else {
+      // BASIC FLOW: allow "Upgrade to Plus — $20"
       if (d.upgrades.upgradeToPlus) {
         d.plan = "Listed Property Plus";
         d.base = d.prices.plus;
@@ -87,6 +97,8 @@ document.addEventListener("DOMContentLoaded", () => {
         d.base = 0;
         localStorage.setItem("selectedPlan", "Listed Property Basic");
       }
+      // ignore downgrade flag in Basic flow
+      d.upgrades.downgradeToBasic = false;
     }
 
     let total = d.base;
@@ -107,15 +119,19 @@ document.addEventListener("DOMContentLoaded", () => {
   data = recompute(data);
   localStorage.setItem("checkoutData", JSON.stringify(data));
 
-  // ---- summary ----
+  // summary
   function renderSummary() {
     $("planName").textContent = data.plan;
     $("basePrice").textContent = (data.base || 0);
     $("totalAmount").textContent = (data.total || 0);
 
     const sel = [];
-    const originalWasBasic = (ORIGINAL_PLAN === "Listed Property Basic");
-    if (originalWasBasic && data.upgrades.upgradeToPlus) sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
+    if (originalWasBasic && data.upgrades.upgradeToPlus) {
+      sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
+    }
+    if (originalWasPlus && data.upgrades.downgradeToBasic) {
+      sel.push(`Downgrade to Listed Property Basic (FREE)`);
+    }
     if (data.upgrades.banner)  sel.push(`Banner ($${data.prices.banner})`);
     if (data.upgrades.pin)     sel.push(`Pin Placement ($${data.prices.pin})`);
     else if (data.upgrades.premium) sel.push(`Premium Placement ($${data.prices.premium})`);
@@ -127,29 +143,39 @@ document.addEventListener("DOMContentLoaded", () => {
     else { $("goSignatureZero").classList.add("hidden"); $("payNowBtn").classList.remove("hidden"); }
   }
 
-  // ---- “Add upgrades before you pay:” (shows reversible Plus toggle for Basic) ----
+  // Add upgrades before you pay — show Upgrade for Basic; show Downgrade for Plus; hide both for FSBO
   function renderLastChance() {
     const box = $("upsellChoices");
     box.innerHTML = "";
 
-    const isFSBO  = data.plan === "FSBO Plus";
-    const originalWasBasic = (ORIGINAL_PLAN === "Listed Property Basic");
-
     const toggles = [];
-    // Show Plus toggle at Basic checkout; checkbox can be checked/unchecked
+
     if (originalWasBasic) {
       toggles.push({ key:"upgradeToPlus", label:"Upgrade to Listed Property Plus", price:data.prices.plus, checked: !!data.upgrades.upgradeToPlus });
     }
-    toggles.push({ key:"banner",  label:"Banner",  price:data.prices.banner,  checked: !!data.upgrades.banner });
-    toggles.push({ key:"premium", label:"Premium Placement", price:data.prices.premium, checked: !!data.upgrades.premium });
-    toggles.push({ key:"pin",     label:"Pin Placement", price:data.prices.pin, checked: !!data.upgrades.pin, note:"(includes Premium free)" });
-    if (isFSBO) toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price:data.prices.confidential, checked: !!data.upgrades.confidential });
+    if (originalWasPlus) {
+      toggles.push({ key:"downgradeToBasic", label:"Downgrade to Listed Property Basic — FREE", price:0, checked: !!data.upgrades.downgradeToBasic });
+    }
+
+    // Shared toggles
+    if (data.plan !== "FSBO Plus") {
+      // Listed flows
+      toggles.push({ key:"banner",  label:"Banner",  price:data.prices.banner,  checked: !!data.upgrades.banner });
+      toggles.push({ key:"premium", label:"Premium Placement", price:data.prices.premium, checked: !!data.upgrades.premium });
+      toggles.push({ key:"pin",     label:"Pin Placement", price:data.prices.pin, checked: !!data.upgrades.pin, note:"(includes Premium free)" });
+    } else {
+      // FSBO flow: no Plus toggle at checkout (per your instruction)
+      toggles.push({ key:"banner",  label:"Banner",  price:data.prices.banner,  checked: !!data.upgrades.banner });
+      toggles.push({ key:"premium", label:"Premium Placement", price:data.prices.premium, checked: !!data.upgrades.premium });
+      toggles.push({ key:"pin",     label:"Pin Placement", price:data.prices.pin, checked: !!data.upgrades.pin, note:"(includes Premium free)" });
+      toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price:data.prices.confidential, checked: !!data.upgrades.confidential });
+    }
 
     box.innerHTML = toggles.map(t => `
       <label class="flex items-center justify-between border rounded-lg px-3 py-2 bg-white">
         <div>
           <span class="font-medium">${t.label}</span>
-          <span class="text-gray-500"> — $${t.price}</span>
+          ${t.price ? `<span class="text-gray-500"> — $${t.price}</span>` : ``}
           ${t.note ? `<div class="text-[11px] text-gray-500">${t.note}</div>` : ``}
         </div>
         <input type="checkbox" class="h-4 w-4" data-key="${t.key}" ${t.checked ? 'checked':''}/>
@@ -161,11 +187,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const k = e.target.getAttribute("data-key");
         const checked = e.target.checked;
 
-        if (k === "upgradeToPlus") data.upgrades.upgradeToPlus = checked;
-        else if (k === "banner")   data.upgrades.banner = checked;
-        else if (k === "premium")  data.upgrades.premium = checked;
-        else if (k === "pin")     { data.upgrades.pin = checked; if (checked) data.upgrades.premium = true; }
-        else if (k === "confidential") data.upgrades.confidential = (data.plan === "FSBO Plus") ? checked : false;
+        if (k === "upgradeToPlus")      data.upgrades.upgradeToPlus = checked;
+        else if (k === "downgradeToBasic") data.upgrades.downgradeToBasic = checked;
+        else if (k === "banner")        data.upgrades.banner = checked;
+        else if (k === "premium")       data.upgrades.premium = checked;
+        else if (k === "pin")          { data.upgrades.pin = checked; if (checked) data.upgrades.premium = true; }
+        else if (k === "confidential")  data.upgrades.confidential = (data.plan === "FSBO Plus") ? checked : false;
 
         data = recompute(data);
         localStorage.setItem("checkoutData", JSON.stringify(data));
@@ -175,9 +202,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  $("backBtn").addEventListener("click", () => { window.location.href = "/upsell.html"; });
+  $("backBtn")?.addEventListener("click", () => { window.history.back(); });
 
-  $("payNowBtn").addEventListener("click", async () => {
+  $("payNowBtn")?.addEventListener("click", async () => {
     const btn = $("payNowBtn");
     btn.disabled = true;
     btn.textContent = "Creating checkout…";
@@ -241,7 +268,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  if (!localStorage.getItem("originalPlan")) localStorage.setItem("originalPlan", planLS);
   renderSummary();
   renderLastChance();
 });
