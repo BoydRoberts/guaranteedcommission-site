@@ -1,14 +1,13 @@
-// /checkout.js — build 2025-08-21i (Basic checkout shows toggle to add/remove Plus; nothing else changed)
+// /checkout.js — build 2025-08-21j (Basic checkout shows reversible Upgrade-to-Plus; nothing else changed)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-21i");
+  console.log("[checkout.js] build 2025-08-21j");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-  // Publishable key (test)
   const STRIPE_PUBLISHABLE_KEY = "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
   let stripe = null;
-  try { stripe = Stripe(STRIPE_PUBLISHABLE_KEY); } catch (e) { console.error("Stripe init error:", e); }
+  try { stripe = Stripe(STRIPE_PUBLISHABLE_KEY); } catch (e) {}
 
   const formData = getJSON("formData", {});
   const agentListing = getJSON("agentListing", {});
@@ -72,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---- totals (lock FSBO; allow Basic to toggle Plus at checkout) ----
+  // ---- totals (FSBO locked; Basic can toggle Plus at checkout) ----
   function recompute(d) {
     if (IS_FSBO || d.plan === "FSBO Plus") {
       d.plan = "FSBO Plus";
@@ -108,6 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
   data = recompute(data);
   localStorage.setItem("checkoutData", JSON.stringify(data));
 
+  // ---- summary ----
   function renderSummary() {
     $("planName").textContent = data.plan;
     $("basePrice").textContent = (data.base || 0);
@@ -127,6 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
     else { $("goSignatureZero").classList.add("hidden"); $("payNowBtn").classList.remove("hidden"); }
   }
 
+  // ---- “Add upgrades before you pay:” (shows reversible Plus toggle for Basic) ----
   function renderLastChance() {
     const box = $("upsellChoices");
     box.innerHTML = "";
@@ -135,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const originalWasBasic = (ORIGINAL_PLAN === "Listed Property Basic");
 
     const toggles = [];
-    // Show Plus toggle at Basic checkout; leave it reversible
+    // Show Plus toggle at Basic checkout; checkbox can be checked/unchecked
     if (originalWasBasic) {
       toggles.push({ key:"upgradeToPlus", label:"Upgrade to Listed Property Plus", price:data.prices.plus, checked: !!data.upgrades.upgradeToPlus });
     }
