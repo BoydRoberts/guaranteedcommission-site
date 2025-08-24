@@ -1,30 +1,30 @@
-// /checkout.js — build 2025-08-24a (Plus shows Downgrade option; Basic keeps Upgrade; FSBO hides both)
+// /checkout.js — build 2025-08-24b
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-08-24a");
+  console.log("[checkout.js] build 2025-08-24b");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
   const STRIPE_PUBLISHABLE_KEY = "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
-  let stripe = null;
-  try { stripe = Stripe(STRIPE_PUBLISHABLE_KEY); } catch (e) {}
+  let stripe = null; try { stripe = Stripe(STRIPE_PUBLISHABLE_KEY); } catch {}
 
   const formData = getJSON("formData", {});
   const agentListing = getJSON("agentListing", {});
-  const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-  const ORIGINAL_PLAN = localStorage.getItem("originalPlan") || planLS;
-  const IS_FSBO = planLS.includes("FSBO");
-  const originalWasBasic = (ORIGINAL_PLAN === "Listed Property Basic");
-  const originalWasPlus  = (ORIGINAL_PLAN === "Listed Property Plus");
+  const selectedPlanLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+  const originalPlanLS = (localStorage.getItem("originalPlan") || selectedPlanLS).trim();
+
+  const IS_FSBO   = selectedPlanLS.includes("FSBO");
+  const IS_PLUS   = selectedPlanLS === "Listed Property Plus";
+  const IS_BASIC  = selectedPlanLS === "Listed Property Basic";
 
   // Who line
-  (function renderWhoRow(){
+  (function(){
     const addr = formData.address || "[Full Address]";
     const name = formData.name || "[Name]";
     const type = (agentListing?.commissionType || formData?.commissionType || "%");
     const raw  = (agentListing?.commission ?? formData?.commission ?? "");
     const comm = raw ? (type === "$" ? "$" + Math.round(Number(raw)).toLocaleString() : `${raw}%`) : "[commission]";
-    if (planLS.includes("FSBO")) {
+    if (IS_FSBO) {
       const email = formData.fsboEmail || "[owner/seller email]";
       const phone = formData.phone || formData.agentPhone || "[owner/seller phone]";
       $("whoLine").textContent = [addr, name, email, phone, comm].join(" • ");
@@ -37,237 +37,163 @@ document.addEventListener("DOMContentLoaded", () => {
     $("whoRow").classList.remove("hidden");
   })();
 
-  // checkoutData normalize (add downgrade flag for Plus flows)
+  // Normalize checkoutData (includes downgrade flag)
   let data = getJSON("checkoutData", null);
   if (!data) {
-    const plan = planLS;
     data = {
-      plan,
-      base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
-      upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false, downgradeToBasic:false },
+      plan: selectedPlanLS,
+      base: IS_FSBO ? 100 : (IS_PLUS ? 20 : 0),
+      upgrades: { upgradeToPlus:false, downgradeToBasic:false, banner:false, premium:false, pin:false, confidential:false },
       prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
       meta: {},
       total: 0
     };
   } else {
-    data.upgrades = Object.assign(
-      { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false, downgradeToBasic:false },
-      data.upgrades || {}
-    );
-    data.prices = Object.assign(
-      { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
-      data.prices || {}
-    );
-    if (typeof data.base !== "number") {
-      data.base = (data.plan === "FSBO Plus" ? data.prices.fsbo : (data.plan === "Listed Property Plus" ? data.prices.plus : 0));
-    }
+    data.plan = selectedPlanLS;
+    data.upgrades = Object.assign({ upgradeToPlus:false, downgradeToBasic:false, banner:false, premium:false, pin:false, confidential:false }, data.upgrades||{});
+    data.prices  = Object.assign({ plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 }, data.prices||{});
+    if (typeof data.base !== "number") data.base = IS_FSBO ? data.prices.fsbo : (IS_PLUS ? data.prices.plus : 0);
   }
 
-  // totals
-  function recompute(d) {
-    if (IS_FSBO || d.plan === "FSBO Plus" || originalWasBasic === false && originalWasPlus === false) {
-      // FSBO (or unknown) is locked to FSBO Plus pricing; no upgrade/downgrade toggles apply
-      if (planLS.includes("FSBO")) {
-        d.plan = "FSBO Plus";
-        d.base = d.prices.fsbo;
-      }
-      d.upgrades.upgradeToPlus = false;
-      d.upgrades.downgradeToBasic = false;
-    } else if (originalWasPlus) {
-      // PLUS FLOW: default is Plus; allow "Downgrade to Basic — FREE"
+  // Recompute totals & enforce plan
+  function recompute(d){
+    if (IS_FSBO) {
+      d.plan = "FSBO Plus"; d.base = d.prices.fsbo;
+      d.upgrades.upgradeToPlus = false; d.upgrades.downgradeToBasic = false;
+    } else if (IS_PLUS) {
+      // PLUS FLOW: allow downgrade
       if (d.upgrades.downgradeToBasic) {
-        d.plan = "Listed Property Basic";
-        d.base = 0;
-        localStorage.setItem("selectedPlan", "Listed Property Basic");
+        d.plan = "Listed Property Basic"; d.base = 0; localStorage.setItem("selectedPlan","Listed Property Basic");
       } else {
-        d.plan = "Listed Property Plus";
-        d.base = d.prices.plus;
-        localStorage.setItem("selectedPlan", "Listed Property Plus");
+        d.plan = "Listed Property Plus"; d.base = d.prices.plus; localStorage.setItem("selectedPlan","Listed Property Plus");
       }
-      // ignore upgradeToPlus in Plus flow
-      d.upgrades.upgradeToPlus = false;
+      d.upgrades.upgradeToPlus = false; // ignore upgrade in Plus flow
     } else {
-      // BASIC FLOW: allow "Upgrade to Plus — $20"
+      // BASIC FLOW: allow upgrade
       if (d.upgrades.upgradeToPlus) {
-        d.plan = "Listed Property Plus";
-        d.base = d.prices.plus;
-        localStorage.setItem("selectedPlan", "Listed Property Plus");
+        d.plan = "Listed Property Plus"; d.base = d.prices.plus; localStorage.setItem("selectedPlan","Listed Property Plus");
       } else {
-        d.plan = "Listed Property Basic";
-        d.base = 0;
-        localStorage.setItem("selectedPlan", "Listed Property Basic");
+        d.plan = "Listed Property Basic"; d.base = 0; localStorage.setItem("selectedPlan","Listed Property Basic");
       }
-      // ignore downgrade flag in Basic flow
-      d.upgrades.downgradeToBasic = false;
+      d.upgrades.downgradeToBasic = false; // ignore downgrade in Basic flow
     }
 
     let total = d.base;
     if (d.upgrades.banner) total += d.prices.banner;
-    if (d.upgrades.pin)     total += d.prices.pin;
-    else if (d.upgrades.premium) total += d.prices.premium;
-
-    if (d.plan === "FSBO Plus") {
-      if (d.upgrades.confidential) total += d.prices.confidential;
-    } else {
-      d.upgrades.confidential = false;
-    }
+    if (d.upgrades.pin) total += d.prices.pin; else if (d.upgrades.premium) total += d.prices.premium;
+    if (d.plan === "FSBO Plus") { if (d.upgrades.confidential) total += d.prices.confidential; } else { d.upgrades.confidential = false; }
 
     d.total = total;
     return d;
   }
-  data.plan = planLS;
   data = recompute(data);
   localStorage.setItem("checkoutData", JSON.stringify(data));
 
-  // summary
-  function renderSummary() {
-    $("planName").textContent = data.plan;
+  // Summary
+  function renderSummary(){
+    $("planName").textContent  = data.plan;
     $("basePrice").textContent = (data.base || 0);
-    $("totalAmount").textContent = (data.total || 0);
+    $("totalAmount").textContent= (data.total || 0);
 
-    const sel = [];
-    if (originalWasBasic && data.upgrades.upgradeToPlus) {
-      sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
-    }
-    if (originalWasPlus && data.upgrades.downgradeToBasic) {
-      sel.push(`Downgrade to Listed Property Basic (FREE)`);
-    }
+    const sel=[];
+    if (originalPlanLS === "Listed Property Basic" && data.upgrades.upgradeToPlus) sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
+    if (originalPlanLS === "Listed Property Plus"  && data.upgrades.downgradeToBasic) sel.push(`Downgrade to Listed Property Basic (FREE)`);
     if (data.upgrades.banner)  sel.push(`Banner ($${data.prices.banner})`);
     if (data.upgrades.pin)     sel.push(`Pin Placement ($${data.prices.pin})`);
     else if (data.upgrades.premium) sel.push(`Premium Placement ($${data.prices.premium})`);
     if (data.plan === "FSBO Plus" && data.upgrades.confidential) sel.push(`Confidential FSBO Upgrade ($${data.prices.confidential})`);
 
-    $("selectedList").innerHTML = sel.length ? sel.map(s => `<li>${s}</li>`).join("") : `<li class="text-gray-400">None</li>`;
-
-    if ((data.total || 0) <= 0) { $("goSignatureZero").classList.remove("hidden"); $("payNowBtn").classList.add("hidden"); }
-    else { $("goSignatureZero").classList.add("hidden"); $("payNowBtn").classList.remove("hidden"); }
+    $("selectedList").innerHTML = sel.length ? sel.map(s=>`<li>${s}</li>`).join("") : `<li class="text-gray-400">None</li>`;
+    if ((data.total||0)<=0){ $("goSignatureZero").classList.remove("hidden"); $("payNowBtn").classList.add("hidden"); }
+    else{ $("goSignatureZero").classList.add("hidden"); $("payNowBtn").classList.remove("hidden"); }
   }
 
-  // Add upgrades before you pay — show Upgrade for Basic; show Downgrade for Plus; hide both for FSBO
-  function renderLastChance() {
-    const box = $("upsellChoices");
-    box.innerHTML = "";
+  // “Add upgrades before you pay:”
+  function renderLastChance(){
+    const box = $("upsellChoices"); box.innerHTML = "";
+    const toggles=[];
 
-    const toggles = [];
-
-    if (originalWasBasic) {
-      toggles.push({ key:"upgradeToPlus", label:"Upgrade to Listed Property Plus", price:data.prices.plus, checked: !!data.upgrades.upgradeToPlus });
-    }
-    if (originalWasPlus) {
-      toggles.push({ key:"downgradeToBasic", label:"Downgrade to Listed Property Basic — FREE", price:0, checked: !!data.upgrades.downgradeToBasic });
+    if (!IS_FSBO) {
+      if (IS_PLUS) {
+        // PLUS: show Downgrade
+        toggles.push({ key:"downgradeToBasic", label:"Downgrade to Listed Property Basic — FREE", price:0, checked: !!data.upgrades.downgradeToBasic });
+      } else if (IS_BASIC) {
+        // BASIC: show Upgrade
+        toggles.push({ key:"upgradeToPlus", label:"Upgrade to Listed Property Plus", price:data.prices.plus, checked: !!data.upgrades.upgradeToPlus });
+      }
     }
 
     // Shared toggles
-    if (data.plan !== "FSBO Plus") {
-      // Listed flows
-      toggles.push({ key:"banner",  label:"Banner",  price:data.prices.banner,  checked: !!data.upgrades.banner });
-      toggles.push({ key:"premium", label:"Premium Placement", price:data.prices.premium, checked: !!data.upgrades.premium });
-      toggles.push({ key:"pin",     label:"Pin Placement", price:data.prices.pin, checked: !!data.upgrades.pin, note:"(includes Premium free)" });
-    } else {
-      // FSBO flow: no Plus toggle at checkout (per your instruction)
-      toggles.push({ key:"banner",  label:"Banner",  price:data.prices.banner,  checked: !!data.upgrades.banner });
-      toggles.push({ key:"premium", label:"Premium Placement", price:data.prices.premium, checked: !!data.upgrades.premium });
-      toggles.push({ key:"pin",     label:"Pin Placement", price:data.prices.pin, checked: !!data.upgrades.pin, note:"(includes Premium free)" });
-      toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price:data.prices.confidential, checked: !!data.upgrades.confidential });
-    }
+    toggles.push({ key:"banner",  label:"Banner",  price:data.prices.banner,  checked: !!data.upgrades.banner });
+    toggles.push({ key:"premium", label:"Premium Placement", price:data.prices.premium, checked: !!data.upgrades.premium });
+    toggles.push({ key:"pin",     label:"Pin Placement", price:data.prices.pin, checked: !!data.upgrades.pin, note:"(includes Premium free)" });
+    if (IS_FSBO) toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price:data.prices.confidential, checked: !!data.upgrades.confidential });
 
-    box.innerHTML = toggles.map(t => `
+    box.innerHTML = toggles.map(t=>`
       <label class="flex items-center justify-between border rounded-lg px-3 py-2 bg-white">
         <div>
           <span class="font-medium">${t.label}</span>
-          ${t.price ? `<span class="text-gray-500"> — $${t.price}</span>` : ``}
-          ${t.note ? `<div class="text-[11px] text-gray-500">${t.note}</div>` : ``}
+          ${t.price?`<span class="text-gray-500"> — $${t.price}</span>`:""}
+          ${t.note?`<div class="text-[11px] text-gray-500">${t.note}</div>`:""}
         </div>
-        <input type="checkbox" class="h-4 w-4" data-key="${t.key}" ${t.checked ? 'checked':''}/>
+        <input type="checkbox" class="h-4 w-4" data-key="${t.key}" ${t.checked?'checked':''}/>
       </label>
     `).join("");
 
-    box.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      cb.addEventListener("change", (e) => {
-        const k = e.target.getAttribute("data-key");
-        const checked = e.target.checked;
-
-        if (k === "upgradeToPlus")      data.upgrades.upgradeToPlus = checked;
-        else if (k === "downgradeToBasic") data.upgrades.downgradeToBasic = checked;
-        else if (k === "banner")        data.upgrades.banner = checked;
-        else if (k === "premium")       data.upgrades.premium = checked;
-        else if (k === "pin")          { data.upgrades.pin = checked; if (checked) data.upgrades.premium = true; }
-        else if (k === "confidential")  data.upgrades.confidential = (data.plan === "FSBO Plus") ? checked : false;
+    box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+      cb.addEventListener("change",(e)=>{
+        const k=e.target.getAttribute("data-key"), checked=e.target.checked;
+        if (k==="upgradeToPlus") data.upgrades.upgradeToPlus=checked;
+        else if (k==="downgradeToBasic") data.upgrades.downgradeToBasic=checked;
+        else if (k==="banner") data.upgrades.banner=checked;
+        else if (k==="premium") data.upgrades.premium=checked;
+        else if (k==="pin"){ data.upgrades.pin=checked; if(checked) data.upgrades.premium=true; }
+        else if (k==="confidential") data.upgrades.confidential = IS_FSBO ? checked : false;
 
         data = recompute(data);
         localStorage.setItem("checkoutData", JSON.stringify(data));
-        renderSummary();
-        renderLastChance();
+        renderSummary(); renderLastChance();
       });
     });
   }
 
-  $("backBtn")?.addEventListener("click", () => { window.history.back(); });
+  // Wire back button (previous page)
+  $("backBtn")?.addEventListener("click", () => history.back());
 
+  // Pay Now logic unchanged (uses current plan/upgrades)
   $("payNowBtn")?.addEventListener("click", async () => {
-    const btn = $("payNowBtn");
-    btn.disabled = true;
-    btn.textContent = "Creating checkout…";
-
-    try {
+    const btn=$("payNowBtn"); btn.disabled=true; btn.textContent="Creating checkout…";
+    try{
       if (!stripe) throw new Error("Stripe not available on this page.");
-      if ((data.total || 0) <= 0) { window.location.href = "/signature.html"; return; }
+      if ((data.total||0)<=0){ window.location.href="/signature.html"; return; }
 
-      const PRICE_IDS = {
-        PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
-        FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
-        BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR",
-        PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h",
-        PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
-        CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm"
-      };
+      const PRICE_IDS={ PLUS:"price_1RsQFlPTiT2zuxx0414nGtTu", FSBO_PLUS:"price_1RsQJbPTiT2zuxx0w3GUIdxJ",
+                        BANNER:"price_1RsQTOPTiT2zuxx0TLCwAthR", PREMIUM:"price_1RsQbjPTiT2zuxx0hA6p5H4h",
+                        PIN:"price_1RsQknPTiT2zuxx0Av9skJyW", CONFIDENTIAL:"price_1RsRP4PTiT2zuxx0eoOGEDvm" };
 
-      const items = [];
-      const isFSBO = data.plan === "FSBO Plus";
-      const isPlus = data.plan === "Listed Property Plus";
-      const isBasic= data.plan === "Listed Property Basic";
+      const items=[];
+      const isFSBOPlan = data.plan==="FSBO Plus", isPlusPlan=data.plan==="Listed Property Plus", isBasicPlan=data.plan==="Listed Property Basic";
+      if (isFSBOPlan && (data.base??data.prices.fsbo)>0) items.push({price:PRICE_IDS.FSBO_PLUS, quantity:1});
+      else if (isPlusPlan && (data.base??data.prices.plus)>0) items.push({price:PRICE_IDS.PLUS, quantity:1});
+      else if (isBasicPlan && data.upgrades.upgradeToPlus) items.push({price:PRICE_IDS.PLUS, quantity:1});
 
-      if (isFSBO && (data.base ?? data.prices.fsbo) > 0) items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
-      else if (isPlus && (data.base ?? data.prices.plus) > 0) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-      else if (isBasic && data.upgrades.upgradeToPlus) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-
-      if (data.upgrades.banner)  items.push({ price: PRICE_IDS.BANNER,  quantity: 1 });
-      if (data.upgrades.pin)     items.push({ price: PRICE_IDS.PIN,     quantity: 1 });
-      else if (data.upgrades.premium) items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
-
-      if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
+      if (data.upgrades.banner)  items.push({price:PRICE_IDS.BANNER,  quantity:1});
+      if (data.upgrades.pin)     items.push({price:PRICE_IDS.PIN,     quantity:1});
+      else if (data.upgrades.premium) items.push({price:PRICE_IDS.PREMIUM, quantity:1});
+      if (isFSBOPlan && data.upgrades.confidential) items.push({price:PRICE_IDS.CONFIDENTIAL, quantity:1});
 
       if (!items.length) throw new Error("No purchasable line items.");
 
-      const resp = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lineItems: items,
-          successUrl: window.location.origin + "/signature.html",
-          cancelUrl:  window.location.origin + "/checkout.html"
-        })
-      });
-
-      const out = await resp.json().catch(()=>({ error:"Server response parse error" }));
-      if (!resp.ok) throw new Error(out.error || "Server failed to create session.");
-
-      if (out.url) { window.location.href = out.url; return; }
-      if (out.id)  {
-        const { error } = await stripe.redirectToCheckout({ sessionId: out.id });
-        if (error) throw new Error(error.message || "Stripe redirect failed.");
-        return;
-      }
+      const resp = await fetch("/api/create-checkout-session",{ method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ lineItems:items, successUrl:location.origin+"/signature.html", cancelUrl:location.origin+"/checkout.html" }) });
+      const out = await resp.json().catch(()=>({error:"Server response parse error"}));
+      if (!resp.ok) throw new Error(out.error||"Server failed to create session.");
+      if (out.url){ location.href=out.url; return; }
+      if (out.id){ const {error}=await stripe.redirectToCheckout({sessionId:out.id}); if (error) throw new Error(error.message||"Stripe redirect failed."); return; }
       throw new Error("Server returned neither url nor id.");
-    } catch (err) {
-      console.error("[checkout] payment error:", err);
-      alert(err.message || "Payment could not start.");
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Pay Now with Stripe";
-    }
+    }catch(err){ console.error("[checkout] payment error:",err); alert(err.message||"Payment could not start."); }
+    finally{ btn.disabled=false; btn.textContent="Pay Now with Stripe"; }
   });
 
-  renderSummary();
-  renderLastChance();
+  renderSummary(); renderLastChance();
 });
