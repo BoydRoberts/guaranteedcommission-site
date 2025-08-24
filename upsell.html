@@ -64,7 +64,10 @@
       total: 0
     });
 
-    // --- STEPS (ensure Basic shows Upgrade first) ---
+    // Steps — restored:
+    // Basic: upgrade -> banner -> premium -> pin
+    // Plus:  banner -> premium -> pin
+    // FSBO:  confidential -> banner -> premium -> pin
     const steps = (() => {
       if (plan === 'Listed Property Basic') return ['upgrade','banner','premium','pin'];
       if (plan === 'Listed Property Plus')  return ['banner','premium','pin'];
