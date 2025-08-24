@@ -33,7 +33,9 @@
           </div>
           <div>
             <p class="text-sm font-semibold mb-1">Selected Upgrades:</p>
-            <ul id="selectedList" class="list-disc list-inside text-sm text-gray-700"><li class="text-gray-400">None</li></ul>
+            <ul id="selectedList" class="list-disc list-inside text-sm text-gray-700">
+              <li class="text-gray-400">None</li>
+            </ul>
           </div>
         </div>
       </section>
@@ -46,8 +48,12 @@
       <div class="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
         <button id="backBtn" class="px-4 py-2 rounded border">Back</button>
         <div class="flex gap-3 justify-end">
-          <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">Continue (no payment due)</a>
-          <button id="payNowBtn" class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition">Pay Now with Stripe</button>
+          <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">
+            Continue (no payment due)
+          </a>
+          <button id="payNowBtn" class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition">
+            Pay Now with Stripe
+          </button>
         </div>
       </div>
 
@@ -64,7 +70,21 @@
 
   <script src="/checkout.js"></script>
   <script>
-    document.getElementById('backBtn')?.addEventListener('click', () => history.back());
+    // ----- Back behavior (only change requested) -----
+    (function wireBack(){
+      function goBack() {
+        try {
+          if (document.referrer && document.referrer !== location.href && history.length > 1) {
+            history.back();
+          } else {
+            location.href = '/index.html';
+          }
+        } catch (_) {
+          location.href = '/index.html';
+        }
+      }
+      document.getElementById('backBtn')?.addEventListener('click', goBack);
+    })();
   </script>
 </body>
 </html>
