@@ -11,15 +11,13 @@
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-  <!-- Header (original copy) -->
+  <!-- Header -->
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
       <button type="button" onclick="history.back()" class="text-xs text-blue-600 hover:underline">&larr; Back</button>
       <div class="text-center">
         <h1 class="text-2xl font-bold">GuaranteedCommission.com</h1>
-        <p class="text-xs text-gray-600">
-          Guaranteeing commissions so your home will sell quickly at a higher price.
-        </p>
+        <p class="text-xs text-gray-600">Guaranteeing commissions so your home will sell quickly at a higher price.</p>
       </div>
       <span></span>
     </div>
@@ -67,7 +65,7 @@
     // Steps:
     // Basic: upgrade -> banner -> premium -> pin
     // Plus:  banner -> premium -> pin
-    // FSBO:  banner -> premium -> pin -> confidential  (moved Confidential to LAST)
+    // FSBO:  banner -> premium -> pin -> confidential (Confidential moved to last)
     const steps = (() => {
       if (plan === 'Listed Property Basic') return ['upgrade','banner','premium','pin'];
       if (plan === 'Listed Property Plus')  return ['banner','premium','pin'];
@@ -77,36 +75,11 @@
     let idx = 0;
 
     const copies = {
-      upgrade: {
-        title: 'Upgrade to Listed Property Plus ($20)',
-        body: 'Display full property description and up to 20 photos until your home is sold.',
-        price: 20,
-        key: 'upgradeToPlus'
-      },
-      banner: {
-        title: 'Add Banner ($10)',
-        body: 'Add a 30-character banner. Highlight special features, open houses, or whatever you like – as often as you like – until your home is sold.',
-        price: 10,
-        key: 'banner'
-      },
-      premium: {
-        title: 'Add Premium Placement ($10)',
-        body: 'Boost visibility so your listing is seen sooner by buyers and agents.',
-        price: 10,
-        key: 'premium'
-      },
-      pin: {
-        title: 'Add Pin Placement ($50)',
-        body: 'Pin your listing to the top of results in key areas. Includes Premium Placement free.',
-        price: 50,
-        key: 'pin'
-      },
-      confidential: {
-        title: 'Confidential FSBO Upgrade ($100)',
-        body: 'Keep your contact information private and avoid solicitation. GuaranteedCommission.com will not sell your information to third parties.',
-        price: 100,
-        key: 'confidential'
-      }
+      upgrade:      { title:'Upgrade to Listed Property Plus ($20)', body:'Display full property description and up to 20 photos until your home is sold.', price:20, key:'upgradeToPlus' },
+      banner:       { title:'Add Banner ($10)', body:'Add a 30-character banner. Highlight special features, open houses, or whatever you like – as often as you like – until your home is sold.', price:10, key:'banner' },
+      premium:      { title:'Add Premium Placement ($10)', body:'Boost visibility so your listing is seen sooner by buyers and agents.', price:10, key:'premium' },
+      pin:          { title:'Add Pin Placement ($50)', body:'Pin your listing to the top of results in key areas. Includes Premium Placement free.', price:50, key:'pin' },
+      confidential: { title:'Confidential FSBO Upgrade ($100)', body:'Keep your contact information private and avoid solicitation. GuaranteedCommission.com will not sell your information to third parties.', price:100, key:'confidential' }
     };
 
     function renderStep() {
@@ -120,13 +93,9 @@
       if (plan === 'Listed Property Basic' && sid === 'upgrade') {
         planRow.innerHTML = `
           <div class="text-xs text-gray-700">
-            <strong>Current plan: Listed Property Basic – FREE</strong>
-            <br>
-            <span class="muted">
-              (Includes: printable commission communication letter, map search, listing price, main photo, address, parcel number, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone. Does not include full property description.)
-            </span>
-          </div>
-        `;
+            <strong>Current plan: Listed Property Basic – FREE</strong><br>
+            <span class="muted">(Includes: printable commission letter, map search, listing price, main photo, address, parcel #, sqft, beds, baths, listing brokerage, listing agent, agent phone. Does not include full description.)</span>
+          </div>`;
         planRow.classList.remove('hidden');
       } else {
         planRow.classList.add('hidden');
@@ -145,12 +114,10 @@
             <span>Select</span>
           </label>
           <span class="font-semibold">$${c.price}</span>
-        </div>
-      `;
+        </div>`;
       host.appendChild(el);
 
-      if (idx === steps.length - 1) $('#btnCheckout').classList.remove('hidden');
-      else $('#btnCheckout').classList.add('hidden');
+      $('#btnCheckout').classList.toggle('hidden', idx !== steps.length - 1);
     }
 
     function saveCurrent(addSelected) {
@@ -161,11 +128,7 @@
 
       if (sid === 'upgrade') {
         data.upgrades.upgradeToPlus = !!final;
-        if (final) {
-          localStorage.setItem('selectedPlan','Listed Property Plus');
-          data.plan = 'Listed Property Plus';
-          data.base = 20;
-        }
+        if (final) { localStorage.setItem('selectedPlan','Listed Property Plus'); data.plan = 'Listed Property Plus'; data.base = 20; }
       } else if (sid === 'banner') data.upgrades.banner = !!final;
       else if (sid === 'premium') data.upgrades.premium = !!final;
       else if (sid === 'pin') { data.upgrades.pin = !!final; if (final) data.upgrades.premium = true; }
@@ -175,38 +138,13 @@
     }
 
     function nextStep() {
-      if (idx >= steps.length - 1) {
-        setJSON('checkoutData', data);
-        window.location.href = '/checkout.html';
-        return;
-      }
-      idx++;
-      renderStep();
+      if (idx >= steps.length - 1) { setJSON('checkoutData', data); window.location.href = '/checkout.html'; return; }
+      idx++; renderStep();
     }
 
-    $('#btnSkip').addEventListener('click', () => {
-      if (idx === steps.length - 1) {
-        setJSON('checkoutData', data);
-        window.location.href = '/checkout.html';
-      } else {
-        saveCurrent(false);
-        nextStep();
-      }
-    });
-
-    $('#btnAdd').addEventListener('click', () => {
-      saveCurrent(true);
-      if (idx === steps.length - 1) {
-        window.location.href = '/checkout.html';
-      } else {
-        nextStep();
-      }
-    });
-
-    $('#btnCheckout').addEventListener('click', () => {
-      setJSON('checkoutData', data);
-      window.location.href = '/checkout.html';
-    });
+    $('#btnSkip').addEventListener('click', () => { if (idx === steps.length - 1) { setJSON('checkoutData', data); window.location.href = '/checkout.html'; } else { saveCurrent(false); nextStep(); }});
+    $('#btnAdd').addEventListener('click',  () => { saveCurrent(true); if (idx === steps.length - 1) window.location.href = '/checkout.html'; else nextStep(); });
+    $('#btnCheckout').addEventListener('click', () => { setJSON('checkoutData', data); window.location.href = '/checkout.html'; });
 
     renderStep();
   </script>
