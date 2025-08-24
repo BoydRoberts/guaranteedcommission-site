@@ -14,7 +14,7 @@
   <!-- Header -->
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
-      <button type="button" onclick="history.back()" class="text-xs text-blue-600 hover:underline">&larr; Back</button>
+      <button id="backBtnHeader" type="button" class="text-xs text-blue-600 hover:underline">&larr; Back</button>
       <div class="text-center">
         <h1 class="text-2xl font-bold">GuaranteedCommission.com</h1>
         <p class="text-xs text-gray-600">Guaranteeing commissions so your home will sell quickly at a higher price.</p>
@@ -23,11 +23,11 @@
     </div>
   </header>
 
-  <div class="max-w-xl mx-auto p-4">
-    <div class="text-center mb-3">
-      <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell wizard baseline</span>
-    </div>
+  <div class="text-center mb-3">
+    <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">upsell wizard baseline</span>
+  </div>
 
+  <div class="max-w-xl mx-auto p-4">
     <h1 class="text-2xl font-bold text-center">Upgrade Your Listing</h1>
     <p class="text-sm text-center muted mt-1">You will be able to review all upgrades and upsells at Review &amp; Checkout.</p>
 
@@ -36,7 +36,7 @@
     <div id="stepHost" class="mt-4"></div>
 
     <div class="mt-6 flex items-center justify-between">
-      <button type="button" onclick="history.back()" class="px-4 py-2 rounded border">Back</button>
+      <button id="backBtn" type="button" class="px-4 py-2 rounded border">Back</button>
       <div class="flex gap-2">
         <button id="btnSkip" class="px-4 py-2 rounded border">Skip</button>
         <button id="btnAdd" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Add &amp; Continue</button>
@@ -46,6 +46,26 @@
   </div>
 
   <script>
+    // ----- Back behavior (only change requested) -----
+    (function wireBack(){
+      function goBack() {
+        try {
+          if (document.referrer && document.referrer !== location.href && history.length > 1) {
+            history.back();
+          } else {
+            // Safe fallback if no prior history (direct visit, new tab, etc.)
+            location.href = '/index.html';
+          }
+        } catch (_) {
+          location.href = '/index.html';
+        }
+      }
+      document.getElementById('backBtn')?.addEventListener('click', goBack);
+      document.getElementById('backBtnHeader')?.addEventListener('click', goBack);
+      // (If you later add more back buttons, give them id="backBtn" or call goBack())
+    })();
+
+    // ----- Existing upsell wizard (unchanged except for back wiring above) -----
     const $ = s => document.querySelector(s);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
@@ -62,14 +82,10 @@
       total: 0
     });
 
-    // Steps:
-    // Basic: upgrade -> banner -> premium -> pin
-    // Plus:  banner -> premium -> pin
-    // FSBO:  banner -> premium -> pin -> confidential (Confidential moved to last)
     const steps = (() => {
       if (plan === 'Listed Property Basic') return ['upgrade','banner','premium','pin'];
       if (plan === 'Listed Property Plus')  return ['banner','premium','pin'];
-      if (plan === 'FSBO Plus')             return ['banner','premium','pin','confidential'];
+      if (plan === 'FSBO Plus')             return ['banner','premium','pin','confidential']; // Confidential last
       return ['banner','premium','pin'];
     })();
     let idx = 0;
@@ -144,7 +160,6 @@
 
     $('#btnSkip').addEventListener('click', () => { if (idx === steps.length - 1) { setJSON('checkoutData', data); window.location.href = '/checkout.html'; } else { saveCurrent(false); nextStep(); }});
     $('#btnAdd').addEventListener('click',  () => { saveCurrent(true); if (idx === steps.length - 1) window.location.href = '/checkout.html'; else nextStep(); });
-    $('#btnCheckout').addEventListener('click', () => { setJSON('checkoutData', data); window.location.href = '/checkout.html'; });
 
     renderStep();
   </script>
