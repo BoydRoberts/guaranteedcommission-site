@@ -10,20 +10,14 @@
 <body class="bg-gray-100 text-gray-900">
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-2xl bg-white rounded-2xl shadow p-6 relative">
-      <div class="absolute -top-3 -right-3">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-yellow-100 text-yellow-800 border border-yellow-300">TEST MODE</span>
-      </div>
-
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-08-14t</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-08-24b</span>
       </div>
 
       <h1 class="text-2xl font-bold text-center mb-1">Review & Checkout</h1>
       <p class="text-sm text-gray-600 text-center mb-6">Confirm your selections. You’ll sign next.</p>
 
-      <div id="whoRow" class="text-center text-xs text-gray-500 mb-5 hidden">
-        <span id="whoLine"></span>
-      </div>
+      <div id="whoRow" class="text-center text-xs text-gray-500 mb-5 hidden"><span id="whoLine"></span></div>
 
       <section class="bg-white rounded-2xl shadow p-5 mb-5">
         <div class="grid md:grid-cols-2 gap-6">
@@ -33,19 +27,13 @@
               <span id="planName">—</span>
               <span class="text-gray-500"> — Base $<span id="basePrice">0</span></span>
             </p>
-
             <div class="pt-2 border-t mt-2">
-              <p class="text-2xl font-extrabold tracking-tight">
-                Total: $<span id="totalAmount">0</span>
-              </p>
+              <p class="text-2xl font-extrabold tracking-tight">Total: $<span id="totalAmount">0</span></p>
             </div>
           </div>
-
           <div>
             <p class="text-sm font-semibold mb-1">Selected Upgrades:</p>
-            <ul id="selectedList" class="list-disc list-inside text-sm text-gray-700">
-              <li class="text-gray-400">None</li>
-            </ul>
+            <ul id="selectedList" class="list-disc list-inside text-sm text-gray-700"><li class="text-gray-400">None</li></ul>
           </div>
         </div>
       </section>
@@ -58,12 +46,8 @@
       <div class="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
         <button id="backBtn" class="px-4 py-2 rounded border">Back</button>
         <div class="flex gap-3 justify-end">
-          <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">
-            Continue (no payment due)
-          </a>
-          <button id="payNowBtn" class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition">
-            Pay Now with Stripe
-          </button>
+          <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">Continue (no payment due)</a>
+          <button id="payNowBtn" class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition">Pay Now with Stripe</button>
         </div>
       </div>
 
@@ -79,5 +63,8 @@
   </div>
 
   <script src="/checkout.js"></script>
+  <script>
+    document.getElementById('backBtn')?.addEventListener('click', () => history.back());
+  </script>
 </body>
 </html>
