@@ -26,12 +26,14 @@
     </div>
 
     <div class="flex justify-between mt-6">
+      <!-- Renamed: View / Print ISC -> Sign / View -->
       <button onclick="window.location.href='/printable-isc.html'" class="bg-gray-600 text-white px-4 py-2 rounded">
-        View / Print ISC
+        Sign / View
       </button>
-      <button id="btnDownload" class="bg-blue-600 text-white px-4 py-2 rounded">Download PDF</button>
+      <!-- Removed Download PDF button per request -->
+      <!-- Renamed: Continue -> Sign / Continue -->
       <button onclick="continueFlow()" class="bg-green-600 text-white px-6 py-2 rounded">
-        Continue
+        Sign / Continue
       </button>
     </div>
   </div>
@@ -55,15 +57,20 @@
       let text = `To the escrow holder/closing agent,\n\n`;
 
       if (planType === "fsbo") {
+        // FSBO text remains unchanged per your instructions (still includes parcel line as previously implemented)
         text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by owner (Me). My phone number is ${agentPhone}. My email address is ${data.fsboEmail || "[owner/seller email]"}.\n\n`;
         text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${suffix}.`;
       } else {
-        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by ${brokerage}, ${agent}, listing agent, ${agentPhone}.\n\n`;
+        // BASIC/PLUS: remove the parcel/APN from the first sentence
+        text += `I, ${name}, am the owner/seller of ${fullAddress}. ${shortAddress} is listed for sale by ${brochureSafe(brokerage)}, ${agent}, listing agent, ${agentPhone}.\n\n`;
         text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${suffix}.`;
       }
 
       document.getElementById("iscText").textContent = text;
     }
+
+    // Ensure brokerage placeholder doesn’t print as [listing brokerage] with commas spacing weirdly
+    function brochureSafe(str){ return str || "[listing brokerage]"; }
 
     function continueFlow() {
       const signature = document.getElementById("signature").value.trim();
@@ -74,10 +81,6 @@
       localStorage.setItem("signature", signature);
       window.location.href = (localStorage.getItem("selectedPlan")||"").includes("FSBO") ? "/seller-detail.html" : "/agent-invite.html";
     }
-
-    document.getElementById("btnDownload").addEventListener("click", ()=>{
-      window.location.href='/printable-isc.html';
-    });
 
     document.getElementById("date").textContent = new Date().toLocaleDateString();
     window.addEventListener("DOMContentLoaded", fillISC);
