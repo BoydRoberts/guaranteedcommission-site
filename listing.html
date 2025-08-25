@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Listing Detail | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Mapbox GL JS -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"/>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+
+  <!-- html2canvas (for ISC image preview) -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
     .tile-photo { width:100%; height: 20rem; object-fit: cover; background:#e5e7eb; }
@@ -62,25 +70,27 @@
           <input id="mapQ" class="w-full border rounded px-3 py-2 text-sm" placeholder="Search by city or ZIP">
           <button id="mapRun" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Go</button>
         </div>
-        <div id="mapCanvas" class="h-64 rounded bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
-          Map coming soon
-        </div>
+        <div id="mapCanvas" class="h-64 rounded bg-gray-100"></div>
       </aside>
 
-      <!-- Right: ISC preview (PDF image stand-in) -->
+      <!-- Right: ISC preview image -->
       <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-4">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-semibold">ISC Preview</h2>
           <span id="viewCounter" class="text-xs text-gray-500">0 views</span>
         </div>
-        <div class="mt-2 border rounded overflow-hidden bg-gray-50">
-          <!-- Using printable-isc.html as an embedded preview -->
-          <iframe src="/printable-isc.html" class="w-full h-64 bg-white"></iframe>
+        <div class="mt-2 border rounded overflow-hidden bg-gray-50 flex items-center justify-center">
+          <img id="iscPreviewImg" alt="ISC preview" class="w-full h-64 object-contain hidden"/>
+          <!-- Fallback iframe if preview image fails -->
+          <iframe id="iscIframeFallback" src="/printable-isc.html" class="w-full h-64 bg-white"></iframe>
         </div>
         <a href="/printable-isc.html" target="_blank"
            class="mt-3 inline-flex items-center justify-center w-full text-center bg-gray-700 text-white py-2 rounded text-sm">
           Open Full ISC
         </a>
+
+        <!-- Hidden iframe used for snapshot (same-origin) -->
+        <iframe id="iscIframeHidden" src="/printable-isc.html" class="hidden"></iframe>
       </aside>
     </section>
 
@@ -149,18 +159,15 @@
   </main>
 
   <script>
+    // ---- Configuration ----
+    const MAPBOX_TOKEN = "YOUR_MAPBOX_TOKEN_HERE"; // <-- set your token here
+    if (MAPBOX_TOKEN && mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
+
     // ---- Helpers ----
     const $ = (id) => document.getElementById(id);
     const getJSON = (k, fb={}) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
     const commissionAmt = (p, c, t)=>{ const P=Number(p||0), C=Number(c||0); if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0); };
-    const statusClass = (s)=> {
-      const t = (s||'').toLowerCase();
-      if (t==='active') return 'status-active';
-      if (t==='in contract' || t==='in_contract') return 'status-contract';
-      if (t==='sold') return 'status-sold';
-      return 'status-draft';
-    };
 
     // ---- Load sources ----
     const url = new URL(location.href);
@@ -193,9 +200,9 @@
 
     // ---- Paint tile (left) ----
     (function paintTile(){
-      // Photo + banner + heart
       $("tilePhoto").src = photo || "";
       if (banner) { $("tileBanner").textContent = banner; $("tileBanner").classList.remove('hidden'); }
+
       // heart state
       const FAV_KEY='gcFavorites';
       function getFavs(){ try{ const v=JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); return Array.isArray(v)?v:[]; } catch{return[]} }
@@ -211,25 +218,62 @@
       $("tileHeart").innerHTML = heartSvg(isFav(favId));
       $("tileHeart").onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); $("tileHeart").innerHTML = heartSvg(toggleFav(favId)); };
 
-      // Top line
+      // Top lines
       $("tilePrice").textContent = money(price);
       $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
-
-      // Second line
       $("tileFacts").textContent = `${bds} bds | ${ba} ba | ${sqft} sqft | ${status}`;
-
-      // Third/4th lines
       $("tileAddress").textContent = fullAddress;
       $("tileContact").textContent = `${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
-
-      // Click-thru (optional—already on detail, so just keep address-based link)
       $("tileClick").href = `/listing.html?addr=${encodeURIComponent(fullAddress)}`;
     })();
 
-    // ---- Map mock ----
-    $("mapRun").onclick = () => {
+    // ---- Mapbox: basic geocode + marker ----
+    let map, marker;
+    function initMap(centerLngLat) {
+      try {
+        map = new mapboxgl.Map({
+          container: 'mapCanvas',
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: centerLngLat || [-117.7854, 33.5427], // Laguna Beach fallback
+          zoom: centerLngLat ? 14 : 12
+        });
+        map.addControl(new mapboxgl.NavigationControl());
+        if (centerLngLat) {
+          marker = new mapboxgl.Marker().setLngLat(centerLngLat).addTo(map);
+        }
+      } catch (e) {
+        document.getElementById('mapCanvas').innerHTML =
+          '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
+      }
+    }
+
+    async function geocode(q) {
+      if (!MAPBOX_TOKEN) return null;
+      try {
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const data = await resp.json();
+        const f = data?.features?.[0];
+        return f ? f.center : null; // [lng, lat]
+      } catch { return null; }
+    }
+
+    (async function bootMap(){
+      let center = null;
+      if (MAPBOX_TOKEN) {
+        center = await geocode(fullAddress);
+      }
+      initMap(center);
+    })();
+
+    $("mapRun").onclick = async () => {
       const q = $("mapQ").value.trim();
-      $("mapCanvas").textContent = q ? `Map search for: ${q}` : "Map coming soon";
+      if (!q || !map) return;
+      const center = await geocode(q);
+      if (center) {
+        map.flyTo({ center, zoom: 14 });
+        if (!marker) marker = new mapboxgl.Marker().addTo(map);
+        marker.setLngLat(center);
+      }
     };
 
     // ---- Detail Quick Facts ----
@@ -253,8 +297,11 @@
     }
 
     // Gallery
-    const otherPhotos = photos.filter((_, i) => i !== primaryIndex);
-    if (otherPhotos.length) {
+    (function paintGallery(){
+      const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
+      const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
+      const otherPhotos = photos.filter((_, i) => i !== primaryIndex);
+      if (!otherPhotos.length) return;
       const grid = $("galleryGrid");
       otherPhotos.forEach(src => {
         const img = document.createElement("img");
@@ -263,7 +310,7 @@
         grid.appendChild(img);
       });
       $("galleryCard").classList.remove("hidden");
-    }
+    })();
 
     // Contact blocks
     const isFSBO = plan.includes("FSBO");
@@ -285,6 +332,44 @@
       localStorage.setItem(key, String(n));
       $("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
     })();
+
+    // ---- ISC Preview Image (snapshot of printable-isc.html) ----
+    async function renderIscPreview() {
+      const hidden = $("iscIframeHidden");
+      const imgEl = $("iscPreviewImg");
+      const fallback = $("iscIframeFallback");
+
+      // If html2canvas or iframe missing, bail to fallback
+      if (!hidden || typeof html2canvas === "undefined") return;
+
+      try {
+        // Wait for hidden iframe to load
+        await new Promise((res, rej) => {
+          if (hidden.contentWindow?.document?.readyState === "complete") return res();
+          hidden.onload = () => res();
+          // defensive timeout
+          setTimeout(() => res(), 2500);
+        });
+
+        const doc = hidden.contentDocument || hidden.contentWindow?.document;
+        if (!doc || !doc.body) throw new Error("No iframe document");
+
+        // Increase scale for sharper preview on high-DPI
+        const canvas = await html2canvas(doc.body, { scale: 1.2, useCORS: true, backgroundColor: "#ffffff" });
+        const dataUrl = canvas.toDataURL("image/png");
+        if (dataUrl) {
+          imgEl.src = dataUrl;
+          imgEl.classList.remove("hidden");
+          // Hide fallback iframe if image succeeded
+          fallback.style.display = "none";
+        }
+      } catch (e) {
+        // keep fallback iframe visible
+        console.warn("[isc-preview] using fallback iframe:", e?.message || e);
+      }
+    }
+    // Kick it off
+    renderIscPreview();
   </script>
 </body>
 </html>
