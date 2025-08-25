@@ -93,3 +93,283 @@
         <iframe id="iscIframeHidden" src="/printable-isc.html" class="hidden"></iframe>
       </aside>
     </section>
+
+    <!-- DETAIL BODY -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left 2/3: Details -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Quick Facts -->
+        <div class="bg-white rounded-2xl shadow p-5">
+          <h3 class="text-lg font-semibold mb-3">Listing Details</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div><span class="text-gray-500">Address:</span> <span id="dAddress" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Listing Price:</span> <span id="dPrice" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Commission (%):</span> <span id="dCommissionPct" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Est. Commission ($):</span> <span id="dCommissionAmt" class="font-medium"></span></div>
+            <div><span class="text-gray-500">BDS:</span> <span id="dBeds" class="font-medium"></span></div>
+            <div><span class="text-gray-500">BA:</span> <span id="dBaths" class="font-medium"></span></div>
+            <div><span class="text-gray-500">SQFT:</span> <span id="dSqft" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Status:</span> <span id="dStatus" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Year Built:</span> <span id="dYear" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Lot Size (sqft):</span> <span id="dLot" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Property Type:</span> <span id="dType" class="font-medium"></span></div>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div id="descCard" class="bg-white rounded-2xl shadow p-5 hidden">
+          <h3 class="text-lg font-semibold mb-3">Description</h3>
+          <p id="dDescription" class="text-sm leading-relaxed whitespace-pre-line"></p>
+        </div>
+
+        <!-- Gallery -->
+        <div id="galleryCard" class="bg-white rounded-2xl shadow p-5 hidden">
+          <h3 class="text-lg font-semibold mb-3">Photos</h3>
+          <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
+        </div>
+      </div>
+
+      <!-- Right 1/3: Contact -->
+      <aside class="space-y-4">
+        <div class="bg-white rounded-2xl shadow p-5">
+          <h3 class="text-lg font-semibold mb-2">Contact</h3>
+          <!-- Listed -->
+          <div id="listedContact" class="text-sm hidden">
+            <div><span class="text-gray-500">Brokerage:</span> <span id="cBrokerage" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Agent:</span> <span id="cAgent" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Agent Phone:</span> <span id="cAgentPhone" class="font-medium"></span></div>
+          </div>
+          <!-- FSBO -->
+          <div id="fsboContact" class="text-sm hidden">
+            <div><span class="text-gray-500">Owner Phone:</span> <span id="cOwnerPhone" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Owner Email:</span> <span id="cOwnerEmail" class="font-medium"></span></div>
+          </div>
+
+          <div class="mt-4 flex flex-col gap-2">
+            <a href="/printable-isc.html" class="w-full text-center bg-gray-700 text-white py-2 rounded">Sign / View ISC</a>
+            <a href="/signature.html" class="w-full text-center bg-green-600 text-white py-2 rounded">Sign / Continue</a>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow p-5 text-sm text-gray-600">
+          <p><strong>Commission clarity helps homes sell.</strong> This listing states buyer’s agent compensation up front to improve showings and outcomes.</p>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    // ---- Configuration ----
+    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q"; 
+    if (MAPBOX_TOKEN && mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
+
+    // ---- Helpers ----
+    const $ = (id) => document.getElementById(id);
+    const getJSON = (k, fb={}) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+    const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
+    const commissionAmt = (p, c, t)=>{ const P=Number(p||0), C=Number(c||0); if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0); };
+
+    // ---- Load sources ----
+    const url = new URL(location.href);
+    const addrParam = url.searchParams.get('addr'); // optional
+    const formData = getJSON('formData', {});
+    const agentListing = getJSON('agentListing', {});
+    const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+
+    // Choose address: param > formData
+    const fullAddress = decodeURIComponent(addrParam || formData.address || "[full address]");
+    const shortAddress = (fullAddress||'').split(',')[0] || "[short address]";
+
+    // Build tile data
+    const price = agentListing.price ?? "";
+    const cRaw = agentListing.commission ?? formData.commission ?? "";
+    const cType= agentListing.commissionType ?? formData.commissionType ?? "%";
+    const cAmt = commissionAmt(price, cRaw, cType);
+    const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
+    const banner = (agentListing.bannerText||"").trim();
+    const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
+    const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
+    const photo = photos[primaryIndex] || "";
+    const bds = agentListing.bedrooms ?? "—";
+    const ba  = agentListing.bathrooms ?? "—";
+    const sqft= agentListing.sqft ? Number(agentListing.sqft).toLocaleString() : "—";
+    const status = agentListing.status || "Draft";
+    const brokerage = formData.brokerage || (plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
+    const agentName = formData.agent || (plan.includes("FSBO") ? "" : "[listing agent]");
+    const agentPhone = formData.agentPhone || (plan.includes("FSBO") ? "" : "[agent phone]");
+
+    // ---- Paint tile (left) ----
+    (function paintTile(){
+      $("tilePhoto").src = photo || "";
+      if (banner) { $("tileBanner").textContent = banner; $("tileBanner").classList.remove('hidden'); }
+
+      // heart state
+      const FAV_KEY='gcFavorites';
+      function getFavs(){ try{ const v=JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); return Array.isArray(v)?v:[]; } catch{return[]} }
+      function setFavs(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a||[])); } catch{} }
+      function isFav(id){ return getFavs().includes(id); }
+      function toggleFav(id){ const a=getFavs(); const i=a.indexOf(id); if(i>=0) a.splice(i,1); else a.push(id); setFavs(a); return a.includes(id); }
+      function heartSvg(active){
+        return active
+          ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
+          : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+      }
+      const favId = (fullAddress||'').toLowerCase();
+      $("tileHeart").innerHTML = heartSvg(isFav(favId));
+      $("tileHeart").onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); $("tileHeart").innerHTML = heartSvg(toggleFav(favId)); };
+
+      // Top lines
+      $("tilePrice").textContent = money(price);
+      $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
+      $("tileFacts").textContent = `${bds} bds | ${ba} ba | ${sqft} sqft | ${status}`;
+      $("tileAddress").textContent = fullAddress;
+      $("tileContact").textContent = `${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
+      $("tileClick").href = `/listing.html?addr=${encodeURIComponent(fullAddress)}`;
+    })();
+
+    // ---- Mapbox: basic geocode + marker ----
+    let map, marker;
+    function initMap(centerLngLat) {
+      try {
+        map = new mapboxgl.Map({
+          container: 'mapCanvas',
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: centerLngLat || [-117.7854, 33.5427], // Laguna Beach fallback
+          zoom: centerLngLat ? 14 : 12
+        });
+        map.addControl(new mapboxgl.NavigationControl());
+        if (centerLngLat) {
+          marker = new mapboxgl.Marker().setLngLat(centerLngLat).addTo(map);
+        }
+      } catch (e) {
+        document.getElementById('mapCanvas').innerHTML =
+          '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
+      }
+    }
+
+    async function geocode(q) {
+      if (!MAPBOX_TOKEN) return null;
+      try {
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const data = await resp.json();
+        const f = data?.features?.[0];
+        return f ? f.center : null; // [lng, lat]
+      } catch { return null; }
+    }
+
+    (async function bootMap(){
+      let center = null;
+      if (MAPBOX_TOKEN) {
+        center = await geocode(fullAddress);
+      }
+      initMap(center);
+    })();
+
+    $("mapRun").onclick = async () => {
+      const q = $("mapQ").value.trim();
+      if (!q || !map) return;
+      const center = await geocode(q);
+      if (center) {
+        map.flyTo({ center, zoom: 14 });
+        if (!marker) marker = new mapboxgl.Marker().addTo(map);
+        marker.setLngLat(center);
+      }
+    };
+
+    // ---- Detail Quick Facts ----
+    $("dAddress").textContent = fullAddress;
+    $("dPrice").textContent   = money(price);
+    $("dCommissionPct").textContent = cPctLabel;
+    $("dCommissionAmt").textContent = cAmt ? money(cAmt) : "$—";
+    $("dBeds").textContent = bds;
+    $("dBaths").textContent = ba;
+    $("dSqft").textContent = sqft;
+    $("dStatus").textContent = status;
+    $("dYear").textContent = agentListing.yearBuilt ?? "—";
+    $("dLot").textContent  = agentListing.lotSize ?? "—";
+    $("dType").textContent = agentListing.propertyType ?? "—";
+
+    // Description
+    const desc = (agentListing.description || "").trim();
+    if (desc) {
+      $("dDescription").textContent = desc;
+      $("descCard").classList.remove("hidden");
+    }
+
+    // Gallery
+    (function paintGallery(){
+      const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
+      const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
+      const otherPhotos = photos.filter((_, i) => i !== primaryIndex);
+      if (!otherPhotos.length) return;
+      const grid = $("galleryGrid");
+      otherPhotos.forEach(src => {
+        const img = document.createElement("img");
+        img.src = src; img.alt = "Listing photo";
+        img.className = "w-full h-32 object-cover rounded bg-gray-100";
+        grid.appendChild(img);
+      });
+      $("galleryCard").classList.remove("hidden");
+    })();
+
+    // Contact blocks
+    const isFSBO = plan.includes("FSBO");
+    if (isFSBO) {
+      $("cOwnerPhone").textContent = formData.agentPhone || "[owner/seller phone]";
+      $("cOwnerEmail").textContent = formData.fsboEmail || "[owner/seller email]";
+      $("fsboContact").classList.remove("hidden");
+    } else {
+      $("cBrokerage").textContent = formData.brokerage || "[listing brokerage]";
+      $("cAgent").textContent     = formData.agent || "[listing agent]";
+      $("cAgentPhone").textContent= formData.agentPhone || "[agent phone]";
+      $("listedContact").classList.remove("hidden");
+    }
+
+    // View counter (per address)
+    (function bumpViews(){
+      const key = "viewCount:" + (fullAddress||'').toLowerCase();
+      let n = Number(localStorage.getItem(key)||0); n += 1;
+      localStorage.setItem(key, String(n));
+      $("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
+    })();
+
+    // ---- ISC Preview Image (snapshot of printable-isc.html) ----
+    async function renderIscPreview() {
+      const hidden = $("iscIframeHidden");
+      const imgEl = $("iscPreviewImg");
+      const fallback = $("iscIframeFallback");
+
+      // If html2canvas or iframe missing, bail to fallback
+      if (!hidden || typeof html2canvas === "undefined") return;
+
+      try {
+        // Wait for hidden iframe to load
+        await new Promise((res, rej) => {
+          if (hidden.contentWindow?.document?.readyState === "complete") return res();
+          hidden.onload = () => res();
+          // defensive timeout
+          setTimeout(() => res(), 2500);
+        });
+
+        const doc = hidden.contentDocument || hidden.contentWindow?.document;
+        if (!doc || !doc.body) throw new Error("No iframe document");
+
+        // Increase scale for sharper preview on high-DPI
+        const canvas = await html2canvas(doc.body, { scale: 1.2, useCORS: true, backgroundColor: "#ffffff" });
+        const dataUrl = canvas.toDataURL("image/png");
+        if (dataUrl) {
+          imgEl.src = dataUrl;
+          imgEl.classList.remove("hidden");
+          // Hide fallback iframe if image succeeded
+          fallback.style.display = "none";
+        }
+      } catch (e) {
+        // keep fallback iframe visible
+        console.warn("[isc-preview] using fallback iframe:", e?.message || e);
+      }
+    }
+    // Kick it off
+    renderIscPreview();
+  </script>
+</body>
+</html>
