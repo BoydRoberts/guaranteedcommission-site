@@ -16,10 +16,7 @@
     /* --- Strip 2 tile styles --- */
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
-    .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.7); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
-    .gc-line1 { font-weight:700; }
-    .gc-meta  { color:#4b5563; font-size:14px; }
-    .gc-broker { color:#6b7280; font-size:12px; text-transform:uppercase; }
+    .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -113,11 +110,94 @@
       </ul>
     </div>
 
-    <!-- Box 2 (form) and Box 3 (ISC) remain unchanged from your baseline … -->
-    <!-- … (keeping frozen; omitted here only for brevity of this display) -->
-    <!-- In your production file, this section is exactly as previously sent and used. -->
+    <!-- Box 2 -->
+    <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
+      <h2 id="formTitle" class="text-lg font-bold mb-4 text-center">Listed Property Communication Form</h2>
+      <form id="listingForm" class="space-y-2" autocomplete="off">
+        <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded" required>
 
-    <!-- Box 3 and rest of Strip 1 kept identical to your baseline -->
+        <!-- Address -->
+        <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-1 rounded" autocomplete="street-address" spellcheck="false" required >
+
+        <!-- Parcel -->
+        <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
+
+        <!-- Phone/Broker/Agent -->
+        <div id="listedPhoneRow" class="relative">
+          <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
+          <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (123-456-7890)</span>
+        </div>
+
+        <!-- Brokerage (HIDDEN for FSBO) -->
+        <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
+
+        <!-- Agent (HIDDEN for FSBO) -->
+        <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
+
+        <!-- FSBO-only contact -->
+        <div id="fsboEmailRow" class="hidden">
+          <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border p-1 rounded">
+        </div>
+
+        <!-- Commission -->
+        <div class="flex gap-2">
+          <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border p-1 rounded">
+          <select id="commissionType" class="border p-1 rounded">
+            <option value="%">%</option>
+            <option value="$">$</option>
+          </select>
+        </div>
+
+        <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-2">
+          Submit Guaranteed Commission
+        </button>
+      </form>
+    </div>
+
+    <!-- Box 3 -->
+    <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
+      <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
+
+      <!-- LISTED ISC -->
+      <div id="iscTextListed">
+        <p>To the escrow holder/closing agent,</p>
+        <p class="mt-2">
+          I, <span id="letterName">[name]</span>, am the owner/seller of
+          <span id="letterAddressFull">[full address]</span>
+          <span id="apnSpanListed">, # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span></span>.
+          <span id="letterAddressShort1">[short address]</span> is listed for sale by
+          <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent,
+          <span id="letterAgentPhone">[agent phone]</span>.
+        </p>
+        <p class="mt-2">
+          Let it be known: if a buyer’s agent/broker facilitates the sale of
+          <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed
+          to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for
+          broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed
+          <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
+        </p>
+        <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+      </div>
+
+      <!-- FSBO ISC -->
+      <div id="iscTextFSBO" class="hidden">
+        <p>To the escrow holder/closing agent,</p>
+        <p class="mt-2">
+          I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
+          <span id="letterAddressFullFSBO">[full address]</span>, #
+          <span id="letterAPNFSBO">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
+          <span id="letterAddressShort1FSBO">[short address]</span> is listed for sale by owner (Me).
+          My phone number is <span id="fsboPhone"></span>. My email address is <span id="fsboEmail"></span>.
+        </p>
+        <p class="mt-2">
+          Let it be known: if a buyer’s agent/broker facilitates the sale of
+          <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent) are irrevocably
+          instructed to credit/compensate the buyer’s broker a commission not to exceed
+          <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
+        </p>
+        <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+      </div>
+    </div>
   </section>
 
   <!-- Strip 2: Search / Tiles -->
@@ -157,7 +237,7 @@
       showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
     }
 
-    /* Toggle which form text appears */
+    /* Toggle form + ISC */
     function showForm(type){
       const title = document.getElementById("formTitle");
       const phoneInput = document.getElementById('agentPhone');
@@ -191,7 +271,7 @@
       }
     }
 
-    /* On load: default to Listed mode, render tiles */
+    /* On load */
     window.addEventListener('DOMContentLoaded', () => {
       const lastSelected = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
       showForm('listed');
@@ -200,14 +280,14 @@
       // Phone mask
       const phoneInput = document.getElementById('agentPhone');
       const phoneError = document.getElementById('phoneError');
-      phoneInput.addEventListener('input', function(){
+      phoneInput?.addEventListener('input', function(){
         let v = this.value.replace(/\D/g,'').slice(0,10);
         if(v.length>3 && v.length<=6) v = v.replace(/(\d{3})(\d+)/,'$1-$2');
         else if(v.length>6) v = v.replace(/(\d{3})(\d{3})(\d+)/,'$1-$2-$3');
         this.value = v;
         const ok = /^\d{3}-\d{3}-\d{4}$/.test(this.value);
         phoneInput.classList.toggle('border-red-500', !ok);
-        phoneError.classList.toggle('hidden', ok);
+        phoneError?.classList.toggle('hidden', ok);
       });
 
       // Sync to ISC
@@ -215,7 +295,7 @@
         const el=document.getElementById(id); if(!el) return;
         el.addEventListener('input', syncAll);
       });
-      document.getElementById('commissionType').addEventListener('change', syncAll);
+      document.getElementById('commissionType')?.addEventListener('change', syncAll);
 
       function syncAll(){
         const fullAddr = (document.getElementById('address').value || '').trim();
@@ -269,7 +349,7 @@
       wireSearch();
     });
 
-    /* Submit (unchanged) */
+    /* Submit */
     function submitForm(){
       const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
       const requiredIds = ['name','address','agentPhone'];
@@ -323,7 +403,6 @@
       return null;
     }
 
-    // UPDATED TILE: no button; clickable card; aligned L/C/R line-1
     function renderTile(data){
       const {
         address="[full address]",
@@ -337,7 +416,8 @@
         brokerage="[listing brokerage]",
         agent="[listing agent]",
         plan="Listed Property Basic",
-        bedrooms, bathrooms, sqft
+        bedrooms, bathrooms, sqft,
+        agentPhone
       } = data || {};
 
       const calc = commissionDollars(price, commission, commissionType);
@@ -350,8 +430,9 @@
       const card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
       card.onclick = () => {
-        // Zillow-style: whole tile navigates
-        window.location.href = "/listing.html";
+        // Zillow-style: whole tile navigates to detail
+        const slug = encodeURIComponent(address);
+        window.location.href = `/listing.html?addr=${slug}`;
       };
 
       card.innerHTML = `
@@ -360,7 +441,7 @@
           ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ``}
         </div>
         <div class="p-3 space-y-1">
-          <!-- Line 1: Price (left) | % (center) | $ total (right) -->
+          <!-- Line 1: Price | % | $ total -->
           <div class="grid grid-cols-3 items-center text-sm font-semibold">
             <div class="text-left truncate">${line1Left}</div>
             <div class="text-center truncate">${line1Mid}</div>
@@ -385,7 +466,7 @@
           <!-- Line 4: Brokerage, Agent, Phone -->
           <div class="text-[12px] text-gray-600">
             ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}
-            ${agent ? ' — '+agent : ''}${data.agentPhone ? ' — '+data.agentPhone : ''}
+            ${agent ? ' — '+agent : ''}${agentPhone ? ' — '+agentPhone : ''}
           </div>
         </div>
       `;
@@ -428,16 +509,16 @@
           bannerText: "Open Sunday 1–4",
           photos: ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop"],
           primaryIndex: 0, status: "Active",
-          brokerage: "Pacific Estates", agent: "Jordan Crisp",
-          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000, agentPhone: "(949) 555-1212"
+          brokerage: "Pacific Estates", agent: "Jordan Crisp", agentPhone: "(949) 555-1212",
+          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000
         },
         {
           address: "14 Maple Ave, Montclair, NJ 07042",
           price: 925000, commission: 25000, commissionType: '$',
           photos: ["https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop"],
           primaryIndex: 0, status: "In Contract",
-          brokerage: "HomeWorks Realty", agent: "A. Brooks",
-          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400, agentPhone: "(973) 555-2121"
+          brokerage: "HomeWorks Realty", agent: "A. Brooks", agentPhone: "(973) 555-2121",
+          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400
         },
         {
           address: "1020 Cedar Dr, Austin, TX 78704",
@@ -445,8 +526,8 @@
           bannerText: "Hot Home",
           photos: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop"],
           primaryIndex: 0, status: "Active",
-          brokerage: "", agent: "",
-          plan: "FSBO Plus", bedrooms: 3, bathrooms: 2, sqft: 1680, agentPhone: ""
+          brokerage: "", agent: "", agentPhone: "",
+          plan: "FSBO Plus", bedrooms: 3, bathrooms: 2, sqft: 1680
         }
       ];
       const haveAddr = new Set(_tilesData.map(d => (d.address||'').toLowerCase()));
