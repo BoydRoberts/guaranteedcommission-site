@@ -69,7 +69,7 @@
           </div>
         </div>
 
-        <!-- Zillow-style basics: Beds / Baths / Sqft / Year Built / Lot Size / Property Type -->
+        <!-- Zillow-style basics -->
         <div>
           <label class="block text-sm font-semibold mb-1">Property Facts</label>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -111,7 +111,7 @@
           </div>
         </div>
 
-        <!-- APN / Parcel (kept) -->
+        <!-- APN / Parcel -->
         <div>
           <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
           <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
@@ -133,7 +133,7 @@
           <p id="descGateNote" class="lock-note mt-1 hidden">Upgrade to Listed Property Plus to enable Description.</p>
         </div>
 
-        <!-- Banner / Preferred Area (Premium) / Pin Area -->
+        <!-- Banner / Preferred Area / Pin Area -->
         <div>
           <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
           <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
@@ -179,7 +179,7 @@
       </form>
     </section>
 
-    <!-- RIGHT: Upgrades + September Free Promo -->
+    <!-- RIGHT: Promo + Upgrades -->
     <aside class="space-y-4">
       <!-- Promo card -->
       <section class="bg-white rounded shadow p-5">
@@ -196,7 +196,7 @@
         <p id="promoNote" class="text-xs text-gray-500 mt-2"></p>
       </section>
 
-      <!-- Upgrades box (respects free pricing when promo applied) -->
+      <!-- Upgrades (agent can pay) -->
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrades</h2>
         <p class="text-sm text-gray-600">Agent can turn on upgrades here. Free pricing applies if September Promo is active.</p>
@@ -220,7 +220,7 @@
     const formData = getJSON("formData", {});
     const agentListing = getJSON("agentListing", {});
     const now = new Date();
-    const isSept2025 = (now.getFullYear() === 2025 && now.getMonth() === 8); // September = 8 (zero-based)
+    const isSept2025 = (now.getFullYear() === 2025 && now.getMonth() === 8); // September = 8
 
     // checkoutData baseline
     const checkoutData = getJSON("checkoutData", null) || {
@@ -231,7 +231,6 @@
       meta: {},
       payer: "agent"
     };
-
     const flags = getJSON("intakeFollowups", {});
     const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
 
@@ -239,10 +238,10 @@
     $("planPill").textContent = plan;
     $("payerBadge").textContent = checkoutData.payer === "agent" ? "You are paying for upgrades on this screen." : "";
 
-    // Prefill basics
     $("fullAddress").value = formData.address || "";
     $("status").value = agentListing.status || "";
     $("price").value = agentListing.price ?? "";
+
     const commission = agentListing.commission ?? (formData.commission || "");
     const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
     $("commission").value = commission; $("commissionType").value = commissionType;
@@ -365,7 +364,6 @@
     }
 
     function applySeptemberFree() {
-      // Set zero prices for these three and mark meta flag; preserve Plus/fsbo defaults
       checkoutData.prices.banner = 0;
       checkoutData.prices.premium = 0;
       checkoutData.prices.pin = 0;
@@ -373,13 +371,13 @@
       checkoutData.meta.septemberAgentFree = true;
       setJSON("checkoutData", checkoutData);
       alert("September Free applied. Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.");
-      paintUpgrades(); // repaint price labels
+      paintUpgrades();
     }
 
     applyPromoBtn.addEventListener("click", applySeptemberFree);
     paintPromoState();
 
-    // ------------ Upgrades panel ------------
+    // ---------- upgrades panel (agent pays) ----------
     function row(label, price, key, opts={}) {
       const checked = !!checkoutData.upgrades[key];
       const paid = opts.paid === true;
@@ -396,7 +394,6 @@
         </label>
       `;
     }
-
     function paintUpgrades() {
       const box = $("upgradesBox");
       const isBasic = plan === "Listed Property Basic";
@@ -411,7 +408,6 @@
         plan.includes("FSBO") ? row("Confidential FSBO Upgrade", p.confidential ?? 100, "confidential", {paid: checkoutData.upgrades.confidential}) : ""
       ].join("");
       box.innerHTML = html;
-
       box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
         cb.addEventListener("change", (e)=>{
           const k = e.target.getAttribute("data-key");
@@ -430,7 +426,6 @@
             checkoutData.upgrades.confidential = checked;
           }
           setJSON("checkoutData", checkoutData);
-          // Enable typing into gated fields when selected
           if (k === "banner") {
             $("bannerText").disabled = !checked && !isPlus;
             $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
@@ -455,7 +450,12 @@
       alert("Upgrades updated. Go to Checkout to pay (if needed).");
     });
 
-    $("goCheckoutBtn").addEventListener("click", () => { window.location.href = "/checkout.html"; });
+    // >>> ONE-LINE GUARD ADDED HERE <<<
+    $("goCheckoutBtn").addEventListener("click", () => {
+      checkoutData.payer = "agent";            // ensure agent payer for redirect after Stripe
+      setJSON("checkoutData", checkoutData);   // persist before navigation
+      window.location.href = "/checkout.html";
+    });
   </script>
 </body>
 </html>
