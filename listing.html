@@ -1,24 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Listing | GuaranteedCommission.com</title>
+  <title>Listing Detail | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .gc-hero { position: relative; border-radius: 0.75rem; overflow: hidden; }
-    .gc-hero img { width: 100%; height: 22rem; object-fit: cover; background: #e5e7eb; }
-    .gc-badge {
-      position: absolute; top: 12px; left: 12px;
-      background: rgba(0,0,0,0.7); color: #fff; padding: 6px 10px; border-radius: 8px;
-      font-size: 13px;
-    }
-    .gc-ribbon {
-      position: absolute; top: 12px; right: -10px; transform: rotate(10deg);
-      background: #2563eb; color: #fff; padding: 8px 14px; border-radius: 8px;
-      font-size: 12px; max-width: 200px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
-    }
     .font-cursive { font-family: 'Brush Script MT', cursive; }
+    .tile-photo { width:100%; height: 20rem; object-fit: cover; background:#e5e7eb; }
+    .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
+    .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    .fact-pill { font-size: 12px; background:#f3f4f6; padding:2px 8px; border-radius:9999px; }
+    .status-active { background:#d1fae5; color:#047857; }
+    .status-contract { background:#fef3c7; color:#92400e; }
+    .status-sold { background:#ffe4e6; color:#be123c; }
+    .status-draft { background:#e5e7eb; color:#374151; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -26,59 +22,106 @@
   <!-- Top bar -->
   <header class="bg-white border-b">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-      <a href="/#strip2Search" class="text-sm text-blue-600 hover:underline">&larr; Back to Search</a>
+      <a href="/index.html#strip2Search" class="text-sm text-blue-600 hover:underline">&larr; Back to Search</a>
       <h1 class="text-lg font-semibold">GuaranteedCommission.com</h1>
-      <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log in</a>
+      <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 py-6">
-    <!-- Address / Price -->
-    <div class="mb-4">
-      <h2 id="addrLine" class="text-2xl md:text-3xl font-bold">[Full Address]</h2>
-      <p id="priceLine" class="text-xl text-gray-700 mt-1">$—</p>
-    </div>
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- Hero -->
-    <div class="gc-hero mb-6">
-      <img id="heroImg" alt="Main listing photo" />
-      <div id="ribbon" class="gc-ribbon hidden"></div>
-      <div id="commissionBadge" class="gc-badge hidden"></div>
-    </div>
+    <!-- STRIP (Top row) -->
+    <section class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <!-- Left: enlarged listing tile (spans 2 cols = half width) -->
+      <article id="heroTile" class="lg:col-span-2 bg-white rounded-2xl shadow overflow-hidden relative cursor-pointer">
+        <div class="relative">
+          <img id="tilePhoto" class="tile-photo" alt="Listing photo"/>
+          <div id="tileBanner" class="tile-banner hidden"></div>
+          <button id="tileHeart" type="button" class="heart-btn" aria-label="Like"></button>
+        </div>
+        <div class="p-4 space-y-1">
+          <!-- Top line: Price (left) | Commission X% | $Y (right, red) -->
+          <div class="flex items-center justify-between text-[16px] sm:text-[18px] font-semibold">
+            <div id="tilePrice" class="truncate">$—</div>
+            <div id="tileCommission" class="truncate text-red-600">Commission — | $—</div>
+          </div>
+          <!-- Second line: "3 bds | 2 ba | 2,000 sqft | Active" -->
+          <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
+          <!-- Third: Full address -->
+          <div id="tileAddress" class="text-sm font-medium">[full address]</div>
+          <!-- Fourth: Brokerage — Agent — Phone -->
+          <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] — [listing agent] — [agent phone]</div>
+        </div>
+        <a id="tileClick" href="#" class="absolute inset-0" aria-label="Open full listing detail"></a>
+      </article>
 
-    <!-- Two columns -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left: Details -->
-      <section class="lg:col-span-2 space-y-6">
-        <!-- Quick facts -->
-        <div class="bg-white rounded shadow p-4">
+      <!-- Middle: Map Search -->
+      <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-4">
+        <h2 class="text-sm font-semibold mb-2">Map Search</h2>
+        <div class="flex gap-2 mb-3">
+          <input id="mapQ" class="w-full border rounded px-3 py-2 text-sm" placeholder="Search by city or ZIP">
+          <button id="mapRun" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Go</button>
+        </div>
+        <div id="mapCanvas" class="h-64 rounded bg-gray-100 flex items-center justify-center text-gray-500 text-sm">
+          Map coming soon
+        </div>
+      </aside>
+
+      <!-- Right: ISC preview (PDF image stand-in) -->
+      <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold">ISC Preview</h2>
+          <span id="viewCounter" class="text-xs text-gray-500">0 views</span>
+        </div>
+        <div class="mt-2 border rounded overflow-hidden bg-gray-50">
+          <!-- Using printable-isc.html as an embedded preview -->
+          <iframe src="/printable-isc.html" class="w-full h-64 bg-white"></iframe>
+        </div>
+        <a href="/printable-isc.html" target="_blank"
+           class="mt-3 inline-flex items-center justify-center w-full text-center bg-gray-700 text-white py-2 rounded text-sm">
+          Open Full ISC
+        </a>
+      </aside>
+    </section>
+
+    <!-- DETAIL BODY -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left 2/3: Details -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Quick Facts -->
+        <div class="bg-white rounded-2xl shadow p-5">
           <h3 class="text-lg font-semibold mb-3">Listing Details</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div><span class="text-gray-500">Address:</span> <span id="detailAddress" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Listing Price:</span> <span id="detailPrice" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Commission:</span> <span id="detailCommission" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Estimated Commission (USD):</span> <span id="detailCommissionCalc" class="font-medium"></span></div>
-            <div><span class="text-gray-500">APN / Parcel:</span> <span id="detailAPN" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Plan:</span> <span id="detailPlan" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Address:</span> <span id="dAddress" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Listing Price:</span> <span id="dPrice" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Commission (%):</span> <span id="dCommissionPct" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Est. Commission ($):</span> <span id="dCommissionAmt" class="font-medium"></span></div>
+            <div><span class="text-gray-500">BDS:</span> <span id="dBeds" class="font-medium"></span></div>
+            <div><span class="text-gray-500">BA:</span> <span id="dBaths" class="font-medium"></span></div>
+            <div><span class="text-gray-500">SQFT:</span> <span id="dSqft" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Status:</span> <span id="dStatus" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Year Built:</span> <span id="dYear" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Lot Size (sqft):</span> <span id="dLot" class="font-medium"></span></div>
+            <div><span class="text-gray-500">Property Type:</span> <span id="dType" class="font-medium"></span></div>
           </div>
         </div>
 
-        <!-- Description (only if present; usually Plus) -->
-        <div id="descCard" class="bg-white rounded shadow p-4 hidden">
+        <!-- Description -->
+        <div id="descCard" class="bg-white rounded-2xl shadow p-5 hidden">
           <h3 class="text-lg font-semibold mb-3">Description</h3>
-          <p id="detailDescription" class="text-sm leading-relaxed whitespace-pre-line"></p>
+          <p id="dDescription" class="text-sm leading-relaxed whitespace-pre-line"></p>
         </div>
 
-        <!-- Gallery (if photos beyond primary) -->
-        <div id="galleryCard" class="bg-white rounded shadow p-4 hidden">
+        <!-- Gallery -->
+        <div id="galleryCard" class="bg-white rounded-2xl shadow p-5 hidden">
           <h3 class="text-lg font-semibold mb-3">Photos</h3>
           <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
         </div>
-      </section>
+      </div>
 
-      <!-- Right: Contact + Actions -->
+      <!-- Right 1/3: Contact -->
       <aside class="space-y-4">
-        <div class="bg-white rounded shadow p-4">
+        <div class="bg-white rounded-2xl shadow p-5">
           <h3 class="text-lg font-semibold mb-2">Contact</h3>
           <!-- Listed -->
           <div id="listedContact" class="text-sm hidden">
@@ -93,189 +136,154 @@
           </div>
 
           <div class="mt-4 flex flex-col gap-2">
-            <a href="/printable-isc.html" class="w-full text-center bg-gray-700 text-white py-2 rounded">View / Print ISC</a>
-            <a href="#" data-isc-pdf class="w-full text-center bg-blue-600 text-white py-2 rounded">Download ISC PDF</a>
-            <a href="/login.html" class="w-full text-center bg-green-600 text-white py-2 rounded">Log in to Message</a>
+            <a href="/printable-isc.html" class="w-full text-center bg-gray-700 text-white py-2 rounded">Sign / View ISC</a>
+            <a href="/signature.html" class="w-full text-center bg-green-600 text-white py-2 rounded">Sign / Continue</a>
           </div>
         </div>
 
-        <div class="bg-white rounded shadow p-4 text-sm text-gray-600">
+        <div class="bg-white rounded-2xl shadow p-5 text-sm text-gray-600">
           <p><strong>Commission clarity helps homes sell.</strong> This listing states buyer’s agent compensation up front to improve showings and outcomes.</p>
         </div>
       </aside>
-    </div>
+    </section>
   </main>
 
   <script>
-    // Utility
-    const fmtUSD = (v) => {
-      const n = Number(v || 0);
-      if (!n) return "$—";
-      return "$" + n.toLocaleString();
+    // ---- Helpers ----
+    const $ = (id) => document.getElementById(id);
+    const getJSON = (k, fb={}) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+    const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
+    const commissionAmt = (p, c, t)=>{ const P=Number(p||0), C=Number(c||0); if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0); };
+    const statusClass = (s)=> {
+      const t = (s||'').toLowerCase();
+      if (t==='active') return 'status-active';
+      if (t==='in contract' || t==='in_contract') return 'status-contract';
+      if (t==='sold') return 'status-sold';
+      return 'status-draft';
     };
 
-    const url = new URL(window.location.href);
-    const id = url.searchParams.get("id") || "local-preview";
+    // ---- Load sources ----
+    const url = new URL(location.href);
+    const addrParam = url.searchParams.get('addr'); // optional
+    const formData = getJSON('formData', {});
+    const agentListing = getJSON('agentListing', {});
+    const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
 
-    // Try local sources first (seller/agent flow); fall back to empty objects
-    const formData = (() => { try { return JSON.parse(localStorage.getItem("formData") || "{}"); } catch { return {}; } })();
-    const agentListing = (() => { try { return JSON.parse(localStorage.getItem("agentListing") || "{}"); } catch { return {}; } })();
-    const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+    // Choose address: param > formData
+    const fullAddress = decodeURIComponent(addrParam || formData.address || "[full address]");
+    const shortAddress = (fullAddress||'').split(',')[0] || "[short address]";
 
-    // Compose display values with safe fallbacks (so cold visitors still see a complete page)
-    const fullAddress = formData.address || "[full address]";
-    const price = (agentListing.price ?? "");
-    const commission = (agentListing.commission ?? (formData.commission || ""));
-    const commissionType = (agentListing.commissionType ?? (formData.commissionType || "%"));
-    const apn = formData.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
-    const bannerText = (agentListing.bannerText || "").trim();
-    const description = (agentListing.description || "").trim();
-
+    // Build tile data
+    const price = agentListing.price ?? "";
+    const cRaw = agentListing.commission ?? formData.commission ?? "";
+    const cType= agentListing.commissionType ?? formData.commissionType ?? "%";
+    const cAmt = commissionAmt(price, cRaw, cType);
+    const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
+    const banner = (agentListing.bannerText||"").trim();
     const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
     const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
-    const primaryPhoto = photos[primaryIndex] || "";
+    const photo = photos[primaryIndex] || "";
+    const bds = agentListing.bedrooms ?? "—";
+    const ba  = agentListing.bathrooms ?? "—";
+    const sqft= agentListing.sqft ? Number(agentListing.sqft).toLocaleString() : "—";
+    const status = agentListing.status || "Draft";
+    const brokerage = formData.brokerage || (plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
+    const agentName = formData.agent || (plan.includes("FSBO") ? "" : "[listing agent]");
+    const agentPhone = formData.agentPhone || (plan.includes("FSBO") ? "" : "[agent phone]");
 
-    const commissionDisplay = commissionType === "$"
-      ? (commission ? ("$" + Number(commission || 0).toLocaleString()) : "[commission]")
-      : (commission ? (commission + "%") : "[commission]");
-
-    let commissionEstimate = "—";
-    const pNum = Number(price || 0);
-    const cNum = Number(commission || 0);
-    if (cNum) {
-      if (commissionType === "$") {
-        commissionEstimate = "$" + Math.round(cNum).toLocaleString();
-      } else if (pNum) {
-        commissionEstimate = "$" + Math.round(pNum * (cNum / 100)).toLocaleString();
+    // ---- Paint tile (left) ----
+    (function paintTile(){
+      // Photo + banner + heart
+      $("tilePhoto").src = photo || "";
+      if (banner) { $("tileBanner").textContent = banner; $("tileBanner").classList.remove('hidden'); }
+      // heart state
+      const FAV_KEY='gcFavorites';
+      function getFavs(){ try{ const v=JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); return Array.isArray(v)?v:[]; } catch{return[]} }
+      function setFavs(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a||[])); } catch{} }
+      function isFav(id){ return getFavs().includes(id); }
+      function toggleFav(id){ const a=getFavs(); const i=a.indexOf(id); if(i>=0) a.splice(i,1); else a.push(id); setFavs(a); return a.includes(id); }
+      function heartSvg(active){
+        return active
+          ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
+          : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
       }
-    }
+      const favId = (fullAddress||'').toLowerCase();
+      $("tileHeart").innerHTML = heartSvg(isFav(favId));
+      $("tileHeart").onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); $("tileHeart").innerHTML = heartSvg(toggleFav(favId)); };
 
-    // Paint header
-    document.getElementById("addrLine").textContent = fullAddress;
-    document.getElementById("priceLine").textContent = fmtUSD(price);
+      // Top line
+      $("tilePrice").textContent = money(price);
+      $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
 
-    // Hero
-    const heroImg = document.getElementById("heroImg");
-    heroImg.src = primaryPhoto || "";
-    const ribbon = document.getElementById("ribbon");
-    const badge = document.getElementById("commissionBadge");
+      // Second line
+      $("tileFacts").textContent = `${bds} bds | ${ba} ba | ${sqft} sqft | ${status}`;
 
-    if (bannerText) {
-      ribbon.textContent = bannerText;
-      ribbon.classList.remove("hidden");
-    }
-    if (cNum) {
-      const badgeText = (commissionType === "$")
-        ? `Commission: $${Math.round(cNum).toLocaleString()}`
-        : `Commission: ${cNum}%${pNum ? ` (~$${Math.round(pNum * (cNum/100)).toLocaleString()})` : ""}`;
-      badge.textContent = badgeText;
-      badge.classList.remove("hidden");
-    }
+      // Third/4th lines
+      $("tileAddress").textContent = fullAddress;
+      $("tileContact").textContent = `${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
 
-    // Details card
-    document.getElementById("detailAddress").textContent = fullAddress;
-    document.getElementById("detailPrice").textContent = fmtUSD(price);
-    document.getElementById("detailCommission").textContent = commissionDisplay;
-    document.getElementById("detailCommissionCalc").textContent = commissionEstimate;
-    document.getElementById("detailAPN").textContent = apn;
-    document.getElementById("detailPlan").textContent = plan || "—";
+      // Click-thru (optional—already on detail, so just keep address-based link)
+      $("tileClick").href = `/listing.html?addr=${encodeURIComponent(fullAddress)}`;
+    })();
 
-    // Description & Gallery cards
-    const descCard = document.getElementById("descCard");
-    const descEl = document.getElementById("detailDescription");
-    if (description) {
-      descEl.textContent = description;
-      descCard.classList.remove("hidden");
-    }
-
-    const galleryCard = document.getElementById("galleryCard");
-    const galleryGrid = document.getElementById("galleryGrid");
-    const otherPhotos = photos.filter((_, i) => i !== primaryIndex);
-    if (otherPhotos.length > 0) {
-      otherPhotos.forEach(src => {
-        const img = document.createElement("img");
-        img.src = src;
-        img.alt = "Listing photo";
-        img.className = "w-full h-32 object-cover rounded";
-        galleryGrid.appendChild(img);
-      });
-      galleryCard.classList.remove("hidden");
-    }
-
-    // Contact (Listed vs FSBO)
-    const isFSBO = (plan || "").includes("FSBO");
-    const listedContact = document.getElementById("listedContact");
-    const fsboContact = document.getElementById("fsboContact");
-
-    if (isFSBO) {
-      document.getElementById("cOwnerPhone").textContent = formData.agentPhone || "[owner/seller phone number]";
-      document.getElementById("cOwnerEmail").textContent = formData.fsboEmail || "[owner/seller email]"; // fixed to fsboEmail
-      fsboContact.classList.remove("hidden");
-      listedContact.classList.add("hidden");
-    } else {
-      document.getElementById("cBrokerage").textContent = formData.brokerage || "[listing brokerage]";
-      document.getElementById("cAgent").textContent = formData.agent || "[listing agent]";
-      document.getElementById("cAgentPhone").textContent = formData.agentPhone || "[agent phone]";
-      listedContact.classList.remove("hidden");
-      fsboContact.classList.add("hidden");
-    }
-
-    // ------ Provide a complete, public-safe ISC context for the PDF helper ------
-    // Fallbacks ensure a cold visitor still downloads a coherent ISC.
-    const sellerName = formData.name || formData.sellerName || "[Name]";
-    const addressShort = (fullAddress || "").split(",")[0] || "[short address]";
-
-    window.__ISC_CONTEXT = {
-      // which template branch to render
-      variant: isFSBO ? "fsbo" : "listed",
-
-      // shared
-      sellerName,
-      signatureName: sellerName,
-      addressFull: fullAddress,
-      addressShort,
-      apn: apn,
-
-      commissionValue: String(commission || ""),
-      commissionType: commissionType === "$" ? "$" : "%",
-
-      // listed branch
-      brokerage: formData.brokerage || "",
-      agent: formData.agent || "",
-      agentPhone: formData.agentPhone || "",
-
-      // fsbo branch (now correctly sourced)
-      fsboPhone: formData.agentPhone || "",
-      fsboEmail: formData.fsboEmail || "",
-
-      // nice-to-haves for headers/footers
-      plan,
-      source: "listing.html",
-      // a stable-ish key for per-ISC view counters, etc.
-      counterKey: "iscViewCount:" + (fullAddress || "unknown")
+    // ---- Map mock ----
+    $("mapRun").onclick = () => {
+      const q = $("mapQ").value.trim();
+      $("mapCanvas").textContent = q ? `Map search for: ${q}` : "Map coming soon";
     };
 
-    // Optional: warn if helper script is missing
-    document.querySelector('[data-isc-pdf]')?.addEventListener('click', (e) => {
-      if (!window.gcBuildIscPdf) {
-        e.preventDefault();
-        alert("PDF helper not loaded yet. Please try again in a moment.");
-      }
-    });
-  </script>
+    // ---- Detail Quick Facts ----
+    $("dAddress").textContent = fullAddress;
+    $("dPrice").textContent   = money(price);
+    $("dCommissionPct").textContent = cPctLabel;
+    $("dCommissionAmt").textContent = cAmt ? money(cAmt) : "$—";
+    $("dBeds").textContent = bds;
+    $("dBaths").textContent = ba;
+    $("dSqft").textContent = sqft;
+    $("dStatus").textContent = status;
+    $("dYear").textContent = agentListing.yearBuilt ?? "—";
+    $("dLot").textContent  = agentListing.lotSize ?? "—";
+    $("dType").textContent = agentListing.propertyType ?? "—";
 
-  <!-- jsPDF + ISC PDF Helper -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="/scripts/isc-pdf.js"></script>
+    // Description
+    const desc = (agentListing.description || "").trim();
+    if (desc) {
+      $("dDescription").textContent = desc;
+      $("descCard").classList.remove("hidden");
+    }
 
-  <!-- Title polish -->
-  <script>
-    (function(){
-      try {
-        const fd = JSON.parse(localStorage.getItem('formData') || '{}');
-        const short = (fd.address || '').split(',')[0] || 'Listing';
-        document.title = short + ' — Full Listing Detail';
-      } catch {}
+    // Gallery
+    const otherPhotos = photos.filter((_, i) => i !== primaryIndex);
+    if (otherPhotos.length) {
+      const grid = $("galleryGrid");
+      otherPhotos.forEach(src => {
+        const img = document.createElement("img");
+        img.src = src; img.alt = "Listing photo";
+        img.className = "w-full h-32 object-cover rounded bg-gray-100";
+        grid.appendChild(img);
+      });
+      $("galleryCard").classList.remove("hidden");
+    }
+
+    // Contact blocks
+    const isFSBO = plan.includes("FSBO");
+    if (isFSBO) {
+      $("cOwnerPhone").textContent = formData.agentPhone || "[owner/seller phone]";
+      $("cOwnerEmail").textContent = formData.fsboEmail || "[owner/seller email]";
+      $("fsboContact").classList.remove("hidden");
+    } else {
+      $("cBrokerage").textContent = formData.brokerage || "[listing brokerage]";
+      $("cAgent").textContent     = formData.agent || "[listing agent]";
+      $("cAgentPhone").textContent= formData.agentPhone || "[agent phone]";
+      $("listedContact").classList.remove("hidden");
+    }
+
+    // View counter (per address)
+    (function bumpViews(){
+      const key = "viewCount:" + (fullAddress||'').toLowerCase();
+      let n = Number(localStorage.getItem(key)||0); n += 1;
+      localStorage.setItem(key, String(n));
+      $("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
     })();
   </script>
 </body>
