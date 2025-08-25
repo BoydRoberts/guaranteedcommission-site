@@ -403,6 +403,7 @@
       return null;
     }
 
+    // >>> Tile renderer updated per your instructions <<<
     function renderTile(data){
       const {
         address="[full address]",
@@ -420,17 +421,31 @@
         agentPhone
       } = data || {};
 
+      // Commission math + labels
       const calc = commissionDollars(price, commission, commissionType);
-      const line1Left  = fmtUSD(price);
-      const line1Mid   = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
-      const line1Right = (calc!=null) ? `$${calc.toLocaleString()}` : '—';
+      const priceLabel  = fmtUSD(price);
+      const rightLabel  = `Commission ${commission ? (commissionType==='%' ? `${commission}%` : fmtUSD(commission)) : '—'} | ${calc!=null ? fmtUSD(calc) : '$—'}`;
 
       const img = (photos && photos.length ? photos[primaryIndex||0] : "");
+
+      // Heart (favorites) helpers
+      const FAV_KEY='gcFavorites';
+      function getFavs(){ try{ const v=JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); return Array.isArray(v)?v:[]; } catch{return[]} }
+      function setFavs(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a||[])); } catch{} }
+      function isFav(id){ return getFavs().includes(id); }
+      function toggleFav(id){ const a=getFavs(); const i=a.indexOf(id); if(i>=0) a.splice(i,1); else a.push(id); setFavs(a); return a.includes(id); }
+      function heartSvg(active){
+        return active
+          ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
+          : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+      }
+
+      const favId = (address||'').toLowerCase();
+      const favActive = isFav(favId);
 
       const card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
       card.onclick = () => {
-        // Zillow-style: whole tile navigates to detail
         const slug = encodeURIComponent(address);
         window.location.href = `/listing.html?addr=${slug}`;
       };
@@ -439,37 +454,42 @@
         <div class="relative">
           <img class="gc-photo" src="${img || ''}" alt="Listing photo">
           ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ``}
+          <button type="button" data-like class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow hover:bg-white" aria-label="Like" title="Save">
+            ${heartSvg(favActive)}
+          </button>
         </div>
         <div class="p-3 space-y-1">
-          <!-- Line 1: Price | % | $ total -->
-          <div class="grid grid-cols-3 items-center text-sm font-semibold">
-            <div class="text-left truncate">${line1Left}</div>
-            <div class="text-center truncate">${line1Mid}</div>
-            <div class="text-right truncate">${line1Right}</div>
+          <!-- Top line: bigger font; left price, right red Commission -->
+          <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
+            <div class="truncate">${priceLabel}</div>
+            <div class="truncate text-red-600">${rightLabel}</div>
           </div>
 
-          <!-- Line 2: BDS | BA | SQFT | STATUS -->
-          <div class="text-[12px] text-gray-700 flex items-center gap-2 flex-wrap">
-            <span class="px-2 py-0.5 bg-gray-100 rounded">BDS ${bedrooms ?? '—'}</span>
-            <span class="px-2 py-0.5 bg-gray-100 rounded">BA ${bathrooms ?? '—'}</span>
-            <span class="px-2 py-0.5 bg-gray-100 rounded">SQFT ${sqft ? Number(sqft).toLocaleString() : '—'}</span>
-            <span class="px-2 py-0.5 rounded ${
-              (status||'').toLowerCase()==='active'?'bg-emerald-100 text-emerald-700':
-              (status||'').toLowerCase().includes('contract')?'bg-amber-100 text-amber-700':
-              (status||'').toLowerCase()==='sold'?'bg-rose-100 text-rose-700':'bg-gray-100 text-gray-700'
-            }">${status||'Draft'}</span>
+          <!-- Second line: "3 bds | 2 ba | 2,000 sqft | Active" -->
+          <div class="text-[12px] text-gray-700">
+            ${(bedrooms ?? '—')} bds | ${(bathrooms ?? '—')} ba | ${sqft ? Number(sqft).toLocaleString() : '—'} sqft | ${status}
           </div>
 
-          <!-- Line 3: Full address -->
+          <!-- Third line: full address -->
           <div class="text-sm font-medium">${address}</div>
 
-          <!-- Line 4: Brokerage, Agent, Phone -->
+          <!-- Fourth line: Brokerage — Agent — Phone -->
           <div class="text-[12px] text-gray-600">
             ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}
             ${agent ? ' — '+agent : ''}${agentPhone ? ' — '+agentPhone : ''}
           </div>
         </div>
       `;
+
+      // Heart click (don’t navigate)
+      const likeBtn = card.querySelector('[data-like]');
+      likeBtn?.addEventListener('click', (e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        const now = toggleFav(favId);
+        likeBtn.innerHTML = heartSvg(now);
+      });
+
       return card;
     }
 
