@@ -16,7 +16,7 @@
     </div>
   </header>
 
-  <!-- Search bar (non-functional placeholder for now) -->
+  <!-- Search bar -->
   <section class="max-w-7xl mx-auto px-4 mt-6">
     <div class="bg-white rounded-2xl shadow p-4">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -46,10 +46,10 @@
         <button id="loadSample" class="underline">Load sample data</button>
       </div>
     </div>
-    <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </section>
 
-  <!-- Tiles helper -->
+  <!-- Tiles helper: uses your updated Zillow-style renderer with clickable cards -->
   <script src="/scripts/tiles.js"></script>
   <script>
     // Build a multi-item list from localStorage + mocks
@@ -64,7 +64,7 @@
       if (formData.address) {
         list.push({
           formData,
-          agentData: Object.assign({ status: agentData.status || 'active' }, agentData),
+          agentData: Object.assign({ status: agentData.status || 'Active' }, agentData),
           plan: selectedPlan
         });
       }
@@ -72,21 +72,21 @@
       // Add a few mock items for variety
       list.push(
         {
-          formData:  { address: '100 Ocean Ave, Laguna Beach, CA 92651' },
+          formData:  { address: '100 Ocean Ave, Laguna Beach, CA 92651', brokerage: 'Coastal Realty', agent: 'Ava Nguyen', agentPhone: '(949) 555-1234' },
           agentData: {
             price: 2750000, commission: 2.5, commissionType: '%',
-            beds: 3, baths: 3, sqft: 2100, bannerText: 'Open Sun 1–4',
-            status: 'active',
+            bedrooms: 3, bathrooms: 3, sqft: 2100, bannerText: 'Open Sun 1–4',
+            status: 'Active',
             photos: ['https://picsum.photos/seed/gc1/800/450']
           },
           plan: 'Listed Property Plus'
         },
         {
-          formData:  { address: '42 Canyon Rd, Laguna Beach, CA 92651' },
+          formData:  { address: '42 Canyon Rd, Laguna Beach, CA 92651', brokerage: 'HomeWorks Realty', agent: 'A. Brooks', agentPhone: '(949) 555-7788' },
           agentData: {
             price: 1495000, commission: 30000, commissionType: '$',
-            beds: 2, baths: 2, sqft: 1400,
-            status: 'in_contract',
+            bedrooms: 2, bathrooms: 2, sqft: 1400,
+            status: 'In Contract',
             photos: ['https://picsum.photos/seed/gc2/800/450']
           },
           plan: 'Listed Property Basic'
@@ -95,8 +95,8 @@
           formData:  { address: '9 Bluebird Ln, Laguna Beach, CA 92651' },
           agentData: {
             price: 3299000, commission: 2.25, commissionType: '%',
-            beds: 4, baths: 4, sqft: 3000,
-            status: 'sold',
+            bedrooms: 4, bathrooms: 4, sqft: 3000,
+            status: 'Sold',
             photos: ['https://picsum.photos/seed/gc3/800/450']
           },
           plan: 'FSBO Plus'
@@ -122,14 +122,8 @@
       const grid = document.getElementById('grid');
       const list = sample();
 
-      // Initial render
-      renderTileList(list, grid, {
-        clear: true,
-        onClick: (item) => {
-          // For now, go to an existing preview page
-          window.location.href = '/agent-preview.html';
-        }
-      });
+      // Initial render — NOTE: no custom onClick; tile itself handles click to /listing.html
+      renderTileList(list, grid, { clear: true });
 
       // Wire sample reload
       document.getElementById('loadSample').addEventListener('click', (e) => {
@@ -138,7 +132,7 @@
         renderTileList(fresh, grid, { clear: true });
       });
 
-      // Wire faux search
+      // Wire search
       document.getElementById('run').addEventListener('click', () => {
         const q = document.getElementById('q').value;
         const s = document.getElementById('status').value;
