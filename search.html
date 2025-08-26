@@ -12,6 +12,7 @@
 
   <style>
     .mapboxgl-canvas { outline: none; }
+    details[open] summary svg { transform: rotate(180deg); }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -28,6 +29,103 @@
     </div>
   </header>
 
+  <!-- Query & Controls -->
+  <section class="bg-white border-y">
+    <div class="max-w-7xl mx-auto px-4 py-4">
+      <div class="flex flex-col items-center gap-3">
+        <!-- Main query (centered) -->
+        <div class="w-full md:w-3/4 lg:w-2/3 flex items-center gap-2">
+          <input id="qBox" class="border rounded px-3 py-2 w-full" placeholder="City, neighborhood, or ZIP">
+          <button id="applyBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Search</button>
+        </div>
+
+        <!-- Advanced filters -->
+        <details id="filtersPanel" class="w-full md:w-3/4 lg:w-2/3">
+          <summary class="flex items-center justify-between cursor-pointer select-none px-2 py-2 text-sm text-gray-700">
+            <span class="font-semibold">Advanced filters</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" class="transition"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
+          </summary>
+          <div class="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
+            <div>
+              <label class="block text-gray-600 mb-1">Min Price ($)</label>
+              <input id="priceMin" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="e.g., 500000">
+            </div>
+            <div>
+              <label class="block text-gray-600 mb-1">Max Price ($)</label>
+              <input id="priceMax" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="e.g., 2500000">
+            </div>
+            <div>
+              <label class="block text-gray-600 mb-1">Min Beds</label>
+              <input id="bedsMin" type="number" min="0" step="1" class="w-full border rounded px-2 py-1" placeholder="e.g., 3">
+            </div>
+            <div>
+              <label class="block text-gray-600 mb-1">Min Baths</label>
+              <input id="bathsMin" type="number" min="0" step="0.5" class="w-full border rounded px-2 py-1" placeholder="e.g., 2">
+            </div>
+            <div>
+              <label class="block text-gray-600 mb-1">Status</label>
+              <select id="status" class="w-full border rounded px-2 py-1">
+                <option value="">Any</option>
+                <option>Active</option>
+                <option>In Contract</option>
+                <option>Sold</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-gray-600 mb-1">Plan</label>
+              <select id="plan" class="w-full border rounded px-2 py-1">
+                <option value="">Any</option>
+                <option>Listed Property Basic</option>
+                <option>Listed Property Plus</option>
+                <option>FSBO Plus</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-gray-600 mb-1">Property Type</label>
+              <select id="propType" class="w-full border rounded px-2 py-1">
+                <option value="">Any</option>
+                <option>Single Family</option>
+                <option>Condo</option>
+                <option>Townhouse</option>
+                <option>Multi-Family</option>
+                <option>Land</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-gray-600 mb-1">Min Commission %</label>
+              <input id="commPctMin" type="number" min="0" step="0.25" class="w-full border rounded px-2 py-1" placeholder="e.g., 2.5">
+            </div>
+            <div>
+              <label class="block text-gray-600 mb-1">Min Commission $</label>
+              <input id="commUsdMin" type="number" min="0" step="5000" class="w-full border rounded px-2 py-1" placeholder="e.g., 20000">
+            </div>
+          </div>
+
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <button id="applyFiltersBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Apply filters</button>
+            <button id="clearFiltersBtn" class="px-3 py-2 rounded border">Clear</button>
+            <span class="text-xs text-gray-500 ml-2">Filters and last search are remembered.</span>
+          </div>
+        </details>
+
+        <!-- Save / Email / Alerts -->
+        <div class="w-full md:w-3/4 lg:w-2/3 flex flex-wrap items-center justify-between gap-2 mt-3">
+          <div class="flex items-center gap-2">
+            <button id="saveSearchBtn" class="px-3 py-2 border rounded text-sm">Save Search</button>
+            <button id="toggleAlertsBtn" class="px-3 py-2 border rounded text-sm">Enable Alerts</button>
+          </div>
+          <div>
+            <button id="emailResultsBtn" class="px-3 py-2 border rounded text-sm">Email Results</button>
+          </div>
+        </div>
+
+        <!-- Alerts banner -->
+        <div id="alertsBanner" class="w-full md:w-3/4 lg:w-2/3 hidden mt-3 px-3 py-2 rounded bg-emerald-50 text-emerald-800 text-sm"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- Body: Map left, Tiles right -->
   <main class="max-w-7xl mx-auto px-4 py-6">
     <section class="grid grid-cols-1 lg:grid-cols-5 gap-5">
@@ -36,16 +134,9 @@
         <div id="mapCanvas" class="h-[26rem] bg-gray-100"></div>
       </aside>
 
-      <!-- Tiles (right 3/5) -->
+      <!-- Tiles (right 3/5; 2 columns on md+) -->
       <section class="lg:col-span-3">
-        <div class="bg-white rounded-2xl shadow p-4">
-          <div class="flex items-center justify-between gap-3">
-            <input id="qBox" class="border rounded px-3 py-2 w-full" placeholder="Refine search (city, neighborhood, ZIP)">
-            <button id="applyBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Search</button>
-          </div>
-        </div>
-
-        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4" id="grid"></div>
+        <div id="grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
       </section>
     </section>
   </main>
@@ -54,61 +145,131 @@
   <script src="/scripts/tiles.js"></script>
 
   <script>
-    // Mapbox token (same as listing page)
+    // Mapbox token
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
     if (MAPBOX_TOKEN && mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
+    // --- Utilities ---
     const $ = (id) => document.getElementById(id);
+    const getParam = (k) => new URL(location.href).searchParams.get(k);
+    const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-    function getParam(name){
-      const url = new URL(location.href);
-      return url.searchParams.get(name);
-    }
-
-    // Build dataset from localStorage + mocks (same pattern as index)
+    // Build dataset from localStorage + mocks
     function buildDataset(){
       const formData  = JSON.parse(localStorage.getItem('formData') || '{}');
       const agentData = JSON.parse(localStorage.getItem('agentListing') || '{}');
       const selectedPlan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
 
       const list = [];
+      // include “live” listing from the current session first
       if (formData.address) {
         list.push({
           formData,
-          agentData: Object.assign({ status: agentData.status || 'Active' }, agentData),
+          agentData: Object.assign({ status: agentData.status || 'Active', createdAt: agentData.createdAt || Date.now()-3600*1000 }, agentData),
           plan: selectedPlan
         });
       }
+      // demo rows (with createdAt for alerts)
       list.push(
         {
           formData:  { address: '237 San Joaquin Street, Laguna Beach, CA 92651', brokerage:'Pacific Estates', agent:'Jordan Crisp', agentPhone:'(949) 555-1212' },
           agentData: { price:1895000, commission:2.5, commissionType:'%', bedrooms:3, bathrooms:2, sqft:2000, bannerText:'Open Sun 1–4', status:'Active',
-                       photos:['https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop'] },
+                       photos:['https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop'], createdAt: Date.now()-2*3600*1000 },
           plan: 'Listed Property Plus'
         },
         {
           formData:  { address: '14 Maple Ave, Montclair, NJ 07042', brokerage:'HomeWorks Realty', agent:'A. Brooks', agentPhone:'(973) 555-2121' },
           agentData: { price:925000, commission:25000, commissionType:'$', bedrooms:4, bathrooms:3, sqft:2400, status:'In Contract',
-                       photos:['https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop'] },
+                       photos:['https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop'], createdAt: Date.now()-5*3600*1000 },
           plan: 'Listed Property Basic'
         },
         {
           formData:  { address: '1020 Cedar Dr, Austin, TX 78704' },
           agentData: { price:650000, commission:3.0, commissionType:'%', bedrooms:3, bathrooms:2, sqft:1680, bannerText:'Hot Home', status:'Active',
-                       photos:['https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop'] },
+                       photos:['https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop'], createdAt: Date.now()-24*3600*1000 },
           plan: 'FSBO Plus'
         }
       );
       return list;
     }
 
-    function filterDataset(list, query){
-      const q = (query||'').toLowerCase().trim();
-      if (!q) return list;
-      return list.filter(item => (item.formData?.address || '').toLowerCase().includes(q));
+    // Apply filters
+    function matchesFilters(item, q, f) {
+      const addr = (item.formData?.address || '').toLowerCase();
+      if (q && !addr.includes(q.toLowerCase().trim())) return false;
+
+      const price = Number(item.agentData?.price || 0);
+      if (f.priceMin && price && price < f.priceMin) return false;
+      if (f.priceMax && price && price > f.priceMax) return false;
+
+      const beds = Number(item.agentData?.bedrooms || 0);
+      const baths = Number(item.agentData?.bathrooms || 0);
+      if (f.bedsMin && beds < f.bedsMin) return false;
+      if (f.bathsMin && baths < f.bathsMin) return false;
+
+      if (f.status && String(item.agentData?.status||'').toLowerCase() !== f.status.toLowerCase()) return false;
+      if (f.plan && String(item.plan||'') !== f.plan) return false;
+
+      if (f.propType) {
+        const type = String(item.agentData?.propertyType || '').toLowerCase();
+        if (!type || type !== f.propType.toLowerCase()) return false;
+      }
+
+      // commission filters
+      const commType = item.agentData?.commissionType || item.formData?.commissionType || '%';
+      const commVal = Number(item.agentData?.commission ?? item.formData?.commission ?? 0);
+      if (f.commPctMin) {
+        if (commType === '%' && commVal < f.commPctMin) return false;
+        if (commType === '$') {
+          const p = Number(item.agentData?.price || 0);
+          if (p && (commVal / p * 100) < f.commPctMin) return false;
+        }
+      }
+      if (f.commUsdMin) {
+        if (commType === '$' && commVal < f.commUsdMin) return false;
+        if (commType === '%') {
+          const p = Number(item.agentData?.price || 0);
+          if (p && Math.round(p * (commVal/100)) < f.commUsdMin) return false;
+        }
+      }
+
+      return true;
     }
 
-    // Map init + geocode center
+    function readFiltersFromUI() {
+      const val = (id) => (document.getElementById(id)?.value || '').trim();
+      const num = (id) => {
+        const v = (document.getElementById(id)?.value || '').trim();
+        const n = Number(v); return isFinite(n) && v!=='' ? n : null;
+      };
+      return {
+        priceMin: num('priceMin'),
+        priceMax: num('priceMax'),
+        bedsMin:  num('bedsMin'),
+        bathsMin: num('bathsMin'),
+        status:   val('status'),
+        plan:     val('plan'),
+        propType: val('propType'),
+        commPctMin: num('commPctMin'),
+        commUsdMin: num('commUsdMin'),
+      };
+    }
+
+    function writeFiltersToUI(f){
+      const set = (id, v)=>{ const el=$(id); if (!el) return; el.value = (v ?? ''); };
+      set('priceMin', f.priceMin ?? '');
+      set('priceMax', f.priceMax ?? '');
+      set('bedsMin',  f.bedsMin ?? '');
+      set('bathsMin', f.bathsMin ?? '');
+      set('status',   f.status ?? '');
+      set('plan',     f.plan ?? '');
+      set('propType', f.propType ?? '');
+      set('commPctMin', f.commPctMin ?? '');
+      set('commUsdMin', f.commUsdMin ?? '');
+    }
+
+    // Map helpers
     let map;
     async function geocodeCenter(q){
       if (!MAPBOX_TOKEN) return null;
@@ -118,70 +279,162 @@
         return data?.features?.[0]?.center || null;
       } catch { return null; }
     }
-
     async function initMap(q){
-      const center = (q && await geocodeCenter(q)) || [-117.7854, 33.5427]; // Laguna fallback
-      map = new mapboxgl.Map({
-        container: 'mapCanvas',
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center, zoom: 12.5
-      });
+      const center = (q && await geocodeCenter(q)) || [-117.7854, 33.5427];
+      map = new mapboxgl.Map({ container: 'mapCanvas', style: 'mapbox://styles/mapbox/streets-v12', center, zoom: 12.5 });
       map.addControl(new mapboxgl.NavigationControl());
       return center;
     }
-
-    function addMarkers(items){
+    async function addMarkers(items){
       if (!map) return;
-      items.slice(0, 12).forEach(async (item) => {
+      for (const item of items.slice(0, 30)) {
         const addr = item?.formData?.address;
-        if (!addr) return;
+        if (!addr) continue;
         try {
           const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
           const data = await resp.json();
           const c = data?.features?.[0]?.center;
-          if (!c) return;
+          if (!c) continue;
           const el = document.createElement("div");
           el.style.width = "10px"; el.style.height = "10px";
           el.style.background = "#dc2626"; el.style.border = "2px solid #fff";
           el.style.borderRadius = "50%"; el.style.boxShadow = "0 1px 2px rgba(0,0,0,.3)";
           el.title = (addr||'');
-          const m = new mapboxgl.Marker(el).setLngLat(c).addTo(map);
+          new mapboxgl.Marker(el).setLngLat(c).addTo(map);
           el.addEventListener("click", () => {
             const slug = encodeURIComponent(addr);
             window.location.href = `/listing.html?addr=${slug}`;
           });
         } catch {}
+      }
+    }
+
+    // Saved searches
+    function getSavedSearches(){ return getJSON('savedSearches', []); }
+    function setSavedSearches(arr){ setJSON('savedSearches', arr); }
+    function saveCurrentSearch(name, q, filters){
+      const arr = getSavedSearches();
+      arr.unshift({
+        id: 'ss_' + Date.now(),
+        name: name || (q || 'Search') + ' #' + (arr.length+1),
+        q, filters,
+        alerts: false,
+        lastChecked: Date.now()
       });
+      setSavedSearches(arr);
+      alert('Search saved.');
+    }
+    function toggleAlertsFor(q, filters){
+      const arr = getSavedSearches();
+      if (!arr.length) { alert('Save this search first, then enable alerts.'); return; }
+      // find latest matching saved search by q+filters signature
+      const sig = JSON.stringify({q,filters});
+      const found = arr.find(s => JSON.stringify({q:s.q,filters:s.filters}) === sig);
+      if (!found) { alert('Save this search first, then enable alerts.'); return; }
+      found.alerts = !found.alerts;
+      found.lastChecked = Date.now();
+      setSavedSearches(arr);
+      alert(found.alerts ? 'Alerts enabled for this search.' : 'Alerts disabled.');
+    }
+    function checkAlertsNew(list, q, filters){
+      // if there is a saved search with alerts on, show banner when newer items exist
+      const arr = getSavedSearches();
+      const sig = JSON.stringify({q,filters});
+      const found = arr.find(s => s.alerts && JSON.stringify({q:s.q,filters:s.filters}) === sig);
+      if (!found) return;
+      const newer = list.filter(it => Number(it.agentData?.createdAt || 0) > Number(found.lastChecked || 0));
+      if (newer.length) {
+        const b = $('alertsBanner');
+        b.textContent = `${newer.length} new listing${newer.length>1?'s':''} match your saved search.`;
+        b.classList.remove('hidden');
+      }
+      // bump lastChecked
+      found.lastChecked = Date.now();
+      setSavedSearches(arr);
+    }
+
+    // Email results (mailto)
+    function emailResults(list, q){
+      const top = list.slice(0, 12);
+      const lines = top.map((it, i) => {
+        const addr = it.formData?.address || '[address]';
+        const url = location.origin + '/listing.html?addr=' + encodeURIComponent(addr);
+        return `${i+1}. ${addr} — ${url}`;
+      });
+      const subj = encodeURIComponent(`Listings for: ${q || 'Your search'}`);
+      const body = encodeURIComponent(lines.join('\n'));
+      const href = `mailto:?subject=${subj}&body=${body}`;
+      location.href = href;
     }
 
     (async function boot(){
       const grid = $("grid");
       const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
-      localStorage.setItem('lastSearch', qParam); // remember latest
-      $("qLabel").textContent = qParam ? `Showing results for “${qParam}”` : 'Showing all listings';
       $("qBox").value = qParam;
+      $("qLabel").textContent = qParam ? `Showing results for “${qParam}”` : 'Showing all listings';
+      localStorage.setItem('lastSearch', qParam);
 
-      const center = await initMap(qParam);
+      // restore filters
+      const lastFilters = getJSON('lastFilters', {});
+      writeFiltersToUI(lastFilters);
+
+      // init map
+      await initMap(qParam);
+
+      // dataset + filter
       const dataset = buildDataset();
-      const filtered = filterDataset(dataset, qParam);
+      const filters = readFiltersFromUI();
+      const filtered = dataset.filter(it => matchesFilters(it, qParam, filters));
 
-      // Render tiles (2 columns on md+)
+      // render tiles
       renderTileList(filtered, grid, { clear: true });
 
-      // Drop markers (geocode per item)
+      // map markers
       addMarkers(filtered);
 
-      $("applyBtn").addEventListener("click", () => {
+      // wire buttons
+      $("applyBtn").onclick = () => {
         const q = $("qBox").value.trim();
         localStorage.setItem('lastSearch', q);
-        window.location.href = `/search.html?q=${encodeURIComponent(q)}`;
-      });
-      $("qBox").addEventListener("keydown", (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          $("applyBtn").click();
-        }
-      });
+        // navigate to canonical URL with q
+        location.href = `/search.html?q=${encodeURIComponent(q)}`;
+      };
+      $("applyFiltersBtn").onclick = () => {
+        const f = readFiltersFromUI();
+        setJSON('lastFilters', f);
+        const q = $("qBox").value.trim();
+        const refiltered = dataset.filter(it => matchesFilters(it, q, f));
+        $("qLabel").textContent = q ? `Showing results for “${q}”` : 'Showing all listings';
+        renderTileList(refiltered, grid, { clear: true });
+        addMarkers(refiltered);
+      };
+      $("clearFiltersBtn").onclick = () => {
+        setJSON('lastFilters', {});
+        writeFiltersToUI({});
+        const q = $("qBox").value.trim();
+        const refiltered = dataset.filter(it => matchesFilters(it, q, {}));
+        renderTileList(refiltered, grid, { clear: true });
+        addMarkers(refiltered);
+      };
+      $("saveSearchBtn").onclick = () => {
+        const q = $("qBox").value.trim();
+        const f = readFiltersFromUI();
+        saveCurrentSearch('', q, f);
+      };
+      $("toggleAlertsBtn").onclick = () => {
+        const q = $("qBox").value.trim();
+        const f = readFiltersFromUI();
+        toggleAlertsFor(q, f);
+      };
+      $("emailResultsBtn").onclick = () => {
+        const q = $("qBox").value.trim();
+        const f = readFiltersFromUI();
+        const refiltered = dataset.filter(it => matchesFilters(it, q, f));
+        emailResults(refiltered, q);
+      };
+
+      // alerts banner check
+      checkAlertsNew(filtered, qParam, filters);
     })();
   </script>
 </body>
