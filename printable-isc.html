@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Irrevocable Seller Communication (ISC)</title>
+  <title>Irrevocable Seller Communication</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
@@ -15,13 +15,10 @@
 </head>
 <body class="bg-white text-black p-8">
   <div class="max-w-3xl mx-auto border p-6 rounded shadow bg-white">
-    <div class="flex items-center justify-between no-print mb-4">
-      <h1 class="text-xl font-bold">Irrevocable Seller Communication (ISC)</h1>
-      <div class="text-xs text-gray-600">GuaranteedCommission.com</div>
-    </div>
+    <!-- Removed the top heading per request -->
 
     <div id="iscContent" class="text-sm space-y-4 leading-relaxed">
-      <h2 class="text-lg font-semibold text-center">Irrevocable Seller Communication</h2>
+      <!-- Removed centered H2 title per request -->
 
       <p>To the escrow holder/closing agent,</p>
 
@@ -87,7 +84,7 @@
     document.getElementById("sigName").textContent = sigName;
     document.getElementById("sigDate").textContent = sigDate;
 
-    // Unified ISC view counter (fires here regardless of where viewed from)
+    // Unified ISC view counter
     (function counters(){
       const key = "iscViews:" + (fullAddr||"").toLowerCase();
       let n = Number(localStorage.getItem(key) || 0); n += 1;
