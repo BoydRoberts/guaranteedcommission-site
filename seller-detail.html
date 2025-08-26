@@ -76,6 +76,20 @@
           <p id="apnReqMsg" class="text-xs text-gray-500 mt-1 hidden">FSBO requires an APN/Parcel value.</p>
         </div>
 
+        <!-- NEW: Property Type (authorized change) -->
+        <div>
+          <label class="block text-sm font-semibold mb-1">Property Type</label>
+          <select id="propertyType" class="w-full border p-2 rounded">
+            <option value="">Select…</option>
+            <option>Single Family</option>
+            <option>Condo</option>
+            <option>Townhouse</option>
+            <option>Multi-Family</option>
+            <option>Land</option>
+            <option>Other</option>
+          </select>
+        </div>
+
         <!-- Photos -->
         <div>
           <label class="block text-sm font-semibold mb-1">Photos</label>
@@ -144,12 +158,12 @@
       </form>
     </section>
 
-    <!-- RIGHT: Upgrades panel + (added) September Free promo card ABOVE upgrades -->
-    <aside class="bg-white rounded shadow p-5">
-      <!-- ADDED: September Free Promo (agent-only; inactive here for seller page) -->
-      <section class="mb-5 border rounded-lg p-4">
+    <!-- RIGHT: Promo + Upgrades -->
+    <aside class="space-y-4">
+      <!-- Promo card (agent-only; inactive here for seller page) -->
+      <section class="bg-white rounded shadow p-5">
         <div class="flex items-center justify-between">
-          <h2 class="text-base font-semibold">September Free Promo</h2>
+          <h2 class="text-lg font-semibold">September Free Promo</h2>
           <span id="promoBadge" class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">Inactive</span>
         </div>
         <p class="text-sm text-gray-600 mt-2">
@@ -161,16 +175,18 @@
         <p id="promoNote" class="text-xs text-gray-500 mt-2">Not available on the seller intake page.</p>
       </section>
 
-      <h2 class="text-lg font-semibold">Upgrades</h2>
-      <p class="text-sm text-gray-600">Select available upgrades or see what’s already paid.</p>
+      <section class="bg-white rounded shadow p-5">
+        <h2 class="text-lg font-semibold">Upgrades</h2>
+        <p class="text-sm text-gray-600">Select available upgrades or see what’s already paid.</p>
 
-      <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
+        <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
 
-      <div class="mt-4 flex items-center gap-2">
-        <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
-        <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
-      </div>
-      <p class="text-xs text-gray-500 mt-2">“Paid by agent” items are locked and final.</p>
+        <div class="mt-4 flex items-center gap-2">
+          <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
+          <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">“Paid by agent” items are locked and final.</p>
+      </section>
     </aside>
   </div>
 
@@ -215,6 +231,9 @@
     // APN
     $("apn").value = formData.apn || agentListing.apn || "";
     if (isFSBO) $("apnReqMsg").classList.remove("hidden");
+
+    // NEW: Property Type prefill
+    $("propertyType").value = agentListing.propertyType ?? "";
 
     // Photos (limit based on plan)
     const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
@@ -271,7 +290,8 @@
     });
 
     // Description gate
-    $("description").value = agentListing.description ?? "";
+    const desc = agentListing.description ?? "";
+    $("description").value = desc;
     if (!isPlus) {
       $("description").classList.add("dimmed");
       $("description").setAttribute("disabled","disabled");
@@ -315,13 +335,12 @@
     } else {
       $("brokerage").value = formData.brokerage || agentListing.brokerage || "";
       $("agentName").value = formData.agent || agentListing.agentName || "";
-      // agent email was not in Box2; leave blank if unknown
       $("agentEmail").value = agentListing.agentEmail || "";
       $("agentPhone").value = formData.agentPhone || agentListing.agentPhone || "";
     }
 
     // Wire inputs
-    ["status","price","description","bannerText","preferredArea","pinArea","brokerage","agentName","agentEmail","agentPhone","apn"].forEach(id=>{
+    ["status","price","description","bannerText","preferredArea","pinArea","brokerage","agentName","agentEmail","agentPhone","apn","propertyType"].forEach(id=>{
       const el = $(id);
       if (!el) return;
       el.addEventListener("input", saveDraft);
@@ -334,6 +353,7 @@
         commission: commission,
         commissionType: commissionType,
         apn: $("apn").value || "",
+        propertyType: $("propertyType").value || "", // NEW: persist property type
         description: $("description").disabled ? (agentListing.description || "") : ($("description").value || ""),
         bannerText: $("bannerText").disabled ? (agentListing.bannerText || "") : ($("bannerText").value || ""),
         preferredArea: $("preferredArea").disabled ? (agentListing.preferredArea || "") : ($("preferredArea").value || ""),
