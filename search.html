@@ -128,7 +128,6 @@
   <script src="/scripts/tiles.js"></script>
 
   <script>
-    // Mapbox token
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
     if (MAPBOX_TOKEN && mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -137,7 +136,7 @@
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-    // Demo dataset (replace with your real source later)
+    // Demo dataset (always includes the 3 known samples so you can visualize)
     function buildDataset(){
       const formData  = JSON.parse(localStorage.getItem('formData') || '{}');
       const agentData = JSON.parse(localStorage.getItem('agentListing') || '{}');
@@ -151,6 +150,7 @@
           plan: selectedPlan
         });
       }
+      // Always add the 3 demo tiles so they’re visible right now
       list.push(
         {
           formData:  { address: '237 San Joaquin Street, Laguna Beach, CA 92651', brokerage:'Pacific Estates', agent:'Jordan Crisp', agentPhone:'(949) 555-1212' },
@@ -174,7 +174,6 @@
       return list;
     }
 
-    // Matching with filters (plan removed)
     function matchesFilters(item, q, f) {
       const addr = (item.formData?.address || '').toLowerCase();
       if (q && !addr.includes(q.toLowerCase().trim())) return false;
@@ -188,11 +187,8 @@
       if (f.bedsMin && beds < f.bedsMin) return false;
       if (f.bathsMin && baths < f.bathsMin) return false;
 
-      if (f.status && String(item.agentData?.status||'').toLowerCase() === 'in_contract' ? 'In Contract' : (item.agentData?.status||'') !== f.status) {
-        // Normalize in_contract -> In Contract
-        const normalized = (item.agentData?.status || '').toLowerCase() === 'in_contract' ? 'In Contract' : (item.agentData?.status || '');
-        if (normalized !== f.status) return false;
-      }
+      const normalizedStatus = (item.agentData?.status || '').toLowerCase() === 'in_contract' ? 'In Contract' : (item.agentData?.status || '');
+      if (f.status && normalizedStatus !== f.status) return false;
 
       if (f.propType) {
         const type = String(item.agentData?.propertyType || '').toLowerCase();
@@ -300,9 +296,8 @@
     // Map helpers
     let map;
     async function geocodeCenter(q){
-      if (!MAPBOX_TOKEN) return null;
       try {
-        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${mapboxgl.accessToken}`);
         const data = await resp.json();
         return data?.features?.[0]?.center || null;
       } catch { return null; }
@@ -319,7 +314,7 @@
         const addr = item?.formData?.address;
         if (!addr) continue;
         try {
-          const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+          const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${mapboxgl.accessToken}`);
           const data = await resp.json();
           const c = data?.features?.[0]?.center;
           if (!c) continue;
@@ -338,86 +333,66 @@
     }
 
     (async function boot(){
+      refreshSavedDropdown();
+
       const grid = $("grid");
       const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
       $("qBox").value = qParam;
       $("qLabel").textContent = qParam ? `Showing results for “${qParam}”` : 'Showing all listings';
       localStorage.setItem('lastSearch', qParam);
 
-      // restore filters
       const lastFilters = getJSON('lastFilters', {});
       writeFiltersToUI(lastFilters);
       renderPills(lastFilters);
 
-      // dataset (demo for now)
-      const dataset = buildDataset();
-
-      // init map + markers
       await initMap(qParam);
-      const filtered = dataset.filter(it => matchesFilters(it, qParam, lastFilters));
-      renderTileList(filtered, grid, { clear: true });
-      addMarkers(filtered);
 
-      // wire search
+      const dataset = buildDataset();
+      const filtered = dataset.filter(it => matchesFilters(it, qParam, lastFilters));
+      renderTileList(filtered.length ? filtered : dataset, grid, { clear: true }); // if none, show all 3 so you can visualize
+      addMarkers(filtered.length ? filtered : dataset);
+
       $("applyBtn").onclick = () => {
         const q = $("qBox").value.trim();
         localStorage.setItem('lastSearch', q);
         location.href = `/search.html?q=${encodeURIComponent(q)}`;
       };
-
-      // filters
-      $("applyFiltersBtn").onclick = () => {
-        const f = readFiltersFromUI();
-        setJSON('lastFilters', f);
-        renderPills(f);
-        const q = $("qBox").value.trim();
-        const refiltered = dataset.filter(it => matchesFilters(it, q, f));
-        $("qLabel").textContent = q ? `Showing results for “${q}”` : 'Showing all listings';
-        renderTileList(refiltered, grid, { clear: true });
-        addMarkers(refiltered);
-      };
-      $("clearFiltersBtn").onclick = () => {
-        setJSON('lastFilters', {});
-        document.querySelectorAll('#filtersPanel input, #filtersPanel select').forEach(el => el.value = '');
-        renderPills({});
-        const q = $("qBox").value.trim();
-        renderTileList(dataset.filter(it => matchesFilters(it, q, {})), grid, { clear: true });
-        addMarkers(dataset.filter(it => matchesFilters(it, q, {})));
-      };
-
-      // save search wired to dropdown
       $("saveSearchBtn").onclick = () => {
         const q = $("qBox").value.trim();
         const f = readFiltersFromUI();
         saveCurrentSearch('', q, f);
       };
-      const dd = $("savedSearchesDropdown");
-      dd.onchange = () => {
-        const id = dd.value;
-        if (!id) return;
+      $("savedSearchesDropdown").onchange = (e)=>{
         const arr = getSavedSearches();
-        const sel = arr.find(s => s.id === id);
+        const sel = arr.find(s=>s.id===e.target.value);
         if (!sel) return;
         $("qBox").value = sel.q || '';
         writeFiltersToUI(sel.filters || {});
         renderPills(sel.filters || {});
-        // Apply immediately
-        const refiltered = dataset.filter(it => matchesFilters(it, sel.q || '', sel.filters || {}));
+        const ref = dataset.filter(it => matchesFilters(it, sel.q||'', sel.filters||{}));
         $("qLabel").textContent = sel.q ? `Showing results for “${sel.q}”` : 'Showing all listings';
-        renderTileList(refiltered, grid, { clear: true });
-        addMarkers(refiltered);
+        renderTileList(ref.length ? ref : dataset, grid, { clear: true });
+        addMarkers(ref.length ? ref : dataset);
       };
 
-      // populate saved dropdown initially
-      (function refreshSavedDropdown(){
-        const dd = $("savedSearchesDropdown");
-        dd.innerHTML = `<option value="">Saved Searches</option>`;
-        getSavedSearches().forEach(s=>{
-          const opt = document.createElement('option');
-          opt.value = s.id; opt.textContent = s.name || s.q || 'Search';
-          dd.appendChild(opt);
-        });
-      })();
+      $("applyFiltersBtn").onclick = () => {
+        const f = readFiltersFromUI();
+        setJSON('lastFilters', f);
+        renderPills(f);
+        const q = $("qBox").value.trim();
+        const ref = dataset.filter(it => matchesFilters(it, q, f));
+        $("qLabel").textContent = q ? `Showing results for “${q}”` : 'Showing all listings';
+        renderTileList(ref.length ? ref : dataset, grid, { clear: true });
+        addMarkers(ref.length ? ref : dataset);
+      };
+      $("clearFiltersBtn").onclick = () => {
+        setJSON('lastFilters', {});
+        document.querySelectorAll('#filtersPanel input, #filtersPanel select').forEach(el=>el.value='');
+        renderPills({});
+        const q = $("qBox").value.trim();
+        renderTileList(dataset.filter(it => matchesFilters(it, q, {})), grid, { clear: true });
+        addMarkers(dataset.filter(it => matchesFilters(it, q, {})));
+      };
     })();
   </script>
 </body>
