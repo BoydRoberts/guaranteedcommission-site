@@ -39,93 +39,93 @@
   </header>
 
   <!-- Investor Modal (SEC Rule 501 Certification) -->
-<div id="investorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
-  <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl relative p-5 max-h-[85vh] overflow-auto">
-    <button onclick="closeInvestorModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
+  <div id="investorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl relative p-5 max-h-[85vh] overflow-auto">
+      <button onclick="closeInvestorModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
 
-    <h2 class="text-lg font-bold">Accredited Investor Certification</h2>
-    <p class="text-sm text-gray-600 mb-3">(SEC Rule 501 of Regulation D)</p>
+      <h2 class="text-lg font-bold">Accredited Investor Certification</h2>
+      <p class="text-sm text-gray-600 mb-3">(SEC Rule 501 of Regulation D)</p>
 
-    <form id="investorForm" class="space-y-4">
-      <!-- Identity -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
-          <label class="block text-sm font-semibold">Investor Name</label>
-          <input id="invName" type="text" class="w-full border rounded px-2 py-1" placeholder="Your full name" required>
+      <form id="investorForm" class="space-y-4">
+        <!-- Identity -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-sm font-semibold">Investor Name</label>
+            <input id="invName" type="text" class="w-full border rounded px-2 py-1" placeholder="Your full name" required>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold">Email</label>
+            <input id="invEmail" type="email" class="w-full border rounded px-2 py-1" placeholder="you@example.com" required>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold">Phone</label>
+            <input id="invPhone" type="tel" class="w-full border rounded px-2 py-1" placeholder="123-456-7890" required>
+          </div>
         </div>
+
+        <!-- Categories -->
         <div>
-          <label class="block text-sm font-semibold">Email</label>
-          <input id="invEmail" type="email" class="w-full border rounded px-2 py-1" placeholder="you@example.com" required>
+          <p class="text-sm font-semibold mb-2">I hereby certify that I qualify as an “Accredited Investor” under Rule 501 of Regulation D of the Securities Act of 1933 because:</p>
+          <label class="flex items-start gap-2 text-sm">
+            <input id="cIncome" type="checkbox" class="mt-1">
+            <span>Income Test: My individual income exceeded $200,000 in each of the two most recent years, or my joint income with my spouse exceeded $300,000 in each of those years, and I reasonably expect the same income level in the current year.</span>
+          </label>
+          <label class="flex items-start gap-2 text-sm mt-2">
+            <input id="cNetWorth" type="checkbox" class="mt-1">
+            <span>Net Worth Test: My individual net worth, or joint net worth with my spouse, exceeds $1,000,000 (excluding the value of my primary residence).</span>
+          </label>
+
+          <p class="text-sm font-semibold mt-3">Other Accredited Categories (if applicable):</p>
+          <label class="flex items-start gap-2 text-sm mt-2">
+            <input id="cLicenses" type="checkbox" class="mt-1">
+            <span>I am a licensed professional holding a Series 7, Series 65, or Series 82 license.</span>
+          </label>
+          <label class="flex items-start gap-2 text-sm mt-2">
+            <input id="cOfficer" type="checkbox" class="mt-1">
+            <span>I am a director, executive officer, or general partner of the issuer.</span>
+          </label>
+          <label class="flex items-start gap-2 text-sm mt-2">
+            <input id="cEntity" type="checkbox" class="mt-1">
+            <span>I am an entity (corporation, partnership, LLC, trust) with total assets in excess of $5,000,000, not formed solely to acquire this investment.</span>
+          </label>
+          <label class="flex items-start gap-2 text-sm mt-2">
+            <input id="cOwners" type="checkbox" class="mt-1">
+            <span>All of my equity owners are Accredited Investors.</span>
+          </label>
         </div>
-        <div>
-          <label class="block text-sm font-semibold">Phone</label>
-          <input id="invPhone" type="tel" class="w-full border rounded px-2 py-1" placeholder="123-456-7890" required>
+
+        <!-- Acknowledgments -->
+        <div class="text-sm space-y-2 mt-2">
+          <p><strong>Acknowledgments:</strong></p>
+          <p>I understand that GuaranteedCommission.com (the “Company”) will rely on this certification in offering and selling securities in compliance with U.S. securities laws.</p>
+          <p>I agree to provide further documentation (such as tax returns, W-2s, brokerage statements, or a letter from my CPA/attorney) if required to verify my status under Rule 506(c).</p>
+          <p>I represent and warrant that the above statements are true and correct.</p>
         </div>
-      </div>
 
-      <!-- Categories -->
-      <div>
-        <p class="text-sm font-semibold mb-2">I hereby certify that I qualify as an “Accredited Investor” under Rule 501 of Regulation D of the Securities Act of 1933 because:</p>
-        <label class="flex items-start gap-2 text-sm">
-          <input id="cIncome" type="checkbox" class="mt-1">
-          <span>Income Test: My individual income exceeded $200,000 in each of the two most recent years, or my joint income with my spouse exceeded $300,000 in each of those years, and I reasonably expect the same income level in the current year.</span>
-        </label>
-        <label class="flex items-start gap-2 text-sm mt-2">
-          <input id="cNetWorth" type="checkbox" class="mt-1">
-          <span>Net Worth Test: My individual net worth, or joint net worth with my spouse, exceeds $1,000,000 (excluding the value of my primary residence).</span>
-        </label>
-
-        <p class="text-sm font-semibold mt-3">Other Accredited Categories (if applicable):</p>
-        <label class="flex items-start gap-2 text-sm mt-2">
-          <input id="cLicenses" type="checkbox" class="mt-1">
-          <span>I am a licensed professional holding a Series 7, Series 65, or Series 82 license.</span>
-        </label>
-        <label class="flex items-start gap-2 text-sm mt-2">
-          <input id="cOfficer" type="checkbox" class="mt-1">
-          <span>I am a director, executive officer, or general partner of the issuer.</span>
-        </label>
-        <label class="flex items-start gap-2 text-sm mt-2">
-          <input id="cEntity" type="checkbox" class="mt-1">
-          <span>I am an entity (corporation, partnership, LLC, trust) with total assets in excess of $5,000,000, not formed solely to acquire this investment.</span>
-        </label>
-        <label class="flex items-start gap-2 text-sm mt-2">
-          <input id="cOwners" type="checkbox" class="mt-1">
-          <span>All of my equity owners are Accredited Investors.</span>
-        </label>
-      </div>
-
-      <!-- Acknowledgments -->
-      <div class="text-sm space-y-2 mt-2">
-        <p><strong>Acknowledgments:</strong></p>
-        <p>I understand that GuaranteedCommission.com (the “Company”) will rely on this certification in offering and selling securities in compliance with U.S. securities laws.</p>
-        <p>I agree to provide further documentation (such as tax returns, W-2s, brokerage statements, or a letter from my CPA/attorney) if required to verify my status under Rule 506(c).</p>
-        <p>I represent and warrant that the above statements are true and correct.</p>
-      </div>
-
-      <!-- Signature -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label class="block text-sm font-semibold">Signature (type full name)</label>
-          <input id="invSignature" type="text" class="w-full border rounded px-2 py-1 font-cursive" placeholder="Type your full name" required>
+        <!-- Signature -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-semibold">Signature (type full name)</label>
+            <input id="invSignature" type="text" class="w-full border rounded px-2 py-1 font-cursive" placeholder="Type your full name" required>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold">Date</label>
+            <input id="invDate" type="date" class="w-full border rounded px-2 py-1" required>
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-semibold">Date</label>
-          <input id="invDate" type="date" class="w-full border rounded px-2 py-1" required>
+
+        <!-- Submit -->
+        <div class="flex items-center justify-end gap-2">
+          <button type="button" onclick="closeInvestorModal()" class="px-3 py-2 rounded border">Cancel</button>
+          <button id="invSubmitBtn" type="submit" class="px-4 py-2 rounded bg-blue-600 text-white">Submit Certification</button>
         </div>
-      </div>
 
-      <!-- Submit -->
-      <div class="flex items-center justify-end gap-2">
-        <button type="button" onclick="closeInvestorModal()" class="px-3 py-2 rounded border">Cancel</button>
-        <button id="invSubmitBtn" type="submit" class="px-4 py-2 rounded bg-blue-600 text-white">Submit Certification</button>
-      </div>
-
-      <p id="investorConfirmation" class="mt-3 text-green-700 font-semibold text-center hidden">
-        Thank you — your Accredited Investor Certification has been prepared. Please send the email to complete submission.
-      </p>
-    </form>
+        <p id="investorConfirmation" class="mt-3 text-green-700 font-semibold text-center hidden">
+          Thank you — your Accredited Investor Certification has been prepared. Please send the email to complete submission.
+        </p>
+      </form>
+    </div>
   </div>
-</div>
 
   <!-- Press Modal -->
   <div id="pressModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
@@ -287,7 +287,8 @@
       </div>
     </div>
 
-    <p class="text-sm text-gray-600 mb-4 text-center">Tiles reflect your last search.</p>
+    <!-- removed the line that announced 'Tiles reflect your last search.' -->
+
     <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </section>
 
@@ -296,11 +297,69 @@
     /* Header modals */
     function openInvestorModal(){ document.getElementById('investorModal').classList.remove('hidden'); }
     function closeInvestorModal(){ document.getElementById('investorModal').classList.add('hidden'); }
-    function submitInvestorForm(){ document.getElementById('investorConfirmation').classList.remove('hidden'); }
-
     function openPressModal(){ document.getElementById('pressModal').classList.remove('hidden'); }
     function closePressModal(){ document.getElementById('pressModal').classList.add('hidden'); }
     function submitPressForm(){ document.getElementById('pressConfirmation').classList.remove('hidden'); }
+
+    // ---- Investor Certification handler (fills email to owner) ----
+    (function wireInvestorForm(){
+      const form = document.getElementById('investorForm');
+      if (!form) return;
+      const confirmEl = document.getElementById('investorConfirmation');
+
+      // CHANGE THIS to your receiving email address
+      const toEmail = "boyd@guaranteedcommission.com";
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name  = document.getElementById('invName').value.trim();
+        const email = document.getElementById('invEmail').value.trim();
+        const phone = document.getElementById('invPhone').value.trim();
+        const sig   = document.getElementById('invSignature').value.trim();
+        const date  = document.getElementById('invDate').value || new Date().toISOString().slice(0,10);
+
+        const checks = {
+          Income_Test: document.getElementById('cIncome').checked,
+          Net_Worth_Test: document.getElementById('cNetWorth').checked,
+          Series_7_65_82: document.getElementById('cLicenses').checked,
+          Director_Officer_GP: document.getElementById('cOfficer').checked,
+          Entity_5M_Assets: document.getElementById('cEntity').checked,
+          All_Equity_Owners_Accredited: document.getElementById('cOwners').checked
+        };
+
+        if (!name || !email || !phone || !sig) { alert('Please complete Name, Email, Phone, and Signature.'); return; }
+
+        const bLines = [
+          "Accredited Investor Certification (SEC Rule 501 of Regulation D)",
+          "",
+          `Investor Name: ${name}`,
+          `Email: ${email}`,
+          `Phone: ${phone}`,
+          "",
+          "I hereby certify that I qualify as an “Accredited Investor” because:",
+          ` - Income Test: ${checks.Income_Test ? '☑' : '☐'}`,
+          ` - Net Worth Test: ${checks.Net_Worth_Test ? '☑' : '☐'}`,
+          "Other Accredited Categories:",
+          ` - Series 7/65/82: ${checks.Series_7_65_82 ? '☑' : '☐'}`,
+          ` - Director/Officer/GP: ${checks.Director_Officer_GP ? '☑' : '☐'}`,
+          ` - Entity with >$5,000,000 assets: ${checks.Entity_5M_Assets ? '☑' : '☐'}`,
+          ` - All equity owners are Accredited: ${checks.All_Equity_Owners_Accredited ? '☑' : '☐'}`,
+          "",
+          "Acknowledgments:",
+          "I understand that GuaranteedCommission.com (the “Company”) will rely on this certification in offering and selling securities in compliance with U.S. securities laws.",
+          "I agree to provide further documentation (such as tax returns, W-2s, brokerage statements, or a letter from my CPA/attorney) if required to verify my status under Rule 506(c).",
+          "I represent and warrant that the above statements are true and correct.",
+          "",
+          `Signature: ${sig}`,
+          `Date: ${date}`
+        ].join('\\n');
+
+        const mailto = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent('Accredited Investor Certification')}&body=${encodeURIComponent(bLines)}`;
+
+        try { window.location.href = mailto; } catch {}
+        if (confirmEl) confirmEl.classList.remove('hidden');
+      });
+    })();
 
     // Robust US address validator
     function isValidFullAddress(s) {
@@ -420,7 +479,7 @@
       return null;
     }
 
-    // UPDATED TILE: centered search uses same renderer
+    // UPDATED TILE: includes property type if available
     function renderTile(data){
       const {
         address="[full address]",
@@ -435,6 +494,7 @@
         agent="[listing agent]",
         plan="Listed Property Basic",
         bedrooms, bathrooms, sqft,
+        propertyType,
         agentPhone
       } = data || {};
 
@@ -452,6 +512,9 @@
         window.location.href = `/listing.html?addr=${slug}`;
       };
 
+      // NEW: add propertyType between sqft and status if provided
+      const typeSeg = propertyType ? ` | ${propertyType}` : '';
+
       card.innerHTML = `
         <div class="relative">
           <img class="gc-photo" src="${img || ''}" alt="Listing photo">
@@ -462,7 +525,9 @@
             <div class="truncate">${line1Left}</div>
             <div class="truncate text-red-600">Commission ${line1Mid} | ${line1Right}</div>
           </div>
-          <div class="text-[12px] text-gray-700">${bedrooms ?? '—'} bds | ${bathrooms ?? '—'} ba | ${sqft ? Number(sqft).toLocaleString() : '—'} sqft | ${status}</div>
+          <div class="text-[12px] text-gray-700">
+            ${bedrooms ?? '—'} bds | ${bathrooms ?? '—'} ba | ${sqft ? Number(sqft).toLocaleString() : '—'} sqft${typeSeg} | ${status}
+          </div>
           <div class="text-sm font-medium">${address}</div>
           <div class="text-[12px] text-gray-600">
             ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}
@@ -498,10 +563,11 @@
           bedrooms: agentListing.bedrooms,
           bathrooms: agentListing.bathrooms,
           sqft: agentListing.sqft,
+          propertyType: agentListing.propertyType || ''
         });
       }
 
-      // Samples for demo
+      // Samples for demo (with propertyType so you can visualize it now)
       const samples = [
         {
           address: "237 San Joaquin Street, Laguna Beach, CA 92651",
@@ -510,7 +576,8 @@
           photos: ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop"],
           primaryIndex: 0, status: "Active",
           brokerage: "Pacific Estates", agent: "Jordan Crisp",
-          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000, agentPhone: "(949) 555-1212"
+          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000, agentPhone: "(949) 555-1212",
+          propertyType: "Single Family"
         },
         {
           address: "14 Maple Ave, Montclair, NJ 07042",
@@ -518,7 +585,8 @@
           photos: ["https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop"],
           primaryIndex: 0, status: "In Contract",
           brokerage: "HomeWorks Realty", agent: "A. Brooks",
-          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400, agentPhone: "(973) 555-2121"
+          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400, agentPhone: "(973) 555-2121",
+          propertyType: "Townhouse"
         },
         {
           address: "1020 Cedar Dr, Austin, TX 78704",
@@ -527,7 +595,8 @@
           photos: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop"],
           primaryIndex: 0, status: "Active",
           brokerage: "", agent: "",
-          plan: "FSBO Plus", bedrooms: 3, bathrooms: 2, sqft: 1680
+          plan: "FSBO Plus", bedrooms: 3, bathrooms: 2, sqft: 1680,
+          propertyType: "Condo"
         }
       ];
       const haveAddr = new Set(_tilesData.map(d => (d.address||'').toLowerCase()));
