@@ -43,24 +43,20 @@
           <button id="tileHeart" type="button" class="heart-btn" aria-label="Like"></button>
         </div>
         <div class="p-4 space-y-1">
-          <!-- Top line: Price (left) | Commission X% | $Y (right, red) -->
           <div class="flex items-center justify-between text-[16px] sm:text-[18px] font-semibold">
             <div id="tilePrice" class="truncate">$—</div>
             <div id="tileCommission" class="truncate text-red-600">Commission — | $—</div>
           </div>
-          <!-- Second line: "3 bds | 2 ba | 2,000 sqft | Active" -->
           <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
-          <!-- Third: Full address -->
           <div id="tileAddress" class="text-sm font-medium">[full address]</div>
-          <!-- Fourth: Brokerage — Agent — Phone -->
           <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] — [listing agent] — [agent phone]</div>
         </div>
         <a id="tileClick" href="#" class="absolute inset-0" aria-label="Open full listing detail"></a>
       </article>
 
-      <!-- Middle: Map only (20% = col-span 1) -->
-      <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-4">
-        <div id="mapCanvas" class="h-72 lg:h-80 rounded bg-gray-100"></div>
+      <!-- Middle: Map only (20% = col-span 1). p-0 to eliminate inner white space -->
+      <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-0 overflow-hidden">
+        <div id="mapCanvas" class="h-80 lg:h-[22rem] bg-gray-100"></div>
       </aside>
 
       <!-- Right: ISC thumbnail (clickable image) (40% = col-span 2) -->
@@ -72,7 +68,7 @@
         <div class="mt-2 border rounded overflow-hidden bg-white">
           <!-- Clickable image to open full ISC -->
           <a href="/printable-isc.html" target="_blank" class="block">
-            <img id="iscPreviewImg" alt="ISC preview" class="w-full h-72 lg:h-80 object-contain" />
+            <img id="iscPreviewImg" alt="ISC preview" class="w-full h-80 lg:h-[22rem] object-contain bg-white" />
           </a>
         </div>
         <!-- Hidden iframe used to render the thumbnail (counts one ISC view per load) -->
@@ -216,12 +212,13 @@
       document.getElementById("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
     })();
 
-    // ISC thumbnail (clickable image): render from hidden iframe at high scale (crisp)
+    // ISC thumbnail (clickable image): render from hidden iframe at high scale for crisp text
     (async function renderIscPreview(){
       const hidden = document.getElementById('iscIframeHidden');
       const imgEl  = document.getElementById('iscPreviewImg');
       if (!hidden || typeof html2canvas === "undefined") { imgEl.alt = "ISC preview unavailable"; return; }
-      try {
+
+      async function snapshotOnce() {
         await new Promise((res) => {
           if (hidden.contentWindow?.document?.readyState === "complete") return res();
           hidden.onload = () => res();
@@ -229,14 +226,23 @@
         });
         const doc = hidden.contentDocument || hidden.contentWindow?.document;
         if (!doc || !doc.body) throw new Error("No iframe document");
-
-        // Crisp miniature
-        const canvas = await html2canvas(doc.body, { scale: 1.6, useCORS: true, backgroundColor:"#ffffff" });
+        const canvas = await html2canvas(doc.body, { scale: 1.8, useCORS: true, backgroundColor:"#ffffff" });
         const dataUrl = canvas.toDataURL("image/png");
-        if (dataUrl) imgEl.src = dataUrl; else imgEl.alt = "ISC preview unavailable";
-      } catch(e){
-        imgEl.alt = "ISC preview unavailable";
-        console.warn("[isc-preview] snapshot failed:", e?.message || e);
+        if (!dataUrl) throw new Error("No dataUrl from canvas");
+        imgEl.src = dataUrl;
+      }
+
+      try {
+        await snapshotOnce();
+      } catch(e) {
+        // One retry after a short delay (helps slow renders)
+        try {
+          await new Promise(r => setTimeout(r, 600));
+          await snapshotOnce();
+        } catch (e2) {
+          imgEl.alt = "ISC preview unavailable";
+          console.warn("[isc-preview] snapshot failed:", e2?.message || e2);
+        }
       }
     })();
 
