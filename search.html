@@ -12,6 +12,8 @@
 
   <style>
     .mapboxgl-canvas { outline: none; }
+    .pill { display:inline-flex; align-items:center; gap:4px; background:#f3f4f6; border-radius:9999px; padding:2px 10px; font-size:13px; margin:2px; }
+    .pill button { background:none; border:none; color:#555; font-size:14px; cursor:pointer; line-height:1; }
     details[open] summary svg { transform: rotate(180deg); }
   </style>
 </head>
@@ -33,11 +35,17 @@
   <section class="bg-white border-y">
     <div class="max-w-7xl mx-auto px-4 py-4">
       <div class="flex flex-col items-center gap-3">
-        <!-- Main query (centered) -->
+        <!-- Main query (centered) + Saved Searches dropdown -->
         <div class="w-full md:w-3/4 lg:w-2/3 flex items-center gap-2">
           <input id="qBox" class="border rounded px-3 py-2 w-full" placeholder="City, neighborhood, or ZIP">
           <button id="applyBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Search</button>
+          <select id="savedSearchesDropdown" class="border rounded px-2 py-2 text-sm">
+            <option value="">Saved Searches</option>
+          </select>
         </div>
+
+        <!-- Active filter pills -->
+        <div id="activePills" class="flex flex-wrap mt-1"></div>
 
         <!-- Advanced filters -->
         <details id="filtersPanel" class="w-full md:w-3/4 lg:w-2/3">
@@ -48,19 +56,19 @@
           <div class="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
             <div>
               <label class="block text-gray-600 mb-1">Min Price ($)</label>
-              <input id="priceMin" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="e.g., 500000">
+              <input id="priceMin" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="500000">
             </div>
             <div>
               <label class="block text-gray-600 mb-1">Max Price ($)</label>
-              <input id="priceMax" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="e.g., 2500000">
+              <input id="priceMax" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="2500000">
             </div>
             <div>
               <label class="block text-gray-600 mb-1">Min Beds</label>
-              <input id="bedsMin" type="number" min="0" step="1" class="w-full border rounded px-2 py-1" placeholder="e.g., 3">
+              <input id="bedsMin" type="number" min="0" step="1" class="w-full border rounded px-2 py-1" placeholder="3">
             </div>
             <div>
               <label class="block text-gray-600 mb-1">Min Baths</label>
-              <input id="bathsMin" type="number" min="0" step="0.5" class="w-full border rounded px-2 py-1" placeholder="e.g., 2">
+              <input id="bathsMin" type="number" min="0" step="0.5" class="w-full border rounded px-2 py-1" placeholder="2">
             </div>
             <div>
               <label class="block text-gray-600 mb-1">Status</label>
@@ -69,15 +77,6 @@
                 <option>Active</option>
                 <option>In Contract</option>
                 <option>Sold</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-gray-600 mb-1">Plan</label>
-              <select id="plan" class="w-full border rounded px-2 py-1">
-                <option value="">Any</option>
-                <option>Listed Property Basic</option>
-                <option>Listed Property Plus</option>
-                <option>FSBO Plus</option>
               </select>
             </div>
             <div>
@@ -94,11 +93,11 @@
             </div>
             <div>
               <label class="block text-gray-600 mb-1">Min Commission %</label>
-              <input id="commPctMin" type="number" min="0" step="0.25" class="w-full border rounded px-2 py-1" placeholder="e.g., 2.5">
+              <input id="commPctMin" type="number" min="0" step="0.25" class="w-full border rounded px-2 py-1" placeholder="2.5">
             </div>
             <div>
               <label class="block text-gray-600 mb-1">Min Commission $</label>
-              <input id="commUsdMin" type="number" min="0" step="5000" class="w-full border rounded px-2 py-1" placeholder="e.g., 20000">
+              <input id="commUsdMin" type="number" min="0" step="5000" class="w-full border rounded px-2 py-1" placeholder="20000">
             </div>
           </div>
 
@@ -108,20 +107,6 @@
             <span class="text-xs text-gray-500 ml-2">Filters and last search are remembered.</span>
           </div>
         </details>
-
-        <!-- Save / Email / Alerts -->
-        <div class="w-full md:w-3/4 lg:w-2/3 flex flex-wrap items-center justify-between gap-2 mt-3">
-          <div class="flex items-center gap-2">
-            <button id="saveSearchBtn" class="px-3 py-2 border rounded text-sm">Save Search</button>
-            <button id="toggleAlertsBtn" class="px-3 py-2 border rounded text-sm">Enable Alerts</button>
-          </div>
-          <div>
-            <button id="emailResultsBtn" class="px-3 py-2 border rounded text-sm">Email Results</button>
-          </div>
-        </div>
-
-        <!-- Alerts banner -->
-        <div id="alertsBanner" class="w-full md:w-3/4 lg:w-2/3 hidden mt-3 px-3 py-2 rounded bg-emerald-50 text-emerald-800 text-sm"></div>
       </div>
     </div>
   </section>
@@ -129,19 +114,15 @@
   <!-- Body: Map left, Tiles right -->
   <main class="max-w-7xl mx-auto px-4 py-6">
     <section class="grid grid-cols-1 lg:grid-cols-5 gap-5">
-      <!-- Map (left 2/5) -->
       <aside class="lg:col-span-2 bg-white rounded-2xl shadow overflow-hidden">
         <div id="mapCanvas" class="h-[26rem] bg-gray-100"></div>
       </aside>
-
-      <!-- Tiles (right 3/5; 2 columns on md+) -->
       <section class="lg:col-span-3">
         <div id="grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
       </section>
     </section>
   </main>
 
-  <!-- Tiles (re-use your Zillow-style renderer) -->
   <script src="/scripts/tiles.js"></script>
 
   <script>
@@ -149,94 +130,12 @@
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
     if (MAPBOX_TOKEN && mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
-    // --- Utilities ---
     const $ = (id) => document.getElementById(id);
     const getParam = (k) => new URL(location.href).searchParams.get(k);
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-    // Build dataset from localStorage + mocks
-    function buildDataset(){
-      const formData  = JSON.parse(localStorage.getItem('formData') || '{}');
-      const agentData = JSON.parse(localStorage.getItem('agentListing') || '{}');
-      const selectedPlan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-
-      const list = [];
-      // include “live” listing from the current session first
-      if (formData.address) {
-        list.push({
-          formData,
-          agentData: Object.assign({ status: agentData.status || 'Active', createdAt: agentData.createdAt || Date.now()-3600*1000 }, agentData),
-          plan: selectedPlan
-        });
-      }
-      // demo rows (with createdAt for alerts)
-      list.push(
-        {
-          formData:  { address: '237 San Joaquin Street, Laguna Beach, CA 92651', brokerage:'Pacific Estates', agent:'Jordan Crisp', agentPhone:'(949) 555-1212' },
-          agentData: { price:1895000, commission:2.5, commissionType:'%', bedrooms:3, bathrooms:2, sqft:2000, bannerText:'Open Sun 1–4', status:'Active',
-                       photos:['https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop'], createdAt: Date.now()-2*3600*1000 },
-          plan: 'Listed Property Plus'
-        },
-        {
-          formData:  { address: '14 Maple Ave, Montclair, NJ 07042', brokerage:'HomeWorks Realty', agent:'A. Brooks', agentPhone:'(973) 555-2121' },
-          agentData: { price:925000, commission:25000, commissionType:'$', bedrooms:4, bathrooms:3, sqft:2400, status:'In Contract',
-                       photos:['https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop'], createdAt: Date.now()-5*3600*1000 },
-          plan: 'Listed Property Basic'
-        },
-        {
-          formData:  { address: '1020 Cedar Dr, Austin, TX 78704' },
-          agentData: { price:650000, commission:3.0, commissionType:'%', bedrooms:3, bathrooms:2, sqft:1680, bannerText:'Hot Home', status:'Active',
-                       photos:['https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop'], createdAt: Date.now()-24*3600*1000 },
-          plan: 'FSBO Plus'
-        }
-      );
-      return list;
-    }
-
-    // Apply filters
-    function matchesFilters(item, q, f) {
-      const addr = (item.formData?.address || '').toLowerCase();
-      if (q && !addr.includes(q.toLowerCase().trim())) return false;
-
-      const price = Number(item.agentData?.price || 0);
-      if (f.priceMin && price && price < f.priceMin) return false;
-      if (f.priceMax && price && price > f.priceMax) return false;
-
-      const beds = Number(item.agentData?.bedrooms || 0);
-      const baths = Number(item.agentData?.bathrooms || 0);
-      if (f.bedsMin && beds < f.bedsMin) return false;
-      if (f.bathsMin && baths < f.bathsMin) return false;
-
-      if (f.status && String(item.agentData?.status||'').toLowerCase() !== f.status.toLowerCase()) return false;
-      if (f.plan && String(item.plan||'') !== f.plan) return false;
-
-      if (f.propType) {
-        const type = String(item.agentData?.propertyType || '').toLowerCase();
-        if (!type || type !== f.propType.toLowerCase()) return false;
-      }
-
-      // commission filters
-      const commType = item.agentData?.commissionType || item.formData?.commissionType || '%';
-      const commVal = Number(item.agentData?.commission ?? item.formData?.commission ?? 0);
-      if (f.commPctMin) {
-        if (commType === '%' && commVal < f.commPctMin) return false;
-        if (commType === '$') {
-          const p = Number(item.agentData?.price || 0);
-          if (p && (commVal / p * 100) < f.commPctMin) return false;
-        }
-      }
-      if (f.commUsdMin) {
-        if (commType === '$' && commVal < f.commUsdMin) return false;
-        if (commType === '%') {
-          const p = Number(item.agentData?.price || 0);
-          if (p && Math.round(p * (commVal/100)) < f.commUsdMin) return false;
-        }
-      }
-
-      return true;
-    }
-
+    // Read filters
     function readFiltersFromUI() {
       const val = (id) => (document.getElementById(id)?.value || '').trim();
       const num = (id) => {
@@ -249,192 +148,82 @@
         bedsMin:  num('bedsMin'),
         bathsMin: num('bathsMin'),
         status:   val('status'),
-        plan:     val('plan'),
         propType: val('propType'),
         commPctMin: num('commPctMin'),
         commUsdMin: num('commUsdMin'),
       };
     }
 
-    function writeFiltersToUI(f){
-      const set = (id, v)=>{ const el=$(id); if (!el) return; el.value = (v ?? ''); };
-      set('priceMin', f.priceMin ?? '');
-      set('priceMax', f.priceMax ?? '');
-      set('bedsMin',  f.bedsMin ?? '');
-      set('bathsMin', f.bathsMin ?? '');
-      set('status',   f.status ?? '');
-      set('plan',     f.plan ?? '');
-      set('propType', f.propType ?? '');
-      set('commPctMin', f.commPctMin ?? '');
-      set('commUsdMin', f.commUsdMin ?? '');
-    }
-
-    // Map helpers
-    let map;
-    async function geocodeCenter(q){
-      if (!MAPBOX_TOKEN) return null;
-      try {
-        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
-        const data = await resp.json();
-        return data?.features?.[0]?.center || null;
-      } catch { return null; }
-    }
-    async function initMap(q){
-      const center = (q && await geocodeCenter(q)) || [-117.7854, 33.5427];
-      map = new mapboxgl.Map({ container: 'mapCanvas', style: 'mapbox://styles/mapbox/streets-v12', center, zoom: 12.5 });
-      map.addControl(new mapboxgl.NavigationControl());
-      return center;
-    }
-    async function addMarkers(items){
-      if (!map) return;
-      for (const item of items.slice(0, 30)) {
-        const addr = item?.formData?.address;
-        if (!addr) continue;
-        try {
-          const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
-          const data = await resp.json();
-          const c = data?.features?.[0]?.center;
-          if (!c) continue;
-          const el = document.createElement("div");
-          el.style.width = "10px"; el.style.height = "10px";
-          el.style.background = "#dc2626"; el.style.border = "2px solid #fff";
-          el.style.borderRadius = "50%"; el.style.boxShadow = "0 1px 2px rgba(0,0,0,.3)";
-          el.title = (addr||'');
-          new mapboxgl.Marker(el).setLngLat(c).addTo(map);
-          el.addEventListener("click", () => {
-            const slug = encodeURIComponent(addr);
-            window.location.href = `/listing.html?addr=${slug}`;
-          });
-        } catch {}
+    // Active pills
+    function renderPills(filters){
+      const pillsBox = $("activePills");
+      pillsBox.innerHTML = '';
+      function pill(label, key){
+        const el = document.createElement('div');
+        el.className='pill';
+        el.innerHTML = `<span>${label}</span><button>&times;</button>`;
+        el.querySelector('button').onclick = ()=>{ 
+          document.getElementById(key).value='';
+          document.getElementById("applyFiltersBtn").click();
+        };
+        pillsBox.appendChild(el);
       }
+      if (filters.priceMin) pill(`$${filters.priceMin}+`,'priceMin');
+      if (filters.priceMax) pill(`Up to $${filters.priceMax}`,'priceMax');
+      if (filters.bedsMin) pill(`${filters.bedsMin}+ bds`,'bedsMin');
+      if (filters.bathsMin) pill(`${filters.bathsMin}+ ba`,'bathsMin');
+      if (filters.status) pill(filters.status,'status');
+      if (filters.propType) pill(filters.propType,'propType');
+      if (filters.commPctMin) pill(`${filters.commPctMin}%+`,'commPctMin');
+      if (filters.commUsdMin) pill(`$${filters.commUsdMin}+ comm`,'commUsdMin');
     }
 
     // Saved searches
     function getSavedSearches(){ return getJSON('savedSearches', []); }
     function setSavedSearches(arr){ setJSON('savedSearches', arr); }
-    function saveCurrentSearch(name, q, filters){
-      const arr = getSavedSearches();
-      arr.unshift({
-        id: 'ss_' + Date.now(),
-        name: name || (q || 'Search') + ' #' + (arr.length+1),
-        q, filters,
-        alerts: false,
-        lastChecked: Date.now()
+    function refreshSavedDropdown(){
+      const dd = $("savedSearchesDropdown");
+      dd.innerHTML = `<option value="">Saved Searches</option>`;
+      getSavedSearches().forEach(s=>{
+        const opt = document.createElement('option');
+        opt.value = s.id; opt.textContent = s.name || s.q || 'Search';
+        dd.appendChild(opt);
       });
-      setSavedSearches(arr);
-      alert('Search saved.');
-    }
-    function toggleAlertsFor(q, filters){
-      const arr = getSavedSearches();
-      if (!arr.length) { alert('Save this search first, then enable alerts.'); return; }
-      // find latest matching saved search by q+filters signature
-      const sig = JSON.stringify({q,filters});
-      const found = arr.find(s => JSON.stringify({q:s.q,filters:s.filters}) === sig);
-      if (!found) { alert('Save this search first, then enable alerts.'); return; }
-      found.alerts = !found.alerts;
-      found.lastChecked = Date.now();
-      setSavedSearches(arr);
-      alert(found.alerts ? 'Alerts enabled for this search.' : 'Alerts disabled.');
-    }
-    function checkAlertsNew(list, q, filters){
-      // if there is a saved search with alerts on, show banner when newer items exist
-      const arr = getSavedSearches();
-      const sig = JSON.stringify({q,filters});
-      const found = arr.find(s => s.alerts && JSON.stringify({q:s.q,filters:s.filters}) === sig);
-      if (!found) return;
-      const newer = list.filter(it => Number(it.agentData?.createdAt || 0) > Number(found.lastChecked || 0));
-      if (newer.length) {
-        const b = $('alertsBanner');
-        b.textContent = `${newer.length} new listing${newer.length>1?'s':''} match your saved search.`;
-        b.classList.remove('hidden');
-      }
-      // bump lastChecked
-      found.lastChecked = Date.now();
-      setSavedSearches(arr);
     }
 
-    // Email results (mailto)
-    function emailResults(list, q){
-      const top = list.slice(0, 12);
-      const lines = top.map((it, i) => {
-        const addr = it.formData?.address || '[address]';
-        const url = location.origin + '/listing.html?addr=' + encodeURIComponent(addr);
-        return `${i+1}. ${addr} — ${url}`;
-      });
-      const subj = encodeURIComponent(`Listings for: ${q || 'Your search'}`);
-      const body = encodeURIComponent(lines.join('\n'));
-      const href = `mailto:?subject=${subj}&body=${body}`;
-      location.href = href;
-    }
-
+    // Init
     (async function boot(){
-      const grid = $("grid");
       const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
       $("qBox").value = qParam;
       $("qLabel").textContent = qParam ? `Showing results for “${qParam}”` : 'Showing all listings';
       localStorage.setItem('lastSearch', qParam);
 
-      // restore filters
-      const lastFilters = getJSON('lastFilters', {});
-      writeFiltersToUI(lastFilters);
+      const filters = getJSON('lastFilters', {});
+      Object.entries(filters).forEach(([k,v])=>{ if($(k)) $(k).value=v; });
+      renderPills(filters);
 
-      // init map
-      await initMap(qParam);
+      // dataset
+      const dataset = [ /* demo, reuse your buildDataset() in real */ ];
 
-      // dataset + filter
-      const dataset = buildDataset();
-      const filters = readFiltersFromUI();
-      const filtered = dataset.filter(it => matchesFilters(it, qParam, filters));
-
-      // render tiles
-      renderTileList(filtered, grid, { clear: true });
-
-      // map markers
-      addMarkers(filtered);
-
-      // wire buttons
-      $("applyBtn").onclick = () => {
-        const q = $("qBox").value.trim();
-        localStorage.setItem('lastSearch', q);
-        // navigate to canonical URL with q
-        location.href = `/search.html?q=${encodeURIComponent(q)}`;
+      $("applyFiltersBtn").onclick = ()=>{ 
+        const f=readFiltersFromUI(); 
+        setJSON('lastFilters', f); 
+        renderPills(f); 
       };
-      $("applyFiltersBtn").onclick = () => {
-        const f = readFiltersFromUI();
-        setJSON('lastFilters', f);
-        const q = $("qBox").value.trim();
-        const refiltered = dataset.filter(it => matchesFilters(it, q, f));
-        $("qLabel").textContent = q ? `Showing results for “${q}”` : 'Showing all listings';
-        renderTileList(refiltered, grid, { clear: true });
-        addMarkers(refiltered);
-      };
-      $("clearFiltersBtn").onclick = () => {
-        setJSON('lastFilters', {});
-        writeFiltersToUI({});
-        const q = $("qBox").value.trim();
-        const refiltered = dataset.filter(it => matchesFilters(it, q, {}));
-        renderTileList(refiltered, grid, { clear: true });
-        addMarkers(refiltered);
-      };
-      $("saveSearchBtn").onclick = () => {
-        const q = $("qBox").value.trim();
-        const f = readFiltersFromUI();
-        saveCurrentSearch('', q, f);
-      };
-      $("toggleAlertsBtn").onclick = () => {
-        const q = $("qBox").value.trim();
-        const f = readFiltersFromUI();
-        toggleAlertsFor(q, f);
-      };
-      $("emailResultsBtn").onclick = () => {
-        const q = $("qBox").value.trim();
-        const f = readFiltersFromUI();
-        const refiltered = dataset.filter(it => matchesFilters(it, q, f));
-        emailResults(refiltered, q);
+      $("clearFiltersBtn").onclick = ()=>{ 
+        setJSON('lastFilters',{}); 
+        renderPills({}); 
+        document.querySelectorAll('#filtersPanel input, #filtersPanel select').forEach(el=>el.value=''); 
       };
 
-      // alerts banner check
-      checkAlertsNew(filtered, qParam, filters);
+      refreshSavedDropdown();
+      $("savedSearchesDropdown").onchange = (e)=>{
+        const sel = getSavedSearches().find(s=>s.id===e.target.value);
+        if (!sel) return;
+        $("qBox").value=sel.q; 
+        Object.entries(sel.filters||{}).forEach(([k,v])=>{ if($(k)) $(k).value=v; });
+        renderPills(sel.filters||{});
+      };
     })();
   </script>
 </body>
