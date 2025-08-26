@@ -3,64 +3,75 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Search Guaranteed Commissions | GuaranteedCommission.com</title>
+  <title>Search | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Mapbox GL JS -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"/>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+
+  <style>
+    .mapboxgl-canvas { outline: none; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
 
   <!-- Header -->
   <header class="bg-white shadow">
     <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/index.html" class="text-xl font-bold">GuaranteedCommission.com</a>
+      <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
+      <div class="text-center">
+        <h1 class="text-xl font-bold">Search Results</h1>
+        <p id="qLabel" class="text-xs text-gray-600"></p>
+      </div>
       <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
     </div>
   </header>
 
-  <!-- Search bar -->
-  <section class="max-w-7xl mx-auto px-4 mt-6">
-    <div class="bg-white rounded-2xl shadow p-4">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <input id="q" class="border rounded px-3 py-2" placeholder="City, neighborhood, ZIP"/>
-        <select id="status" class="border rounded px-3 py-2">
-          <option value="">Any status</option>
-          <option value="active">Active</option>
-          <option value="in_contract">In Contract</option>
-          <option value="sold">Sold</option>
-        </select>
-        <select id="plan" class="border rounded px-3 py-2">
-          <option value="">Any plan</option>
-          <option value="Listed Property Basic">Listed Property Basic</option>
-          <option value="Listed Property Plus">Listed Property Plus</option>
-          <option value="FSBO Plus">FSBO Plus</option>
-        </select>
-        <button id="run" class="bg-blue-600 text-white rounded px-3 py-2">Search</button>
-      </div>
-    </div>
-  </section>
+  <!-- Body: Map left, Tiles right -->
+  <main class="max-w-7xl mx-auto px-4 py-6">
+    <section class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      <!-- Map (left 2/5) -->
+      <aside class="lg:col-span-2 bg-white rounded-2xl shadow overflow-hidden">
+        <div id="mapCanvas" class="h-[26rem] bg-gray-100"></div>
+      </aside>
 
-  <!-- Results -->
-  <section class="max-w-7xl mx-auto px-4 mt-6 mb-10">
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="text-lg font-semibold">Results</h2>
-      <div class="text-xs text-gray-600">
-        <button id="loadSample" class="underline">Load sample data</button>
-      </div>
-    </div>
-    <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-  </section>
+      <!-- Tiles (right 3/5) -->
+      <section class="lg:col-span-3">
+        <div class="bg-white rounded-2xl shadow p-4">
+          <div class="flex items-center justify-between gap-3">
+            <input id="qBox" class="border rounded px-3 py-2 w-full" placeholder="Refine search (city, neighborhood, ZIP)">
+            <button id="applyBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Search</button>
+          </div>
+        </div>
 
-  <!-- Tiles helper: uses your updated Zillow-style renderer with clickable cards -->
+        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4" id="grid"></div>
+      </section>
+    </section>
+  </main>
+
+  <!-- Tiles (re-use your Zillow-style renderer) -->
   <script src="/scripts/tiles.js"></script>
+
   <script>
-    // Build a multi-item list from localStorage + mocks
-    function sample() {
+    // Mapbox token (same as listing page)
+    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
+    if (MAPBOX_TOKEN && mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
+
+    const $ = (id) => document.getElementById(id);
+
+    function getParam(name){
+      const url = new URL(location.href);
+      return url.searchParams.get(name);
+    }
+
+    // Build dataset from localStorage + mocks (same pattern as index)
+    function buildDataset(){
       const formData  = JSON.parse(localStorage.getItem('formData') || '{}');
       const agentData = JSON.parse(localStorage.getItem('agentListing') || '{}');
       const selectedPlan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
 
       const list = [];
-
-      // If you have a real listing in localStorage, include it first
       if (formData.address) {
         list.push({
           formData,
@@ -68,77 +79,108 @@
           plan: selectedPlan
         });
       }
-
-      // Add a few mock items for variety
       list.push(
         {
-          formData:  { address: '100 Ocean Ave, Laguna Beach, CA 92651', brokerage: 'Coastal Realty', agent: 'Ava Nguyen', agentPhone: '(949) 555-1234' },
-          agentData: {
-            price: 2750000, commission: 2.5, commissionType: '%',
-            bedrooms: 3, bathrooms: 3, sqft: 2100, bannerText: 'Open Sun 1–4',
-            status: 'Active',
-            photos: ['https://picsum.photos/seed/gc1/800/450']
-          },
+          formData:  { address: '237 San Joaquin Street, Laguna Beach, CA 92651', brokerage:'Pacific Estates', agent:'Jordan Crisp', agentPhone:'(949) 555-1212' },
+          agentData: { price:1895000, commission:2.5, commissionType:'%', bedrooms:3, bathrooms:2, sqft:2000, bannerText:'Open Sun 1–4', status:'Active',
+                       photos:['https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop'] },
           plan: 'Listed Property Plus'
         },
         {
-          formData:  { address: '42 Canyon Rd, Laguna Beach, CA 92651', brokerage: 'HomeWorks Realty', agent: 'A. Brooks', agentPhone: '(949) 555-7788' },
-          agentData: {
-            price: 1495000, commission: 30000, commissionType: '$',
-            bedrooms: 2, bathrooms: 2, sqft: 1400,
-            status: 'In Contract',
-            photos: ['https://picsum.photos/seed/gc2/800/450']
-          },
+          formData:  { address: '14 Maple Ave, Montclair, NJ 07042', brokerage:'HomeWorks Realty', agent:'A. Brooks', agentPhone:'(973) 555-2121' },
+          agentData: { price:925000, commission:25000, commissionType:'$', bedrooms:4, bathrooms:3, sqft:2400, status:'In Contract',
+                       photos:['https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop'] },
           plan: 'Listed Property Basic'
         },
         {
-          formData:  { address: '9 Bluebird Ln, Laguna Beach, CA 92651' },
-          agentData: {
-            price: 3299000, commission: 2.25, commissionType: '%',
-            bedrooms: 4, bathrooms: 4, sqft: 3000,
-            status: 'Sold',
-            photos: ['https://picsum.photos/seed/gc3/800/450']
-          },
+          formData:  { address: '1020 Cedar Dr, Austin, TX 78704' },
+          agentData: { price:650000, commission:3.0, commissionType:'%', bedrooms:3, bathrooms:2, sqft:1680, bannerText:'Hot Home', status:'Active',
+                       photos:['https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop'] },
           plan: 'FSBO Plus'
         }
       );
-
       return list;
     }
 
-    // Simple client-side "filter"
-    function filterList(list, query, status, plan) {
+    function filterDataset(list, query){
       const q = (query||'').toLowerCase().trim();
-      return list.filter(item => {
-        const addr = (item.formData?.address || '').toLowerCase();
-        const okQ = q ? addr.includes(q) : true;
-        const okS = status ? (String(item.agentData?.status||'').toLowerCase() === status) : true;
-        const okP = plan ? (String(item.plan||'') === plan) : true;
-        return okQ && okS && okP;
+      if (!q) return list;
+      return list.filter(item => (item.formData?.address || '').toLowerCase().includes(q));
+    }
+
+    // Map init + geocode center
+    let map;
+    async function geocodeCenter(q){
+      if (!MAPBOX_TOKEN) return null;
+      try {
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const data = await resp.json();
+        return data?.features?.[0]?.center || null;
+      } catch { return null; }
+    }
+
+    async function initMap(q){
+      const center = (q && await geocodeCenter(q)) || [-117.7854, 33.5427]; // Laguna fallback
+      map = new mapboxgl.Map({
+        container: 'mapCanvas',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center, zoom: 12.5
+      });
+      map.addControl(new mapboxgl.NavigationControl());
+      return center;
+    }
+
+    function addMarkers(items){
+      if (!map) return;
+      items.slice(0, 12).forEach(async (item) => {
+        const addr = item?.formData?.address;
+        if (!addr) return;
+        try {
+          const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+          const data = await resp.json();
+          const c = data?.features?.[0]?.center;
+          if (!c) return;
+          const el = document.createElement("div");
+          el.style.width = "10px"; el.style.height = "10px";
+          el.style.background = "#dc2626"; el.style.border = "2px solid #fff";
+          el.style.borderRadius = "50%"; el.style.boxShadow = "0 1px 2px rgba(0,0,0,.3)";
+          el.title = (addr||'');
+          const m = new mapboxgl.Marker(el).setLngLat(c).addTo(map);
+          el.addEventListener("click", () => {
+            const slug = encodeURIComponent(addr);
+            window.location.href = `/listing.html?addr=${slug}`;
+          });
+        } catch {}
       });
     }
 
-    (function init(){
-      const grid = document.getElementById('grid');
-      const list = sample();
+    (async function boot(){
+      const grid = $("grid");
+      const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
+      localStorage.setItem('lastSearch', qParam); // remember latest
+      $("qLabel").textContent = qParam ? `Showing results for “${qParam}”` : 'Showing all listings';
+      $("qBox").value = qParam;
 
-      // Initial render — NOTE: no custom onClick; tile itself handles click to /listing.html
-      renderTileList(list, grid, { clear: true });
+      const center = await initMap(qParam);
+      const dataset = buildDataset();
+      const filtered = filterDataset(dataset, qParam);
 
-      // Wire sample reload
-      document.getElementById('loadSample').addEventListener('click', (e) => {
-        e.preventDefault();
-        const fresh = sample();
-        renderTileList(fresh, grid, { clear: true });
+      // Render tiles (2 columns on md+)
+      renderTileList(filtered, grid, { clear: true });
+
+      // Drop markers (geocode per item)
+      addMarkers(filtered);
+
+      $("applyBtn").addEventListener("click", () => {
+        const q = $("qBox").value.trim();
+        localStorage.setItem('lastSearch', q);
+        window.location.href = `/search.html?q=${encodeURIComponent(q)}`;
       });
-
-      // Wire search
-      document.getElementById('run').addEventListener('click', () => {
-        const q = document.getElementById('q').value;
-        const s = document.getElementById('status').value;
-        const p = document.getElementById('plan').value;
-        const filtered = filterList(sample(), q, s, p);
-        renderTileList(filtered, grid, { clear: true });
+      $("qBox").addEventListener("keydown", (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          $("applyBtn").click();
+        }
       });
     })();
   </script>
