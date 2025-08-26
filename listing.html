@@ -10,7 +10,7 @@
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"/>
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
 
-  <!-- html2canvas (for ISC image preview) -->
+  <!-- html2canvas (kept for future, not used now) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
@@ -63,34 +63,25 @@
         <a id="tileClick" href="#" class="absolute inset-0" aria-label="Open full listing detail"></a>
       </article>
 
-      <!-- Middle: Map Search -->
+      <!-- Middle: Map (no title, no search UI; fills box) -->
       <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-4">
-        <h2 class="text-sm font-semibold mb-2">Map Search</h2>
-        <div class="flex gap-2 mb-3">
-          <input id="mapQ" class="w-full border rounded px-3 py-2 text-sm" placeholder="Search by city or ZIP">
-          <button id="mapRun" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Go</button>
-        </div>
-        <div id="mapCanvas" class="h-64 rounded bg-gray-100"></div>
+        <div id="mapCanvas" class="h-72 lg:h-80 rounded bg-gray-100"></div>
       </aside>
 
-      <!-- Right: ISC preview image -->
+      <!-- Right: ISC preview (visible immediately) -->
       <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold">ISC Preview</h2>
+          <h2 class="text-sm font-semibold">ISC</h2>
           <span id="viewCounter" class="text-xs text-gray-500">0 views</span>
         </div>
-        <div class="mt-2 border rounded overflow-hidden bg-gray-50 flex items-center justify-center">
-          <img id="iscPreviewImg" alt="ISC preview" class="w-full h-64 object-contain hidden"/>
-          <!-- Fallback iframe (no src initially to avoid double-count) -->
-          <iframe id="iscIframeFallback" class="w-full h-64 bg-white hidden"></iframe>
+        <div class="mt-2 border rounded overflow-hidden bg-white">
+          <!-- Show live ISC immediately -->
+          <iframe id="iscIframeVisible" src="/printable-isc.html" class="w-full h-72 lg:h-80 bg-white"></iframe>
         </div>
         <a href="/printable-isc.html" target="_blank"
            class="mt-3 inline-flex items-center justify-center w-full text-center bg-gray-700 text-white py-2 rounded text-sm">
           Open Full ISC
         </a>
-
-        <!-- Hidden iframe used for snapshot (single load to count exactly once) -->
-        <iframe id="iscIframeHidden" src="/printable-isc.html" class="hidden"></iframe>
       </aside>
     </section>
 
@@ -234,7 +225,7 @@
         map = new mapboxgl.Map({
           container: 'mapCanvas',
           style: 'mapbox://styles/mapbox/streets-v12',
-          center: centerLngLat || [-117.7854, 33.5427], // fallback
+          center: centerLngLat || [-117.7854, 33.5427],
           zoom: centerLngLat ? 14 : 12
         });
         map.addControl(new mapboxgl.NavigationControl());
@@ -265,22 +256,11 @@
       initMap(center);
     })();
 
-    $("mapRun").onclick = async () => {
-      const q = $("mapQ").value.trim();
-      if (!q || !map) return;
-      const center = await geocode(q);
-      if (center) {
-        map.flyTo({ center, zoom: 14 });
-        if (!marker) marker = new mapboxgl.Marker().addTo(map);
-        marker.setLngLat(center);
-      }
-    };
-
     // ---- Detail Quick Facts ----
     $("dAddress").textContent = fullAddress;
     $("dPrice").textContent   = money(price);
     $("dCommissionPct").textContent = cPctLabel;
-    $("dCommissionAmt").textContent = cAmt ? money(cAmt) : "$—";
+    $("dCommissionAmt").textContent = commissionAmt(price, cRaw = (agentListing.commission ?? formData.commission ?? ""), cType= (agentListing.commissionType ?? formData.commissionType ?? "%")) ? money(commissionAmt(price, cRaw, cType)) : "$—";
     $("dBeds").textContent = bds;
     $("dBaths").textContent = ba;
     $("dSqft").textContent = sqft;
@@ -332,48 +312,6 @@
       localStorage.setItem(key, String(n));
       $("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
     })();
-
-    // ---- ISC Preview Image (snapshot) — load hidden only; fallback loads ONLY if snapshot fails ----
-    async function renderIscPreview() {
-      const hidden = $("iscIframeHidden");
-      const imgEl = $("iscPreviewImg");
-      const fallback = $("iscIframeFallback");
-
-      // Ensure fallback iframe does not load unless needed
-      fallback.classList.add("hidden"); // keep hidden
-      fallback.removeAttribute("src");
-
-      if (!hidden || typeof html2canvas === "undefined") {
-        // Use fallback directly (single load = single count)
-        fallback.src = "/printable-isc.html";
-        fallback.classList.remove("hidden");
-        return;
-      }
-
-      try {
-        await new Promise((res) => {
-          if (hidden.contentWindow?.document?.readyState === "complete") return res();
-          hidden.onload = () => res();
-          setTimeout(() => res(), 2500);
-        });
-
-        const doc = hidden.contentDocument || hidden.contentWindow?.document;
-        if (!doc || !doc.body) throw new Error("No iframe document");
-
-        const canvas = await html2canvas(doc.body, { scale: 1.2, useCORS: true, backgroundColor: "#ffffff" });
-        const dataUrl = canvas.toDataURL("image/png");
-        if (!dataUrl) throw new Error("No dataUrl from canvas");
-
-        imgEl.src = dataUrl;
-        imgEl.classList.remove("hidden");
-      } catch (e) {
-        // If snapshot fails, load fallback iframe now (one load = one count)
-        fallback.src = "/printable-isc.html";
-        fallback.classList.remove("hidden");
-        console.warn("[isc-preview] using fallback iframe:", e?.message || e);
-      }
-    }
-    renderIscPreview();
   </script>
 </body>
 </html>
