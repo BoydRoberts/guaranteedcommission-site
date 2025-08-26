@@ -18,10 +18,6 @@
     .tile-photo { width:100%; height: 20rem; object-fit: cover; background:#e5e7eb; }
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
     .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
-    .status-active { background:#d1fae5; color:#047857; }
-    .status-contract { background:#fef3c7; color:#92400e; }
-    .status-sold { background:#ffe4e6; color:#be123c; }
-    .status-draft { background:#e5e7eb; color:#374151; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -83,62 +79,19 @@
       </aside>
     </section>
 
-    <!-- DETAIL BODY -->
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left 2/3: Details (duplicates removed: Address, Price, Commission, Est. Commission) -->
-      <div class="lg:col-span-2 space-y-6">
-        <div class="bg-white rounded-2xl shadow p-5">
-          <h3 class="text-lg font-semibold mb-3">Listing Details</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div><span class="text-gray-500">BDS:</span> <span id="dBeds" class="font-medium"></span></div>
-            <div><span class="text-gray-500">BA:</span> <span id="dBaths" class="font-medium"></span></div>
-            <div><span class="text-gray-500">SQFT:</span> <span id="dSqft" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Status:</span> <span id="dStatus" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Year Built:</span> <span id="dYear" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Lot Size (sqft):</span> <span id="dLot" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Property Type:</span> <span id="dType" class="font-medium"></span></div>
-          </div>
-        </div>
-
-        <!-- Description -->
-        <div id="descCard" class="bg-white rounded-2xl shadow p-5 hidden">
-          <h3 class="text-lg font-semibold mb-3">Description</h3>
-          <p id="dDescription" class="text-sm leading-relaxed whitespace-pre-line"></p>
-        </div>
-
-        <!-- Gallery -->
-        <div id="galleryCard" class="bg-white rounded-2xl shadow p-5 hidden">
-          <h3 class="text-lg font-semibold mb-3">Photos</h3>
-          <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
-        </div>
+    <!-- LOWER SECTION: Photos & Description only -->
+    <section class="space-y-6">
+      <!-- Gallery (PLUS/FSBO with >1 photo) -->
+      <div id="galleryCard" class="bg-white rounded-2xl shadow p-5 hidden">
+        <h3 class="text-lg font-semibold mb-3">Photos</h3>
+        <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
       </div>
 
-      <!-- Right 1/3: Contact -->
-      <aside class="space-y-4">
-        <div class="bg-white rounded-2xl shadow p-5">
-          <h3 class="text-lg font-semibold mb-2">Contact</h3>
-          <!-- Listed -->
-          <div id="listedContact" class="text-sm hidden">
-            <div><span class="text-gray-500">Brokerage:</span> <span id="cBrokerage" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Agent:</span> <span id="cAgent" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Agent Phone:</span> <span id="cAgentPhone" class="font-medium"></span></div>
-          </div>
-          <!-- FSBO -->
-          <div id="fsboContact" class="text-sm hidden">
-            <div><span class="text-gray-500">Owner Phone:</span> <span id="cOwnerPhone" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Owner Email:</span> <span id="cOwnerEmail" class="font-medium"></span></div>
-          </div>
-
-          <div class="mt-4 flex flex-col gap-2">
-            <a href="/printable-isc.html" class="w-full text-center bg-gray-700 text-white py-2 rounded">Sign / View ISC</a>
-            <a href="/signature.html" class="w-full text-center bg-green-600 text-white py-2 rounded">Sign / Continue</a>
-          </div>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow p-5 text-sm text-gray-600">
-          <p><strong>Commission clarity helps homes sell.</strong> This listing states buyer’s agent compensation up front to improve showings and outcomes.</p>
-        </div>
-      </aside>
+      <!-- Description (shown if exists) -->
+      <div id="descCard" class="bg-white rounded-2xl shadow p-5 hidden">
+        <h3 class="text-lg font-semibold mb-3">Description</h3>
+        <p id="dDescription" class="text-sm leading-relaxed whitespace-pre-line"></p>
+      </div>
     </section>
   </main>
 
@@ -181,10 +134,12 @@
     const agentName = formData.agent || (plan.includes("FSBO") ? "" : "[listing agent]");
     const agentPhone = formData.agentPhone || (plan.includes("FSBO") ? "" : "[agent phone]");
 
-    // Paint tile
+    // Paint tile (top-left)
     (function paintTile(){
       $("tilePhoto").src = photo || "";
       if (banner) { $("tileBanner").textContent = banner; $("tileBanner").classList.remove('hidden'); }
+
+      // Heart (favorites)
       const FAV_KEY='gcFavorites';
       function getFavs(){ try{ const v=JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); return Array.isArray(v)?v:[]; } catch{return[]} }
       function setFavs(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a||[])); } catch{} }
@@ -208,23 +163,19 @@
     })();
 
     // Mapbox: geocode + marker
-    let map, marker;
-    async function geocode(q) {
-      if (!MAPBOX_TOKEN) return null;
-      try {
-        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
-        const data = await resp.json();
-        const f = data?.features?.[0];
-        return f ? f.center : null; // [lng, lat]
-      } catch { return null; }
-    }
     (async function bootMap(){
       try {
         if (MAPBOX_TOKEN && mapboxgl) {
-          const center = await geocode(fullAddress) || [-117.7854, 33.5427];
-          map = new mapboxgl.Map({ container:'mapCanvas', style:'mapbox://styles/mapbox/streets-v12', center, zoom:14 });
+          const center = await (async () => {
+            try {
+              const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fullAddress)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+              const data = await resp.json();
+              return data?.features?.[0]?.center || [-117.7854, 33.5427];
+            } catch { return [-117.7854, 33.5427]; }
+          })();
+          const map = new mapboxgl.Map({ container:'mapCanvas', style:'mapbox://styles/mapbox/streets-v12', center, zoom:14 });
           map.addControl(new mapboxgl.NavigationControl());
-          marker = new mapboxgl.Marker().setLngLat(center).addTo(map);
+          new mapboxgl.Marker().setLngLat(center).addTo(map);
         } else {
           document.getElementById('mapCanvas').innerHTML =
             '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
@@ -243,15 +194,11 @@
       document.getElementById("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
     })();
 
-    // ISC preview image rendering from hidden iframe (increments ISC counter once)
+    // ISC preview image rendering from hidden iframe (crisper: scale 1.4)
     (async function renderIscPreview(){
       const hidden = document.getElementById('iscIframeHidden');
       const imgEl  = document.getElementById('iscPreviewImg');
-      if (!hidden || typeof html2canvas === "undefined") {
-        // Fallback: just show the iframe in place of image (not requested now)
-        imgEl.alt = "ISC preview unavailable";
-        return;
-      }
+      if (!hidden || typeof html2canvas === "undefined") { imgEl.alt = "ISC preview unavailable"; return; }
       try {
         await new Promise((res) => {
           if (hidden.contentWindow?.document?.readyState === "complete") return res();
@@ -260,13 +207,39 @@
         });
         const doc = hidden.contentDocument || hidden.contentWindow?.document;
         if (!doc || !doc.body) throw new Error("No iframe document");
-        const canvas = await html2canvas(doc.body, { scale: 1.1, useCORS: true, backgroundColor:"#ffffff" });
+
+        // Sharper miniature preview
+        const canvas = await html2canvas(doc.body, { scale: 1.4, useCORS: true, backgroundColor:"#ffffff" });
         const dataUrl = canvas.toDataURL("image/png");
-        if (dataUrl) imgEl.src = dataUrl;
+        if (dataUrl) imgEl.src = dataUrl; else imgEl.alt = "ISC preview unavailable";
       } catch(e){
         imgEl.alt = "ISC preview unavailable";
         console.warn("[isc-preview] snapshot failed:", e?.message || e);
       }
+    })();
+
+    // Gallery (PLUS/FSBO with >1 photo)
+    (function paintGallery(){
+      const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
+      const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
+      const otherPhotos = photos.filter((_, i) => i !== primaryIndex);
+      if (!otherPhotos.length) return;
+      const grid = $("galleryGrid");
+      otherPhotos.forEach(src => {
+        const img = document.createElement("img");
+        img.src = src; img.alt = "Listing photo";
+        img.className = "w-full h-32 object-cover rounded bg-gray-100";
+        grid.appendChild(img);
+      });
+      $("galleryCard").classList.remove("hidden");
+    })();
+
+    // Description (only if present)
+    (function paintDesc(){
+      const desc = (agentListing.description || "").trim();
+      if (!desc) return;
+      $("dDescription").textContent = desc;
+      $("descCard").classList.remove("hidden");
     })();
   </script>
 </body>
