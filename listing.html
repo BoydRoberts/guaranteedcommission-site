@@ -10,7 +10,7 @@
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"/>
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
 
-  <!-- html2canvas (for ISC image preview) -->
+  <!-- html2canvas (kept available; not required for live ISC) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
@@ -63,34 +63,50 @@
         <div id="mapCanvas" class="h-72 lg:h-80 rounded bg-gray-100"></div>
       </aside>
 
-      <!-- Right: ISC preview (image visible immediately; click opens full doc) -->
+      <!-- Right: ISC preview (live iframe so text is visible immediately) -->
       <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-4">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-semibold">ISC</h2>
           <span id="viewCounter" class="text-xs text-gray-500">0 views</span>
         </div>
         <div class="mt-2 border rounded overflow-hidden bg-white">
-          <a href="/printable-isc.html" target="_blank" class="block">
-            <img id="iscPreviewImg" alt="ISC preview" class="w-full h-72 lg:h-80 object-contain"/>
-          </a>
+          <iframe id="iscIframeVisible" src="/printable-isc.html" class="w-full h-72 lg:h-80 bg-white"></iframe>
         </div>
-        <!-- Hidden iframe used once to render the preview image (counts one ISC view) -->
-        <iframe id="iscIframeHidden" src="/printable-isc.html" class="hidden"></iframe>
       </aside>
     </section>
 
     <!-- LOWER SECTION: Photos & Description only -->
     <section class="space-y-6">
-      <!-- Gallery (PLUS/FSBO with >1 photo) -->
+      <!-- Gallery (shows if there are additional photos beyond the primary) -->
       <div id="galleryCard" class="bg-white rounded-2xl shadow p-5 hidden">
         <h3 class="text-lg font-semibold mb-3">Photos</h3>
         <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
       </div>
 
-      <!-- Description (shown if exists) -->
+      <!-- Description (shown only if present) -->
       <div id="descCard" class="bg-white rounded-2xl shadow p-5 hidden">
         <h3 class="text-lg font-semibold mb-3">Description</h3>
         <p id="dDescription" class="text-sm leading-relaxed whitespace-pre-line"></p>
+      </div>
+
+      <!-- LOCAL PROS (Free in 2025) -->
+      <div id="localProsCard" class="bg-white rounded-2xl shadow p-5">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold">Local Pros</h3>
+          <span class="text-xs text-green-700 font-semibold">Free in 2025</span>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+          <!-- Local Agents -->
+          <div>
+            <h4 class="text-sm font-semibold mb-2">Local Agents</h4>
+            <div id="localAgents" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+          </div>
+          <!-- Local Lenders -->
+          <div>
+            <h4 class="text-sm font-semibold mb-2">Local Lenders</h4>
+            <div id="localLenders" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -132,7 +148,8 @@
     const status = agentListing.status || "Draft";
     const brokerage = formData.brokerage || (plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
     const agentName = formData.agent || (plan.includes("FSBO") ? "" : "[listing agent]");
-    const agentPhone = formData.agentPhone || (plan.includes("FSBO") ? "" : "[agent phone]");
+    const agentPhone =
+      agentListing.agentPhone || formData.agentPhone || formData.phone || (plan.includes("FSBO") ? "" : "[agent phone]");
 
     // Paint tile (top-left)
     (function paintTile(){
@@ -194,30 +211,6 @@
       document.getElementById("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
     })();
 
-    // ISC preview image rendering from hidden iframe (crisper: scale 1.4)
-    (async function renderIscPreview(){
-      const hidden = document.getElementById('iscIframeHidden');
-      const imgEl  = document.getElementById('iscPreviewImg');
-      if (!hidden || typeof html2canvas === "undefined") { imgEl.alt = "ISC preview unavailable"; return; }
-      try {
-        await new Promise((res) => {
-          if (hidden.contentWindow?.document?.readyState === "complete") return res();
-          hidden.onload = () => res();
-          setTimeout(() => res(), 2500);
-        });
-        const doc = hidden.contentDocument || hidden.contentWindow?.document;
-        if (!doc || !doc.body) throw new Error("No iframe document");
-
-        // Sharper miniature preview
-        const canvas = await html2canvas(doc.body, { scale: 1.4, useCORS: true, backgroundColor:"#ffffff" });
-        const dataUrl = canvas.toDataURL("image/png");
-        if (dataUrl) imgEl.src = dataUrl; else imgEl.alt = "ISC preview unavailable";
-      } catch(e){
-        imgEl.alt = "ISC preview unavailable";
-        console.warn("[isc-preview] snapshot failed:", e?.message || e);
-      }
-    })();
-
     // Gallery (PLUS/FSBO with >1 photo)
     (function paintGallery(){
       const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
@@ -240,6 +233,46 @@
       if (!desc) return;
       $("dDescription").textContent = desc;
       $("descCard").classList.remove("hidden");
+    })();
+
+    // ---- Local Pros (demo data; free in 2025) ----
+    (function renderLocalPros() {
+      const demoAgents = [
+        { name: "Ava Nguyen",  phone: "(949) 555-1234", brokerage: "Coastal Realty" },
+        { name: "Jordan Crisp", phone: "(949) 555-0456", brokerage: "Pacific Estates" },
+        { name: "Miguel Ortega", phone: "(949) 555-7788", brokerage: "Blue Door Homes" }
+      ];
+      const demoLenders = [
+        { name: "Harbor Home Loans", phone: "(949) 555-9900", note: "Local jumbo specialist" }
+      ];
+
+      function cardAgent(a) {
+        return `
+          <div class="border rounded-lg p-3 hover:shadow-sm transition">
+            <div class="text-sm font-semibold">${a.name}</div>
+            <div class="text-xs text-gray-600">${a.brokerage || ""}</div>
+            <div class="mt-1 text-sm">
+              <a href="tel:${(a.phone||'').replace(/\\D/g,'')}" class="text-blue-600 hover:underline">${a.phone}</a>
+            </div>
+          </div>
+        `;
+      }
+      function cardLender(l) {
+        return `
+          <div class="border rounded-lg p-3 hover:shadow-sm transition">
+            <div class="text-sm font-semibold">${l.name}</div>
+            <div class="text-xs text-gray-600">${l.note || ""}</div>
+            <div class="mt-1 text-sm">
+              <a href="tel:${(l.phone||'').replace(/\\D/g,'')}" class="text-blue-600 hover:underline">${l.phone}</a>
+            </div>
+          </div>
+        `;
+      }
+
+      const agentsBox = document.getElementById("localAgents");
+      const lendersBox = document.getElementById("localLenders");
+      if (agentsBox) agentsBox.innerHTML = demoAgents.map(cardAgent).join("");
+      if (lendersBox) lendersBox.innerHTML = demoLenders.map(cardLender).join("");
     })();
   </script>
 </body>
