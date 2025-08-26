@@ -81,15 +81,15 @@
         </div>
         <div class="mt-2 border rounded overflow-hidden bg-gray-50 flex items-center justify-center">
           <img id="iscPreviewImg" alt="ISC preview" class="w-full h-64 object-contain hidden"/>
-          <!-- Fallback iframe if preview image fails -->
-          <iframe id="iscIframeFallback" src="/printable-isc.html" class="w-full h-64 bg-white"></iframe>
+          <!-- Fallback iframe (no src initially to avoid double-count) -->
+          <iframe id="iscIframeFallback" class="w-full h-64 bg-white hidden"></iframe>
         </div>
         <a href="/printable-isc.html" target="_blank"
            class="mt-3 inline-flex items-center justify-center w-full text-center bg-gray-700 text-white py-2 rounded text-sm">
           Open Full ISC
         </a>
 
-        <!-- Hidden iframe used for snapshot (same-origin) -->
+        <!-- Hidden iframe used for snapshot (single load to count exactly once) -->
         <iframe id="iscIframeHidden" src="/printable-isc.html" class="hidden"></iframe>
       </aside>
     </section>
@@ -160,7 +160,7 @@
 
   <script>
     // ---- Configuration ----
-    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q"; 
+    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
     if (MAPBOX_TOKEN && mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
     // ---- Helpers ----
@@ -234,7 +234,7 @@
         map = new mapboxgl.Map({
           container: 'mapCanvas',
           style: 'mapbox://styles/mapbox/streets-v12',
-          center: centerLngLat || [-117.7854, 33.5427], // Laguna Beach fallback
+          center: centerLngLat || [-117.7854, 33.5427], // fallback
           zoom: centerLngLat ? 14 : 12
         });
         map.addControl(new mapboxgl.NavigationControl());
@@ -325,7 +325,7 @@
       $("listedContact").classList.remove("hidden");
     }
 
-    // View counter (per address)
+    // Listing View Counter (per address)
     (function bumpViews(){
       const key = "viewCount:" + (fullAddress||'').toLowerCase();
       let n = Number(localStorage.getItem(key)||0); n += 1;
@@ -333,42 +333,46 @@
       $("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
     })();
 
-    // ---- ISC Preview Image (snapshot of printable-isc.html) ----
+    // ---- ISC Preview Image (snapshot) — load hidden only; fallback loads ONLY if snapshot fails ----
     async function renderIscPreview() {
       const hidden = $("iscIframeHidden");
       const imgEl = $("iscPreviewImg");
       const fallback = $("iscIframeFallback");
 
-      // If html2canvas or iframe missing, bail to fallback
-      if (!hidden || typeof html2canvas === "undefined") return;
+      // Ensure fallback iframe does not load unless needed
+      fallback.classList.add("hidden"); // keep hidden
+      fallback.removeAttribute("src");
+
+      if (!hidden || typeof html2canvas === "undefined") {
+        // Use fallback directly (single load = single count)
+        fallback.src = "/printable-isc.html";
+        fallback.classList.remove("hidden");
+        return;
+      }
 
       try {
-        // Wait for hidden iframe to load
-        await new Promise((res, rej) => {
+        await new Promise((res) => {
           if (hidden.contentWindow?.document?.readyState === "complete") return res();
           hidden.onload = () => res();
-          // defensive timeout
           setTimeout(() => res(), 2500);
         });
 
         const doc = hidden.contentDocument || hidden.contentWindow?.document;
         if (!doc || !doc.body) throw new Error("No iframe document");
 
-        // Increase scale for sharper preview on high-DPI
         const canvas = await html2canvas(doc.body, { scale: 1.2, useCORS: true, backgroundColor: "#ffffff" });
         const dataUrl = canvas.toDataURL("image/png");
-        if (dataUrl) {
-          imgEl.src = dataUrl;
-          imgEl.classList.remove("hidden");
-          // Hide fallback iframe if image succeeded
-          fallback.style.display = "none";
-        }
+        if (!dataUrl) throw new Error("No dataUrl from canvas");
+
+        imgEl.src = dataUrl;
+        imgEl.classList.remove("hidden");
       } catch (e) {
-        // keep fallback iframe visible
+        // If snapshot fails, load fallback iframe now (one load = one count)
+        fallback.src = "/printable-isc.html";
+        fallback.classList.remove("hidden");
         console.warn("[isc-preview] using fallback iframe:", e?.message || e);
       }
     }
-    // Kick it off
     renderIscPreview();
   </script>
 </body>
