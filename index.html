@@ -202,14 +202,18 @@
 
   <!-- Strip 2: Search / Tiles -->
   <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12">
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="text-xl font-bold">Explore Listings</h2>
-      <div class="flex items-center gap-2">
-        <input id="searchBox" type="text" placeholder="Search address, city, or state…" class="border rounded px-3 py-2 w-64">
-        <button id="searchBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Search</button>
+    <!-- Centered search header -->
+    <div class="text-center mb-4">
+      <h2 class="text-xl font-bold mb-2">Explore Listings</h2>
+      <div class="flex items-center justify-center">
+        <div class="flex items-center gap-2">
+          <input id="searchBox" type="text" placeholder="Search city, neighborhood, or ZIP…" class="border rounded px-3 py-2 w-72 sm:w-96">
+          <button id="searchBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Search</button>
+        </div>
       </div>
     </div>
-    <p class="text-sm text-gray-600 mb-4">These tiles are generated from your current session data (or sample data for demo).</p>
+
+    <p class="text-sm text-gray-600 mb-4 text-center">Tiles reflect your last search.</p>
     <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </section>
 
@@ -277,75 +281,14 @@
       showForm('listed');
       localStorage.setItem('selectedPlan', lastSelected.includes('FSBO') ? 'Listed Property Basic' : lastSelected);
 
-      // Phone mask
-      const phoneInput = document.getElementById('agentPhone');
-      const phoneError = document.getElementById('phoneError');
-      phoneInput?.addEventListener('input', function(){
-        let v = this.value.replace(/\D/g,'').slice(0,10);
-        if(v.length>3 && v.length<=6) v = v.replace(/(\d{3})(\d+)/,'$1-$2');
-        else if(v.length>6) v = v.replace(/(\d{3})(\d{3})(\d+)/,'$1-$2-$3');
-        this.value = v;
-        const ok = /^\d{3}-\d{3}-\d{4}$/.test(this.value);
-        phoneInput.classList.toggle('border-red-500', !ok);
-        phoneError?.classList.toggle('hidden', ok);
-      });
-
-      // Sync to ISC
-      ['name','address','apn','brokerage','agent','agentPhone','commission'].forEach(id=>{
-        const el=document.getElementById(id); if(!el) return;
-        el.addEventListener('input', syncAll);
-      });
-      document.getElementById('commissionType')?.addEventListener('change', syncAll);
-
-      function syncAll(){
-        const fullAddr = (document.getElementById('address').value || '').trim();
-        const short = fullAddr.split(',')[0] || '';
-        const nameVal = document.getElementById('name').value || '';
-        const apnVal = document.getElementById('apn').value || '';
-        const phoneVal = document.getElementById('agentPhone').value || '';
-        const brokerageVal = document.getElementById('brokerage').value || '';
-        const agentVal = document.getElementById('agent').value || '';
-        const fsboEmailInput = document.getElementById('fsboEmailInput');
-        const amount = (document.getElementById('commission').value || '').trim();
-        const type = document.getElementById('commissionType').value;
-        const suffix = type === '%' ? 'of the total purchase price' : '';
-        const display = type === '$' ? ('$' + amount) : (amount ? amount + '%' : '');
-
-        // Listed
-        document.getElementById('letterName').textContent = nameVal || '[name]';
-        document.getElementById('letterAddressFull').textContent = fullAddr || '[full address]';
-        if (apnVal.trim()) {
-          document.getElementById('letterAPN').textContent = apnVal;
-          document.getElementById('apnSpanListed').classList.remove('hidden');
-        } else {
-          document.getElementById('apnSpanListed').classList.add('hidden');
-        }
-        document.getElementById('letterAddressShort1').textContent = short || '[short address]';
-        document.getElementById('letterAddressShort2').textContent = short || '[short address]';
-        document.getElementById('letterBrokerage').textContent = brokerageVal || '[listing brokerage]';
-        document.getElementById('letterAgent').textContent = agentVal || '[listing agent]';
-        document.getElementById('letterAgentPhone').textContent = phoneVal || '[agent phone]';
-        document.getElementById('letterCommissionDisplay').textContent = display || '[commission]';
-        document.getElementById('commissionSuffix').textContent = display ? (' ' + suffix) : '';
-        document.getElementById('signatureName').textContent = nameVal || '[Name]';
-
-        // FSBO
-        document.getElementById('letterNameFSBO').textContent = nameVal || '[name]';
-        document.getElementById('letterAddressFullFSBO').textContent = fullAddr || '[full address]';
-        document.getElementById('letterAddressShort1FSBO').textContent = short || '[short address]';
-        document.getElementById('letterAddressShort2FSBO').textContent = short || '[short address]';
-        document.getElementById('letterAPNFSBO').textContent = apnVal || '[Parcel # / Pin # / Tax ID # / Folio # / APN #]';
-        document.getElementById('fsboPhone').textContent = phoneVal || '[owner/seller phone number]';
-        document.getElementById('fsboEmail').textContent = (fsboEmailInput && fsboEmailInput.value) || '[owner/seller email]';
-        document.getElementById('letterCommissionDisplayFSBO').textContent = display || '[commission]';
-        document.getElementById('commissionSuffixFSBO').textContent = display ? (' ' + suffix) : '';
-        document.getElementById('signatureNameFSBO').textContent = nameVal || '[Name]';
-      }
-      syncAll();
+      // Prefill last search and filter tiles
+      const lastSearch = localStorage.getItem('lastSearch') || '';
+      const box = document.getElementById('searchBox');
+      if (box) box.value = lastSearch;
 
       // ---- Strip 2 tiles + search ----
       buildTilesDataset();
-      renderStrip2Tiles();
+      renderStrip2Tiles(lastSearch);
       wireSearch();
     });
 
@@ -403,7 +346,7 @@
       return null;
     }
 
-    // >>> Tile renderer updated per your instructions <<<
+    // UPDATED TILE: centered search uses same renderer
     function renderTile(data){
       const {
         address="[full address]",
@@ -421,27 +364,12 @@
         agentPhone
       } = data || {};
 
-      // Commission math + labels
       const calc = commissionDollars(price, commission, commissionType);
-      const priceLabel  = fmtUSD(price);
-      const rightLabel  = `Commission ${commission ? (commissionType==='%' ? `${commission}%` : fmtUSD(commission)) : '—'} | ${calc!=null ? fmtUSD(calc) : '$—'}`;
+      const line1Left  = fmtUSD(price);
+      const line1Mid   = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
+      const line1Right = (calc!=null) ? `$${calc.toLocaleString()}` : '—';
 
       const img = (photos && photos.length ? photos[primaryIndex||0] : "");
-
-      // Heart (favorites) helpers
-      const FAV_KEY='gcFavorites';
-      function getFavs(){ try{ const v=JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); return Array.isArray(v)?v:[]; } catch{return[]} }
-      function setFavs(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a||[])); } catch{} }
-      function isFav(id){ return getFavs().includes(id); }
-      function toggleFav(id){ const a=getFavs(); const i=a.indexOf(id); if(i>=0) a.splice(i,1); else a.push(id); setFavs(a); return a.includes(id); }
-      function heartSvg(active){
-        return active
-          ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
-          : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
-      }
-
-      const favId = (address||'').toLowerCase();
-      const favActive = isFav(favId);
 
       const card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
@@ -454,42 +382,20 @@
         <div class="relative">
           <img class="gc-photo" src="${img || ''}" alt="Listing photo">
           ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ``}
-          <button type="button" data-like class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow hover:bg-white" aria-label="Like" title="Save">
-            ${heartSvg(favActive)}
-          </button>
         </div>
         <div class="p-3 space-y-1">
-          <!-- Top line: bigger font; left price, right red Commission -->
           <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
-            <div class="truncate">${priceLabel}</div>
-            <div class="truncate text-red-600">${rightLabel}</div>
+            <div class="truncate">${line1Left}</div>
+            <div class="truncate text-red-600">Commission ${line1Mid} | ${line1Right}</div>
           </div>
-
-          <!-- Second line: "3 bds | 2 ba | 2,000 sqft | Active" -->
-          <div class="text-[12px] text-gray-700">
-            ${(bedrooms ?? '—')} bds | ${(bathrooms ?? '—')} ba | ${sqft ? Number(sqft).toLocaleString() : '—'} sqft | ${status}
-          </div>
-
-          <!-- Third line: full address -->
+          <div class="text-[12px] text-gray-700">${bedrooms ?? '—'} bds | ${bathrooms ?? '—'} ba | ${sqft ? Number(sqft).toLocaleString() : '—'} sqft | ${status}</div>
           <div class="text-sm font-medium">${address}</div>
-
-          <!-- Fourth line: Brokerage — Agent — Phone -->
           <div class="text-[12px] text-gray-600">
             ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}
             ${agent ? ' — '+agent : ''}${agentPhone ? ' — '+agentPhone : ''}
           </div>
         </div>
       `;
-
-      // Heart click (don’t navigate)
-      const likeBtn = card.querySelector('[data-like]');
-      likeBtn?.addEventListener('click', (e)=>{
-        e.preventDefault();
-        e.stopPropagation();
-        const now = toggleFav(favId);
-        likeBtn.innerHTML = heartSvg(now);
-      });
-
       return card;
     }
 
@@ -529,16 +435,16 @@
           bannerText: "Open Sunday 1–4",
           photos: ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop"],
           primaryIndex: 0, status: "Active",
-          brokerage: "Pacific Estates", agent: "Jordan Crisp", agentPhone: "(949) 555-1212",
-          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000
+          brokerage: "Pacific Estates", agent: "Jordan Crisp",
+          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000, agentPhone: "(949) 555-1212"
         },
         {
           address: "14 Maple Ave, Montclair, NJ 07042",
           price: 925000, commission: 25000, commissionType: '$',
           photos: ["https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop"],
           primaryIndex: 0, status: "In Contract",
-          brokerage: "HomeWorks Realty", agent: "A. Brooks", agentPhone: "(973) 555-2121",
-          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400
+          brokerage: "HomeWorks Realty", agent: "A. Brooks",
+          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400, agentPhone: "(973) 555-2121"
         },
         {
           address: "1020 Cedar Dr, Austin, TX 78704",
@@ -546,7 +452,7 @@
           bannerText: "Hot Home",
           photos: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop"],
           primaryIndex: 0, status: "Active",
-          brokerage: "", agent: "", agentPhone: "",
+          brokerage: "", agent: "",
           plan: "FSBO Plus", bedrooms: 3, bathrooms: 2, sqft: 1680
         }
       ];
@@ -558,11 +464,13 @@
       const grid = document.getElementById('tileGrid');
       grid.innerHTML = '';
       const q = (filterText || '').toLowerCase();
+
       const list = q
         ? _tilesData.filter(d => (d.address||'').toLowerCase().includes(q))
         : _tilesData;
+
       if (!list.length) {
-        grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
+        grid.innerHTML = `<div class="text-sm text-gray-500 text-center">No results. Try a different search.</div>`;
         return;
       }
       list.forEach(d => grid.appendChild(renderTile(d)));
@@ -571,9 +479,17 @@
     function wireSearch(){
       const box = document.getElementById('searchBox');
       const btn = document.getElementById('searchBtn');
-      const doSearch = () => renderStrip2Tiles(box.value);
-      btn.addEventListener('click', doSearch);
-      box.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); }});
+
+      const go = () => {
+        const q = (box.value || '').trim();
+        localStorage.setItem('lastSearch', q);
+        if (!q) { renderStrip2Tiles(''); return; }
+        // Route to /search.html?q=…
+        window.location.href = `/search.html?q=${encodeURIComponent(q)}`;
+      };
+
+      btn.addEventListener('click', go);
+      box.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); }});
     }
   </script>
 </body>
