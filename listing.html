@@ -10,7 +10,7 @@
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"/>
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
 
-  <!-- html2canvas (kept for future, not used now) -->
+  <!-- html2canvas (for ISC image preview) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
@@ -18,7 +18,6 @@
     .tile-photo { width:100%; height: 20rem; object-fit: cover; background:#e5e7eb; }
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
     .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
-    .fact-pill { font-size: 12px; background:#f3f4f6; padding:2px 8px; border-radius:9999px; }
     .status-active { background:#d1fae5; color:#047857; }
     .status-contract { background:#fef3c7; color:#92400e; }
     .status-sold { background:#ffe4e6; color:#be123c; }
@@ -63,40 +62,34 @@
         <a id="tileClick" href="#" class="absolute inset-0" aria-label="Open full listing detail"></a>
       </article>
 
-      <!-- Middle: Map (no title, no search UI; fills box) -->
+      <!-- Middle: Map only (fills box) -->
       <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-4">
         <div id="mapCanvas" class="h-72 lg:h-80 rounded bg-gray-100"></div>
       </aside>
 
-      <!-- Right: ISC preview (visible immediately) -->
+      <!-- Right: ISC preview (image visible immediately; click opens full doc) -->
       <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-4">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-semibold">ISC</h2>
           <span id="viewCounter" class="text-xs text-gray-500">0 views</span>
         </div>
         <div class="mt-2 border rounded overflow-hidden bg-white">
-          <!-- Show live ISC immediately -->
-          <iframe id="iscIframeVisible" src="/printable-isc.html" class="w-full h-72 lg:h-80 bg-white"></iframe>
+          <a href="/printable-isc.html" target="_blank" class="block">
+            <img id="iscPreviewImg" alt="ISC preview" class="w-full h-72 lg:h-80 object-contain"/>
+          </a>
         </div>
-        <a href="/printable-isc.html" target="_blank"
-           class="mt-3 inline-flex items-center justify-center w-full text-center bg-gray-700 text-white py-2 rounded text-sm">
-          Open Full ISC
-        </a>
+        <!-- Hidden iframe used once to render the preview image (counts one ISC view) -->
+        <iframe id="iscIframeHidden" src="/printable-isc.html" class="hidden"></iframe>
       </aside>
     </section>
 
     <!-- DETAIL BODY -->
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left 2/3: Details -->
+      <!-- Left 2/3: Details (duplicates removed: Address, Price, Commission, Est. Commission) -->
       <div class="lg:col-span-2 space-y-6">
-        <!-- Quick Facts -->
         <div class="bg-white rounded-2xl shadow p-5">
           <h3 class="text-lg font-semibold mb-3">Listing Details</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div><span class="text-gray-500">Address:</span> <span id="dAddress" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Listing Price:</span> <span id="dPrice" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Commission (%):</span> <span id="dCommissionPct" class="font-medium"></span></div>
-            <div><span class="text-gray-500">Est. Commission ($):</span> <span id="dCommissionAmt" class="font-medium"></span></div>
             <div><span class="text-gray-500">BDS:</span> <span id="dBeds" class="font-medium"></span></div>
             <div><span class="text-gray-500">BA:</span> <span id="dBaths" class="font-medium"></span></div>
             <div><span class="text-gray-500">SQFT:</span> <span id="dSqft" class="font-medium"></span></div>
@@ -167,11 +160,10 @@
     const agentListing = getJSON('agentListing', {});
     const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
 
-    // Choose address: param > formData
     const fullAddress = decodeURIComponent(addrParam || formData.address || "[full address]");
     const shortAddress = (fullAddress||'').split(',')[0] || "[short address]";
 
-    // Build tile data
+    // Tile data
     const price = agentListing.price ?? "";
     const cRaw = agentListing.commission ?? formData.commission ?? "";
     const cType= agentListing.commissionType ?? formData.commissionType ?? "%";
@@ -189,12 +181,10 @@
     const agentName = formData.agent || (plan.includes("FSBO") ? "" : "[listing agent]");
     const agentPhone = formData.agentPhone || (plan.includes("FSBO") ? "" : "[agent phone]");
 
-    // ---- Paint tile (left) ----
+    // Paint tile
     (function paintTile(){
       $("tilePhoto").src = photo || "";
       if (banner) { $("tileBanner").textContent = banner; $("tileBanner").classList.remove('hidden'); }
-
-      // heart state
       const FAV_KEY='gcFavorites';
       function getFavs(){ try{ const v=JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); return Array.isArray(v)?v:[]; } catch{return[]} }
       function setFavs(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a||[])); } catch{} }
@@ -209,7 +199,6 @@
       $("tileHeart").innerHTML = heartSvg(isFav(favId));
       $("tileHeart").onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); $("tileHeart").innerHTML = heartSvg(toggleFav(favId)); };
 
-      // Top lines
       $("tilePrice").textContent = money(price);
       $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
       $("tileFacts").textContent = `${bds} bds | ${ba} ba | ${sqft} sqft | ${status}`;
@@ -218,26 +207,8 @@
       $("tileClick").href = `/listing.html?addr=${encodeURIComponent(fullAddress)}`;
     })();
 
-    // ---- Mapbox: basic geocode + marker ----
+    // Mapbox: geocode + marker
     let map, marker;
-    function initMap(centerLngLat) {
-      try {
-        map = new mapboxgl.Map({
-          container: 'mapCanvas',
-          style: 'mapbox://styles/mapbox/streets-v12',
-          center: centerLngLat || [-117.7854, 33.5427],
-          zoom: centerLngLat ? 14 : 12
-        });
-        map.addControl(new mapboxgl.NavigationControl());
-        if (centerLngLat) {
-          marker = new mapboxgl.Marker().setLngLat(centerLngLat).addTo(map);
-        }
-      } catch (e) {
-        document.getElementById('mapCanvas').innerHTML =
-          '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
-      }
-    }
-
     async function geocode(q) {
       if (!MAPBOX_TOKEN) return null;
       try {
@@ -247,70 +218,55 @@
         return f ? f.center : null; // [lng, lat]
       } catch { return null; }
     }
-
     (async function bootMap(){
-      let center = null;
-      if (MAPBOX_TOKEN) {
-        center = await geocode(fullAddress);
+      try {
+        if (MAPBOX_TOKEN && mapboxgl) {
+          const center = await geocode(fullAddress) || [-117.7854, 33.5427];
+          map = new mapboxgl.Map({ container:'mapCanvas', style:'mapbox://styles/mapbox/streets-v12', center, zoom:14 });
+          map.addControl(new mapboxgl.NavigationControl());
+          marker = new mapboxgl.Marker().setLngLat(center).addTo(map);
+        } else {
+          document.getElementById('mapCanvas').innerHTML =
+            '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
+        }
+      } catch(e){
+        document.getElementById('mapCanvas').innerHTML =
+          '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
       }
-      initMap(center);
     })();
 
-    // ---- Detail Quick Facts ----
-    $("dAddress").textContent = fullAddress;
-    $("dPrice").textContent   = money(price);
-    $("dCommissionPct").textContent = cPctLabel;
-    $("dCommissionAmt").textContent = commissionAmt(price, cRaw = (agentListing.commission ?? formData.commission ?? ""), cType= (agentListing.commissionType ?? formData.commissionType ?? "%")) ? money(commissionAmt(price, cRaw, cType)) : "$—";
-    $("dBeds").textContent = bds;
-    $("dBaths").textContent = ba;
-    $("dSqft").textContent = sqft;
-    $("dStatus").textContent = status;
-    $("dYear").textContent = agentListing.yearBuilt ?? "—";
-    $("dLot").textContent  = agentListing.lotSize ?? "—";
-    $("dType").textContent = agentListing.propertyType ?? "—";
-
-    // Description
-    const desc = (agentListing.description || "").trim();
-    if (desc) {
-      $("dDescription").textContent = desc;
-      $("descCard").classList.remove("hidden");
-    }
-
-    // Gallery
-    (function paintGallery(){
-      const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
-      const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
-      const otherPhotos = photos.filter((_, i) => i !== primaryIndex);
-      if (!otherPhotos.length) return;
-      const grid = $("galleryGrid");
-      otherPhotos.forEach(src => {
-        const img = document.createElement("img");
-        img.src = src; img.alt = "Listing photo";
-        img.className = "w-full h-32 object-cover rounded bg-gray-100";
-        grid.appendChild(img);
-      });
-      $("galleryCard").classList.remove("hidden");
-    })();
-
-    // Contact blocks
-    const isFSBO = plan.includes("FSBO");
-    if (isFSBO) {
-      $("cOwnerPhone").textContent = formData.agentPhone || "[owner/seller phone]";
-      $("cOwnerEmail").textContent = formData.fsboEmail || "[owner/seller email]";
-      $("fsboContact").classList.remove("hidden");
-    } else {
-      $("cBrokerage").textContent = formData.brokerage || "[listing brokerage]";
-      $("cAgent").textContent     = formData.agent || "[listing agent]";
-      $("cAgentPhone").textContent= formData.agentPhone || "[agent phone]";
-      $("listedContact").classList.remove("hidden");
-    }
-
-    // Listing View Counter (per address)
+    // Listing View Counter
     (function bumpViews(){
       const key = "viewCount:" + (fullAddress||'').toLowerCase();
       let n = Number(localStorage.getItem(key)||0); n += 1;
       localStorage.setItem(key, String(n));
-      $("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
+      document.getElementById("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
+    })();
+
+    // ISC preview image rendering from hidden iframe (increments ISC counter once)
+    (async function renderIscPreview(){
+      const hidden = document.getElementById('iscIframeHidden');
+      const imgEl  = document.getElementById('iscPreviewImg');
+      if (!hidden || typeof html2canvas === "undefined") {
+        // Fallback: just show the iframe in place of image (not requested now)
+        imgEl.alt = "ISC preview unavailable";
+        return;
+      }
+      try {
+        await new Promise((res) => {
+          if (hidden.contentWindow?.document?.readyState === "complete") return res();
+          hidden.onload = () => res();
+          setTimeout(() => res(), 2500);
+        });
+        const doc = hidden.contentDocument || hidden.contentWindow?.document;
+        if (!doc || !doc.body) throw new Error("No iframe document");
+        const canvas = await html2canvas(doc.body, { scale: 1.1, useCORS: true, backgroundColor:"#ffffff" });
+        const dataUrl = canvas.toDataURL("image/png");
+        if (dataUrl) imgEl.src = dataUrl;
+      } catch(e){
+        imgEl.alt = "ISC preview unavailable";
+        console.warn("[isc-preview] snapshot failed:", e?.message || e);
+      }
     })();
   </script>
 </body>
