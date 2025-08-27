@@ -1,44 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dashboard | GuaranteedCommission.com</title>
+  <title>My Dashboard | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .font-cursive { font-family: 'Brush Script MT', cursive; }
+    .pill { font-size: 11px; padding: 2px 8px; border-radius: 9999px; background:#eef2ff; color:#3730a3; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-  <div class="max-w-5xl mx-auto mt-10">
-    <h1 class="text-3xl font-bold mb-6 text-center">My Dashboard</h1>
 
-    <!-- Placeholder Listings -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="bg-white p-4 rounded shadow">
-        <h2 class="text-lg font-semibold mb-2">251 Viejo St, Laguna Beach</h2>
-        <p><strong>Price:</strong> $2,395,000</p>
-        <p><strong>Commission:</strong> 2.5%</p>
-        <p><strong>Status:</strong> Active</p>
-        <div class="mt-4 flex space-x-2">
-          <button class="bg-blue-600 text-white px-3 py-1 rounded">Edit</button>
-          <button class="bg-yellow-500 text-white px-3 py-1 rounded">Change Agent</button>
-          <button class="bg-red-600 text-white px-3 py-1 rounded">Cancel</button>
-        </div>
+  <!-- Header -->
+  <header class="bg-white shadow">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
+      <div class="text-center">
+        <h1 class="text-2xl font-bold">My Dashboard</h1>
+        <p class="text-xs text-gray-600">Welcome back to GuaranteedCommission.com</p>
       </div>
-
-      <div class="bg-white p-4 rounded shadow">
-        <h2 class="text-lg font-semibold mb-2">1041 Marine Drive, Laguna Beach</h2>
-        <p><strong>Price:</strong> $18,800,000</p>
-        <p><strong>Commission:</strong> 3%</p>
-        <p><strong>Status:</strong> Active</p>
-        <div class="mt-4 flex space-x-2">
-          <button class="bg-blue-600 text-white px-3 py-1 rounded">Edit</button>
-          <button class="bg-yellow-500 text-white px-3 py-1 rounded">Change Agent</button>
-          <button class="bg-red-600 text-white px-3 py-1 rounded">Cancel</button>
-        </div>
+      <div class="flex items-center gap-2">
+        <span id="whoLine" class="text-xs text-gray-600 hidden"></span>
+        <button id="logoutBtn" class="text-sm px-3 py-1 rounded border">Log out</button>
       </div>
     </div>
+  </header>
 
-    <p class="mt-10 text-center text-sm text-gray-600">These are sample placeholders. We will link these to real Firestore data next.</p>
-  </div>
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-8">
+
+    <!-- Top actions -->
+    <section class="bg-white rounded-2xl shadow p-5">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold">My Listings</h2>
+          <p class="text-sm text-gray-600">Edit details, manage photos, or preview your public page.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="addListingBtn" class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700">Add Another Property</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Listings grid -->
+    <section id="listingsSection" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></section>
+
+    <!-- (Optional) Saved searches for sellers — hidden for now -->
+    <section id="savedSearchesSection" class="hidden bg-white rounded-2xl shadow p-5">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Saved Searches</h2>
+        <a href="/search.html" class="text-sm text-blue-600 hover:underline">New Search</a>
+      </div>
+      <div id="savedSearchesList" class="mt-3 text-sm text-gray-600">No saved searches yet.</div>
+    </section>
+
+  </main>
+
+  <script>
+    // ------------- helpers -------------
+    const $ = (id) => document.getElementById(id);
+    const safeJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+    const fmtUSD = (v) => { const n=Number(v||0); return n?("$"+n.toLocaleString()):"$—"; };
+    const commissionUSD = (price, val, type) => {
+      const p=Number(price||0), c=Number(val||0);
+      if(!c) return null;
+      if (type==='$') return Math.round(c);
+      if (p) return Math.round(p*(c/100));
+      return null;
+    };
+    const copy = async (text) => {
+      try{ await navigator.clipboard.writeText(text); alert('Link copied to clipboard.'); }
+      catch{ prompt('Copy this link:', text); }
+    };
+
+    // ------------- data -------------
+    const userEmail = localStorage.getItem('loggedInEmail') || '';
+    const userRole = localStorage.getItem('userRole') || '';
+    const formData = safeJSON('formData', {});       // seller flow (Box 2)
+    const agentListing = safeJSON('agentListing', {}); // shared listing details (price, photos, etc.)
+    const selectedPlan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+
+    // ------------- paint who line -------------
+    (function paintWho(){
+      if (!userEmail) return;
+      const el = $('whoLine');
+      el.textContent = `${userEmail} ${userRole ? '• ' + userRole.replace('_',' ') : ''}`;
+      el.classList.remove('hidden');
+    })();
+
+    // ------------- add listing handler -------------
+    $('addListingBtn').addEventListener('click', () => {
+      // Send seller back to Box 2 to start a new listing flow
+      // (Optionally we can clear prior form, but safer to prefill and let them edit)
+      localStorage.setItem('selectedPlan', 'Listed Property Basic');
+      window.location.href = '/index.html#strip2Search';
+      window.scrollTo(0,0);
+    });
+
+    // ------------- compose "my listings" -------------
+    // MVP: use the single in-browser listing (formData + agentListing) if present
+    const cards = [];
+
+    (function buildCardFromLocal(){
+      if (!formData || !formData.address) return;
+      const address = formData.address;
+      const short = address.split(',')[0] || address;
+
+      const price = agentListing.price ?? '';
+      const cType = agentListing.commissionType ?? formData.commissionType ?? '%';
+      const cVal  = agentListing.commission ?? formData.commission ?? '';
+      const cAmt  = commissionUSD(price, cVal, cType);
+
+      const bds = agentListing.bedrooms ?? '—';
+      const ba  = agentListing.bathrooms ?? '—';
+      const sqft= agentListing.sqft ? Number(agentListing.sqft).toLocaleString() : '—';
+      const pType = agentListing.propertyType || '';
+      const status = agentListing.status || 'Draft';
+
+      const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
+      const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
+      const hero = photos[primaryIndex] || '';
+
+      // view counters
+      const listKey = 'viewCount:' + address.toLowerCase();
+      const iscKey  = 'iscViews:'  + address.toLowerCase();
+      const views   = Number(localStorage.getItem(listKey) || 0);
+      const iscViews= Number(localStorage.getItem(iscKey)  || 0);
+
+      const url = '/listing.html?addr=' + encodeURIComponent(address);
+      const iscUrl = '/printable-isc.html';
+
+      // card HTML
+      const card = document.createElement('article');
+      card.className = 'bg-white rounded-2xl shadow overflow-hidden';
+      card.innerHTML = `
+        <div class="relative">
+          <img src="${hero}" alt="Listing photo" class="w-full h-44 object-cover bg-gray-100">
+          <div class="absolute top-2 left-2 pill"> ${selectedPlan} </div>
+          ${agentListing.bannerText ? `<div class="absolute top-2 right-2 text-xs bg-black/80 text-white px-2 py-1 rounded"> ${agentListing.bannerText} </div>` : ``}
+        </div>
+        <div class="p-4 space-y-2">
+          <div class="flex items-center justify-between text-sm">
+            <div class="font-bold">${fmtUSD(price)}</div>
+            <div class="text-red-600 font-semibold">Commission ${cVal ? (cType==='%' ? cVal+'%' : fmtUSD(cVal)) : '—'} ${cAmt!=null ? `| ${fmtUSD(cAmt)}` : ''}</div>
+          </div>
+          <div class="text-xs text-gray-700">
+            ${bds} bds | ${ba} ba | ${sqft} sqft${pType ? ' | ' + pType : ''} | ${status}
+          </div>
+          <div class="text-sm font-medium">${address}</div>
+
+          <div class="flex flex-wrap items-center gap-2 text-xs text-gray-600 mt-2">
+            <span class="px-2 py-1 rounded bg-gray-100">Views: ${views}</span>
+            <span class="px-2 py-1 rounded bg-gray-100">ISC Views: ${iscViews}</span>
+          </div>
+
+          <div class="mt-3 grid grid-cols-2 gap-2">
+            <a href="${url}" class="text-center px-3 py-2 rounded bg-gray-700 text-white text-sm">Preview</a>
+            <a href="/seller-detail.html" class="text-center px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit Details</a>
+            <a href="${iscUrl}" class="text-center px-3 py-2 rounded bg-gray-100 text-sm col-span-1">View / Download ISC</a>
+            <button class="px-3 py-2 rounded bg-gray-100 text-sm col-span-1" data-copy="${url}">Copy Share Link</button>
+          </div>
+        </div>
+      `;
+      // wire copy link
+      card.querySelectorAll('[data-copy]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const link = e.currentTarget.getAttribute('data-copy');
+          await copy(link);
+        });
+      });
+
+      cards.push(card);
+    })();
+
+    // If no local listing, show an empty-state
+    (function paintListings(){
+      const host = $('listingsSection');
+      host.innerHTML = '';
+      if (!cards.length) {
+        host.innerHTML = `
+          <div class="bg-white rounded-2xl shadow p-8 text-center col-span-full">
+            <p class="text-sm text-gray-600">You don’t have any listings yet.</p>
+            <button id="addFirstBtn" class="mt-3 px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700">Add Your First Property</button>
+          </div>
+        `;
+        $('addFirstBtn')?.addEventListener('click', () => {
+          localStorage.setItem('selectedPlan', 'Listed Property Basic');
+          window.location.href = '/index.html#strip2Search';
+        });
+        return;
+      }
+      cards.forEach(c => host.appendChild(c));
+    })();
+
+    // ------------- logout -------------
+    $('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('userRole');
+      window.location.href = '/index.html';
+    });
+  </script>
 </body>
 </html>
-
