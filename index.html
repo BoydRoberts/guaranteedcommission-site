@@ -60,7 +60,7 @@
           </div>
           <div>
             <label class="block text-sm font-semibold">Phone</label>
-            <input id="invPhone" type="tel" class="w-full border rounded px-2 py-1" placeholder="123-456-7890" required>
+            <input id="invPhone" type="tel" class="w-full border rounded px-2 py-1" placeholder="Phone" required>
           </div>
         </div>
 
@@ -135,7 +135,7 @@
       <h2 class="text-lg font-bold mb-4">Press Inquiry Form</h2>
       <input type="text" id="pressName" placeholder="Full Name" class="w-full border p-1 mb-2 rounded">
       <input type="text" id="pressOrg" placeholder="Organization" class="w-full border p-1 mb-2 rounded">
-      <input type="tel" id="pressPhone" placeholder="Phone Number" class="w-full border p-1 mb-2 rounded">
+      <input type="tel" id="pressPhone" placeholder="Phone" class="w-full border p-1 mb-2 rounded">
       <input type="email" id="pressEmail" placeholder="Email Address" class="w-full border p-1 mb-4 rounded">
       <button onclick="submitPressForm()" class="w-full bg-blue-600 text-white py-2 rounded">Submit</button>
       <p id="pressConfirmation" class="mt-4 text-green-600 font-semibold text-center hidden">We will be in touch.</p>
@@ -185,7 +185,7 @@
       </ul>
     </div>
 
-    <!-- Box 2 -->
+    <!-- Box 2 (Form) -->
     <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
       <h2 id="formTitle" class="text-lg font-bold mb-4 text-center">Listed Property Communication Form</h2>
       <form id="listingForm" class="space-y-2" autocomplete="off">
@@ -199,7 +199,7 @@
 
         <!-- Phone/Broker/Agent -->
         <div id="listedPhoneRow" class="relative">
-          <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
+          <input type="tel" id="agentPhone" placeholder="Phone" class="w-full border p-1 rounded">
           <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (123-456-7890)</span>
         </div>
 
@@ -229,7 +229,7 @@
       </form>
     </div>
 
-    <!-- Box 3 -->
+    <!-- Box 3 (ISC wording preview) -->
     <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
       <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
 
@@ -277,7 +277,6 @@
 
   <!-- Strip 2: Search / Tiles -->
   <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12">
-    <!-- Centered search header -->
     <div class="text-center mb-4">
       <div class="flex items-center justify-center">
         <div class="flex items-center gap-2">
@@ -290,6 +289,15 @@
     <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </section>
 
+  <!-- Footer with centered Press button -->
+  <footer class="bg-white border-t">
+    <div class="max-w-7xl mx-auto px-4 py-6 flex items-center justify-center">
+      <button onclick="openPressModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-2 rounded">
+        Press Inquiry
+      </button>
+    </div>
+  </footer>
+
   <!-- Scripts -->
   <script>
     /* Header modals */
@@ -299,7 +307,7 @@
     function closePressModal(){ document.getElementById('pressModal').classList.add('hidden'); }
     function submitPressForm(){ document.getElementById('pressConfirmation').classList.remove('hidden'); }
 
-    // ---- Investor Certification handler (emails founder@) ----
+    // ---- Investor Certification handler ----
     (function wireInvestorForm(){
       const form = document.getElementById('investorForm'); if (!form) return;
       const confirmEl = document.getElementById('investorConfirmation');
@@ -350,7 +358,6 @@
         ].join('\n');
 
         const mailto = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent('Accredited Investor Certification')}&body=${encodeURIComponent(bLines)}`;
-
         try { window.location.href = mailto; } catch {}
         if (confirmEl) confirmEl.classList.remove('hidden');
       });
