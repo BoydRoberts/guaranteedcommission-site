@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Local Professionals | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .zipbox { letter-spacing: 2px; }
+    .hint { font-size: 11px; color:#6b7280; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
 
@@ -18,16 +22,15 @@
 
   <main class="max-w-4xl mx-auto px-4 py-6">
     <section class="bg-white rounded-2xl shadow p-5">
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold">Become a Local Professional</h2>
-        <span class="text-xs text-green-700 font-semibold text-right">
-          $5 per month per ZIP code | Maximum 3 ZIP codes | Your information displayed on all listing detail pages in the specified ZIP codes in the Local Professional section | 3 real estate agents and 1 lender displayed per ZIP code.
-        </span>
-      </div>
+      <!-- Top heading exactly as requested -->
+      <h2 class="text-2xl font-bold text-center">Become a Local Professional</h2>
+      <p class="text-sm text-center text-gray-700 mt-1">
+        $5 per month per ZIP code | Maximum 3 ZIP codes | Your information displayed on all listing detail pages in the specified ZIP codes in the Local Professional section | 3 real estate agents and 1 lender displayed per ZIP code.
+      </p>
 
-      <div id="status" class="hidden mt-3 text-sm rounded-lg p-3"></div>
+      <div id="status" class="hidden mt-4 text-sm rounded-lg p-3"></div>
 
-      <form id="proForm" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4" autocomplete="off">
+      <form id="proForm" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4" autocomplete="off">
         <div>
           <label class="block text-sm font-semibold">I am a</label>
           <select id="role" class="w-full border rounded px-3 py-2" required>
@@ -58,10 +61,15 @@
           <input id="license" class="w-full border rounded px-3 py-2" placeholder="DRE / NMLS (if applicable)">
         </div>
 
-        <div>
-          <label class="block text-sm font-semibold">ZIP Codes (max 3)</label>
-          <input id="zips" class="w-full border rounded px-3 py-2" placeholder="e.g., 92651, 92652" required>
-          <p class="text-xs text-gray-500 mt-1">Maximum 3 ZIPs, comma-separated.</p>
+        <!-- NEW: three individual ZIP inputs for reliability -->
+        <div class="md:col-span-2">
+          <label class="block text-sm font-semibold mb-1">ZIP Codes (up to 3)</label>
+          <div class="grid grid-cols-3 gap-3">
+            <input id="zip1" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #1">
+            <input id="zip2" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #2">
+            <input id="zip3" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #3">
+          </div>
+          <p class="hint mt-2">Enter 5-digit ZIP codes. You can add up to three.</p>
         </div>
 
         <div class="md:col-span-2">
@@ -71,7 +79,7 @@
         </div>
 
         <div class="md:col-span-2 flex items-center justify-between mt-2">
-          <div class="text-sm text-gray-600">Your total: <span id="total">$0</span> / month</div>
+          <div class="text-sm text-gray-700">Your total: <span id="total">$0</span> / month</div>
           <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">
             Proceed to Checkout
           </button>
@@ -97,81 +105,4 @@
                         : 'mt-3 text-sm rounded-lg p-3 bg-red-50 text-red-700';
       el.textContent = msg;
     }
-    function money(n){ return '$' + Number(n||0).toLocaleString(); }
-    function formatPhoneDisplay(s){
-      const d = String(s||'').replace(/\D/g,'').slice(0,10);
-      return d.length===10 ? `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}` : (s||'');
-    }
-
-    // price logic: $5 per month per zip (max 3)
-    function compute(){
-      const rawZ = ($('zips').value||'').split(',').map(z=>z.trim()).filter(Boolean);
-      const uniq = Array.from(new Set(rawZ)).slice(0,3);
-      $('zips').value = uniq.join(', ');
-      $('total').textContent = money(uniq.length * 5);
-      return uniq;
-    }
-    ['zips','role','name','email','phone','license'].forEach(id=>{
-      const el=$(id); if(el) el.addEventListener('input', compute);
-    });
-
-    // photo preview
-    $('photo').addEventListener('change', async (e)=>{
-      const f = e.target.files[0]; if(!f) return;
-      const reader = new FileReader();
-      reader.onload = () => { $('photoPreview').innerHTML = `<img src="${reader.result}" alt="Photo" class="h-24 w-24 object-cover rounded">`; };
-      reader.readAsDataURL(f);
-    });
-
-    // checkout
-    $('checkoutBtn').addEventListener('click', async ()=>{
-      const role = $('role').value.trim();
-      const name = $('name').value.trim();
-      const email= $('email').value.trim();
-      const phone= formatPhoneDisplay($('phone').value.trim());
-      const license = $('license').value.trim();
-      const zips = compute();
-
-      if (!role || !name || !email || !phone || !zips.length) {
-        setStatus('Please complete role, name, email, phone, and at least one ZIP.', false);
-        return;
-      }
-
-      // Save a local application draft (for post-success profile)
-      const app = { role, name, email, phone, license, zips, createdAt: Date.now() };
-      localStorage.setItem('localProApplication', JSON.stringify(app));
-
-      try {
-        const payload = {
-          priceId: "price_localpro_monthly_5usd", // TODO: replace with your Stripe recurring price ID
-          quantity: zips.length,
-          successUrl: window.location.origin + "/local-professionals.html?status=success",
-          cancelUrl:  window.location.href
-        };
-        const resp = await fetch("/api/create-subscription-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        const out = await resp.json();
-        if (!resp.ok) throw new Error(out.error || "Could not start checkout.");
-        if (out.url) { window.location.href = out.url; return; }
-        setStatus("Could not start checkout (no URL returned).", false);
-      } catch(e){
-        setStatus(e.message || "Checkout error.", false);
-      }
-    });
-
-    // compute totals on load so Proceed shows correct monthly total
-    document.addEventListener('DOMContentLoaded', compute);
-
-    // handle success banner
-    (function(){
-      const u=new URL(location.href);
-      if (u.searchParams.get('status')==='success'){
-        $('thanks').classList.remove('hidden');
-      }
-    })();
-  </script>
-</body>
-</html>
+    function money(n){ return '$'
