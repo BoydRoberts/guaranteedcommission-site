@@ -20,12 +20,10 @@
     <section class="bg-white rounded-2xl shadow p-5">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold">Become a Local Professional</h2>
-        <span class="text-xs text-green-700 font-semibold">Intro price: $5 / month / ZIP (max 3 ZIPs)</span>
+        <span class="text-xs text-green-700 font-semibold text-right">
+          $5 per month per ZIP code | Maximum 3 ZIP codes | Your information displayed on all listing detail pages in the specified ZIP codes in the Local Professional section | 3 real estate agents and 1 lender displayed per ZIP code.
+        </span>
       </div>
-
-      <p class="text-sm text-gray-600 mt-2">
-        Get featured to buyers and agents browsing GuaranteedCommission.com in your ZIPs. Limited to <strong>3 agents</strong> and <strong>1 lender</strong> per ZIP.
-      </p>
 
       <div id="status" class="hidden mt-3 text-sm rounded-lg p-3"></div>
 
@@ -34,9 +32,9 @@
           <label class="block text-sm font-semibold">I am a</label>
           <select id="role" class="w-full border rounded px-3 py-2" required>
             <option value="">Select…</option>
-            <option value="listing_agent">Listing Agent</option>
-            <option value="buyers_agent">Buyer’s Agent</option>
+            <option value="real_estate_agent">Real Estate Agent</option>
             <option value="lender">Lender</option>
+            <option value="other">Other</option>
           </select>
         </div>
 
@@ -52,11 +50,11 @@
 
         <div>
           <label class="block text-sm font-semibold">Phone</label>
-          <input id="phone" class="w-full border rounded px-3 py-2" placeholder="949-463-9152" required>
+          <input id="phone" class="w-full border rounded px-3 py-2" placeholder="Phone" required>
         </div>
 
         <div>
-          <label class="block text-sm font-semibold">License # (agents only)</label>
+          <label class="block text-sm font-semibold">License # (agents/lenders)</label>
           <input id="license" class="w-full border rounded px-3 py-2" placeholder="DRE / NMLS (if applicable)">
         </div>
 
@@ -64,11 +62,6 @@
           <label class="block text-sm font-semibold">ZIP Codes (max 3)</label>
           <input id="zips" class="w-full border rounded px-3 py-2" placeholder="e.g., 92651, 92652" required>
           <p class="text-xs text-gray-500 mt-1">Maximum 3 ZIPs, comma-separated.</p>
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="block text-sm font-semibold">Tagline (optional)</label>
-          <input id="tagline" class="w-full border rounded px-3 py-2" placeholder="Short tagline (optional)">
         </div>
 
         <div class="md:col-span-2">
@@ -82,6 +75,10 @@
           <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">
             Proceed to Checkout
           </button>
+        </div>
+
+        <div class="md:col-span-2 text-xs text-gray-600 mt-1">
+          All purchases subject to quality control review.
         </div>
       </form>
     </section>
@@ -114,7 +111,7 @@
       $('total').textContent = money(uniq.length * 5);
       return uniq;
     }
-    ['zips','role','name','email','phone','license','tagline'].forEach(id=>{
+    ['zips','role','name','email','phone','license'].forEach(id=>{
       const el=$(id); if(el) el.addEventListener('input', compute);
     });
 
@@ -133,7 +130,6 @@
       const email= $('email').value.trim();
       const phone= formatPhoneDisplay($('phone').value.trim());
       const license = $('license').value.trim();
-      const tagline = $('tagline').value.trim();
       const zips = compute();
 
       if (!role || !name || !email || !phone || !zips.length) {
@@ -142,13 +138,12 @@
       }
 
       // Save a local application draft (for post-success profile)
-      const app = { role, name, email, phone, license, tagline, zips, createdAt: Date.now() };
+      const app = { role, name, email, phone, license, zips, createdAt: Date.now() };
       localStorage.setItem('localProApplication', JSON.stringify(app));
 
       try {
-        // Stripe recurring subscription (one price * quantity = # of zips)
         const payload = {
-          priceId: "price_localpro_monthly_5usd", // TODO: replace with your recurring Price ID in Stripe
+          priceId: "price_localpro_monthly_5usd", // TODO: replace with your Stripe recurring price ID
           quantity: zips.length,
           successUrl: window.location.origin + "/local-professionals.html?status=success",
           cancelUrl:  window.location.href
@@ -166,6 +161,9 @@
         setStatus(e.message || "Checkout error.", false);
       }
     });
+
+    // compute totals on load so Proceed shows correct monthly total
+    document.addEventListener('DOMContentLoaded', compute);
 
     // handle success banner
     (function(){
