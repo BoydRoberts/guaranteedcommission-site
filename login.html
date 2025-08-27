@@ -7,6 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .badge { font-size:11px; background:#f3f4f6; color:#4b5563; padding:.1rem .5rem; border-radius:.375rem; }
+    .role-pill { display:inline-flex; align-items:center; gap:.5rem; border:1px solid #d1d5db; padding:.5rem .75rem; border-radius:9999px; cursor:pointer; user-select:none; }
+    .role-pill[data-active="true"] { border-color:#2563eb; background:#eff6ff; color:#1d4ed8; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -28,7 +30,7 @@
   <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-3">
-        <span class="badge">secure access build 2025-08-14b</span>
+        <span class="badge">secure access build 2025-08-14b + roles</span>
       </div>
 
       <!-- Tabs -->
@@ -98,11 +100,31 @@
         </div>
 
         <div>
-          <label for="c_phone" class="block text sm font-medium text-gray-700">Phone</label>
+          <label for="c_phone" class="block text-sm font-medium text-gray-700">Phone</label>
           <input id="c_phone" type="tel" required
                  class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                  placeholder="123-456-7890" inputmode="numeric" />
           <p class="text-xs text-gray-500 mt-1">Format: 123-456-7890</p>
+        </div>
+
+        <!-- Role selection (new) -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">I am a</label>
+          <div id="roleGroup" class="flex flex-wrap gap-2">
+            <label class="role-pill" data-role="seller">
+              <input type="radio" name="role" value="seller" class="sr-only" /> Seller
+            </label>
+            <label class="role-pill" data-role="buyer">
+              <input type="radio" name="role" value="buyer" class="sr-only" /> Buyer
+            </label>
+            <label class="role-pill" data-role="listing_agent">
+              <input type="radio" name="role" value="listing_agent" class="sr-only" /> Listing Agent
+            </label>
+            <label class="role-pill" data-role="buyers_agent">
+              <input type="radio" name="role" value="buyers_agent" class="sr-only" /> Buyer’s Agent
+            </label>
+          </div>
+          <p id="roleMsg" class="text-xs text-gray-500 mt-1">Select one so we can personalize your experience.</p>
         </div>
 
         <div>
@@ -166,7 +188,7 @@
   </main>
 
   <script>
-    console.log('[login] secure access build 2025-08-14b');
+    console.log('[login] secure access build 2025-08-14b + roles');
 
     // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
@@ -211,37 +233,20 @@
     $('goCreate')?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
     $('goSignin')?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
 
-    // Prefill — FSBO only; Listed stays blank. Also clear agentEmail in Listed flows (safety).
+    // Prefill from Box 2 — FSBO-only phone; email prefers fsboEmail if present
     (function prefill() {
       const fd = safeJSON(localStorage.getItem('formData')) || {};
       const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
 
-      // Clear agentEmail for Listed (prevents any bleed)
-      if (!plan.includes('FSBO') && fd.agentEmail) {
-        fd.agentEmail = "";
-        localStorage.setItem('formData', JSON.stringify(fd));
-      }
-
-      // Name (neutral)
       if (fd.name) $('c_name').value = fd.name;
 
-      // EMAIL:
-      // FSBO: prefill from fsboEmail
-      // Listed (Basic/Plus): FORCE BLANK (do not pull from agentEmail or loggedInEmail)
-      if (plan.includes('FSBO')) {
-        if (fd.fsboEmail) {
-          $('c_email').value = fd.fsboEmail;
-        }
-      } else {
-        $('c_email').value = '';
-      }
+      const email = fd.fsboEmail || localStorage.getItem('loggedInEmail') || '';
+      if (email) { $('email').value = email; $('c_email').value = email; }
 
-      // Phone: FSBO ONLY
       if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
         $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
 
-      // If coming from Box 2 flow, default to Create tab
       if (localStorage.getItem('nextAfterLogin')) showCreate();
     })();
 
@@ -297,6 +302,20 @@
     const getAccounts = ()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
     const saveAccounts = (obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
 
+    // Role pills behavior
+    (function wireRoles(){
+      const group = $('roleGroup'); if (!group) return;
+      const labels = Array.from(group.querySelectorAll('.role-pill'));
+      labels.forEach(lab => {
+        lab.addEventListener('click', (e) => {
+          labels.forEach(x => x.dataset.active = "false");
+          lab.dataset.active = "true";
+          const input = lab.querySelector('input[type="radio"]');
+          if (input) input.checked = true;
+        });
+      });
+    })();
+
     // Sign In
     $('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -308,6 +327,7 @@
       if (acct.password !== password) { setStatus('Invalid email or password.'); return; }
       localStorage.setItem('isLoggedIn','true');
       localStorage.setItem('loggedInEmail', email);
+      if (acct.role) localStorage.setItem('userRole', acct.role);
 
       // Ensure code exists and route to verification
       if (!localStorage.getItem('verificationCode')) {
@@ -315,8 +335,16 @@
         localStorage.setItem('verificationCode', code);
         localStorage.setItem('verifyTarget', email);
       }
-      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
-      window.location.href = next;
+
+      // Destination
+      const next = localStorage.getItem('nextAfterLogin');
+      if (next) { window.location.href = next; return; }
+
+      // Default routing by role if nextAfterLogin not set
+      const role = localStorage.getItem('userRole') || acct.role || '';
+      if (role === 'seller') window.location.href = '/dashboard.html';
+      else if (role === 'listing_agent') window.location.href = '/agent-detail.html';
+      else window.location.href = '/search.html';
     });
 
     // Create Account
@@ -328,24 +356,35 @@
       const p1 = $('c_password').value;
       const p2 = $('c_password2').value;
 
+      // role required
+      const roleInput = document.querySelector('input[name="role"]:checked');
+      const role = roleInput ? roleInput.value : '';
+      if (!role) { setStatus('Please select your role (Seller, Buyer, Listing Agent, Buyer’s Agent).'); return; }
+
       if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
       if (scorePassword(p1) < 3) { setStatus('Please use a stronger password (aim for Good or Strong).'); return; }
       if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
 
       const accounts = getAccounts();
-      accounts[email] = { name, email, password: p1, phone };
+      accounts[email] = { name, email, password: p1, phone, role };
       saveAccounts(accounts);
 
       localStorage.setItem('isLoggedIn','true');
       localStorage.setItem('loggedInEmail', email);
+      localStorage.setItem('userRole', role);
 
       // Send code (simulated) + verify handoff
       const code = String(Math.floor(100000 + Math.random()*900000));
       localStorage.setItem('verificationCode', code);
       localStorage.setItem('verifyTarget', email);
 
-      const next = localStorage.getItem('nextAfterLogin') || '/verify-code.html';
-      window.location.href = next;
+      const next = localStorage.getItem('nextAfterLogin');
+      if (next) { window.location.href = next; return; }
+
+      // Default destination by role
+      if (role === 'seller') window.location.href = '/dashboard.html';
+      else if (role === 'listing_agent') window.location.href = '/agent-detail.html';
+      else window.location.href = '/verify-code.html';
     });
 
     // Debug panel
@@ -355,6 +394,7 @@
         formData: fd,
         selectedPlan: localStorage.getItem('selectedPlan'),
         loggedInEmail: localStorage.getItem('loggedInEmail'),
+        userRole: localStorage.getItem('userRole'),
         verificationCode: localStorage.getItem('verificationCode'),
         verifyTarget: localStorage.getItem('verifyTarget'),
         nextAfterLogin: localStorage.getItem('nextAfterLogin')
