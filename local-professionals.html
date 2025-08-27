@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Local Professionals | GuaranteedCommission.com</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900">
+
+  <header class="bg-white shadow">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
+      <h1 class="text-lg font-semibold">Local Professionals</h1>
+      <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-6">
+    <section class="bg-white rounded-2xl shadow p-5">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Become a Local Professional</h2>
+        <span class="text-xs text-green-700 font-semibold">Intro price: $5 / month / ZIP (max 3 ZIPs)</span>
+      </div>
+
+      <p class="text-sm text-gray-600 mt-2">
+        Get featured to buyers and agents browsing GuaranteedCommission.com in your ZIPs. Limited to <strong>3 agents</strong> and <strong>1 lender</strong> per ZIP.
+      </p>
+
+      <div id="status" class="hidden mt-3 text-sm rounded-lg p-3"></div>
+
+      <form id="proForm" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4" autocomplete="off">
+        <div>
+          <label class="block text-sm font-semibold">I am a</label>
+          <select id="role" class="w-full border rounded px-3 py-2" required>
+            <option value="">Select…</option>
+            <option value="listing_agent">Listing Agent</option>
+            <option value="buyers_agent">Buyer’s Agent</option>
+            <option value="lender">Lender</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold">Full Name / Company</label>
+          <input id="name" class="w-full border rounded px-3 py-2" placeholder="Your name / firm" required>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold">Email</label>
+          <input id="email" type="email" class="w-full border rounded px-3 py-2" placeholder="you@example.com" required>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold">Phone</label>
+          <input id="phone" class="w-full border rounded px-3 py-2" placeholder="949-463-9152" required>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold">License # (agents only)</label>
+          <input id="license" class="w-full border rounded px-3 py-2" placeholder="DRE / NMLS (if applicable)">
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold">ZIP Codes (max 3)</label>
+          <input id="zips" class="w-full border rounded px-3 py-2" placeholder="e.g., 92651, 92652" required>
+          <p class="text-xs text-gray-500 mt-1">Maximum 3 ZIPs, comma-separated.</p>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="block text-sm font-semibold">Tagline (optional)</label>
+          <input id="tagline" class="w-full border rounded px-3 py-2" placeholder="Short tagline (optional)">
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="block text-sm font-semibold">Photo (optional)</label>
+          <input id="photo" type="file" accept="image/*" class="w-full">
+          <div id="photoPreview" class="mt-2"></div>
+        </div>
+
+        <div class="md:col-span-2 flex items-center justify-between mt-2">
+          <div class="text-sm text-gray-600">Your total: <span id="total">$0</span> / month</div>
+          <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">
+            Proceed to Checkout
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mt-4 text-emerald-800">
+      <h3 class="text-lg font-semibold">Thank you!</h3>
+      <p class="text-sm mt-1">Your Local Professionals subscription is being set up. You can complete your profile at any time.</p>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    function setStatus(msg, ok=true){
+      const el=$('status'); el.classList.remove('hidden');
+      el.className = ok ? 'mt-3 text-sm rounded-lg p-3 bg-green-50 text-green-700'
+                        : 'mt-3 text-sm rounded-lg p-3 bg-red-50 text-red-700';
+      el.textContent = msg;
+    }
+    function money(n){ return '$' + Number(n||0).toLocaleString(); }
+    function formatPhoneDisplay(s){
+      const d = String(s||'').replace(/\D/g,'').slice(0,10);
+      return d.length===10 ? `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}` : (s||'');
+    }
+
+    // price logic: $5 per month per zip (max 3)
+    function compute(){
+      const rawZ = ($('zips').value||'').split(',').map(z=>z.trim()).filter(Boolean);
+      const uniq = Array.from(new Set(rawZ)).slice(0,3);
+      $('zips').value = uniq.join(', ');
+      $('total').textContent = money(uniq.length * 5);
+      return uniq;
+    }
+    ['zips','role','name','email','phone','license','tagline'].forEach(id=>{
+      const el=$(id); if(el) el.addEventListener('input', compute);
+    });
+
+    // photo preview
+    $('photo').addEventListener('change', async (e)=>{
+      const f = e.target.files[0]; if(!f) return;
+      const reader = new FileReader();
+      reader.onload = () => { $('photoPreview').innerHTML = `<img src="${reader.result}" alt="Photo" class="h-24 w-24 object-cover rounded">`; };
+      reader.readAsDataURL(f);
+    });
+
+    // checkout
+    $('checkoutBtn').addEventListener('click', async ()=>{
+      const role = $('role').value.trim();
+      const name = $('name').value.trim();
+      const email= $('email').value.trim();
+      const phone= formatPhoneDisplay($('phone').value.trim());
+      const license = $('license').value.trim();
+      const tagline = $('tagline').value.trim();
+      const zips = compute();
+
+      if (!role || !name || !email || !phone || !zips.length) {
+        setStatus('Please complete role, name, email, phone, and at least one ZIP.', false);
+        return;
+      }
+
+      // Save a local application draft (for post-success profile)
+      const app = { role, name, email, phone, license, tagline, zips, createdAt: Date.now() };
+      localStorage.setItem('localProApplication', JSON.stringify(app));
+
+      try {
+        // Stripe recurring subscription (one price * quantity = # of zips)
+        const payload = {
+          priceId: "price_localpro_monthly_5usd", // TODO: replace with your recurring Price ID in Stripe
+          quantity: zips.length,
+          successUrl: window.location.origin + "/local-professionals.html?status=success",
+          cancelUrl:  window.location.href
+        };
+        const resp = await fetch("/api/create-subscription-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const out = await resp.json();
+        if (!resp.ok) throw new Error(out.error || "Could not start checkout.");
+        if (out.url) { window.location.href = out.url; return; }
+        setStatus("Could not start checkout (no URL returned).", false);
+      } catch(e){
+        setStatus(e.message || "Checkout error.", false);
+      }
+    });
+
+    // handle success banner
+    (function(){
+      const u=new URL(location.href);
+      if (u.searchParams.get('status')==='success'){
+        $('thanks').classList.remove('hidden');
+      }
+    })();
+  </script>
+</body>
+</html>
