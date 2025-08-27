@@ -10,7 +10,7 @@
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"/>
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
 
-  <!-- html2canvas (for ISC thumbnail) -->
+  <!-- html2canvas (for ISC portrait thumbnail) -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
@@ -18,6 +18,7 @@
     .tile-photo { width:100%; height: 20rem; object-fit: cover; background:#e5e7eb; }
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
     .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    .portrait-box { background:#fff; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -33,9 +34,9 @@
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- STRIP (Top row) — 40% | 20% | 40% on lg via 5-column grid -->
+    <!-- STRIP (Top row) — 40% | 20% | 40% via 5-col grid -->
     <section class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      <!-- Left: enlarged listing tile (40% = col-span 2) -->
+      <!-- Listing tile (40%) -->
       <article id="heroTile" class="lg:col-span-2 bg-white rounded-2xl shadow overflow-hidden relative cursor-pointer">
         <div class="relative">
           <img id="tilePhoto" class="tile-photo" alt="Listing photo"/>
@@ -47,85 +48,68 @@
             <div id="tilePrice" class="truncate">$—</div>
             <div id="tileCommission" class="truncate text-red-600">Commission — | $—</div>
           </div>
-          <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
+          <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Active</div>
           <div id="tileAddress" class="text-sm font-medium">[full address]</div>
           <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] — [listing agent] — [agent phone]</div>
         </div>
         <a id="tileClick" href="#" class="absolute inset-0" aria-label="Open full listing detail"></a>
       </article>
 
-      <!-- Middle: Map only (20% = col-span 1). p-0 to eliminate inner white space -->
+      <!-- Map (20%) — no padding, fills box -->
       <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-0 overflow-hidden">
-        <div id="mapCanvas" class="h-80 lg:h-[22rem] bg-gray-100"></div>
+        <div id="mapCanvas" class="h-80 lg:h-[24rem] bg-gray-100"></div>
       </aside>
 
-      <!-- Right: ISC thumbnail (clickable image) (40% = col-span 2) -->
+      <!-- ISC (40%) — portrait clickable image (always visible) -->
       <aside class="lg:col-span-2 bg-white rounded-2xl shadow p-4">
         <div class="flex items-center justify-between">
           <h2 class="text-sm font-semibold">ISC</h2>
           <span id="viewCounter" class="text-xs text-gray-500">0 views</span>
         </div>
-        <div class="mt-2 border rounded overflow-hidden bg-white">
-          <!-- Clickable image to open full ISC -->
+        <div class="mt-2 border rounded overflow-hidden portrait-box">
+          <!-- Portrait thumbnail (click to open full doc) -->
           <a href="/printable-isc.html" target="_blank" class="block">
-            <img id="iscPreviewImg" alt="ISC preview" class="w-full h-80 lg:h-[22rem] object-contain bg-white" />
+            <img id="iscPreviewImg" alt="ISC preview" class="w-full h-[24rem] object-contain bg-white" />
           </a>
         </div>
-        <!-- Hidden iframe used to render the thumbnail (counts one ISC view per load) -->
+        <!-- Hidden iframe used once to render the thumbnail (counts one ISC view) -->
         <iframe id="iscIframeHidden" src="/printable-isc.html" class="hidden"></iframe>
       </aside>
     </section>
 
     <!-- LOWER SECTION: Photos & Description only -->
     <section class="space-y-6">
-      <!-- Gallery (shows if there are additional photos beyond the primary) -->
       <div id="galleryCard" class="bg-white rounded-2xl shadow p-5 hidden">
         <h3 class="text-lg font-semibold mb-3">Photos</h3>
         <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
       </div>
 
-      <!-- Description (shown only if present) -->
       <div id="descCard" class="bg-white rounded-2xl shadow p-5 hidden">
         <h3 class="text-lg font-semibold mb-3">Description</h3>
         <p id="dDescription" class="text-sm leading-relaxed whitespace-pre-line"></p>
-      </div>
-
-      <!-- LOCAL PROS (Free in 2025) -->
-      <div id="localProsCard" class="bg-white rounded-2xl shadow p-5">
-        <div class="flex items-center justify-between">
-          <h3 class="text-lg font-semibold">Local Pros</h3>
-          <span class="text-xs text-green-700 font-semibold">Free in 2025</span>
-        </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-          <!-- Local Agents -->
-          <div>
-            <h4 class="text-sm font-semibold mb-2">Local Agents</h4>
-            <div id="localAgents" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-          </div>
-          <!-- Local Lenders -->
-          <div>
-            <h4 class="text-sm font-semibold mb-2">Local Lenders</h4>
-            <div id="localLenders" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-          </div>
-        </div>
       </div>
     </section>
   </main>
 
   <script>
-    // ---- Configuration ----
+    // ---- Config ----
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
-    if (MAPBOX_TOKEN && mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
+    if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
     // ---- Helpers ----
     const $ = (id) => document.getElementById(id);
     const getJSON = (k, fb={}) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
     const commissionAmt = (p, c, t)=>{ const P=Number(p||0), C=Number(c||0); if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0); };
+    const formatPhoneDisplay = (s) => {
+      const d = String(s||'').replace(/\D/g,'').slice(0,10);
+      if (d.length===10) return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;
+      return s||'';
+    };
 
     // ---- Load sources ----
     const url = new URL(location.href);
-    const addrParam = url.searchParams.get('addr'); // optional
+    const addrParam = url.searchParams.get('addr');
     const formData = getJSON('formData', {});
     const agentListing = getJSON('agentListing', {});
     const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
@@ -140,50 +124,63 @@
     const cAmt = commissionAmt(price, cRaw, cType);
     const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
     const banner = (agentListing.bannerText||"").trim();
-    const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
+    let photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
     const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
     const photo = photos[primaryIndex] || "";
     const bds = agentListing.bedrooms ?? "—";
     const ba  = agentListing.bathrooms ?? "—";
     const sqft= agentListing.sqft ? Number(agentListing.sqft).toLocaleString() : "—";
+    const pType= agentListing.propertyType || "";
     const status = agentListing.status || "Draft";
     const brokerage = formData.brokerage || (plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
     const agentName = formData.agent || (plan.includes("FSBO") ? "" : "[listing agent]");
-    const agentPhone =
-      agentListing.agentPhone || formData.agentPhone || formData.phone || (plan.includes("FSBO") ? "" : "[agent phone]");
+    const agentPhone = formatPhoneDisplay(agentListing.agentPhone || formData.agentPhone || formData.phone || (plan.includes("FSBO") ? "" : "[agent phone]"));
 
-    // Paint tile (top-left)
+    // ---- Bootleg photos to 20 (for visualization on Plus/FSBO) ----
+    (function ensure20Photos(){
+      const isPlusOrFsbo = plan.includes('Plus') || plan.includes('FSBO');
+      if (!isPlusOrFsbo) return;
+      const need = 20 - photos.length;
+      if (need > 0) {
+        for (let i=0; i<need; i++) {
+          // Unsplash placeholder variety
+          photos.push(`https://picsum.photos/seed/gc${i+1}/800/450`);
+        }
+      }
+    })();
+
+    // ---- Paint tile (left) ----
     (function paintTile(){
       $("tilePhoto").src = photo || "";
       if (banner) { $("tileBanner").textContent = banner; $("tileBanner").classList.remove('hidden'); }
 
-      // Heart (favorites)
+      // heart
       const FAV_KEY='gcFavorites';
-      function getFavs(){ try{ const v=JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); return Array.isArray(v)?v:[]; } catch{return[]} }
-      function setFavs(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a||[])); } catch{} }
-      function isFav(id){ return getFavs().includes(id); }
-      function toggleFav(id){ const a=getFavs(); const i=a.indexOf(id); if(i>=0) a.splice(i,1); else a.push(id); setFavs(a); return a.includes(id); }
-      function heartSvg(active){
-        return active
-          ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
-          : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
-      }
+      const getFavs = ()=>{ try{ const v=JSON.parse(localStorage.getItem(FAV_KEY)||'[]'); return Array.isArray(v)?v:[]; }catch{return[]} };
+      const setFavs = (a)=>{ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a||[])); } catch{} };
+      const isFav = (id)=> getFavs().includes(id);
+      const toggleFav = (id)=>{ const a=getFavs(); const i=a.indexOf(id); if(i>=0) a.splice(i,1); else a.push(id); setFavs(a); return a.includes(id); };
+      const heartSvg = (active)=> active
+        ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
+        : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
       const favId = (fullAddress||'').toLowerCase();
       $("tileHeart").innerHTML = heartSvg(isFav(favId));
       $("tileHeart").onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); $("tileHeart").innerHTML = heartSvg(toggleFav(favId)); };
 
+      // Top lines
       $("tilePrice").textContent = money(price);
       $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
-      $("tileFacts").textContent = `${bds} bds | ${ba} ba | ${sqft} sqft | ${status}`;
+      const facts = `${bds} bds | ${ba} ba | ${sqft} sqft${pType ? ' | '+pType : ''} | ${status}`;
+      $("tileFacts").textContent = facts;
       $("tileAddress").textContent = fullAddress;
       $("tileContact").textContent = `${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
       $("tileClick").href = `/listing.html?addr=${encodeURIComponent(fullAddress)}`;
     })();
 
-    // Mapbox: geocode + marker (fills its column)
+    // ---- Map (no inner padding) ----
     (async function bootMap(){
       try {
-        if (MAPBOX_TOKEN && mapboxgl) {
+        if (MAPBOX_TOKEN && window.mapboxgl) {
           const center = await (async () => {
             try {
               const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fullAddress)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
@@ -204,18 +201,18 @@
       }
     })();
 
-    // Listing View Counter
+    // ---- Listing View Counter ----
     (function bumpViews(){
       const key = "viewCount:" + (fullAddress||'').toLowerCase();
       let n = Number(localStorage.getItem(key)||0); n += 1;
       localStorage.setItem(key, String(n));
-      document.getElementById("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
+      $("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
     })();
 
-    // ISC thumbnail (clickable image): render from hidden iframe at high scale for crisp text
+    // ---- ISC portrait thumbnail (clickable image) ----
     (async function renderIscPreview(){
-      const hidden = document.getElementById('iscIframeHidden');
-      const imgEl  = document.getElementById('iscPreviewImg');
+      const hidden = $("iscIframeHidden");
+      const imgEl  = $("iscPreviewImg");
       if (!hidden || typeof html2canvas === "undefined") { imgEl.alt = "ISC preview unavailable"; return; }
 
       async function snapshotOnce() {
@@ -226,30 +223,29 @@
         });
         const doc = hidden.contentDocument || hidden.contentWindow?.document;
         if (!doc || !doc.body) throw new Error("No iframe document");
+
+        // Portrait: higher scale for crisp text
         const canvas = await html2canvas(doc.body, { scale: 1.8, useCORS: true, backgroundColor:"#ffffff" });
         const dataUrl = canvas.toDataURL("image/png");
-        if (!dataUrl) throw new Error("No dataUrl from canvas");
+        if (!dataUrl) throw new Error("No dataUrl");
         imgEl.src = dataUrl;
       }
 
       try {
         await snapshotOnce();
       } catch(e) {
-        // One retry after a short delay (helps slow renders)
         try {
-          await new Promise(r => setTimeout(r, 600));
+          await new Promise(r=>setTimeout(r,600));
           await snapshotOnce();
-        } catch (e2) {
+        } catch(e2){
           imgEl.alt = "ISC preview unavailable";
-          console.warn("[isc-preview] snapshot failed:", e2?.message || e2);
+          console.warn("[isc-preview] failed:", e2?.message || e2);
         }
       }
     })();
 
-    // Gallery (PLUS/FSBO with >1 photo)
+    // ---- Gallery (show others; thanks to bootleg, you’ll see 20) ----
     (function paintGallery(){
-      const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
-      const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
       const otherPhotos = photos.filter((_, i) => i !== primaryIndex);
       if (!otherPhotos.length) return;
       const grid = $("galleryGrid");
@@ -262,52 +258,12 @@
       $("galleryCard").classList.remove("hidden");
     })();
 
-    // Description (only if present)
+    // ---- Description ----
     (function paintDesc(){
       const desc = (agentListing.description || "").trim();
       if (!desc) return;
       $("dDescription").textContent = desc;
       $("descCard").classList.remove("hidden");
-    })();
-
-    // Local Pros (demo data; free in 2025)
-    (function renderLocalPros() {
-      const demoAgents = [
-        { name: "Ava Nguyen",  phone: "(949) 555-1234", brokerage: "Coastal Realty" },
-        { name: "Jordan Crisp", phone: "(949) 555-0456", brokerage: "Pacific Estates" },
-        { name: "Miguel Ortega", phone: "(949) 555-7788", brokerage: "Blue Door Homes" }
-      ];
-      const demoLenders = [
-        { name: "Harbor Home Loans", phone: "(949) 555-9900", note: "Local jumbo specialist" }
-      ];
-
-      function cardAgent(a) {
-        return `
-          <div class="border rounded-lg p-3 hover:shadow-sm transition">
-            <div class="text-sm font-semibold">${a.name}</div>
-            <div class="text-xs text-gray-600">${a.brokerage || ""}</div>
-            <div class="mt-1 text-sm">
-              <a href="tel:${(a.phone||'').replace(/\D/g,'')}" class="text-blue-600 hover:underline">${a.phone}</a>
-            </div>
-          </div>
-        `;
-      }
-      function cardLender(l) {
-        return `
-          <div class="border rounded-lg p-3 hover:shadow-sm transition">
-            <div class="text-sm font-semibold">${l.name}</div>
-            <div class="text-xs text-gray-600">${l.note || ""}</div>
-            <div class="mt-1 text-sm">
-              <a href="tel:${(l.phone||'').replace(/\D/g,'')}" class="text-blue-600 hover:underline">${l.phone}</a>
-            </div>
-          </div>
-        `;
-      }
-
-      const agentsBox = document.getElementById("localAgents");
-      const lendersBox = document.getElementById("localLenders");
-      if (agentsBox) agentsBox.innerHTML = demoAgents.map(cardAgent).join("");
-      if (lendersBox) lendersBox.innerHTML = demoLenders.map(cardLender).join("");
     })();
   </script>
 </body>
