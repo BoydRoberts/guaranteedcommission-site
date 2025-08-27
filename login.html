@@ -7,6 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .badge { font-size:11px; background:#f3f4f6; color:#4b5563; padding:.1rem .5rem; border-radius:.375rem; }
+    .role-pill { display:inline-flex; align-items:center; gap:.5rem; border:1px solid #d1d5db; padding:.5rem .75rem; border-radius:9999px; cursor:pointer; user-select:none; }
+    .role-pill[data-active="true"] { border-color:#2563eb; background:#eff6ff; color:#1d4ed8; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -28,7 +30,7 @@
   <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-3">
-        <span class="badge">secure access build 2025-08-14b</span>
+        <span class="badge">secure access build 2025-08-14b + roles</span>
       </div>
 
       <!-- Tabs -->
@@ -102,24 +104,25 @@
           <input id="c_phone" type="tel" required
                  class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                  placeholder="123-456-7890" inputmode="numeric" />
+          <p class="text-xs text-gray-500 mt-1">Format: 123-456-7890</p>
         </div>
 
-        <!-- NEW: Role selector -->
+        <!-- Role selection (pills) -->
         <div>
-          <label for="c_role" class="block text-sm font-medium text-gray-700">Role</label>
-          <select id="c_role" required
-                  class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Select a role…</option>
-            <option value="seller">Seller</option>
-            <option value="listing_agent">Listing Agent</option>
-            <option value="buyers_agent">Buyer’s Agent</option>
-            <option value="other">Other (lender, investor, press…)</option>
-          </select>
+          <label class="block text-sm font-medium text-gray-700 mb-1">I am a</label>
+          <div id="roleGroup" class="flex flex-wrap gap-2">
+            <label class="role-pill" data-role="seller"><input type="radio" name="role" value="seller" class="sr-only" /> Seller</label>
+            <label class="role-pill" data-role="buyer"><input type="radio" name="role" value="buyer" class="sr-only" /> Buyer</label>
+            <label class="role-pill" data-role="listing_agent"><input type="radio" name="role" value="listing_agent" class="sr-only" /> Listing Agent</label>
+            <label class="role-pill" data-role="buyers_agent"><input type="radio" name="role" value="buyers_agent" class="sr-only" /> Buyer’s Agent</label>
+            <label class="role-pill" data-role="other"><input type="radio" name="role" value="other" class="sr-only" /> Other</label>
+          </div>
           <div id="localProLink" class="hidden mt-2">
             <a href="/local-professionals.html" class="text-xs text-blue-600 underline">
               Become a Local Professional
             </a>
           </div>
+          <p id="roleMsg" class="text-xs text-gray-500 mt-1">Select one so we can personalize your experience.</p>
         </div>
 
         <div>
@@ -132,6 +135,17 @@
                     class="absolute inset-y-0 right-0 px-3 text-sm text-blue-600 hover:underline select-none">
               Show
             </button>
+          </div>
+          <div class="mt-2">
+            <div class="h-2 w-full bg-gray-200 rounded" aria-hidden="true">
+              <div id="strengthBar" class="h-2 w-0 rounded"></div>
+            </div>
+            <p id="strengthText" class="text-xs mt-1 text-gray-600">Password strength: —</p>
+            <ul class="text-[11px] text-gray-600 mt-2 list-disc list-inside">
+              <li>At least 10 characters</li>
+              <li>Include UPPER &amp; lower case letters</li>
+              <li>Include a number and a symbol</li>
+            </ul>
           </div>
         </div>
 
@@ -146,6 +160,7 @@
               Show
             </button>
           </div>
+          <p id="matchMsg" class="text-xs mt-1"></p>
         </div>
 
         <div class="flex items-center justify-between text-sm">
@@ -169,10 +184,12 @@
   </main>
 
   <script>
-    console.log('[login] secure access build 2025-08-14b');
+    console.log('[login] secure access build 2025-08-14b + roles');
 
+    // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
     const statusBox = $('status');
+    const safeJSON = (s)=>{ try { return JSON.parse(s); } catch { return null; } };
     function setStatus(msg, ok=false) {
       statusBox.classList.remove('hidden');
       statusBox.textContent = msg;
@@ -180,6 +197,15 @@
         ? 'mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
         : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
     }
+
+    function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
+    function formatPhone(s){
+      const d = onlyDigits(s).slice(0,10);
+      if (d.length <= 3) return d;
+      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
+      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
+    }
+    function isValidPhone(s){ return onlyDigits(s).length === 10; }
 
     // Tabs
     const tabSignin = $('tab-signin');
@@ -203,6 +229,19 @@
     $('goCreate')?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
     $('goSignin')?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
 
+    // Prefill from Box 2 — FSBO-only phone; email prefers fsboEmail if present
+    (function prefill() {
+      const fd = safeJSON(localStorage.getItem('formData')) || {};
+      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+      if (fd.name) $('c_name').value = fd.name;
+      const email = fd.fsboEmail || localStorage.getItem('loggedInEmail') || '';
+      if (email) { $('email').value = email; $('c_email').value = email; }
+      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
+        $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
+      }
+      if (localStorage.getItem('nextAfterLogin')) showCreate();
+    })();
+
     // Show/Hide toggles
     function wireToggle(inputId, btnId) {
       const input = $(inputId);
@@ -220,21 +259,137 @@
     wireToggle('c_password','togglePwdC1');
     wireToggle('c_password2','togglePwdC2');
 
-    // NEW: role change -> show Local Pro link
-    $('c_role').addEventListener('change', (e)=>{
-      const val = e.target.value;
-      if (val==='listing_agent' || val==='buyers_agent') {
-        $('localProLink').classList.remove('hidden');
-      } else {
-        $('localProLink').classList.add('hidden');
+    // Strength + match
+    function scorePassword(p) {
+      let s=0; if (!p) return 0;
+      if (p.length>=10) s++; if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++;
+      if (/[^A-Za-z0-9]/.test(p)) s++; if (p.length>=14) s++;
+      return Math.min(s,4);
+    }
+    function updateStrength(){
+      const p1 = $('c_password')?.value || '';
+      const p2 = $('c_password2')?.value || '';
+      const bar = $('strengthBar'), st=$('strengthText'), mm=$('matchMsg');
+      if (!bar || !st || !mm) return;
+      const s=scorePassword(p1), widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
+      bar.style.width=widths[s]; bar.style.backgroundColor=colors[s]; st.textContent='Password strength: '+labels[s];
+      if (!p2){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
+      if (p1===p2){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
+      else { mm.textContent='Passwords do not match'; mm.className='text-xs mt-1 text-red-600'; }
+    }
+    $('c_password')?.addEventListener('input', updateStrength);
+    $('c_password2')?.addEventListener('input', updateStrength);
+
+    // Phone mask (create)
+    $('c_phone')?.addEventListener('input', () => {
+      const el = $('c_phone');
+      const cur = el.selectionStart;
+      const before = el.value;
+      el.value = formatPhone(before);
+      el.selectionStart = el.selectionEnd = Math.min(cur + (el.value.length - before.length), el.value.length);
+    });
+
+    // Local accounts (demo in-browser)
+    const ACC_KEY='accounts';
+    const getAccounts = ()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
+    const saveAccounts = (obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
+
+    // Role pills behavior + Local Pro link toggle
+    (function wireRoles(){
+      const group = $('roleGroup'); if (!group) return;
+      const labels = Array.from(group.querySelectorAll('.role-pill'));
+      labels.forEach(lab => {
+        lab.addEventListener('click', () => {
+          labels.forEach(x => x.dataset.active = "false");
+          lab.dataset.active = "true";
+          const input = lab.querySelector('input[type="radio"]');
+          if (input) input.checked = true;
+          const val = input?.value || '';
+          if (val==='listing_agent' || val==='buyers_agent') {
+            $('localProLink').classList.remove('hidden');
+          } else {
+            $('localProLink').classList.add('hidden');
+          }
+        });
+      });
+    })();
+
+    // Sign In
+    $('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = $('email').value.trim().toLowerCase();
+      const password = $('password').value;
+      const accounts = getAccounts();
+      const acct = accounts[email];
+      if (!acct) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); return; }
+      if (acct.password !== password) { setStatus('Invalid email or password.'); return; }
+      localStorage.setItem('isLoggedIn','true');
+      localStorage.setItem('loggedInEmail', email);
+      if (acct.role) localStorage.setItem('userRole', acct.role);  // <-- wire role on sign-in
+
+      if (!localStorage.getItem('verificationCode')) {
+        const code = String(Math.floor(100000 + Math.random()*900000));
+        localStorage.setItem('verificationCode', code);
+        localStorage.setItem('verifyTarget', email);
       }
+
+      const next = localStorage.getItem('nextAfterLogin');
+      if (next) { window.location.href = next; return; }
+
+      const role = localStorage.getItem('userRole') || acct.role || '';
+      if (role === 'seller') window.location.href = '/dashboard.html';
+      else if (role === 'listing_agent') window.location.href = '/agent-detail.html';
+      else window.location.href = '/search.html';
+    });
+
+    // Create Account
+    $('createForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name  = $('c_name').value.trim();
+      const email = $('c_email').value.trim().toLowerCase();
+      const phone = $('c_phone').value.trim();
+      const p1 = $('c_password').value;
+      const p2 = $('c_password2').value;
+
+      const roleInput = document.querySelector('input[name="role"]:checked');
+      const role = roleInput ? roleInput.value : '';
+      if (!role) { setStatus('Please select your role (Seller, Buyer, Listing Agent, Buyer’s Agent, Other).'); return; }
+
+      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
+      if (scorePassword(p1) < 3) { setStatus('Please use a stronger password (aim for Good or Strong).'); return; }
+      if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
+
+      const accounts = getAccounts();
+      accounts[email] = { name, email, password: p1, phone, role };
+      saveAccounts(accounts);
+
+      localStorage.setItem('isLoggedIn','true');
+      localStorage.setItem('loggedInEmail', email);
+      localStorage.setItem('userRole', role);  // <-- wire role on account creation
+
+      const code = String(Math.floor(100000 + Math.random()*900000));
+      localStorage.setItem('verificationCode', code);
+      localStorage.setItem('verifyTarget', email);
+
+      const next = localStorage.getItem('nextAfterLogin');
+      if (next) { window.location.href = next; return; }
+
+      if (role === 'seller') window.location.href = '/dashboard.html';
+      else if (role === 'listing_agent') window.location.href = '/agent-detail.html';
+      else window.location.href = '/verify-code.html';
     });
 
     // Debug panel
     $('dbgToggle').addEventListener('click', () => {
+      const fd = safeJSON(localStorage.getItem('formData'));
       const dump = {
+        formData: fd,
+        selectedPlan: localStorage.getItem('selectedPlan'),
         loggedInEmail: localStorage.getItem('loggedInEmail'),
-        userRole: localStorage.getItem('userRole')
+        userRole: localStorage.getItem('userRole'),
+        verificationCode: localStorage.getItem('verificationCode'),
+        verifyTarget: localStorage.getItem('verifyTarget'),
+        nextAfterLogin: localStorage.getItem('nextAfterLogin')
       };
       const p = $('dbgPanel');
       p.classList.toggle('hidden');
