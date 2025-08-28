@@ -27,8 +27,15 @@
         $5 per month per ZIP code | Maximum 3 ZIP codes | Your information displayed on all listing detail pages in the specified ZIP codes in the Local Professional section | 3 real estate agents and 1 lender displayed per ZIP code.
       </p>
 
+      <!-- Top mode choice -->
+      <div class="flex items-center justify-center gap-3 mt-4">
+        <button id="modeSearchBtn" class="px-3 py-2 rounded border">Search by ZIP</button>
+        <button id="modeApplyBtn" class="px-3 py-2 rounded bg-amber-600 text-white">Become a Local Professional</button>
+      </div>
+
       <div id="status" class="hidden mt-4 text-sm rounded-lg p-3"></div>
 
+      <!-- Apply form -->
       <form id="proForm" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4" autocomplete="off">
         <div>
           <label class="block text-sm font-semibold">I am a</label>
@@ -88,6 +95,17 @@
           All purchases subject to quality control review.
         </div>
       </form>
+
+      <!-- Simple ZIP search result area (MVP placeholder) -->
+      <div id="searchArea" class="hidden mt-8 border-t pt-5">
+        <h3 class="font-semibold mb-2">Search Local Professionals by ZIP</h3>
+        <div class="flex items-center gap-2">
+          <input id="searchZip" class="border rounded px-3 py-2 w-40" placeholder="ZIP code">
+          <button id="runZipSearch" class="px-3 py-2 rounded bg-gray-700 text-white">Search</button>
+        </div>
+        <div id="prosResults" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+      </div>
+
     </section>
 
     <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mt-4 text-emerald-800">
@@ -110,6 +128,23 @@
       return d.length===10 ? `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}` : (s||'');
     }
 
+    // Mode toggle via query or buttons
+    (function(){
+      const u=new URL(location.href);
+      let mode = u.searchParams.get('mode') || 'apply';
+      function show(mode){
+        // We keep a single page: "apply" shows form focus, "search" reveals search area
+        if (mode==='search') {
+          $('searchArea').classList.remove('hidden');
+          $('zip1')?.closest('form')?.classList.remove('hidden'); // keep both visible
+          $('searchZip').focus();
+        }
+      }
+      show(mode);
+      $('modeSearchBtn')?.addEventListener('click', ()=>{ location.href='?mode=search'; });
+      $('modeApplyBtn')?.addEventListener('click', ()=>{ location.href='?mode=apply'; });
+    })();
+
     // ZIP inputs: only digits, auto-advance after 5
     function zipFilter(el, nextEl){
       el.addEventListener('input', (e)=>{
@@ -124,6 +159,7 @@
     zipFilter($('zip2'), $('zip3'));
     zipFilter($('zip3'), null);
 
+    // price logic: $5 per month per zip (max 3)
     function compute(){
       const z1 = $('zip1').value.trim();
       const z2 = $('zip2').value.trim();
@@ -134,6 +170,9 @@
       $('total').textContent = money(uniq.length * 5);
       return uniq;
     }
+    ['role','name','email','phone','license'].forEach(id=>{
+      const el=$(id); if(el) el.addEventListener('input', compute);
+    });
 
     // photo preview
     $('photo').addEventListener('change', async (e)=>{
@@ -143,7 +182,7 @@
       reader.readAsDataURL(f);
     });
 
-    // ✅ Use your prebuilt Stripe Checkout Link
+    // ✅ Use your Stripe Payment Link
     const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_9B64gy0zL42f3hC8GS0VO00";
 
     // Proceed to Checkout
@@ -168,17 +207,11 @@
         const app = { role, name, email, phone, license, zips, createdAt: Date.now() };
         localStorage.setItem('localProApplication', JSON.stringify(app));
 
-        // Build query params for Checkout Link
-        // Stripe Checkout Links support:
-        //  - prefilled_email
-        //  - client_reference_id
-        //  - quantity (for a single line item link)
+        // Build params for Checkout Link
         const params = new URLSearchParams({
           prefilled_email: email,
-          client_reference_id: JSON.stringify({ role, name, email, phone, license, zips }),
-          quantity: String(zips.length || 1)
+          client_reference_id: JSON.stringify({ role, name, email, phone, license, zips })
         });
-
         // Redirect to Stripe-hosted Checkout
         window.location.href = `${CHECKOUT_LINK_BASE}?${params.toString()}`;
       } catch(e){
@@ -192,13 +225,41 @@
     // compute totals on load
     document.addEventListener('DOMContentLoaded', compute);
 
-    // success banner (if you configure redirect back)
+    // success banner (if you configured redirect back in Stripe)
     (function(){
       const u=new URL(location.href);
       if (u.searchParams.get('status')==='success'){
         $('thanks').classList.remove('hidden');
       }
     })();
+
+    // Simple Local Pros search (MVP placeholder using localStorage.localPros)
+    $('runZipSearch')?.addEventListener('click', ()=>{
+      const zip = ($('searchZip').value||'').trim();
+      if (!/^\d{5}$/.test(zip)) { setStatus('Enter a valid 5-digit ZIP to search.', false); return; }
+      setStatus('', true); $('status').classList.add('hidden');
+
+      const pros = (function(){
+        try { return JSON.parse(localStorage.getItem('localPros')||'[]'); } catch { return []; }
+      })().filter(p => (p.zips||[]).includes(zip));
+
+      const box = $('prosResults'); box.innerHTML='';
+      if (!pros.length) {
+        box.innerHTML = `<div class="text-sm text-gray-600">No Local Professionals in ${zip} yet.</div>`;
+        return;
+      }
+      pros.forEach(p=>{
+        const card = document.createElement('div');
+        card.className = 'border rounded-lg p-3 bg-white';
+        card.innerHTML = `
+          <div class="text-sm font-semibold">${p.name || 'Professional'}</div>
+          <div class="text-xs text-gray-600">${p.role || ''}${p.license ? ' • ' + p.license : ''}</div>
+          <div class="mt-1 text-sm">${p.phone ? `<a class="text-blue-600 hover:underline" href="tel:${p.phone.replace(/\\D/g,'')}">${p.phone}</a>` : ''}</div>
+          <div class="text-xs text-gray-500 mt-1">ZIPs: ${(p.zips||[]).join(', ')}</div>
+        `;
+        box.appendChild(card);
+      });
+    });
   </script>
 </body>
 </html>
