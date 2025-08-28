@@ -22,7 +22,6 @@
 
   <main class="max-w-4xl mx-auto px-4 py-6">
     <section class="bg-white rounded-2xl shadow p-5">
-      <!-- Top heading exactly as requested -->
       <h2 class="text-2xl font-bold text-center">Become a Local Professional</h2>
       <p class="text-sm text-center text-gray-700 mt-1">
         $5 per month per ZIP code | Maximum 3 ZIP codes | Your information displayed on all listing detail pages in the specified ZIP codes in the Local Professional section | 3 real estate agents and 1 lender displayed per ZIP code.
@@ -61,7 +60,7 @@
           <input id="license" class="w-full border rounded px-3 py-2" placeholder="DRE / NMLS (if applicable)">
         </div>
 
-        <!-- NEW: three individual ZIP inputs for reliability -->
+        <!-- Three ZIP inputs for reliability -->
         <div class="md:col-span-2">
           <label class="block text-sm font-semibold mb-1">ZIP Codes (up to 3)</label>
           <div class="grid grid-cols-3 gap-3">
@@ -111,7 +110,7 @@
       return d.length===10 ? `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}` : (s||'');
     }
 
-    // Only digits allowed in ZIP fields; auto-advance after 5
+    // ZIP inputs: only digits, auto-advance after 5
     function zipFilter(el, nextEl){
       el.addEventListener('input', (e)=>{
         const d = e.target.value.replace(/\D/g,'').slice(0,5);
@@ -125,21 +124,16 @@
     zipFilter($('zip2'), $('zip3'));
     zipFilter($('zip3'), null);
 
-    // price logic: $5 per month per zip (max 3)
     function compute(){
       const z1 = $('zip1').value.trim();
       const z2 = $('zip2').value.trim();
       const z3 = $('zip3').value.trim();
-      // Deduplicate while preserving order
       const zips = [z1,z2,z3].filter(Boolean);
       const uniq = [];
       zips.forEach(z => { if (!uniq.includes(z)) uniq.push(z); });
       $('total').textContent = money(uniq.length * 5);
       return uniq;
     }
-    ['role','name','email','phone','license'].forEach(id=>{
-      const el=$(id); if(el) el.addEventListener('input', compute);
-    });
 
     // photo preview
     $('photo').addEventListener('change', async (e)=>{
@@ -149,7 +143,10 @@
       reader.readAsDataURL(f);
     });
 
-    // Checkout
+    // ✅ Use your prebuilt Stripe Checkout Link
+    const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_9B64gy0zL42f3hC8GS0VO00";
+
+    // Proceed to Checkout
     $('checkoutBtn').addEventListener('click', async ()=>{
       try {
         $('checkoutBtn').disabled = true;
@@ -167,34 +164,23 @@
           return;
         }
 
-        // Cache application for post-success profile
+        // Cache application for later use
         const app = { role, name, email, phone, license, zips, createdAt: Date.now() };
         localStorage.setItem('localProApplication', JSON.stringify(app));
 
-        // IMPORTANT: Replace with your real Stripe recurring price ID
-        const PRICE_ID = "price_localpro_monthly_5usd";
-        if (!PRICE_ID || PRICE_ID.startsWith("price_") === false) {
-          setStatus('Stripe Price ID is not set. Please configure a recurring $5/month Price in Stripe and update PRICE_ID.', false);
-          return;
-        }
-
-        const payload = {
-          priceId: PRICE_ID,
-          quantity: zips.length,
-          successUrl: window.location.origin + "/local-professionals.html?status=success",
-          cancelUrl:  window.location.href
-        };
-
-        const resp = await fetch("/api/create-subscription-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+        // Build query params for Checkout Link
+        // Stripe Checkout Links support:
+        //  - prefilled_email
+        //  - client_reference_id
+        //  - quantity (for a single line item link)
+        const params = new URLSearchParams({
+          prefilled_email: email,
+          client_reference_id: JSON.stringify({ role, name, email, phone, license, zips }),
+          quantity: String(zips.length || 1)
         });
 
-        const out = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(out.error || "Could not start checkout.");
-        if (!out.url) throw new Error("No checkout URL returned from server.");
-        window.location.href = out.url;
+        // Redirect to Stripe-hosted Checkout
+        window.location.href = `${CHECKOUT_LINK_BASE}?${params.toString()}`;
       } catch(e){
         setStatus(e.message || "Checkout error.", false);
       } finally {
@@ -203,10 +189,10 @@
       }
     });
 
-    // compute totals on load so total shows immediately
+    // compute totals on load
     document.addEventListener('DOMContentLoaded', compute);
 
-    // handle success banner
+    // success banner (if you configure redirect back)
     (function(){
       const u=new URL(location.href);
       if (u.searchParams.get('status')==='success'){
