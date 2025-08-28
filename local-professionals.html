@@ -105,4 +105,114 @@
                         : 'mt-3 text-sm rounded-lg p-3 bg-red-50 text-red-700';
       el.textContent = msg;
     }
-    function money(n){ return '$'
+    function money(n){ return '$' + Number(n||0).toLocaleString(); }
+    function formatPhoneDisplay(s){
+      const d = String(s||'').replace(/\D/g,'').slice(0,10);
+      return d.length===10 ? `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}` : (s||'');
+    }
+
+    // Only digits allowed in ZIP fields; auto-advance after 5
+    function zipFilter(el, nextEl){
+      el.addEventListener('input', (e)=>{
+        const d = e.target.value.replace(/\D/g,'').slice(0,5);
+        e.target.value = d;
+        if (d.length === 5 && nextEl) nextEl.focus();
+        compute();
+      });
+      el.addEventListener('blur', compute);
+    }
+    zipFilter($('zip1'), $('zip2'));
+    zipFilter($('zip2'), $('zip3'));
+    zipFilter($('zip3'), null);
+
+    // price logic: $5 per month per zip (max 3)
+    function compute(){
+      const z1 = $('zip1').value.trim();
+      const z2 = $('zip2').value.trim();
+      const z3 = $('zip3').value.trim();
+      // Deduplicate while preserving order
+      const zips = [z1,z2,z3].filter(Boolean);
+      const uniq = [];
+      zips.forEach(z => { if (!uniq.includes(z)) uniq.push(z); });
+      $('total').textContent = money(uniq.length * 5);
+      return uniq;
+    }
+    ['role','name','email','phone','license'].forEach(id=>{
+      const el=$(id); if(el) el.addEventListener('input', compute);
+    });
+
+    // photo preview
+    $('photo').addEventListener('change', async (e)=>{
+      const f = e.target.files[0]; if(!f) return;
+      const reader = new FileReader();
+      reader.onload = () => { $('photoPreview').innerHTML = `<img src="${reader.result}" alt="Photo" class="h-24 w-24 object-cover rounded">`; };
+      reader.readAsDataURL(f);
+    });
+
+    // Checkout
+    $('checkoutBtn').addEventListener('click', async ()=>{
+      try {
+        $('checkoutBtn').disabled = true;
+        $('checkoutBtn').textContent = 'Starting checkout…';
+
+        const role = $('role').value.trim();
+        const name = $('name').value.trim();
+        const email= $('email').value.trim();
+        const phone= formatPhoneDisplay($('phone').value.trim());
+        const license = $('license').value.trim();
+        const zips = compute();
+
+        if (!role || !name || !email || !phone || !zips.length) {
+          setStatus('Please complete role, name, email, phone, and at least one ZIP.', false);
+          return;
+        }
+
+        // Cache application for post-success profile
+        const app = { role, name, email, phone, license, zips, createdAt: Date.now() };
+        localStorage.setItem('localProApplication', JSON.stringify(app));
+
+        // IMPORTANT: Replace with your real Stripe recurring price ID
+        const PRICE_ID = "price_localpro_monthly_5usd";
+        if (!PRICE_ID || PRICE_ID.startsWith("price_") === false) {
+          setStatus('Stripe Price ID is not set. Please configure a recurring $5/month Price in Stripe and update PRICE_ID.', false);
+          return;
+        }
+
+        const payload = {
+          priceId: PRICE_ID,
+          quantity: zips.length,
+          successUrl: window.location.origin + "/local-professionals.html?status=success",
+          cancelUrl:  window.location.href
+        };
+
+        const resp = await fetch("/api/create-subscription-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const out = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(out.error || "Could not start checkout.");
+        if (!out.url) throw new Error("No checkout URL returned from server.");
+        window.location.href = out.url;
+      } catch(e){
+        setStatus(e.message || "Checkout error.", false);
+      } finally {
+        $('checkoutBtn').disabled = false;
+        $('checkoutBtn').textContent = 'Proceed to Checkout';
+      }
+    });
+
+    // compute totals on load so total shows immediately
+    document.addEventListener('DOMContentLoaded', compute);
+
+    // handle success banner
+    (function(){
+      const u=new URL(location.href);
+      if (u.searchParams.get('status')==='success'){
+        $('thanks').classList.remove('hidden');
+      }
+    })();
+  </script>
+</body>
+</html>
