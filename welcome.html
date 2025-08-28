@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Welcome | GuaranteedCommission.com</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900">
+  <header class="bg-white shadow">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
+      <h1 class="text-lg font-semibold">Welcome</h1>
+      <a href="/search.html" class="text-sm text-blue-600 hover:underline">Search</a>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-6">
+    <section class="bg-white rounded-2xl shadow p-6">
+      <h2 class="text-xl font-bold mb-1">Hi <span id="who"></span></h2>
+      <p class="text-sm text-gray-600 mb-4">Choose what you’d like to do next.</p>
+
+      <!-- Seller -->
+      <div id="sellerBox" class="hidden space-y-4">
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Enter a new listing</h3>
+          <div class="flex items-center gap-2">
+            <label class="text-sm">Plan</label>
+            <select id="sellerNewPlan" class="border rounded px-2 py-1 text-sm">
+              <option>Listed Property Basic</option>
+              <option>Listed Property Plus</option>
+              <option>FSBO Plus</option>
+            </select>
+            <button id="sellerNewGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Continue</button>
+          </div>
+        </div>
+
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Edit a current listing</h3>
+          <div id="sellerEditRow" class="flex items-center gap-2">
+            <select id="sellerListings" class="border rounded px-2 py-1 text-sm"></select>
+            <button id="sellerEditGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</button>
+          </div>
+          <p id="sellerNoListings" class="hidden text-sm text-gray-700">
+            You do not have any current listings.
+            <button id="sellerCreateFromEmpty" class="underline text-blue-600">Enter a new listing?</button>
+          </p>
+        </div>
+
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Search commissions / create auto-email search</h3>
+          <button id="sellerSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
+        </div>
+
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Search Local Professionals by ZIP</h3>
+          <button id="sellerProsGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Local Professionals</button>
+        </div>
+      </div>
+
+      <!-- Listing Agent -->
+      <div id="lagentBox" class="hidden space-y-4">
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Edit a listing</h3>
+          <div id="agentEditRow" class="flex items-center gap-2">
+            <select id="agentListings" class="border rounded px-2 py-1 text-sm"></select>
+            <button id="agentEditGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</button>
+          </div>
+          <p id="agentNoListings" class="hidden text-sm text-gray-700">No editable listings yet.</p>
+        </div>
+
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Become a Local Professional</h3>
+          <button id="agentProApply" class="px-3 py-2 rounded bg-amber-600 text-white text-sm">Apply</button>
+        </div>
+
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Search commissions / create auto-email search</h3>
+          <button id="agentSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
+        </div>
+      </div>
+
+      <!-- Buyer’s Agent -->
+      <div id="bagentBox" class="hidden space-y-4">
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Become a Local Professional</h3>
+          <button id="bAgentProApply" class="px-3 py-2 rounded bg-amber-600 text-white text-sm">Apply</button>
+        </div>
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Create a new automatic search</h3>
+          <button id="bAgentSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
+        </div>
+      </div>
+
+      <!-- Buyer -->
+      <div id="buyerBox" class="hidden space-y-4">
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Search Local Professionals by ZIP</h3>
+          <button id="buyerProsGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Local Professionals</button>
+        </div>
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Search commissions / create auto-email search</h3>
+          <button id="buyerSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
+        </div>
+      </div>
+
+      <!-- Other -->
+      <div id="otherBox" class="hidden space-y-4">
+        <div class="border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">Search commissions</h3>
+          <button id="otherSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const role = localStorage.getItem('userRole') || '';
+    const email = localStorage.getItem('loggedInEmail') || '';
+    $('who').textContent = email || 'there';
+
+    // Seed minimal arrays so dropdowns aren’t empty (MVP local only)
+    function seedOnce(){
+      const s = localStorage.getItem('sellerListings');
+      if (!s) {
+        const fd = JSON.parse(localStorage.getItem('formData')||'{}');
+        const ag = JSON.parse(localStorage.getItem('agentListing')||'{}');
+        if (fd.address) {
+          localStorage.setItem('sellerListings', JSON.stringify([{ address: fd.address }]));
+        } else {
+          localStorage.setItem('sellerListings', JSON.stringify([]));
+        }
+      }
+      const a = localStorage.getItem('agentListings');
+      if (!a) localStorage.setItem('agentListings', JSON.stringify([]));
+    }
+    seedOnce();
+
+    function openBox(id){ $(id).classList.remove('hidden'); }
+    if (role === 'seller') openBox('sellerBox');
+    else if (role === 'listing_agent') openBox('lagentBox');
+    else if (role === 'buyers_agent') openBox('bagentBox');
+    else if (role === 'buyer') openBox('buyerBox');
+    else openBox('otherBox');
+
+    // Seller: new listing plan
+    $('sellerNewGo')?.addEventListener('click', ()=>{
+      const plan = $('sellerNewPlan').value;
+      localStorage.setItem('selectedPlan', plan);
+      // send to Box 2 form
+      location.href = '/index.html#strip2Search';
+      window.scrollTo(0,0);
+    });
+
+    // Seller: edit listing dropdown
+    (function(){
+      const list = JSON.parse(localStorage.getItem('sellerListings')||'[]');
+      const sel = $('sellerListings');
+      if (!sel) return;
+      if (!list.length) {
+        $('sellerEditRow').classList.add('hidden');
+        $('sellerNoListings').classList.remove('hidden');
+        $('sellerCreateFromEmpty').addEventListener('click', ()=> $('sellerNewGo').click());
+        return;
+      }
+      list.forEach(item=>{
+        const opt = document.createElement('option');
+        opt.value = item.address; opt.textContent = item.address;
+        sel.appendChild(opt);
+      });
+      $('sellerEditGo').addEventListener('click', ()=>{
+        // Jump to intake page for edit (seller path)
+        location.href = '/seller-detail.html';
+      });
+    })();
+
+    // Shared: search / local pro buttons
+    $('sellerSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
+    $('sellerProsGo')?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=search');
+
+    $('agentEditGo')?.addEventListener('click', ()=> location.href='/agent-detail.html');
+    $('agentProApply')?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
+    $('agentSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
+
+    $('bAgentProApply')?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
+    $('bAgentSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
+
+    $('buyerProsGo')?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=search');
+    $('buyerSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
+
+    $('otherSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
+  </script>
+</body>
+</html>
