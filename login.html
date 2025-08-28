@@ -13,7 +13,7 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <!-- Header -->
+  <!-- Header (original copy) -->
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
       <a href="/index.html" class="text-xs text-blue-600 hover:underline">&larr; Home</a>
@@ -136,6 +136,8 @@
               Show
             </button>
           </div>
+
+          <!-- Strength -->
           <div class="mt-2">
             <div class="h-2 w-full bg-gray-200 rounded" aria-hidden="true">
               <div id="strengthBar" class="h-2 w-0 rounded"></div>
@@ -233,12 +235,16 @@
     (function prefill() {
       const fd = safeJSON(localStorage.getItem('formData')) || {};
       const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+
       if (fd.name) $('c_name').value = fd.name;
+
       const email = fd.fsboEmail || localStorage.getItem('loggedInEmail') || '';
       if (email) { $('email').value = email; $('c_email').value = email; }
+
       if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
         $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
+
       if (localStorage.getItem('nextAfterLogin')) showCreate();
     })();
 
@@ -325,7 +331,7 @@
       if (acct.password !== password) { setStatus('Invalid email or password.'); return; }
       localStorage.setItem('isLoggedIn','true');
       localStorage.setItem('loggedInEmail', email);
-      if (acct.role) localStorage.setItem('userRole', acct.role);  // <-- wire role on sign-in
+      if (acct.role) localStorage.setItem('userRole', acct.role);  // wire role on sign-in
 
       if (!localStorage.getItem('verificationCode')) {
         const code = String(Math.floor(100000 + Math.random()*900000));
@@ -336,10 +342,8 @@
       const next = localStorage.getItem('nextAfterLogin');
       if (next) { window.location.href = next; return; }
 
-      const role = localStorage.getItem('userRole') || acct.role || '';
-      if (role === 'seller') window.location.href = '/dashboard.html';
-      else if (role === 'listing_agent') window.location.href = '/agent-detail.html';
-      else window.location.href = '/search.html';
+      // Default destination → HUB
+      window.location.href = '/welcome.html';
     });
 
     // Create Account
@@ -365,7 +369,7 @@
 
       localStorage.setItem('isLoggedIn','true');
       localStorage.setItem('loggedInEmail', email);
-      localStorage.setItem('userRole', role);  // <-- wire role on account creation
+      localStorage.setItem('userRole', role);  // wire role on account creation
 
       const code = String(Math.floor(100000 + Math.random()*900000));
       localStorage.setItem('verificationCode', code);
@@ -374,9 +378,8 @@
       const next = localStorage.getItem('nextAfterLogin');
       if (next) { window.location.href = next; return; }
 
-      if (role === 'seller') window.location.href = '/dashboard.html';
-      else if (role === 'listing_agent') window.location.href = '/agent-detail.html';
-      else window.location.href = '/verify-code.html';
+      // Default destination → HUB
+      window.location.href = '/welcome.html';
     });
 
     // Debug panel
