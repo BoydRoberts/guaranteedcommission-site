@@ -19,6 +19,8 @@
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
     .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
     .portrait-box { background:#fff; }
+    /* Ensure Mapbox canvas fills exact box (no white border) */
+    .mapboxgl-canvas { display:block !important; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -55,9 +57,9 @@
         <a id="tileClick" href="#" class="absolute inset-0" aria-label="Open full listing detail"></a>
       </article>
 
-      <!-- Middle: Map (20%) -->
-      <aside class="lg:col-span-1 bg-white rounded-2xl shadow p-0 overflow-hidden">
-        <div id="mapCanvas" class="h-80 lg:h-[24rem] bg-gray-100"></div>
+      <!-- Middle: Map (20%) — no padding, no white border -->
+      <aside class="lg:col-span-1 bg-white rounded-2xl shadow overflow-hidden">
+        <div id="mapCanvas" class="w-full h-[24rem] bg-gray-100"></div>
       </aside>
 
       <!-- Right: ISC (40%) — portrait, clickable anywhere -->
@@ -72,7 +74,7 @@
           <!-- Show portrait iframe immediately so user always sees the doc.
                pointer-events-none lets clicks pass through to the anchor wrapper. -->
           <iframe id="iscIframeVisible" src="/printable-isc.html" class="w-full h-[24rem] bg-white pointer-events-none"></iframe>
-          <!-- Once a crisp image is ready, we swap it in (still clickable via the anchor) -->
+          <!-- Once a crisp image is ready, we’ll swap it in (still clickable via the anchor) -->
           <img id="iscPreviewImg" alt="ISC preview" class="w-full h-[24rem] object-contain bg-white hidden"/>
         </a>
 
@@ -211,7 +213,7 @@
       $("viewCounter").textContent = `${n} view${n===1?'':'s'}`;
     })();
 
-    // ---- ISC preview: show iframe immediately, swap to crisp image when ready ----
+    // ---- ISC preview: show iframe immediately, swap to CRISPER/SMALLER thumbnail ----
     (async function renderIscPreview() {
       const hidden = $("iscIframeHidden");
       const visibleIframe = $("iscIframeVisible");
@@ -219,6 +221,7 @@
       if (!hidden || typeof html2canvas === "undefined") return;
 
       async function snapshotOnce() {
+        // Wait for hidden iframe doc
         await new Promise((res) => {
           if (hidden.contentWindow?.document?.readyState === "complete") return res();
           hidden.onload = () => res();
@@ -228,6 +231,18 @@
         const doc = hidden.contentDocument || hidden.contentWindow?.document;
         if (!doc || !doc.body) throw new Error("No iframe document");
 
+        // *** Inject tiny CSS to reduce margins & font for the thumbnail ***
+        const style = doc.createElement('style');
+        style.textContent = `
+          body { margin: 8px !important; }
+          body, p, span, div { font-size: 87% !important; }
+          .max-w-3xl { max-width: 46rem !important; }
+          .p-6 { padding: 12px !important; }
+          .rounded { border-radius: 10px !important; }
+        `;
+        doc.head.appendChild(style);
+
+        // Render at a higher scale so small text stays crisp
         const canvas = await html2canvas(doc.body, { scale: 1.8, useCORS: true, backgroundColor: "#ffffff" });
         return canvas.toDataURL("image/png");
       }
