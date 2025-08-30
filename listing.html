@@ -12,17 +12,18 @@
 
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
+    /* Listing tile image height (original look) */
     .tile-photo { width:100%; height: 20rem; object-fit: cover; background:#e5e7eb; }
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
     .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
-    /* Ensure map fills its bordered card completely */
+    /* Map should fill its bordered card completely */
     .map-card { height: 24rem; }
     #mapCanvas { width:100%; height:100%; }
     .mapboxgl-canvas { display:block !important; }
 
-    /* Make ISC card fully clickable without changing borders/shadows */
-    .click-wrap { position:relative; }
+    /* Make entire ISC area clickable; no visual borders/whitespace */
+    .click-wrap { position: relative; }
     .click-wrap a.overlay { position:absolute; inset:0; z-index:10; text-indent:-9999px; }
   </style>
 </head>
@@ -39,10 +40,10 @@
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- STRIP (Top row) — 40% | 20% | 40% -->
+    <!-- Top strip: 40 | 20 | 40 -->
     <section class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-      <!-- Left: listing tile (unchanged borders/specs) -->
+      <!-- Left: listing tile (original borders/specs) -->
       <article id="heroTile" class="lg:col-span-2 bg-white rounded-2xl shadow overflow-hidden relative cursor-pointer">
         <div class="relative">
           <img id="tilePhoto" class="tile-photo" alt="Listing photo"/>
@@ -61,17 +62,18 @@
         <a id="tileClick" href="#" class="absolute inset-0" aria-label="Open full listing detail"></a>
       </article>
 
-      <!-- Middle: Map (same borders/shadow, fills completely) -->
+      <!-- Middle: map (same borders/shadow, fills completely) -->
       <aside class="lg:col-span-1 bg-white rounded-2xl shadow overflow-hidden p-0 map-card">
         <div id="mapCanvas"></div>
       </aside>
 
-      <!-- Right: ISC (same borders/shadow) – show full doc, clickable anywhere, no “views” text -->
-      <aside class="lg:col-span-2 bg-white rounded-2xl shadow overflow-hidden p-0">
-        <div class="click-wrap">
+      <!-- Right: ISC — NO borders/whitespace, full doc visible, clickable anywhere -->
+      <aside class="lg:col-span-2 overflow-hidden p-0 m-0" style="background:transparent; border:0; box-shadow:none; border-radius:0;">
+        <div class="click-wrap" style="margin:0; padding:0;">
+          <!-- Overlay anchor makes whole area clickable to the printable PDF -->
           <a class="overlay" href="/printable-isc.html" target="_blank" aria-label="Open full ISC PDF">Open</a>
-          <!-- Auto-sized iframe so viewer sees the entire ISC from first to last word -->
-          <iframe id="iscIframe" src="/printable-isc.html" class="w-full" style="background:#fff; border:0;"></iframe>
+          <!-- Auto-sized iframe: full ISC (first → last word), no extra padding -->
+          <iframe id="iscIframe" src="/printable-isc.html" class="w-full" style="background:#fff; border:0; margin:0; display:block;"></iframe>
         </div>
       </aside>
 
@@ -127,7 +129,7 @@
     const agentName = formData.agent || (plan.includes("FSBO") ? "" : "[listing agent]");
     const agentPhone = fmtPhone(agentListing.agentPhone || formData.agentPhone || formData.phone || (plan.includes("FSBO") ? "" : "[agent phone]"));
 
-    // Paint tile (unchanged look)
+    // Paint tile (original look)
     (function tile(){
       $("tilePhoto").src = photo || "";
       const bEl = document.getElementById("tileBanner");
@@ -167,21 +169,19 @@
         });
         map.addControl(new mapboxgl.NavigationControl());
         new mapboxgl.Marker().setLngLat(center).addTo(map);
-        // Ensure the map resizes to fill the card after layout
         setTimeout(()=>map.resize(), 0);
       }catch{
         $("mapCanvas").innerHTML = '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
       }
     })();
 
-    // ISC — auto-size iframe to show entire document (no “views” text, no print button on page here)
+    // ISC — auto-size iframe to show entire document (no borders/whitespace, clickable area)
     (function iscFull(){
       const iframe = $("iscIframe");
       function sizeIFrame(){
         try{
           const doc = iframe.contentDocument || iframe.contentWindow.document;
           if (!doc) return;
-          // measure full content height and set the iframe to it
           const h = Math.max(
             doc.body.scrollHeight, doc.documentElement.scrollHeight,
             doc.body.offsetHeight, doc.documentElement.offsetHeight
@@ -190,7 +190,6 @@
         }catch{}
       }
       iframe.addEventListener('load', sizeIFrame);
-      // Fallback measurement soon after
       setTimeout(sizeIFrame, 1000);
     })();
 
