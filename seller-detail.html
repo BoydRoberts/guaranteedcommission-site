@@ -29,7 +29,7 @@
           Plan:
           <span id="planPill" class="pill">—</span>
         </p>
-        <!-- Removed “Some upgrades paid by agent.” per request -->
+        <!-- Deleted “Some upgrades paid by agent.” -->
         <p id="payerBadge" class="text-xs text-gray-600"></p>
       </div>
 
@@ -143,13 +143,12 @@
       </form>
     </section>
 
-    <!-- RIGHT column -->
+    <!-- RIGHT: Promo + Upgrades -->
     <aside class="space-y-4">
-      <!-- September Free Promo (Invite Agent) -->
+      <!-- September Free Promo -->
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">September Free Promo</h2>
         <p class="text-sm text-gray-600">Invite your listing agent to upgrade your listing for free in September.</p>
-
         <div class="mt-4">
           <button id="inviteAgentUpgradeBtn" class="bg-amber-600 text-white px-3 py-2 rounded">
             Invite Agent to Upgrade
@@ -158,10 +157,9 @@
         </div>
       </section>
 
-      <!-- Upgrades panel -->
+      <!-- Upgrades -->
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrade your listing</h2>
-        <!-- Removed helper lines per request -->
 
         <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
 
@@ -169,7 +167,6 @@
           <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
           <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
         </div>
-        <!-- Removed “Paid by agent…” note per request -->
       </section>
     </aside>
   </div>
@@ -182,15 +179,15 @@
 
     // Source data
     const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const formData = getJSON("formData", {});
-    const agentListing = getJSON("agentListing", {});
+    const formData = getJSON("formData", {});  // box 2
+    const agentListing = getJSON("agentListing", {}); // photos/desc/banner possibly from agent page
     const checkoutData = getJSON("checkoutData", null) || {
       plan,
       base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
       upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
       prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
       meta: {},
-      payer: "seller"
+      payer: "seller" // ensure seller payer
     };
     const flags = getJSON("intakeFollowups", {});
     const isFSBO = plan.includes("FSBO");
@@ -198,12 +195,10 @@
 
     // ---------- init UI ----------
     $("planPill").textContent = plan;
-    // Clear payerBadge text per request
-    $("payerBadge").textContent = "";
+    $("payerBadge").textContent = ""; // ensure no “paid by agent” text
 
     $("fullAddress").value = formData.address || "";
     $("status").value = agentListing.status || "";
-
     $("price").value = agentListing.price ?? "";
 
     // Commission locked
@@ -348,41 +343,33 @@
     $("saveBtn").addEventListener("click", () => { saveDraft(); alert("Saved."); });
 
     // ---------- Upgrades panel ----------
-    function row(label, price, key, opts={}) {
+    function row(label, price, key) {
       const checked = !!checkoutData.upgrades[key];
-      const paid = opts.paid === true;
-      const note = ''; // removed paid-by-agent note
       return `
-        <label class="flex items-center justify-between border rounded-lg px-3 py-2 ${paid?'bg-gray-50':''}">
+        <label class="flex items-center justify-between border rounded-lg px-3 py-2">
           <div>
             <span class="font-medium">${label}</span>
             <span class="text-gray-500"> — $${price}</span>
-            ${note}
           </div>
-          <input type="checkbox" data-key="${key}" class="h-4 w-4" ${checked?'checked':''} ${paid?'disabled':''}/>
+          <input type="checkbox" data-key="${key}" class="h-4 w-4" ${checked?'checked':''}/>
         </label>
       `;
     }
     function paintUpgrades() {
       const box = $("upgradesBox");
       const html = [
-        row("Banner", checkoutData.prices.banner, "banner", {paid: checkoutData.upgrades.banner && checkoutData.payer}),
-        row("Premium Placement", checkoutData.prices.premium, "premium", {paid: checkoutData.upgrades.premium && checkoutData.payer}),
-        row("Pin Placement", checkoutData.prices.pin, "pin", {paid: checkoutData.upgrades.pin && checkoutData.payer})
+        row("Banner", checkoutData.prices.banner, "banner"),
+        row("Premium Placement", checkoutData.prices.premium, "premium"),
+        row("Pin Placement", checkoutData.prices.pin, "pin")
       ].join("");
       box.innerHTML = html;
       box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
         cb.addEventListener("change", (e)=>{
           const k = e.target.getAttribute("data-key");
           const checked = e.target.checked;
-          if (k === "banner") {
-            checkoutData.upgrades.banner = checked;
-          } else if (k === "premium") {
-            checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
-          } else if (k === "pin") {
-            checkoutData.upgrades.pin = checked;
-            if (checked) checkoutData.upgrades.premium = true; // included
-          }
+          if (k === "banner")      checkoutData.upgrades.banner  = checked;
+          if (k === "premium")     checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
+          if (k === "pin")        {checkoutData.upgrades.pin     = checked; if (checked) checkoutData.upgrades.premium = true;}
           setJSON("checkoutData", checkoutData);
         });
       });
@@ -390,9 +377,8 @@
     paintUpgrades();
 
     $("updateUpgradesBtn").addEventListener("click", () => {
-      // reflect meta fields if typed while locked (store for later)
       checkoutData.meta.preferredArea = $("preferredArea").value || checkoutData.meta.preferredArea || "";
-      checkoutData.meta.pinArea = $("pinArea").value || checkoutData.meta.pinArea || "";
+      checkoutData.meta.pinArea       = $("pinArea").value       || checkoutData.meta.pinArea       || "";
       setJSON("checkoutData", checkoutData);
       alert("Upgrades updated. Go to Checkout to pay (if needed).");
     });
