@@ -7,11 +7,13 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
+
     /* Nav hover */
+    .group { position: relative; }
+    #commissionMenu { display: none; position: absolute; left: 0; top: 100%; }
     .group:hover #commissionMenu,
-    .group:focus-within #commissionMenu { display: block; }
-    /* Keep menus hidden by default */
-    #commissionMenu { display: none; }
+    .group:focus-within #commissionMenu,
+    .group.nav-open #commissionMenu { display: block; }
 
     /* --- Strip 2 tile styles --- */
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
@@ -34,7 +36,7 @@
       </div>
       <div class="flex items-center gap-2">
         <a href="/local-professionals.html" class="bg-amber-600 text-white text-xs font-semibold px-3 py-1 rounded">Local Professionals</a>
-        <!-- Header Log In button removed per your instruction -->
+        <!-- Removed header Log In button per request -->
       </div>
     </div>
   </header>
@@ -135,7 +137,7 @@
       <h2 class="text-lg font-bold mb-4">Press Inquiry Form</h2>
       <input type="text" id="pressName" placeholder="Full Name" class="w-full border p-1 mb-2 rounded">
       <input type="text" id="pressOrg" placeholder="Organization" class="w-full border p-1 mb-2 rounded">
-      <input type="tel" id="pressPhone" placeholder="Phone Number" class="w-full border p-1 mb-2 rounded">
+      <input type="tel" id="pressPhone" placeholder="Phone" class="w-full border p-1 mb-2 rounded">
       <input type="email" id="pressEmail" placeholder="Email Address" class="w-full border p-1 mb-4 rounded">
       <button onclick="submitPressForm()" class="w-full bg-blue-600 text-white py-2 rounded">Submit</button>
       <p id="pressConfirmation" class="mt-4 text-green-600 font-semibold text-center hidden">We will be in touch.</p>
@@ -145,9 +147,9 @@
   <!-- Nav -->
   <nav class="bg-gray-200 py-2">
     <ul class="flex justify-center space-x-8 font-semibold">
-      <li class="relative group">
-        <span class="hover:underline cursor-pointer">Communicate Guaranteed Commission</span>
-        <ul id="commissionMenu" class="absolute left-0 mt-2 w-64 bg-white border shadow text-sm text-gray-700 z-10">
+      <li class="group">
+        <span class="hover:underline cursor-pointer" tabindex="0" id="commissionToggle">Communicate Guaranteed Commission</span>
+        <ul id="commissionMenu" class="mt-2 w-64 bg-white border shadow text-sm text-gray-700 z-10">
           <li><a href="#" onclick="selectPlan('Listed Property Basic')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Basic</a></li>
           <li><a href="#" onclick="selectPlan('Listed Property Plus')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Plus</a></li>
           <li><a href="#" onclick="selectPlan('FSBO Plus')" class="block px-4 py-2 hover:bg-gray-100">FSBO Plus</a></li>
@@ -158,7 +160,7 @@
     </ul>
   </nav>
 
-  <!-- Strip 1 (Boxes 1–3) -->
+  <!-- Strip 1 -->
   <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
     <!-- Box 1 -->
     <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
@@ -198,10 +200,13 @@
         <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
 
         <!-- Phone/Broker/Agent -->
-        <div id="listedPhoneRow" class="relative">
-          <input type="tel" id="agentPhone" placeholder="Phone" class="w-full border p-1 rounded">
-          <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (123-456-7890)</span>
+        <div id="listedPhoneRow">
+          <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
+          <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (###) ###-####</span>
         </div>
+
+        <!-- Agent Email (NEW) -->
+        <input type="email" id="agentEmail" placeholder="Agent’s Email – NOT your email" class="w-full border p-1 rounded">
 
         <!-- Brokerage (HIDDEN for FSBO) -->
         <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
@@ -238,11 +243,11 @@
         <p>To the escrow holder/closing agent,</p>
         <p class="mt-2">
           I, <span id="letterName">[name]</span>, am the owner/seller of
-          <span id="letterAddressFull">[full address]</span>
-          <span id="apnSpanListed">, # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span></span>.
+          <span id="letterAddressFull">[full address]</span>,
+          # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
           <span id="letterAddressShort1">[short address]</span> is listed for sale by
           <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent,
-          <span id="letterAgentPhone">[agent phone]</span>.
+          <span id="letterAgentPhone">[agent phone]</span>, <span id="letterAgentEmail">[agent email]</span>.
         </p>
         <p class="mt-2">
           Let it be known: if a buyer’s agent/broker facilitates the sale of
@@ -277,6 +282,7 @@
 
   <!-- Strip 2: Search / Tiles -->
   <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12">
+    <!-- Centered search header -->
     <div class="text-center mb-4">
       <div class="flex items-center justify-center">
         <div class="flex items-center gap-2">
@@ -289,12 +295,16 @@
     <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </section>
 
-  <!-- Footer with centered Press button -->
-  <footer class="bg-white border-t">
-    <div class="max-w-7xl mx-auto px-4 py-6 flex items-center justify-center">
-      <button onclick="openPressModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-2 rounded">
-        Press Inquiry
-      </button>
+  <!-- Footer -->
+  <footer class="bg-white border-t mt-8">
+    <div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-gray-600 space-y-2">
+      <p>© 2025 GuaranteedCommission.com. All rights reserved.</p>
+      <p>Boyd Roberts · California Licensed Real Estate Broker · DRE License #01354788</p>
+      <p>
+        <a href="/privacy.html" class="hover:underline">Privacy Policy</a> · 
+        <a href="/terms.html" class="hover:underline">Terms of Use</a>
+      </p>
+      <p class="text-[10px] text-gray-400">This platform is a Commission Communication Platform. All purchases subject to quality control review.</p>
     </div>
   </footer>
 
@@ -307,77 +317,42 @@
     function closePressModal(){ document.getElementById('pressModal').classList.add('hidden'); }
     function submitPressForm(){ document.getElementById('pressConfirmation').classList.remove('hidden'); }
 
-    // ---- Investor Certification handler ----
-    (function wireInvestorForm(){
-      const form = document.getElementById('investorForm'); if (!form) return;
-      const confirmEl = document.getElementById('investorConfirmation');
-      const toEmail = "founder@guaranteedcommission.com";
-
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name  = document.getElementById('invName').value.trim();
-        const email = document.getElementById('invEmail').value.trim();
-        const phone = document.getElementById('invPhone').value.trim();
-        const sig   = document.getElementById('invSignature').value.trim();
-        const date  = document.getElementById('invDate').value || new Date().toISOString().slice(0,10);
-
-        const checks = {
-          Income_Test: document.getElementById('cIncome').checked,
-          Net_Worth_Test: document.getElementById('cNetWorth').checked,
-          Series_7_65_82: document.getElementById('cLicenses').checked,
-          Director_Officer_GP: document.getElementById('cOfficer').checked,
-          Entity_5M_Assets: document.getElementById('cEntity').checked,
-          All_Equity_Owners_Accredited: document.getElementById('cOwners').checked
-        };
-
-        if (!name || !email || !phone || !sig) { alert('Please complete Name, Email, Phone, and Signature.'); return; }
-
-        const bLines = [
-          "Accredited Investor Certification (SEC Rule 501 of Regulation D)",
-          "",
-          `Investor Name: ${name}`,
-          `Email: ${email}`,
-          `Phone: ${phone}`,
-          "",
-          "I hereby certify that I qualify as an “Accredited Investor” because:",
-          ` - Income Test: ${checks.Income_Test ? '☑' : '☐'}`,
-          ` - Net Worth Test: ${checks.Net_Worth_Test ? '☑' : '☐'}`,
-          "Other Accredited Categories:",
-          ` - Series 7/65/82: ${checks.Series_7_65_82 ? '☑' : '☐'}`,
-          ` - Director/Officer/GP: ${checks.Director_Officer_GP ? '☑' : '☐'}`,
-          ` - Entity with >$5,000,000 assets: ${checks.Entity_5M_Assets ? '☑' : '☐'}`,
-          ` - All equity owners are Accredited: ${checks.All_Equity_Owners_Accredited ? '☑' : '☐'}`,
-          "",
-          "Acknowledgments:",
-          "I understand that GuaranteedCommission.com (the “Company”) will rely on this certification in offering and selling securities in compliance with U.S. securities laws.",
-          "I agree to provide further documentation (such as tax returns, W-2s, brokerage statements, or a letter from my CPA/attorney) if required to verify my status under Rule 506(c).",
-          "I represent and warrant that the above statements are true and correct.",
-          "",
-          `Signature: ${sig}`,
-          `Date: ${date}`
-        ].join('\n');
-
-        const mailto = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent('Accredited Investor Certification')}&body=${encodeURIComponent(bLines)}`;
-        try { window.location.href = mailto; } catch {}
-        if (confirmEl) confirmEl.classList.remove('hidden');
-      });
+    // Keep commission menu open while hovering submenu (robust hover)
+    (function(){
+      const li = document.querySelector('.group');
+      const menu = document.getElementById('commissionMenu');
+      if (!li || !menu) return;
+      let t;
+      function open(){ li.classList.add('nav-open'); clearTimeout(t); }
+      function close(){ t = setTimeout(()=>li.classList.remove('nav-open'), 120); }
+      li.addEventListener('mouseenter', open);
+      li.addEventListener('mouseleave', close);
+      menu.addEventListener('mouseenter', open);
+      menu.addEventListener('mouseleave', close);
+      document.getElementById('commissionToggle')?.addEventListener('focus', open);
+      document.getElementById('commissionToggle')?.addEventListener('blur', close);
     })();
 
-    // Utilities
+    // Address validator
     function isValidFullAddress(s) {
       if (!s) return false;
       const re = /^\s*.+?,\s*[A-Za-z .'\-]+,\s*[A-Za-z]{2}\s+\d{5}(?:-\d{4})?\s*$/;
       return re.test(s.trim());
     }
+
+    /* Plan switcher */
     function selectPlan(planName){
       localStorage.setItem("selectedPlan", planName);
       showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
     }
+
+    /* Toggle form + ISC */
     function showForm(type){
       const title = document.getElementById("formTitle");
       const phoneInput = document.getElementById('agentPhone');
       const brokerageInput = document.getElementById('brokerage');
       const agentInput = document.getElementById('agent');
+      const agentEmailInput = document.getElementById('agentEmail');
       const fsboEmailRow = document.getElementById('fsboEmailRow');
       const listedPhoneRow = document.getElementById('listedPhoneRow');
 
@@ -387,7 +362,9 @@
         phoneInput.placeholder = 'Owner/Seller phone number';
         brokerageInput.style.display = 'none';
         agentInput.style.display = 'none';
+        agentEmailInput.style.display = 'none';
         fsboEmailRow.classList.remove('hidden');
+
         document.getElementById('iscTextListed').classList.add('hidden');
         document.getElementById('iscTextFSBO').classList.remove('hidden');
       } else {
@@ -396,27 +373,92 @@
         phoneInput.placeholder = 'Agent’s direct phone only – NOT your number';
         brokerageInput.style.display = 'block';
         agentInput.style.display = 'block';
+        agentEmailInput.style.display = 'block';
         fsboEmailRow.classList.add('hidden');
+
         document.getElementById('iscTextListed').classList.remove('hidden');
         document.getElementById('iscTextFSBO').classList.add('hidden');
       }
     }
 
-    // On load
+    /* On load */
     window.addEventListener('DOMContentLoaded', () => {
       const lastSelected = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
       showForm('listed');
       localStorage.setItem('selectedPlan', lastSelected.includes('FSBO') ? 'Listed Property Basic' : lastSelected);
 
-      const lastSearch = localStorage.getItem('lastSearch') || '';
-      const box = document.getElementById('searchBox');
-      if (box) box.value = lastSearch;
+      // Phone mask: (###) ###-####
+      const phoneInput = document.getElementById('agentPhone');
+      const phoneError = document.getElementById('phoneError');
+      phoneInput?.addEventListener('input', function(){
+        let d = this.value.replace(/\D/g,'').slice(0,10);
+        let v = d;
+        if (d.length > 6) v = `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+        else if (d.length > 3) v = `(${d.slice(0,3)}) ${d.slice(3)}`;
+        this.value = v;
+        const ok = /^\(\d{3}\)\s\d{3}-\d{4}$/.test(this.value);
+        phoneInput.classList.toggle('border-red-500', !ok && d.length===10);
+        phoneError.classList.toggle('hidden', ok || d.length<10);
+        syncAll();
+      });
 
+      // Live sync to ISC
+      ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission'].forEach(id=>{
+        const el=document.getElementById(id); if(!el) return;
+        el.addEventListener('input', syncAll);
+      });
+      document.getElementById('commissionType')?.addEventListener('change', syncAll);
+
+      function syncAll(){
+        const fullAddr = (document.getElementById('address').value || '').trim();
+        const short = fullAddr.split(',')[0] || '';
+        const nameVal = document.getElementById('name').value || '';
+        const apnVal = document.getElementById('apn').value || '';
+        const phoneVal = document.getElementById('agentPhone').value || '';
+        const brokerageVal = document.getElementById('brokerage').value || '';
+        const agentVal = document.getElementById('agent').value || '';
+        const agentEmailVal = document.getElementById('agentEmail').value || '';
+        const fsboEmailInput = document.getElementById('fsboEmailInput');
+        const amount = (document.getElementById('commission').value || '').trim();
+        const type = document.getElementById('commissionType').value;
+        const suffix = type === '%' ? 'of the total purchase price' : '';
+        const display = type === '$' ? (amount ? ('$' + Number(amount).toLocaleString()) : '') : (amount ? amount + '%' : '');
+
+        // Listed
+        document.getElementById('letterName').textContent = nameVal || '[name]';
+        document.getElementById('letterAddressFull').textContent = fullAddr || '[full address]';
+        document.getElementById('letterAPN').textContent = apnVal || '[Parcel # / Pin # / Tax ID # / Folio # / APN #]';
+        document.getElementById('letterAddressShort1').textContent = short || '[short address]';
+        document.getElementById('letterAddressShort2').textContent = short || '[short address]';
+        document.getElementById('letterBrokerage').textContent = brokerageVal || '[listing brokerage]';
+        document.getElementById('letterAgent').textContent = agentVal || '[listing agent]';
+        document.getElementById('letterAgentPhone').textContent = phoneVal || '[agent phone]';
+        document.getElementById('letterAgentEmail').textContent = agentEmailVal || '[agent email]';
+        document.getElementById('letterCommissionDisplay').textContent = display || '[commission]';
+        document.getElementById('commissionSuffix').textContent = display ? (' ' + suffix) : '';
+        document.getElementById('signatureName').textContent = nameVal || '[Name]';
+
+        // FSBO
+        document.getElementById('letterNameFSBO').textContent = nameVal || '[name]';
+        document.getElementById('letterAddressFullFSBO').textContent = fullAddr || '[full address]';
+        document.getElementById('letterAddressShort1FSBO').textContent = short || '[short address]';
+        document.getElementById('letterAddressShort2FSBO').textContent = short || '[short address]';
+        document.getElementById('letterAPNFSBO').textContent = apnVal || '[Parcel # / Pin # / Tax ID # / Folio # / APN #]';
+        document.getElementById('fsboPhone').textContent = phoneVal || '[owner/seller phone number]';
+        document.getElementById('fsboEmail').textContent = (fsboEmailInput && fsboEmailInput.value) || '[owner/seller email]';
+        document.getElementById('letterCommissionDisplayFSBO').textContent = display || '[commission]';
+        document.getElementById('commissionSuffixFSBO').textContent = display ? (' ' + suffix) : '';
+        document.getElementById('signatureNameFSBO').textContent = nameVal || '[Name]';
+      }
+      syncAll();
+
+      // ---- Strip 2 tiles + search ----
       buildTilesDataset();
-      renderStrip2Tiles(lastSearch);
+      renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
       wireSearch();
     });
 
+    /* Submit */
     function submitForm(){
       const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
       const requiredIds = ['name','address','agentPhone'];
@@ -447,6 +489,7 @@
         phone:document.getElementById('agentPhone').value.trim(),
         brokerage:document.getElementById('brokerage').value.trim(),
         agent:document.getElementById('agent').value.trim(),
+        agentEmail:document.getElementById('agentEmail').value.trim(),
         fsboEmail:fsboEmailEl?fsboEmailEl.value.trim():''
       };
       localStorage.setItem("formData",JSON.stringify(formData));
@@ -469,13 +512,6 @@
       if(p) return Math.round(p*(c/100));
       return null;
     }
-    function formatPhoneDisplay(s){
-      const d = String(s||'').replace(/\D/g,'').slice(0,10);
-      if (d.length===10) return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;
-      return s||'';
-    }
-
-    // UPDATED TILE: includes property type & dashed phone
     function renderTile(data){
       const {
         address="[full address]",
@@ -501,11 +537,12 @@
 
       const img = (photos && photos.length ? photos[primaryIndex||0] : "");
       const typeSeg = propertyType ? ` | ${propertyType}` : '';
-      const phoneDisp = formatPhoneDisplay(agentPhone);
-
       const card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
-      card.onclick = () => { window.location.href = `/listing.html?addr=${encodeURIComponent(address)}`; };
+      card.onclick = () => {
+        const slug = encodeURIComponent(address);
+        window.location.href = `/listing.html?addr=${slug}`;
+      };
 
       card.innerHTML = `
         <div class="relative">
@@ -523,7 +560,7 @@
           <div class="text-sm font-medium">${address}</div>
           <div class="text-[12px] text-gray-600">
             ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}
-            ${agent ? ' — '+agent : ''}${phoneDisp ? ' — '+phoneDisp : ''}
+            ${agent ? ' — '+agent : ''}${agentPhone ? ' — '+agentPhone : ''}
           </div>
         </div>
       `;
@@ -550,7 +587,7 @@
           status: agentListing.status || 'Active',
           brokerage: formData.brokerage,
           agent: formData.agent,
-          agentPhone: formatPhoneDisplay(formData.agentPhone),
+          agentPhone: document.getElementById('agentPhone')?.value || formData.phone || '',
           plan,
           bedrooms: agentListing.bedrooms,
           bathrooms: agentListing.bathrooms,
@@ -619,31 +656,6 @@
       btn.addEventListener('click', go);
       box.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); }});
     }
-  </script>
-
-  <!-- Header Log In router: send users to role-specific destinations -->
-  <script>
-    (function(){
-      const loginLinks = document.querySelectorAll('a[href="/login.html"], a[href="/login"]');
-      loginLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-          e.preventDefault();
-          const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-          const role = localStorage.getItem('userRole') || '';
-          if (isLoggedIn) {
-            if (role === 'seller') {
-              window.location.href = '/dashboard.html';
-            } else if (role === 'listing_agent') {
-              window.location.href = '/agent-detail.html';
-            } else {
-              window.location.href = '/search.html';
-            }
-          } else {
-            window.location.href = '/login.html';
-          }
-        });
-      });
-    })();
   </script>
 </body>
 </html>
