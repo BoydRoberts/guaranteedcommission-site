@@ -7,8 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .badge { font-size:11px; background:#f3f4f6; color:#4b5563; padding:.1rem .5rem; border-radius:.375rem; }
-    .role-pill { display:inline-flex; align-items:center; gap:.5rem; border:1px solid #d1d5db; padding:.5rem .75rem; border-radius:9999px; cursor:pointer; user-select:none; }
-    .role-pill[data-active="true"] { border-color:#2563eb; background:#eff6ff; color:#1d4ed8; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -30,7 +28,7 @@
   <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-3">
-        <span class="badge">secure access build 2025-08-14b + roles</span>
+        <span class="badge">secure access build 2025-08-14b</span>
       </div>
 
       <!-- Tabs -->
@@ -107,24 +105,6 @@
           <p class="text-xs text-gray-500 mt-1">Format: 123-456-7890</p>
         </div>
 
-        <!-- Role selection (pills) -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">I am a</label>
-          <div id="roleGroup" class="flex flex-wrap gap-2">
-            <label class="role-pill" data-role="seller"><input type="radio" name="role" value="seller" class="sr-only" /> Seller</label>
-            <label class="role-pill" data-role="buyer"><input type="radio" name="role" value="buyer" class="sr-only" /> Buyer</label>
-            <label class="role-pill" data-role="listing_agent"><input type="radio" name="role" value="listing_agent" class="sr-only" /> Listing Agent</label>
-            <label class="role-pill" data-role="buyers_agent"><input type="radio" name="role" value="buyers_agent" class="sr-only" /> Buyer’s Agent</label>
-            <label class="role-pill" data-role="other"><input type="radio" name="role" value="other" class="sr-only" /> Other</label>
-          </div>
-          <div id="localProLink" class="hidden mt-2">
-            <a href="/local-professionals.html" class="text-xs text-blue-600 underline">
-              Become a Local Professional
-            </a>
-          </div>
-          <p id="roleMsg" class="text-xs text-gray-500 mt-1">Select one so we can personalize your experience.</p>
-        </div>
-
         <div>
           <label for="c_password" class="block text-sm font-medium text-gray-700">Create Password</label>
           <div class="relative mt-1">
@@ -165,6 +145,23 @@
           <p id="matchMsg" class="text-xs mt-1"></p>
         </div>
 
+        <!-- Role -->
+        <div>
+          <label for="createRole" class="block text-sm font-medium text-gray-700">Role</label>
+          <select id="createRole" class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="seller">Seller</option>
+            <option value="listing_agent">Listing Agent</option>
+            <option value="buyers_agent">Buyer’s Agent</option>
+            <option value="buyer">Buyer</option>
+            <option value="other">Other</option>
+          </select>
+          <div id="localProLink" class="hidden mt-2">
+            <a href="/local-professionals.html" class="text-xs text-blue-600 underline">
+              Become a Local Professional
+            </a>
+          </div>
+        </div>
+
         <div class="flex items-center justify-between text-sm">
           <a href="#" id="goSignin" class="text-blue-600 hover:underline">Already have an account? Sign in</a>
         </div>
@@ -186,7 +183,7 @@
   </main>
 
   <script>
-    console.log('[login] secure access build 2025-08-14b + roles');
+    console.log('[login] secure access build 2025-08-14b');
 
     // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
@@ -230,23 +227,6 @@
     tabCreate.addEventListener('click', showCreate);
     $('goCreate')?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
     $('goSignin')?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
-
-    // Prefill from Box 2 — FSBO-only phone; email prefers fsboEmail if present
-    (function prefill() {
-      const fd = safeJSON(localStorage.getItem('formData')) || {};
-      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-
-      if (fd.name) $('c_name').value = fd.name;
-
-      const email = fd.fsboEmail || localStorage.getItem('loggedInEmail') || '';
-      if (email) { $('email').value = email; $('c_email').value = email; }
-
-      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
-        $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
-      }
-
-      if (localStorage.getItem('nextAfterLogin')) showCreate();
-    })();
 
     // Show/Hide toggles
     function wireToggle(inputId, btnId) {
@@ -300,24 +280,41 @@
     const getAccounts = ()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
     const saveAccounts = (obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
 
-    // Role pills behavior + Local Pro link toggle
-    (function wireRoles(){
-      const group = $('roleGroup'); if (!group) return;
-      const labels = Array.from(group.querySelectorAll('.role-pill'));
-      labels.forEach(lab => {
-        lab.addEventListener('click', () => {
-          labels.forEach(x => x.dataset.active = "false");
-          lab.dataset.active = "true";
-          const input = lab.querySelector('input[type="radio"]');
-          if (input) input.checked = true;
-          const val = input?.value || '';
-          if (val==='listing_agent' || val==='buyers_agent') {
-            $('localProLink').classList.remove('hidden');
-          } else {
-            $('localProLink').classList.add('hidden');
-          }
-        });
-      });
+    // Role link toggle
+    $('createRole')?.addEventListener('change', (e)=>{
+      const v = e.target.value;
+      if (v==='listing_agent' || v==='buyers_agent') $('localProLink').classList.remove('hidden');
+      else $('localProLink').classList.add('hidden');
+    });
+
+    // Prefill from Box 2 — FSBO-only phone; email prefers fsboEmail if present for FSBO ONLY
+    (function prefill() {
+      const fd = safeJSON(localStorage.getItem('formData')) || {};
+      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+
+      // Name (neutral)
+      if (fd.name) $('createName').value = fd.name;
+
+      // *** IMPORTANT: Basic/Plus must NOT prefill seller email with agent email ***
+      // For FSBO we prefill seller email from fsboEmail (owner email).
+      if (plan.includes('FSBO') && fd.fsboEmail) {
+        $('createEmail').value = fd.fsboEmail;
+      } else {
+        // For Basic/Plus, leave seller email blank on Create Account.
+        $('createEmail').value = '';
+      }
+
+      // Sign-in email can still use last login email for convenience
+      const last = localStorage.getItem('loggedInEmail') || '';
+      if (last) $('email').value = last;
+
+      // Phone: FSBO ONLY. Avoid agent-phone bleed for Basic/Plus
+      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
+        $('createPhone').value = formatPhone(fd.phone || fd.agentPhone);
+      }
+
+      // If coming from Box 2 flow, default to Create tab
+      if (localStorage.getItem('nextAfterLogin')) showCreate();
     })();
 
     // Sign In
@@ -331,7 +328,7 @@
       if (acct.password !== password) { setStatus('Invalid email or password.'); return; }
       localStorage.setItem('isLoggedIn','true');
       localStorage.setItem('loggedInEmail', email);
-      if (acct.role) localStorage.setItem('userRole', acct.role);  // wire role on sign-in
+      if (acct.role) localStorage.setItem('userRole', acct.role);
 
       if (!localStorage.getItem('verificationCode')) {
         const code = String(Math.floor(100000 + Math.random()*900000));
@@ -349,18 +346,15 @@
     // Create Account
     $('createForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const name  = $('c_name').value.trim();
-      const email = $('c_email').value.trim().toLowerCase();
-      const phone = $('c_phone').value.trim();
+      const name  = $('createName').value.trim();
+      const email = $('createEmail').value.trim().toLowerCase();
+      const phone = $('createPhone').value.trim();
       const p1 = $('c_password').value;
       const p2 = $('c_password2').value;
+      const role = $('createRole').value;
 
-      const roleInput = document.querySelector('input[name="role"]:checked');
-      const role = roleInput ? roleInput.value : '';
-      if (!role) { setStatus('Please select your role (Seller, Buyer, Listing Agent, Buyer’s Agent, Other).'); return; }
-
-      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
-      if (scorePassword(p1) < 3) { setStatus('Please use a stronger password (aim for Good or Strong).'); return; }
+      if (!name || !email || !phone || !p1) { setStatus('Please complete all fields.'); return; }
+      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('createPhone').focus(); return; }
       if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
 
       const accounts = getAccounts();
@@ -369,8 +363,9 @@
 
       localStorage.setItem('isLoggedIn','true');
       localStorage.setItem('loggedInEmail', email);
-      localStorage.setItem('userRole', role);  // wire role on account creation
+      localStorage.setItem('userRole', role);
 
+      // Send code (simulated) + verify handoff
       const code = String(Math.floor(100000 + Math.random()*900000));
       localStorage.setItem('verificationCode', code);
       localStorage.setItem('verifyTarget', email);
