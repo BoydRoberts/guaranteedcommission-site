@@ -29,6 +29,7 @@
           Plan:
           <span id="planPill" class="pill">—</span>
         </p>
+        <!-- Removed “Some upgrades paid by agent.” per request -->
         <p id="payerBadge" class="text-xs text-gray-600"></p>
       </div>
 
@@ -74,20 +75,6 @@
           <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
           <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
           <p id="apnReqMsg" class="text-xs text-gray-500 mt-1 hidden">FSBO requires an APN/Parcel value.</p>
-        </div>
-
-        <!-- NEW: Property Type (authorized change) -->
-        <div>
-          <label class="block text-sm font-semibold mb-1">Property Type</label>
-          <select id="propertyType" class="w-full border p-2 rounded">
-            <option value="">Select…</option>
-            <option>Single Family</option>
-            <option>Condo</option>
-            <option>Townhouse</option>
-            <option>Multi-Family</option>
-            <option>Land</option>
-            <option>Other</option>
-          </select>
         </div>
 
         <!-- Photos -->
@@ -149,8 +136,6 @@
           </div>
         </div>
 
-        <!-- FSBO-only contact is already captured at Box 2; nothing to show here -->
-
         <div class="pt-2 flex items-center gap-2">
           <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
           <a href="/listing.html" class="bg-green-600 text-white px-4 py-2 rounded">Preview Full Listing Detail</a>
@@ -158,26 +143,25 @@
       </form>
     </section>
 
-    <!-- RIGHT: Promo + Upgrades -->
+    <!-- RIGHT column -->
     <aside class="space-y-4">
-      <!-- Promo card (agent-only; inactive here for seller page) -->
+      <!-- September Free Promo (Invite Agent) -->
       <section class="bg-white rounded shadow p-5">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold">September Free Promo</h2>
-          <span id="promoBadge" class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">Inactive</span>
+        <h2 class="text-lg font-semibold">September Free Promo</h2>
+        <p class="text-sm text-gray-600">Invite your listing agent to upgrade your listing for free in September.</p>
+
+        <div class="mt-4">
+          <button id="inviteAgentUpgradeBtn" class="bg-amber-600 text-white px-3 py-2 rounded">
+            Invite Agent to Upgrade
+          </button>
+          <p id="inviteAgentMsg" class="hidden text-sm text-green-700 mt-2">Agent invited to upgrade this listing.</p>
         </div>
-        <p class="text-sm text-gray-600 mt-2">
-          Agent-only promo: Banner, Premium, and Pin are <strong>FREE</strong> in September when upgrades are paid by a listing agent.
-        </p>
-        <button id="applyPromoBtn" class="mt-3 w-full bg-blue-600 text-white px-3 py-2 rounded disabled:opacity-50" disabled>
-          Apply September Free Upgrades
-        </button>
-        <p id="promoNote" class="text-xs text-gray-500 mt-2">Not available on the seller intake page.</p>
       </section>
 
+      <!-- Upgrades panel -->
       <section class="bg-white rounded shadow p-5">
-        <h2 class="text-lg font-semibold">Upgrades</h2>
-        <p class="text-sm text-gray-600">Select available upgrades or see what’s already paid.</p>
+        <h2 class="text-lg font-semibold">Upgrade your listing</h2>
+        <!-- Removed helper lines per request -->
 
         <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
 
@@ -185,7 +169,7 @@
           <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
           <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
         </div>
-        <p class="text-xs text-gray-500 mt-2">“Paid by agent” items are locked and final.</p>
+        <!-- Removed “Paid by agent…” note per request -->
       </section>
     </aside>
   </div>
@@ -198,8 +182,8 @@
 
     // Source data
     const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const formData = getJSON("formData", {});  // box 2
-    const agentListing = getJSON("agentListing", {}); // photos/desc/banner possibly from agent page
+    const formData = getJSON("formData", {});
+    const agentListing = getJSON("agentListing", {});
     const checkoutData = getJSON("checkoutData", null) || {
       plan,
       base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
@@ -208,34 +192,30 @@
       meta: {},
       payer: "seller"
     };
-    const flags = getJSON("intakeFollowups", {}); // may hold preferred/pin notes
+    const flags = getJSON("intakeFollowups", {});
     const isFSBO = plan.includes("FSBO");
     const isPlus = plan === "Listed Property Plus" || isFSBO;
 
     // ---------- init UI ----------
     $("planPill").textContent = plan;
-    $("payerBadge").textContent = checkoutData.payer === "agent" ? "Some upgrades paid by agent." : "";
+    // Clear payerBadge text per request
+    $("payerBadge").textContent = "";
 
     $("fullAddress").value = formData.address || "";
     $("status").value = agentListing.status || "";
 
-    // price
     $("price").value = agentListing.price ?? "";
 
-    // commission (locked)
+    // Commission locked
     const commission = agentListing.commission ?? (formData.commission || "");
     const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
     $("commission").value = commission;
     $("commissionType").value = commissionType;
 
-    // APN
     $("apn").value = formData.apn || agentListing.apn || "";
     if (isFSBO) $("apnReqMsg").classList.remove("hidden");
 
-    // NEW: Property Type prefill
-    $("propertyType").value = agentListing.propertyType ?? "";
-
-    // Photos (limit based on plan)
+    // Photos
     const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
     let primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
     const maxPhotos = isPlus ? 20 : 1;
@@ -290,8 +270,7 @@
     });
 
     // Description gate
-    const desc = agentListing.description ?? "";
-    $("description").value = desc;
+    $("description").value = agentListing.description ?? "";
     if (!isPlus) {
       $("description").classList.add("dimmed");
       $("description").setAttribute("disabled","disabled");
@@ -339,8 +318,7 @@
       $("agentPhone").value = formData.agentPhone || agentListing.agentPhone || "";
     }
 
-    // Wire inputs
-    ["status","price","description","bannerText","preferredArea","pinArea","brokerage","agentName","agentEmail","agentPhone","apn","propertyType"].forEach(id=>{
+    ["status","price","description","bannerText","preferredArea","pinArea","brokerage","agentName","agentEmail","agentPhone","apn"].forEach(id=>{
       const el = $(id);
       if (!el) return;
       el.addEventListener("input", saveDraft);
@@ -353,7 +331,6 @@
         commission: commission,
         commissionType: commissionType,
         apn: $("apn").value || "",
-        propertyType: $("propertyType").value || "", // NEW: persist property type
         description: $("description").disabled ? (agentListing.description || "") : ($("description").value || ""),
         bannerText: $("bannerText").disabled ? (agentListing.bannerText || "") : ($("bannerText").value || ""),
         preferredArea: $("preferredArea").disabled ? (agentListing.preferredArea || "") : ($("preferredArea").value || ""),
@@ -374,7 +351,7 @@
     function row(label, price, key, opts={}) {
       const checked = !!checkoutData.upgrades[key];
       const paid = opts.paid === true;
-      const note = paid ? `<span class="text-green-700 ml-2">(paid by ${checkoutData.payer === "agent" ? "agent" : "you"})</span>` : "";
+      const note = ''; // removed paid-by-agent note
       return `
         <label class="flex items-center justify-between border rounded-lg px-3 py-2 ${paid?'bg-gray-50':''}">
           <div>
@@ -388,33 +365,23 @@
     }
     function paintUpgrades() {
       const box = $("upgradesBox");
-      const isBasic = plan === "Listed Property Basic";
       const html = [
-        isBasic || checkoutData.upgrades.upgradeToPlus
-          ? row("Upgrade to Listed Property Plus", checkoutData.prices.plus, "upgradeToPlus", {paid:false})
-          : "",
         row("Banner", checkoutData.prices.banner, "banner", {paid: checkoutData.upgrades.banner && checkoutData.payer}),
         row("Premium Placement", checkoutData.prices.premium, "premium", {paid: checkoutData.upgrades.premium && checkoutData.payer}),
-        row("Pin Placement", checkoutData.prices.pin, "pin", {paid: checkoutData.upgrades.pin && checkoutData.payer}),
-        isFSBO ? row("Confidential FSBO Upgrade", checkoutData.prices.confidential, "confidential", {paid: checkoutData.upgrades.confidential && checkoutData.payer}) : ""
+        row("Pin Placement", checkoutData.prices.pin, "pin", {paid: checkoutData.upgrades.pin && checkoutData.payer})
       ].join("");
       box.innerHTML = html;
       box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
         cb.addEventListener("change", (e)=>{
           const k = e.target.getAttribute("data-key");
           const checked = e.target.checked;
-          if (k === "upgradeToPlus") {
-            checkoutData.upgrades.upgradeToPlus = checked;
-            localStorage.setItem("selectedPlan", checked ? "Listed Property Plus" : "Listed Property Basic");
-          } else if (k === "banner") {
+          if (k === "banner") {
             checkoutData.upgrades.banner = checked;
           } else if (k === "premium") {
             checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
           } else if (k === "pin") {
             checkoutData.upgrades.pin = checked;
             if (checked) checkoutData.upgrades.premium = true; // included
-          } else if (k === "confidential") {
-            checkoutData.upgrades.confidential = checked;
           }
           setJSON("checkoutData", checkoutData);
         });
@@ -431,20 +398,16 @@
     });
     $("goCheckoutBtn").addEventListener("click", () => { window.location.href = "/checkout.html"; });
 
-    // -------- Promo card state (seller page → always inactive) --------
-    (function promoOnSeller(){
-      try{
-        const promoBadge = $("promoBadge");
-        const applyPromoBtn = $("applyPromoBtn");
-        const promoNote = $("promoNote");
-        if (promoBadge) {
-          promoBadge.textContent = "Inactive";
-          promoBadge.className = "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700";
-        }
-        if (applyPromoBtn) applyPromoBtn.disabled = true;
-        if (promoNote) promoNote.textContent = "Agent-only promo. Ask your listing agent to apply free upgrades from their intake page.";
-      }catch(e){}
-    })();
+    // Invite agent to upgrade (promo)
+    $("inviteAgentUpgradeBtn").addEventListener("click", ()=>{
+      const tasks = getJSON("agentTasks", []);
+      const addr = getJSON("formData", {}).address || "";
+      tasks.push({ type:"upgradeInvite", address: addr, ts: Date.now() });
+      setJSON("agentTasks", tasks);
+      $("inviteAgentMsg").classList.remove("hidden");
+      alert("Your agent has been invited to upgrade this listing for free.");
+    });
+
   </script>
 </body>
 </html>
