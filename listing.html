@@ -18,13 +18,15 @@
     .heart-btn { position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
     /* Map fills its bordered card completely */
-    .map-card { height: 24rem; }
+    .map-card { }
     #mapCanvas { width:100%; height:100%; }
     .mapboxgl-canvas { display:block !important; }
 
-    /* ISC: whole area clickable; no borders/whitespace around the preview */
+    /* ISC: whole area clickable; no borders/whitespace around the preview container */
     .click-wrap { position: relative; }
     .click-wrap a.overlay { position:absolute; inset:0; z-index:10; text-indent:-9999px; }
+    /* Zero out wrapper paddings around the iframe */
+    .isc-wrap { background:transparent; border:0; box-shadow:none; border-radius:0; overflow:hidden; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -41,10 +43,9 @@
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
     <!-- Top strip: 40 | 20 | 40 -->
-    <section class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-
+    <section id="topRow" class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
       <!-- Left: listing tile (original borders/specs) -->
-      <article id="heroTile" class="lg:col-span-2 bg-white rounded-2xl shadow overflow-hidden relative cursor-pointer">
+      <article id="tileCard" class="lg:col-span-2 bg-white rounded-2xl shadow overflow-hidden relative cursor-pointer">
         <div class="relative">
           <img id="tilePhoto" class="tile-photo" alt="Listing photo"/>
           <div id="tileBanner" class="tile-banner hidden"></div>
@@ -62,21 +63,20 @@
         <a id="tileClick" href="#" class="absolute inset-0" aria-label="Open full listing detail"></a>
       </article>
 
-      <!-- Middle: map (same borders/shadow, fills completely) -->
-      <aside class="lg:col-span-1 bg-white rounded-2xl shadow overflow-hidden p-0 map-card">
+      <!-- Middle: map (same borders/shadow) -->
+      <aside id="mapCard" class="lg:col-span-1 bg-white rounded-2xl shadow overflow-hidden p-0">
         <div id="mapCanvas"></div>
       </aside>
 
-      <!-- Right: ISC — NO borders/whitespace; full doc visible; clickable anywhere -->
-      <aside class="lg:col-span-2 overflow-hidden p-0 m-0" style="background:transparent; border:0; box-shadow:none; border-radius:0;">
-        <div class="click-wrap" style="margin:0; padding:0;">
+      <!-- Right: ISC — NO extra borders/whitespace; full doc visible; clickable anywhere -->
+      <aside id="iscCard" class="lg:col-span-2 isc-wrap p-0 m-0">
+        <div class="click-wrap">
           <!-- Entire area clickable to PDF -->
           <a class="overlay" href="/printable-isc.html" target="_blank" aria-label="Open full ISC PDF">Open</a>
           <!-- Auto-sized iframe to show the entire ISC (first to last word) -->
           <iframe id="iscIframe" src="/printable-isc.html" class="w-full" style="background:#fff; border:0; margin:0; display:block;"></iframe>
         </div>
       </aside>
-
     </section>
 
     <!-- LOWER SECTION: Photos & Description (only if present) -->
@@ -154,7 +154,7 @@
       document.getElementById("tileClick").href = `/listing.html?addr=${encodeURIComponent(fullAddress)}`;
     })();
 
-    // Map — fill entire card, kill bottom-gap by forcing resize
+    // Map — fill entire card, kill bottom-gap by forcing resize a few times
     (async function map(){
       try{
         const center = await (async()=>{try{
@@ -169,41 +169,86 @@
         });
         map.addControl(new mapboxgl.NavigationControl());
         new mapboxgl.Marker().setLngLat(center).addTo(map);
-        // Force map to fill the box after layout recalculates
+        // Force map to fill box on layout / font load / scrollbar shifts
         requestAnimationFrame(()=>map.resize());
-        setTimeout(()=>map.resize(), 250);
+        setTimeout(()=>map.resize(), 200);
+        setTimeout(()=>map.resize(), 600);
       }catch{
         $("mapCanvas").innerHTML = '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
       }
     })();
 
-    // ISC — auto-size iframe to show entire document; strip inner margins/buttons/counters
-    (function iscFull(){
+    // ISC — auto-size iframe to show entire document; remove inner margins/buttons
+    function sizeIscIFrame() {
       const iframe = $("iscIframe");
-      function sizeIFrame(){
-        try{
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          if (!doc) return;
-
-          // Remove inner margins/padding and any print/counter elements
+      if (!iframe) return;
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (!doc) return;
+        // Remove inner margins/padding and any print/counter elements
+        if (!doc.querySelector('#__gc_strip_style')) {
           const style = doc.createElement('style');
+          style.id='__gc_strip_style';
           style.textContent = `
             html, body { margin:0 !important; padding:0 !important; background:#fff !important; }
-            button, .print, [data-print], #printBtn { display:none !important; }
-            #counters, .counters { display:none !important; }
+            button, .print, [data-print], #printBtn, #printButton { display:none !important; }
+            #counters, .counters, #viewCounter { display:none !important; }
           `;
           doc.head.appendChild(style);
+        }
+        const h = Math.max(
+          doc.body.scrollHeight, doc.documentElement.scrollHeight,
+          doc.body.offsetHeight, doc.documentElement.offsetHeight
+        );
+        iframe.style.height = (h || 1200) + "px";
+      } catch (e) {}
+    }
 
-          const h = Math.max(
-            doc.body.scrollHeight, doc.documentElement.scrollHeight,
-            doc.body.offsetHeight, doc.documentElement.offsetHeight
-          );
-          iframe.style.height = (h || 1200) + "px";
-        }catch{}
+    // Align bottom edges: set all three cards to the same height (tallest)
+    function alignCardHeights() {
+      const tile = $("tileCard");
+      const map  = $("mapCard");
+      const isc  = $("iscCard");
+      if (!tile || !map || !isc) return;
+
+      // Reset any previous explicit heights
+      tile.style.height = map.style.height = isc.style.height = '';
+
+      // Measure scroll heights (include content)
+      const tileH = tile.scrollHeight;
+      const mapH  = map.scrollHeight;
+      const iscH  = isc.scrollHeight;
+
+      const maxH = Math.max(tileH, mapH, iscH);
+
+      tile.style.height = map.style.height = isc.style.height = maxH + 'px';
+
+      // If a Map exists, force it to resize to the new height
+      const mapCanvas = document.getElementById('mapCanvas');
+      if (mapCanvas && mapCanvas._map && typeof mapCanvas._map.resize === 'function') {
+        mapCanvas._map.resize?.();
       }
-      iframe.addEventListener('load', sizeIFrame);
-      // Fallback sizing
-      setTimeout(sizeIFrame, 800);
+    }
+
+    (function iscAndAlign(){
+      const iframe = $("iscIframe");
+      iframe.addEventListener('load', ()=>{
+        sizeIscIFrame();
+        // Align after ISC sizing
+        setTimeout(alignCardHeights, 50);
+        setTimeout(alignCardHeights, 300);
+      });
+      // Extra passes in case fonts/layout shift
+      window.addEventListener('load', ()=> {
+        setTimeout(alignCardHeights, 100);
+        setTimeout(alignCardHeights, 500);
+      });
+      window.addEventListener('resize', ()=> {
+        sizeIscIFrame();
+        alignCardHeights();
+      });
+      // Fallback pass if iframe load timing is slow
+      setTimeout(()=>{ sizeIscIFrame(); alignCardHeights(); }, 800);
     })();
 
     // Gallery
