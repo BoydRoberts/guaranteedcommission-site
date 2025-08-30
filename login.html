@@ -228,6 +228,46 @@
     $('goCreate')?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
     $('goSignin')?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
 
+    // Role link toggle
+    $('createRole')?.addEventListener('change', (e)=>{
+      const v = e.target.value;
+      if (v==='listing_agent' || v==='buyers_agent') $('localProLink').classList.remove('hidden');
+      else $('localProLink').classList.add('hidden');
+    });
+
+    // Prefill (FSBO-only email/phone). For Basic/Plus: **do not prefill createEmail**
+    (function prefill() {
+      const fd = safeJSON(localStorage.getItem('formData')) || {};
+      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+
+      // Name (if present)
+      if (fd.name) $('c_name').value = fd.name;
+
+      // Email rules:
+      // FSBO → prefill from fsboEmail; Basic/Plus → leave blank (seller must type).
+      if (plan.includes('FSBO') && fd.fsboEmail) {
+        $('c_email').value = fd.fsboEmail;
+      } else {
+        $('c_email').value = '';
+      }
+
+      // Sign-in convenience prefill (harmless)
+      const last = localStorage.getItem('loggedInEmail') || '';
+      if (last) $('email').value = last;
+
+      // Phone FSBO-only
+      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
+        $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
+      }
+
+      // *** NEW: Force default to Create tab when arriving from Box 2 or via ?tab=create ***
+      const url = new URL(location.href);
+      const tabParam = (url.searchParams.get('tab') || '').toLowerCase();
+      if (localStorage.getItem('nextAfterLogin') || tabParam === 'create') {
+        showCreate();
+      }
+    })();
+
     // Show/Hide toggles
     function wireToggle(inputId, btnId) {
       const input = $(inputId);
@@ -280,43 +320,6 @@
     const getAccounts = ()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
     const saveAccounts = (obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
 
-    // Role link toggle
-    $('createRole')?.addEventListener('change', (e)=>{
-      const v = e.target.value;
-      if (v==='listing_agent' || v==='buyers_agent') $('localProLink').classList.remove('hidden');
-      else $('localProLink').classList.add('hidden');
-    });
-
-    // Prefill from Box 2 — FSBO-only phone; email prefers fsboEmail if present for FSBO ONLY
-    (function prefill() {
-      const fd = safeJSON(localStorage.getItem('formData')) || {};
-      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-
-      // Name (neutral)
-      if (fd.name) $('createName').value = fd.name;
-
-      // *** IMPORTANT: Basic/Plus must NOT prefill seller email with agent email ***
-      // For FSBO we prefill seller email from fsboEmail (owner email).
-      if (plan.includes('FSBO') && fd.fsboEmail) {
-        $('createEmail').value = fd.fsboEmail;
-      } else {
-        // For Basic/Plus, leave seller email blank on Create Account.
-        $('createEmail').value = '';
-      }
-
-      // Sign-in email can still use last login email for convenience
-      const last = localStorage.getItem('loggedInEmail') || '';
-      if (last) $('email').value = last;
-
-      // Phone: FSBO ONLY. Avoid agent-phone bleed for Basic/Plus
-      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
-        $('createPhone').value = formatPhone(fd.phone || fd.agentPhone);
-      }
-
-      // If coming from Box 2 flow, default to Create tab
-      if (localStorage.getItem('nextAfterLogin')) showCreate();
-    })();
-
     // Sign In
     $('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -346,15 +349,15 @@
     // Create Account
     $('createForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const name  = $('createName').value.trim();
-      const email = $('createEmail').value.trim().toLowerCase();
-      const phone = $('createPhone').value.trim();
+      const name  = $('c_name').value.trim();
+      const email = $('c_email').value.trim().toLowerCase();
+      const phone = $('c_phone').value.trim();
       const p1 = $('c_password').value;
       const p2 = $('c_password2').value;
       const role = $('createRole').value;
 
       if (!name || !email || !phone || !p1) { setStatus('Please complete all fields.'); return; }
-      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('createPhone').focus(); return; }
+      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
       if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
 
       const accounts = getAccounts();
