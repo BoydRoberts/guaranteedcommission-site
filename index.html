@@ -19,6 +19,10 @@
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
+
+    /* ---- Strip 1 equal-height (Box 1 baseline) ---- */
+    /* Allow inner content to remain readable if it exceeds the baseline */
+    #box1, #formBlock, #box3 { overflow:auto; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -162,8 +166,8 @@
 
   <!-- Strip 1 -->
   <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
-    <!-- Box 1 -->
-    <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
+    <!-- Box 1 (baseline) -->
+    <div id="box1" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
       <h2 class="text-lg font-bold mb-4 text-center">Commission Communication Menu</h2>
       <ul class="space-y-3">
         <li>
@@ -235,7 +239,7 @@
     </div>
 
     <!-- Box 3 -->
-    <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
+    <div id="box3" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
       <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
 
       <!-- LISTED ISC -->
@@ -344,6 +348,9 @@
     function selectPlan(planName){
       localStorage.setItem("selectedPlan", planName);
       showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
+      // Equalize heights after plan change
+      setTimeout(equalizeStrip1, 0);
+      setTimeout(equalizeStrip1, 150);
     }
 
     /* Toggle form + ISC */
@@ -381,6 +388,20 @@
       }
     }
 
+    /* Equalize Strip 1 using Box 1 as the height baseline */
+    function equalizeStrip1(){
+      const box1 = document.getElementById('box1');
+      const box2 = document.getElementById('formBlock');
+      const box3 = document.getElementById('box3');
+      if (!box1 || !box2 || !box3) return;
+
+      // Reset to natural to measure fresh
+      [box1, box2, box3].forEach(b => { b.style.height = 'auto'; });
+
+      const baseline = box1.getBoundingClientRect().height;
+      [box1, box2, box3].forEach(b => { b.style.height = baseline + 'px'; });
+    }
+
     /* On load */
     window.addEventListener('DOMContentLoaded', () => {
       const lastSelected = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
@@ -400,14 +421,15 @@
         phoneInput.classList.toggle('border-red-500', !ok && d.length===10);
         phoneError.classList.toggle('hidden', ok || d.length<10);
         syncAll();
+        equalizeStrip1();
       });
 
       // Live sync to ISC
       ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission'].forEach(id=>{
         const el=document.getElementById(id); if(!el) return;
-        el.addEventListener('input', syncAll);
+        el.addEventListener('input', function(){ syncAll(); equalizeStrip1(); });
       });
-      document.getElementById('commissionType')?.addEventListener('change', syncAll);
+      document.getElementById('commissionType')?.addEventListener('change', function(){ syncAll(); equalizeStrip1(); });
 
       function syncAll(){
         const fullAddr = (document.getElementById('address').value || '').trim();
@@ -456,6 +478,11 @@
       buildTilesDataset();
       renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
       wireSearch();
+
+      // Equalize once painted and on resize
+      equalizeStrip1();
+      setTimeout(equalizeStrip1, 200);
+      window.addEventListener('resize', equalizeStrip1);
     });
 
     /* Submit */
@@ -605,7 +632,7 @@
           photos: ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop"],
           primaryIndex: 0, status: "Active",
           brokerage: "Pacific Estates", agent: "Jordan Crisp",
-          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000, agentPhone: "(949) 555-1212",
+          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000,
           propertyType: "Single Family"
         },
         {
@@ -614,7 +641,7 @@
           photos: ["https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop"],
           primaryIndex: 0, status: "In Contract",
           brokerage: "HomeWorks Realty", agent: "A. Brooks",
-          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400, agentPhone: "(973) 555-2121",
+          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400,
           propertyType: "Townhouse"
         },
         {
