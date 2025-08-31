@@ -8,7 +8,7 @@
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
 
-    /* Hoverable nav menu (frozen behavior, with robust hover keep-open) */
+    /* Hoverable nav menu (frozen) */
     .group { position: relative; }
     #commissionMenu { display: none; position: absolute; left: 0; top: 100%; }
     .group:hover #commissionMenu,
@@ -20,31 +20,36 @@
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
 
-    /* ===== Strip 1 visual baseline & box caps =====
-       We cap each box to the previous size (baseline). Content scrolls inside if longer.
-       Shorter content is vertically nudged so all three align top/bottom. */
-    :root {
-      /* Adjust this single value if you want the previous baseline tweaked +/- later */
-      --strip1-box-max: 540px; /* baseline cap from prior commit (approx) */
-      --strip1-box-pad: 20px;  /* consistent inner padding for visual balance */
-    }
-    #strip1 { background:#f0f9ff; } /* light sky-blue background for Strip 1 */
-    .gc-box {
-      background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08);
-      display:flex; flex-direction:column; height:auto; max-height:var(--strip1-box-max);
-      /* reserve room for shadow rounding without overflow shake */
-      overflow:hidden;
-    }
-    .gc-box-inner{
-      display:flex; flex-direction:column; gap:12px;
-      padding:var(--strip1-box-pad);
-      /* This is the scrollable region if content exceeds the cap */
-      overflow:auto;
-    }
-    .gc-box-title { text-align:center; font-weight:700; font-size:1.125rem; margin-bottom:6px; }
+    /* ===== Strip 1 (baseline = Box 1 natural size) ===== */
+    #strip1 { background:#f0f9ff; } /* light sky-blue as requested */
 
-    /* Small helper to ensure the “content mass” is optically centered when short */
-    .gc-box-spacer { flex:1 0 auto; }
+    .gc-box {
+      background:#fff;
+      border-radius:1rem;
+      box-shadow:0 1px 6px rgba(0,0,0,.08);
+      overflow:hidden;            /* no scrollbars; we scale content to fit */
+      position: relative;
+      display:flex;               /* equalize via fixed height + scale inner */
+      flex-direction: column;
+    }
+    .gc-box-viewport {
+      flex:1 1 auto;
+      position: relative;
+      overflow:hidden;            /* important: hide overflow; we scale inner */
+      display:flex;
+      align-items:flex-start;     /* we'll nudge with margin to visually center */
+      justify-content:center;
+    }
+    .gc-scale {
+      transform-origin: top center;
+      width:100%;
+      /* Avoid reflow jitter on scale: fix layout width */
+    }
+    .gc-box-title { text-align:center; font-weight:700; font-size:1.125rem; margin:10px 0; }
+
+    /* Smaller inputs for Box 2 (revert) */
+    .gc-input { @apply w-full border p-1 rounded text-sm; }
+    .gc-select{ @apply border p-1 rounded text-sm; }
 
     /* Footer */
     .site-footer { background:#fff; border-top:1px solid #e5e7eb; margin-top:2rem; }
@@ -65,7 +70,7 @@
       </div>
       <div class="flex items-center gap-2">
         <a href="/local-professionals.html" class="bg-amber-600 text-white text-xs font-semibold px-3 py-1 rounded">Local Professionals</a>
-        <!-- Header Log In button removed per earlier instruction -->
+        <!-- Header Log In button removed earlier -->
       </div>
     </div>
   </header>
@@ -79,7 +84,6 @@
       <p class="text-sm text-gray-600 mb-3">(SEC Rule 501 of Regulation D)</p>
 
       <form id="investorForm" class="space-y-4">
-        <!-- Identity -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label class="block text-sm font-semibold">Investor Name</label>
@@ -95,46 +99,28 @@
           </div>
         </div>
 
-        <!-- Categories -->
         <div>
-          <p class="text-sm font-semibold mb-2">I hereby certify that I qualify as an “Accredited Investor” under Rule 501 of Regulation D of the Securities Act of 1933 because:</p>
+          <p class="text-sm font-semibold mb-2">I hereby certify that I qualify as an “Accredited Investor” …</p>
           <label class="flex items-start gap-2 text-sm">
-            <input id="cIncome" type="checkbox" class="mt-1">
-            <span>Income Test: My individual income exceeded $200,000 in each of the two most recent years, or my joint income with my spouse exceeded $300,000 in each of those years, and I reasonably expect the same income level in the current year.</span>
+            <input id="cIncome" type="checkbox" class="mt-1"><span>Income Test …</span>
           </label>
           <label class="flex items-start gap-2 text-sm mt-2">
-            <input id="cNetWorth" type="checkbox" class="mt-1">
-            <span>Net Worth Test: My individual net worth, or joint net worth with my spouse, exceeds $1,000,000 (excluding the value of my primary residence).</span>
+            <input id="cNetWorth" type="checkbox" class="mt-1"><span>Net Worth Test …</span>
           </label>
-
           <p class="text-sm font-semibold mt-3">Other Accredited Categories (if applicable):</p>
-          <label class="flex items-start gap-2 text-sm mt-2">
-            <input id="cLicenses" type="checkbox" class="mt-1">
-            <span>I am a licensed professional holding a Series 7, Series 65, or Series 82 license.</span>
-          </label>
-          <label class="flex items-start gap-2 text-sm mt-2">
-            <input id="cOfficer" type="checkbox" class="mt-1">
-            <span>I am a director, executive officer, or general partner of the issuer.</span>
-          </label>
-          <label class="flex items-start gap-2 text-sm mt-2">
-            <input id="cEntity" type="checkbox" class="mt-1">
-            <span>I am an entity (corporation, partnership, LLC, trust) with total assets in excess of $5,000,000, not formed solely to acquire this investment.</span>
-          </label>
-          <label class="flex items-start gap-2 text-sm mt-2">
-            <input id="cOwners" type="checkbox" class="mt-1">
-            <span>All of my equity owners are Accredited Investors.</span>
-          </label>
+          <label class="flex items-start gap-2 text-sm mt-2"><input id="cLicenses" type="checkbox" class="mt-1"><span>Series 7/65/82 …</span></label>
+          <label class="flex items-start gap-2 text-sm mt-2"><input id="cOfficer" type="checkbox" class="mt-1"><span>Director/Officer/GP …</span></label>
+          <label class="flex items-start gap-2 text-sm mt-2"><input id="cEntity" type="checkbox" class="mt-1"><span>Entity > $5,000,000 …</span></label>
+          <label class="flex items-start gap-2 text-sm mt-2"><input id="cOwners" type="checkbox" class="mt-1"><span>All owners accredited …</span></label>
         </div>
 
-        <!-- Acknowledgments -->
         <div class="text-sm space-y-2 mt-2">
           <p><strong>Acknowledgments:</strong></p>
-          <p>I understand that GuaranteedCommission.com (the “Company”) will rely on this certification in offering and selling securities in compliance with U.S. securities laws.</p>
-          <p>I agree to provide further documentation (such as tax returns, W-2s, brokerage statements, or a letter from my CPA/attorney) if required to verify my status under Rule 506(c).</p>
+          <p>I understand that GuaranteedCommission.com …</p>
+          <p>I agree to provide further documentation …</p>
           <p>I represent and warrant that the above statements are true and correct.</p>
         </div>
 
-        <!-- Signature -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label class="block text-sm font-semibold">Signature (type full name)</label>
@@ -146,7 +132,6 @@
           </div>
         </div>
 
-        <!-- Submit -->
         <div class="flex items-center justify-end gap-2">
           <button type="button" onclick="closeInvestorModal()" class="px-3 py-2 rounded border">Cancel</button>
           <button id="invSubmitBtn" type="submit" class="px-4 py-2 rounded bg-blue-600 text-white">Submit Certification</button>
@@ -189,136 +174,139 @@
     </ul>
   </nav>
 
-  <!-- ===== Strip 1 (sky-blue), equal-height boxes with caps ===== -->
-  <section id="strip1" class="bg-sky-50 border-y">
+  <!-- ===== Strip 1 (sky-blue), baseline = Box 1 natural height, no scrolling ===== -->
+  <section id="strip1" class="border-y">
     <div class="max-w-7xl mx-auto px-4 py-8">
       <div id="boxRow" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-        <!-- Box 1 -->
+        <!-- Box 1 (baseline) -->
         <div id="box1" class="gc-box">
-          <div class="gc-box-inner">
-            <h2 class="gc-box-title">Commission Communication Menu</h2>
-            <ul class="space-y-3 text-sm">
-              <li>
-                <div onclick="selectPlan('Listed Property Basic')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
-                  <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
-                  <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
-                </div>
-              </li>
-              <li>
-                <div onclick="selectPlan('Listed Property Plus')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
-                  <p class="text-base font-semibold">Listed Property Plus | $20</p>
-                  <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description.</p>
-                </div>
-              </li>
-              <li>
-                <div onclick="selectPlan('FSBO Plus')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
-                  <p class="text-base font-semibold">FSBO Plus | $100</p>
-                  <p class="text-gray-600 pl-5">Listed Property Plus minus the listing agency. Includes showing instructions.</p>
-                </div>
-              </li>
-            </ul>
-            <div class="gc-box-spacer"></div>
+          <div class="gc-box-viewport">
+            <div class="gc-scale" id="scale1">
+              <h2 class="gc-box-title">Commission Communication Menu</h2>
+              <ul class="space-y-3 text-sm">
+                <li>
+                  <div onclick="selectPlan('Listed Property Basic')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
+                    <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
+                    <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
+                  </div>
+                </li>
+                <li>
+                  <div onclick="selectPlan('Listed Property Plus')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
+                    <p class="text-base font-semibold">Listed Property Plus | $20</p>
+                    <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description.</p>
+                  </div>
+                </li>
+                <li>
+                  <div onclick="selectPlan('FSBO Plus')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
+                    <p class="text-base font-semibold">FSBO Plus | $100</p>
+                    <p class="text-gray-600 pl-5">Listed Property Plus minus the listing agency. Includes showing instructions.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
 
-        <!-- Box 2 -->
+        <!-- Box 2 (smaller inputs; auto-fit to baseline; no scroll) -->
         <div id="box2" class="gc-box">
-          <div class="gc-box-inner">
-            <h2 id="formTitle" class="gc-box-title">Listed Property Communication Form</h2>
-            <form id="listingForm" class="space-y-3" autocomplete="off">
-              <input type="text" id="name" placeholder="Name" class="w-full border p-2 rounded" required>
+          <div class="gc-box-viewport">
+            <div class="gc-scale" id="scale2">
+              <h2 id="formTitle" class="gc-box-title">Listed Property Communication Form</h2>
+              <form id="listingForm" class="space-y-2" autocomplete="off">
+                <input type="text" id="name" placeholder="Name" class="gc-input" required>
 
-              <!-- Address -->
-              <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-2 rounded" autocomplete="street-address" spellcheck="false" required >
+                <!-- Address -->
+                <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="gc-input" autocomplete="street-address" spellcheck="false" required >
 
-              <!-- Parcel -->
-              <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-2 rounded">
+                <!-- Parcel -->
+                <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="gc-input">
 
-              <!-- Phone/Broker/Agent -->
-              <div id="listedPhoneRow">
-                <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-2 rounded">
-                <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (###) ###-####</span>
-              </div>
+                <!-- Phone/Broker/Agent -->
+                <div id="listedPhoneRow">
+                  <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="gc-input">
+                  <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (###) ###-####</span>
+                </div>
 
-              <!-- Agent Email -->
-              <input type="email" id="agentEmail" placeholder="Agent’s Email – NOT your email" class="w-full border p-2 rounded">
+                <!-- Agent Email -->
+                <input type="email" id="agentEmail" placeholder="Agent’s Email – NOT your email" class="gc-input">
 
-              <!-- Brokerage (HIDDEN for FSBO) -->
-              <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-2 rounded">
+                <!-- Brokerage (HIDDEN for FSBO) -->
+                <input type="text" id="brokerage" placeholder="Listing Brokerage" class="gc-input">
 
-              <!-- Agent (HIDDEN for FSBO) -->
-              <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-2 rounded">
+                <!-- Agent (HIDDEN for FSBO) -->
+                <input type="text" id="agent" placeholder="Listing Agent" class="gc-input">
 
-              <!-- FSBO-only contact -->
-              <div id="fsboEmailRow" class="hidden">
-                <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border p-2 rounded">
-              </div>
+                <!-- FSBO-only contact -->
+                <div id="fsboEmailRow" class="hidden">
+                  <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="gc-input">
+                </div>
 
-              <!-- Commission -->
-              <div class="flex gap-2">
-                <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border p-2 rounded">
-                <select id="commissionType" class="border p-2 rounded">
-                  <option value="%">%</option>
-                  <option value="$">$</option>
-                </select>
-              </div>
+                <!-- Commission -->
+                <div class="flex gap-2">
+                  <input type="text" id="commission" placeholder="Buyer Agent Commission" class="gc-input">
+                  <select id="commissionType" class="gc-select">
+                    <option value="%">%</option>
+                    <option value="$">$</option>
+                  </select>
+                </div>
 
-              <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded">
-                Submit Guaranteed Commission
-              </button>
-            </form>
-            <div class="gc-box-spacer"></div>
+                <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded text-sm">
+                  Submit Guaranteed Commission
+                </button>
+              </form>
+            </div>
           </div>
         </div>
 
-        <!-- Box 3 -->
+        <!-- Box 3 (ISC; auto-fit to baseline; no scroll) -->
         <div id="box3" class="gc-box">
-          <div class="gc-box-inner">
-            <h2 class="gc-box-title">Irrevocable Seller Communication</h2>
+          <div class="gc-box-viewport">
+            <div class="gc-scale" id="scale3">
+              <h2 class="gc-box-title">Irrevocable Seller Communication</h2>
 
-            <!-- LISTED ISC -->
-            <div id="iscTextListed">
-              <p>To the escrow holder/closing agent,</p>
-              <p class="mt-2">
-                I, <span id="letterName">[name]</span>, am the owner/seller of
-                <span id="letterAddressFull">[full address]</span>,
-                # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
-                <span id="letterAddressShort1">[short address]</span> is listed for sale by
-                <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent,
-                <span id="letterAgentPhone">[agent phone]</span>, <span id="letterAgentEmail">[agent email]</span>.
-              </p>
-              <p class="mt-2">
-                Let it be known: if a buyer’s agent/broker facilitates the sale of
-                <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed
-                to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for
-                broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed
-                <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
-              </p>
-              <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+              <!-- LISTED ISC -->
+              <div id="iscTextListed">
+                <p>To the escrow holder/closing agent,</p>
+                <p class="mt-2">
+                  I, <span id="letterName">[name]</span>, am the owner/seller of
+                  <span id="letterAddressFull">[full address]</span>,
+                  # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
+                  <span id="letterAddressShort1">[short address]</span> is listed for sale by
+                  <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent,
+                  <span id="letterAgentPhone">[agent phone]</span>, <span id="letterAgentEmail">[agent email]</span>.
+                </p>
+                <p class="mt-2">
+                  Let it be known: if a buyer’s agent/broker facilitates the sale of
+                  <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed
+                  to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for
+                  broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed
+                  <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
+                </p>
+                <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+              </div>
+
+              <!-- FSBO ISC -->
+              <div id="iscTextFSBO" class="hidden">
+                <p>To the escrow holder/closing agent,</p>
+                <p class="mt-2">
+                  I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
+                  <span id="letterAddressFullFSBO">[full address]</span>, #
+                  <span id="letterAPNFSBO">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
+                  <span id="letterAddressShort1FSBO">[short address]</span> is listed for sale by owner (Me).
+                  My phone number is <span id="fsboPhone"></span>. My email address is <span id="fsboEmail"></span>.
+                </p>
+                <p class="mt-2">
+                  Let it be known: if a buyer’s agent/broker facilitates the sale of
+                  <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent) are irrevocably
+                  instructed to credit/compensate the buyer’s broker a commission not to exceed
+                  <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
+                </p>
+                <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+              </div>
             </div>
-
-            <!-- FSBO ISC -->
-            <div id="iscTextFSBO" class="hidden">
-              <p>To the escrow holder/closing agent,</p>
-              <p class="mt-2">
-                I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
-                <span id="letterAddressFullFSBO">[full address]</span>, #
-                <span id="letterAPNFSBO">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
-                <span id="letterAddressShort1FSBO">[short address]</span> is listed for sale by owner (Me).
-                My phone number is <span id="fsboPhone"></span>. My email address is <span id="fsboEmail"></span>.
-              </p>
-              <p class="mt-2">
-                Let it be known: if a buyer’s agent/broker facilitates the sale of
-                <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent) are irrevocably
-                instructed to credit/compensate the buyer’s broker a commission not to exceed
-                <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
-              </p>
-              <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
-            </div>
-
-            <div class="gc-box-spacer"></div>
           </div>
         </div>
+
       </div>
     </div>
   </section>
@@ -326,7 +314,6 @@
   <!-- ===== Strip 2 (match header white) ===== -->
   <section id="strip2Search" class="bg-white">
     <div class="max-w-7xl mx-auto px-4 pb-12">
-      <!-- Centered search header -->
       <div class="text-center mb-4">
         <div class="flex items-center justify-center">
           <div class="flex items-center gap-2">
@@ -354,14 +341,14 @@
 
   <!-- Scripts -->
   <script>
-    /* Header modals */
+    /* Header modals (frozen) */
     function openInvestorModal(){ document.getElementById('investorModal').classList.remove('hidden'); }
     function closeInvestorModal(){ document.getElementById('investorModal').classList.add('hidden'); }
     function openPressModal(){ document.getElementById('pressModal').classList.remove('hidden'); }
     function closePressModal(){ document.getElementById('pressModal').classList.add('hidden'); }
     function submitPressForm(){ document.getElementById('pressConfirmation').classList.remove('hidden'); }
 
-    // Robust hover keep-open
+    // Robust hover keep-open (frozen)
     (function(){
       const li = document.querySelector('.group');
       const menu = document.getElementById('commissionMenu');
@@ -377,7 +364,7 @@
       document.getElementById('commissionToggle')?.addEventListener('blur', close);
     })();
 
-    // Address validator
+    // Address validator (frozen)
     function isValidFullAddress(s) {
       if (!s) return false;
       const re = /^\s*.+?,\s*[A-Za-z .'\-]+,\s*[A-Za-z]{2}\s+\d{5}(?:-\d{4})?\s*$/;
@@ -388,12 +375,10 @@
     function selectPlan(planName){
       localStorage.setItem("selectedPlan", planName);
       showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
-      // Equalize after plan toggle
-      requestAnimationFrame(equalizeBoxes);
-      setTimeout(equalizeBoxes, 100);
+      fitStrip1(); // re-fit boxes to baseline
     }
 
-    /* Toggle form + ISC */
+    /* Toggle form + ISC (frozen text with agent email added earlier) */
     function showForm(type){
       const title = document.getElementById("formTitle");
       const phoneInput = document.getElementById('agentPhone');
@@ -425,26 +410,50 @@
       }
     }
 
-    /* Equalize Strip 1 box heights to baseline cap (auto) */
-    function equalizeBoxes(){
-      const boxes = [document.getElementById('box1'), document.getElementById('box2'), document.getElementById('box3')];
-      boxes.forEach(b => b && (b.style.height = 'auto')); // measure natural
-      let maxH = 0;
-      boxes.forEach(b => { if (b) maxH = Math.max(maxH, b.offsetHeight); });
+    /* ===== Strip 1 auto-fit logic =====
+       1) Measure Box 1 natural height (scale=1) => baselineH
+       2) Set all boxes to baselineH (fixed)
+       3) For each box’s .gc-scale:
+            scale = baselineInner / contentHeight  (both up or down)
+            center vertically with margin so it looks balanced
+    */
+    function fitStrip1(){
+      const boxes = [
+        { box: document.getElementById('box1'), scale: document.getElementById('scale1') },
+        { box: document.getElementById('box2'), scale: document.getElementById('scale2') },
+        { box: document.getElementById('box3'), scale: document.getElementById('scale3') },
+      ].filter(x=>x.box && x.scale);
 
-      // Apply capped height (no box exceeds baseline size)
-      const CAP = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--strip1-box-max')) || 540;
-      const target = Math.min(maxH, CAP);
-      boxes.forEach(b => b && (b.style.height = target + 'px'));
+      // Reset any scale/margins to measure natural size
+      boxes.forEach(({scale})=>{
+        scale.style.transform = 'scale(1)';
+        scale.style.marginTop = '0px';
+      });
+      boxes.forEach(({box})=>{ box.style.height = 'auto'; });
+
+      // Baseline = Box 1 natural height
+      const baselineH = boxes[0].box.getBoundingClientRect().height;
+
+      // Apply fixed height to all boxes
+      boxes.forEach(({box})=>{ box.style.height = baselineH + 'px'; });
+
+      // For each scale wrapper, compute available inner height
+      boxes.forEach(({box, scale})=>{
+        const viewport = box.querySelector('.gc-box-viewport');
+        if (!viewport) return;
+        const avail = viewport.clientHeight; // inner height
+        const contentH = scale.scrollHeight;
+        if (!contentH || !avail) return;
+        const s = avail / contentH; // up or down
+        scale.style.transform = `scale(${s})`;
+        // center vertically: leftover space after scaling
+        const leftover = avail - (contentH * s);
+        scale.style.marginTop = Math.max(0, leftover/2) + 'px';
+      });
     }
 
-    /* On load */
-    window.addEventListener('DOMContentLoaded', () => {
-      const lastSelected = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
-      showForm('listed');
-      localStorage.setItem('selectedPlan', lastSelected.includes('FSBO') ? 'Listed Property Basic' : lastSelected);
-
-      // Phone mask: (###) ###-####
+    // Phone mask: (###) ###-####
+    function attachPhoneMask(){
       const phoneInput = document.getElementById('agentPhone');
       const phoneError = document.getElementById('phoneError');
       phoneInput?.addEventListener('input', function(){
@@ -455,73 +464,80 @@
         this.value = v;
         const ok = /^\(\d{3}\)\s\d{3}-\d{4}$/.test(this.value);
         phoneInput.classList.toggle('border-red-500', !ok && d.length===10);
-        phoneError.classList.toggle('hidden', ok || d.length<10);
+        phoneError?.classList.toggle('hidden', ok || d.length<10);
         syncAll();
-        requestAnimationFrame(equalizeBoxes);
+        fitStrip1();
       });
+    }
 
-      // Live sync to ISC
-      ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission'].forEach(id=>{
-        const el=document.getElementById(id); if(!el) return;
-        el.addEventListener('input', () => { syncAll(); equalizeBoxes(); });
-      });
-      document.getElementById('commissionType')?.addEventListener('change', () => { syncAll(); equalizeBoxes(); });
+    // Live sync to ISC (frozen + agent email)
+    function syncAll(){
+      const fullAddr = (document.getElementById('address').value || '').trim();
+      const short = fullAddr.split(',')[0] || '';
+      const nameVal = document.getElementById('name').value || '';
+      const apnVal = document.getElementById('apn').value || '';
+      const phoneVal = document.getElementById('agentPhone').value || '';
+      const brokerageVal = document.getElementById('brokerage').value || '';
+      const agentVal = document.getElementById('agent').value || '';
+      const agentEmailVal = document.getElementById('agentEmail').value || '';
+      const fsboEmailInput = document.getElementById('fsboEmailInput');
+      const amount = (document.getElementById('commission').value || '').trim();
+      const type = document.getElementById('commissionType').value;
+      const suffix = type === '%' ? 'of the total purchase price' : '';
+      const display = type === '$' ? (amount ? ('$' + Number(amount).toLocaleString()) : '') : (amount ? amount + '%' : '');
 
-      function syncAll(){
-        const fullAddr = (document.getElementById('address').value || '').trim();
-        const short = fullAddr.split(',')[0] || '';
-        const nameVal = document.getElementById('name').value || '';
-        const apnVal = document.getElementById('apn').value || '';
-        const phoneVal = document.getElementById('agentPhone').value || '';
-        const brokerageVal = document.getElementById('brokerage').value || '';
-        const agentVal = document.getElementById('agent').value || '';
-        const agentEmailVal = document.getElementById('agentEmail').value || '';
-        const fsboEmailInput = document.getElementById('fsboEmailInput');
-        const amount = (document.getElementById('commission').value || '').trim();
-        const type = document.getElementById('commissionType').value;
-        const suffix = type === '%' ? 'of the total purchase price' : '';
-        const display = type === '$' ? (amount ? ('$' + Number(amount).toLocaleString()) : '') : (amount ? amount + '%' : '');
+      // Listed
+      document.getElementById('letterName').textContent = nameVal || '[name]';
+      document.getElementById('letterAddressFull').textContent = fullAddr || '[full address]';
+      document.getElementById('letterAPN').textContent = apnVal || '[Parcel # / Pin # / Tax ID # / Folio # / APN #]';
+      document.getElementById('letterAddressShort1').textContent = short || '[short address]';
+      document.getElementById('letterAddressShort2').textContent = short || '[short address]';
+      document.getElementById('letterBrokerage').textContent = brokerageVal || '[listing brokerage]';
+      document.getElementById('letterAgent').textContent = agentVal || '[listing agent]';
+      document.getElementById('letterAgentPhone').textContent = phoneVal || '[agent phone]';
+      document.getElementById('letterAgentEmail').textContent = agentEmailVal || '[agent email]';
+      document.getElementById('letterCommissionDisplay').textContent = display || '[commission]';
+      document.getElementById('commissionSuffix').textContent = display ? (' ' + suffix) : '';
+      document.getElementById('signatureName').textContent = nameVal || '[Name]';
 
-        // Listed
-        document.getElementById('letterName').textContent = nameVal || '[name]';
-        document.getElementById('letterAddressFull').textContent = fullAddr || '[full address]';
-        document.getElementById('letterAPN').textContent = apnVal || '[Parcel # / Pin # / Tax ID # / Folio # / APN #]';
-        document.getElementById('letterAddressShort1').textContent = short || '[short address]';
-        document.getElementById('letterAddressShort2').textContent = short || '[short address]';
-        document.getElementById('letterBrokerage').textContent = brokerageVal || '[listing brokerage]';
-        document.getElementById('letterAgent').textContent = agentVal || '[listing agent]';
-        document.getElementById('letterAgentPhone').textContent = phoneVal || '[agent phone]';
-        document.getElementById('letterAgentEmail').textContent = agentEmailVal || '[agent email]';
-        document.getElementById('letterCommissionDisplay').textContent = display || '[commission]';
-        document.getElementById('commissionSuffix').textContent = display ? (' ' + suffix) : '';
-        document.getElementById('signatureName').textContent = nameVal || '[Name]';
+      // FSBO
+      document.getElementById('letterNameFSBO').textContent = nameVal || '[name]';
+      document.getElementById('letterAddressFullFSBO').textContent = fullAddr || '[full address]';
+      document.getElementById('letterAddressShort1FSBO').textContent = short || '[short address]';
+      document.getElementById('letterAddressShort2FSBO').textContent = short || '[short address]';
+      document.getElementById('letterAPNFSBO').textContent = apnVal || '[Parcel # / Pin # / Tax ID # / Folio # / APN #]';
+      document.getElementById('fsboPhone').textContent = phoneVal || '[owner/seller phone number]';
+      document.getElementById('fsboEmail').textContent = (fsboEmailInput && fsboEmailInput.value) || '[owner/seller email]';
+      document.getElementById('letterCommissionDisplayFSBO').textContent = display || '[commission]';
+      document.getElementById('commissionSuffixFSBO').textContent = display ? (' ' + suffix) : '';
+      document.getElementById('signatureNameFSBO').textContent = nameVal || '[Name]';
+    }
 
-        // FSBO
-        document.getElementById('letterNameFSBO').textContent = nameVal || '[name]';
-        document.getElementById('letterAddressFullFSBO').textContent = fullAddr || '[full address]';
-        document.getElementById('letterAddressShort1FSBO').textContent = short || '[short address]';
-        document.getElementById('letterAddressShort2FSBO').textContent = short || '[short address]';
-        document.getElementById('letterAPNFSBO').textContent = apnVal || '[Parcel # / Pin # / Tax ID # / Folio # / APN #]';
-        document.getElementById('fsboPhone').textContent = phoneVal || '[owner/seller phone number]';
-        document.getElementById('fsboEmail').textContent = (fsboEmailInput && fsboEmailInput.value) || '[owner/seller email]';
-        document.getElementById('letterCommissionDisplayFSBO').textContent = display || '[commission]';
-        document.getElementById('commissionSuffixFSBO').textContent = display ? (' ' + suffix) : '';
-        document.getElementById('signatureNameFSBO').textContent = nameVal || '[Name]';
-      }
+    // On load
+    window.addEventListener('DOMContentLoaded', () => {
+      const lastSelected = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
+      showForm('listed');
+      localStorage.setItem('selectedPlan', lastSelected.includes('FSBO') ? 'Listed Property Basic' : lastSelected);
+
+      attachPhoneMask();
+
+      // Bind inputs to rescale on change
+      ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission','commissionType']
+        .forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener('input', fitStrip1);
+          el.addEventListener('change', fitStrip1);
+        });
+
       syncAll();
-
-      // ---- Strip 2 tiles + search ----
-      buildTilesDataset();
-      renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
-      wireSearch();
-
-      // Equalize once everything has painted
-      requestAnimationFrame(equalizeBoxes);
-      setTimeout(equalizeBoxes, 300);
-      window.addEventListener('resize', equalizeBoxes);
+      // Initial fit using Box 1 as baseline
+      setTimeout(fitStrip1, 0);
+      setTimeout(fitStrip1, 200);
+      window.addEventListener('resize', fitStrip1);
     });
 
-    /* Submit */
+    /* Submit (frozen) */
     function submitForm(){
       const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
       const requiredIds = ['name','address','agentPhone'];
@@ -566,7 +582,7 @@
       window.location.href="/login.html";
     }
 
-    // ---------- Strip 2 helpers (frozen) ----------
+    /* ---------- Strip 2 helpers (frozen) ---------- */
     function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
     function commissionDollars(price, val, type){
       const p=Number(price||0), c=Number(val||0);
@@ -575,6 +591,7 @@
       if(p) return Math.round(p*(c/100));
       return null;
     }
+
     function renderTile(data){
       const {
         address="[full address]",
@@ -589,8 +606,7 @@
         agent="[listing agent]",
         plan="Listed Property Basic",
         bedrooms, bathrooms, sqft,
-        propertyType,
-        agentPhone
+        propertyType
       } = data || {};
 
       const calc = commissionDollars(price, commission, commissionType);
@@ -600,6 +616,7 @@
 
       const img = (photos && photos.length ? photos[primaryIndex||0] : "");
       const typeSeg = propertyType ? ` | ${propertyType}` : '';
+
       const card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
       card.onclick = () => {
@@ -658,7 +675,6 @@
         });
       }
 
-      // Samples for demo (with propertyType)
       const samples = [
         {
           address: "237 San Joaquin Street, Laguna Beach, CA 92651",
