@@ -19,19 +19,6 @@
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
-
-    /* --- Strip 1 equal-height (Box 1 baseline) ---- */
-    /* We keep your equal-height approach and make box 2/3 follow box 1's height */
-    #box1, #formBlock, #box3 { overflow:auto; }
-
-    /* New: unified title style so all three titles line up visually */
-    .gc-title { text-align:center; font-weight:700; font-size:1.125rem; line-height:1.25; margin:0 0 .75rem; }
-
-    /* New: in Box 2, lower the form start ~1 line to align with Box 1's 2nd line and Box 3 first sentence */
-    .gc-form-offset { margin-top: 1rem; } /* ≈ one line */
-
-    /* New: in Box 3 (listed ISC only), reduce paragraph font size slightly so full ISC is visible */
-    #iscTextListed p { font-size: 0.93rem; line-height: 1.35; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -175,9 +162,9 @@
 
   <!-- Strip 1 -->
   <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
-    <!-- Box 1 -->
+    <!-- Box 1 (baseline) -->
     <div id="box1" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
-      <h2 class="gc-title">Commission Communication Menu</h2>
+      <h2 class="text-lg font-bold mb-4 text-center">Commission Communication Menu</h2>
       <ul class="space-y-3">
         <li>
           <div onclick="selectPlan('Listed Property Basic')" class="cursor-pointer">
@@ -202,9 +189,8 @@
 
     <!-- Box 2 -->
     <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
-      <h2 id="formTitle" class="gc-title">Listed Property Communication Form</h2>
-      <!-- lowered ~1 line to align with Box 1 second line and Box 3 first sentence -->
-      <form id="listingForm" class="gc-form-offset space-y-2" autocomplete="off">
+      <h2 id="formTitle" class="text-lg font-bold mb-4 text-center">Listed Property Communication Form</h2>
+      <form id="listingForm" class="space-y-2" autocomplete="off">
         <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded" required>
 
         <!-- Address -->
@@ -250,7 +236,7 @@
 
     <!-- Box 3 -->
     <div id="box3" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
-      <h2 class="gc-title">Irrevocable Seller Communication</h2>
+      <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
 
       <!-- LISTED ISC -->
       <div id="iscTextListed">
@@ -358,6 +344,9 @@
     function selectPlan(planName){
       localStorage.setItem("selectedPlan", planName);
       showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
+      // Equalize heights after plan change (content can expand/contract)
+      setTimeout(equalizeStrip1, 0);
+      setTimeout(equalizeStrip1, 150);
     }
 
     /* Toggle form + ISC */
@@ -395,6 +384,21 @@
       }
     }
 
+    /* Equalize Strip 1: make Box1, Box2, Box3 the same height */
+    function equalizeStrip1(){
+      const b1 = document.getElementById('box1');
+      const b2 = document.getElementById('formBlock');
+      const b3 = document.getElementById('box3');
+      if (!b1 || !b2 || !b3) return;
+
+      // reset to measure natural heights
+      [b1, b2, b3].forEach(b => b.style.height = 'auto');
+
+      // choose the tallest to ensure no scroll/cutoff
+      const h = Math.max(b1.scrollHeight, b2.scrollHeight, b3.scrollHeight);
+      [b1, b2, b3].forEach(b => b.style.height = h + 'px');
+    }
+
     /* On load */
     window.addEventListener('DOMContentLoaded', () => {
       const lastSelected = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
@@ -414,14 +418,15 @@
         phoneInput.classList.toggle('border-red-500', !ok && d.length===10);
         phoneError.classList.toggle('hidden', ok || d.length<10);
         syncAll();
+        equalizeStrip1();
       });
 
-      // Live sync to ISC
+      // Live sync to ISC (re-equalize after each change)
       ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission'].forEach(id=>{
         const el=document.getElementById(id); if(!el) return;
-        el.addEventListener('input', syncAll);
+        el.addEventListener('input', function(){ syncAll(); equalizeStrip1(); });
       });
-      document.getElementById('commissionType')?.addEventListener('change', syncAll);
+      document.getElementById('commissionType')?.addEventListener('change', function(){ syncAll(); equalizeStrip1(); });
 
       function syncAll(){
         const fullAddr = (document.getElementById('address').value || '').trim();
@@ -470,6 +475,11 @@
       buildTilesDataset();
       renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
       wireSearch();
+
+      // Equalize once rendered and on resize
+      equalizeStrip1();
+      setTimeout(equalizeStrip1, 200);
+      window.addEventListener('resize', equalizeStrip1);
     });
 
     /* Submit */
