@@ -8,20 +8,46 @@
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
 
-    /* Hoverable nav menu */
+    /* Hoverable nav menu (frozen behavior, with robust hover keep-open) */
     .group { position: relative; }
     #commissionMenu { display: none; position: absolute; left: 0; top: 100%; }
     .group:hover #commissionMenu,
     .group:focus-within #commissionMenu,
     .group.nav-open #commissionMenu { display: block; }
 
-    /* --- Strip 2 tile styles --- */
+    /* --- Strip 2 tile styles (frozen) --- */
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
 
-    /* --- Strip 1 equal-height boxes --- */
-    .gc-box { background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+    /* ===== Strip 1 visual baseline & box caps =====
+       We cap each box to the previous size (baseline). Content scrolls inside if longer.
+       Shorter content is vertically nudged so all three align top/bottom. */
+    :root {
+      /* Adjust this single value if you want the previous baseline tweaked +/- later */
+      --strip1-box-max: 540px; /* baseline cap from prior commit (approx) */
+      --strip1-box-pad: 20px;  /* consistent inner padding for visual balance */
+    }
+    #strip1 { background:#f0f9ff; } /* light sky-blue background for Strip 1 */
+    .gc-box {
+      background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08);
+      display:flex; flex-direction:column; height:auto; max-height:var(--strip1-box-max);
+      /* reserve room for shadow rounding without overflow shake */
+      overflow:hidden;
+    }
+    .gc-box-inner{
+      display:flex; flex-direction:column; gap:12px;
+      padding:var(--strip1-box-pad);
+      /* This is the scrollable region if content exceeds the cap */
+      overflow:auto;
+    }
+    .gc-box-title { text-align:center; font-weight:700; font-size:1.125rem; margin-bottom:6px; }
+
+    /* Small helper to ensure the “content mass” is optically centered when short */
+    .gc-box-spacer { flex:1 0 auto; }
+
+    /* Footer */
+    .site-footer { background:#fff; border-top:1px solid #e5e7eb; margin-top:2rem; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -163,147 +189,158 @@
     </ul>
   </nav>
 
-  <!-- Strip 1 : visual polish + auto equal-height -->
+  <!-- ===== Strip 1 (sky-blue), equal-height boxes with caps ===== -->
   <section id="strip1" class="bg-sky-50 border-y">
     <div class="max-w-7xl mx-auto px-4 py-8">
       <div id="boxRow" class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
         <!-- Box 1 -->
-        <div id="box1" class="gc-box p-5">
-          <h2 class="text-lg font-bold mb-4 text-center">Commission Communication Menu</h2>
-          <ul class="space-y-3 text-sm">
-            <li>
-              <div onclick="selectPlan('Listed Property Basic')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
-                <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
-                <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
-              </div>
-            </li>
-            <li>
-              <div onclick="selectPlan('Listed Property Plus')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
-                <p class="text-base font-semibold">Listed Property Plus | $20</p>
-                <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description.</p>
-              </div>
-            </li>
-            <li>
-              <div onclick="selectPlan('FSBO Plus')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
-                <p class="text-base font-semibold">FSBO Plus | $100</p>
-                <p class="text-gray-600 pl-5">Listed Property Plus minus the listing agency. Includes showing instructions.</p>
-              </div>
-            </li>
-          </ul>
+        <div id="box1" class="gc-box">
+          <div class="gc-box-inner">
+            <h2 class="gc-box-title">Commission Communication Menu</h2>
+            <ul class="space-y-3 text-sm">
+              <li>
+                <div onclick="selectPlan('Listed Property Basic')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
+                  <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
+                  <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
+                </div>
+              </li>
+              <li>
+                <div onclick="selectPlan('Listed Property Plus')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
+                  <p class="text-base font-semibold">Listed Property Plus | $20</p>
+                  <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description.</p>
+                </div>
+              </li>
+              <li>
+                <div onclick="selectPlan('FSBO Plus')" class="cursor-pointer hover:bg-gray-50 rounded p-2">
+                  <p class="text-base font-semibold">FSBO Plus | $100</p>
+                  <p class="text-gray-600 pl-5">Listed Property Plus minus the listing agency. Includes showing instructions.</p>
+                </div>
+              </li>
+            </ul>
+            <div class="gc-box-spacer"></div>
+          </div>
         </div>
 
         <!-- Box 2 -->
-        <div id="box2" class="gc-box p-5">
-          <h2 id="formTitle" class="text-lg font-bold mb-4 text-center">Listed Property Communication Form</h2>
-          <form id="listingForm" class="space-y-3" autocomplete="off">
-            <input type="text" id="name" placeholder="Name" class="w-full border p-2 rounded" required>
+        <div id="box2" class="gc-box">
+          <div class="gc-box-inner">
+            <h2 id="formTitle" class="gc-box-title">Listed Property Communication Form</h2>
+            <form id="listingForm" class="space-y-3" autocomplete="off">
+              <input type="text" id="name" placeholder="Name" class="w-full border p-2 rounded" required>
 
-            <!-- Address -->
-            <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-2 rounded" autocomplete="street-address" spellcheck="false" required >
+              <!-- Address -->
+              <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-2 rounded" autocomplete="street-address" spellcheck="false" required >
 
-            <!-- Parcel -->
-            <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-2 rounded">
+              <!-- Parcel -->
+              <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-2 rounded">
 
-            <!-- Phone/Broker/Agent -->
-            <div id="listedPhoneRow">
-              <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-2 rounded">
-              <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (###) ###-####</span>
-            </div>
+              <!-- Phone/Broker/Agent -->
+              <div id="listedPhoneRow">
+                <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-2 rounded">
+                <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (###) ###-####</span>
+              </div>
 
-            <!-- Agent Email -->
-            <input type="email" id="agentEmail" placeholder="Agent’s Email – NOT your email" class="w-full border p-2 rounded">
+              <!-- Agent Email -->
+              <input type="email" id="agentEmail" placeholder="Agent’s Email – NOT your email" class="w-full border p-2 rounded">
 
-            <!-- Brokerage (HIDDEN for FSBO) -->
-            <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-2 rounded">
+              <!-- Brokerage (HIDDEN for FSBO) -->
+              <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-2 rounded">
 
-            <!-- Agent (HIDDEN for FSBO) -->
-            <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-2 rounded">
+              <!-- Agent (HIDDEN for FSBO) -->
+              <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-2 rounded">
 
-            <!-- FSBO-only contact -->
-            <div id="fsboEmailRow" class="hidden">
-              <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border p-2 rounded">
-            </div>
+              <!-- FSBO-only contact -->
+              <div id="fsboEmailRow" class="hidden">
+                <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border p-2 rounded">
+              </div>
 
-            <!-- Commission -->
-            <div class="flex gap-2">
-              <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border p-2 rounded">
-              <select id="commissionType" class="border p-2 rounded">
-                <option value="%">%</option>
-                <option value="$">$</option>
-              </select>
-            </div>
+              <!-- Commission -->
+              <div class="flex gap-2">
+                <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border p-2 rounded">
+                <select id="commissionType" class="border p-2 rounded">
+                  <option value="%">%</option>
+                  <option value="$">$</option>
+                </select>
+              </div>
 
-            <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded">
-              Submit Guaranteed Commission
-            </button>
-          </form>
+              <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded">
+                Submit Guaranteed Commission
+              </button>
+            </form>
+            <div class="gc-box-spacer"></div>
+          </div>
         </div>
 
         <!-- Box 3 -->
-        <div id="box3" class="gc-box p-5">
-          <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
+        <div id="box3" class="gc-box">
+          <div class="gc-box-inner">
+            <h2 class="gc-box-title">Irrevocable Seller Communication</h2>
 
-          <!-- LISTED ISC -->
-          <div id="iscTextListed">
-            <p>To the escrow holder/closing agent,</p>
-            <p class="mt-2">
-              I, <span id="letterName">[name]</span>, am the owner/seller of
-              <span id="letterAddressFull">[full address]</span>,
-              # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
-              <span id="letterAddressShort1">[short address]</span> is listed for sale by
-              <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent,
-              <span id="letterAgentPhone">[agent phone]</span>, <span id="letterAgentEmail">[agent email]</span>.
-            </p>
-            <p class="mt-2">
-              Let it be known: if a buyer’s agent/broker facilitates the sale of
-              <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed
-              to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for
-              broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed
-              <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
-            </p>
-            <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
-          </div>
+            <!-- LISTED ISC -->
+            <div id="iscTextListed">
+              <p>To the escrow holder/closing agent,</p>
+              <p class="mt-2">
+                I, <span id="letterName">[name]</span>, am the owner/seller of
+                <span id="letterAddressFull">[full address]</span>,
+                # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
+                <span id="letterAddressShort1">[short address]</span> is listed for sale by
+                <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent,
+                <span id="letterAgentPhone">[agent phone]</span>, <span id="letterAgentEmail">[agent email]</span>.
+              </p>
+              <p class="mt-2">
+                Let it be known: if a buyer’s agent/broker facilitates the sale of
+                <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed
+                to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for
+                broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed
+                <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
+              </p>
+              <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+            </div>
 
-          <!-- FSBO ISC -->
-          <div id="iscTextFSBO" class="hidden">
-            <p>To the escrow holder/closing agent,</p>
-            <p class="mt-2">
-              I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
-              <span id="letterAddressFullFSBO">[full address]</span>, #
-              <span id="letterAPNFSBO">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
-              <span id="letterAddressShort1FSBO">[short address]</span> is listed for sale by owner (Me).
-              My phone number is <span id="fsboPhone"></span>. My email address is <span id="fsboEmail"></span>.
-            </p>
-            <p class="mt-2">
-              Let it be known: if a buyer’s agent/broker facilitates the sale of
-              <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent) are irrevocably
-              instructed to credit/compensate the buyer’s broker a commission not to exceed
-              <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
-            </p>
-            <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+            <!-- FSBO ISC -->
+            <div id="iscTextFSBO" class="hidden">
+              <p>To the escrow holder/closing agent,</p>
+              <p class="mt-2">
+                I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
+                <span id="letterAddressFullFSBO">[full address]</span>, #
+                <span id="letterAPNFSBO">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
+                <span id="letterAddressShort1FSBO">[short address]</span> is listed for sale by owner (Me).
+                My phone number is <span id="fsboPhone"></span>. My email address is <span id="fsboEmail"></span>.
+              </p>
+              <p class="mt-2">
+                Let it be known: if a buyer’s agent/broker facilitates the sale of
+                <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent) are irrevocably
+                instructed to credit/compensate the buyer’s broker a commission not to exceed
+                <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
+              </p>
+              <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+            </div>
+
+            <div class="gc-box-spacer"></div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Strip 2: Search / Tiles -->
-  <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12">
-    <!-- Centered search header -->
-    <div class="text-center mb-4">
-      <div class="flex items-center justify-center">
-        <div class="flex items-center gap-2">
-          <input id="searchBox" type="text" placeholder="Search city, neighborhood, or ZIP…" class="border rounded px-3 py-2 w-72 sm:w-96">
-          <button id="searchBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Search Guaranteed Commissions</button>
+  <!-- ===== Strip 2 (match header white) ===== -->
+  <section id="strip2Search" class="bg-white">
+    <div class="max-w-7xl mx-auto px-4 pb-12">
+      <!-- Centered search header -->
+      <div class="text-center mb-4">
+        <div class="flex items-center justify-center">
+          <div class="flex items-center gap-2">
+            <input id="searchBox" type="text" placeholder="Search city, neighborhood, or ZIP…" class="border rounded px-3 py-2 w-72 sm:w-96">
+            <button id="searchBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Search Guaranteed Commissions</button>
+          </div>
         </div>
       </div>
+      <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
     </div>
-
-    <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </section>
 
   <!-- Footer -->
-  <footer class="bg-white border-t mt-8">
+  <footer class="site-footer">
     <div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-gray-600 space-y-2">
       <p>© 2025 GuaranteedCommission.com. All rights reserved.</p>
       <p>Boyd Roberts · California Licensed Real Estate Broker · DRE License #01354788</p>
@@ -351,7 +388,9 @@
     function selectPlan(planName){
       localStorage.setItem("selectedPlan", planName);
       showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
+      // Equalize after plan toggle
       requestAnimationFrame(equalizeBoxes);
+      setTimeout(equalizeBoxes, 100);
     }
 
     /* Toggle form + ISC */
@@ -386,13 +425,17 @@
       }
     }
 
-    /* Equalize Strip 1 box heights automatically */
+    /* Equalize Strip 1 box heights to baseline cap (auto) */
     function equalizeBoxes(){
       const boxes = [document.getElementById('box1'), document.getElementById('box2'), document.getElementById('box3')];
-      boxes.forEach(b => b && (b.style.height = 'auto'));
+      boxes.forEach(b => b && (b.style.height = 'auto')); // measure natural
       let maxH = 0;
       boxes.forEach(b => { if (b) maxH = Math.max(maxH, b.offsetHeight); });
-      boxes.forEach(b => b && (b.style.height = maxH + 'px'));
+
+      // Apply capped height (no box exceeds baseline size)
+      const CAP = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--strip1-box-max')) || 540;
+      const target = Math.min(maxH, CAP);
+      boxes.forEach(b => b && (b.style.height = target + 'px'));
     }
 
     /* On load */
@@ -451,7 +494,6 @@
         document.getElementById('letterAgentEmail').textContent = agentEmailVal || '[agent email]';
         document.getElementById('letterCommissionDisplay').textContent = display || '[commission]';
         document.getElementById('commissionSuffix').textContent = display ? (' ' + suffix) : '';
-
         document.getElementById('signatureName').textContent = nameVal || '[Name]';
 
         // FSBO
@@ -524,7 +566,7 @@
       window.location.href="/login.html";
     }
 
-    // ---------- Strip 2 helpers ----------
+    // ---------- Strip 2 helpers (frozen) ----------
     function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
     function commissionDollars(price, val, type){
       const p=Number(price||0), c=Number(val||0);
