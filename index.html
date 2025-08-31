@@ -1,10 +1,13 @@
-<!DOCTYPE html><html lang="en"><head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
+
     /* Nav hover */
     .group { position: relative; }
     #commissionMenu { display: none; position: absolute; left: 0; top: 100%; }
@@ -19,9 +22,6 @@
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
-
-    /* ---- Strip 1 equal-height (Box 1 baseline) ---- */
-    #box1, #formBlock, #box3wrap { overflow:auto; } /* show all content clearly if it exceeds baseline */
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -49,8 +49,10 @@
   <div id="investorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl relative p-5 max-h-[85vh] overflow-auto">
       <button onclick="closeInvestorModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
+
       <h2 class="text-lg font-bold">Accredited Investor Certification</h2>
       <p class="text-sm text-gray-600 mb-3">(SEC Rule 501 of Regulation D)</p>
+
       <form id="investorForm" class="space-y-4">
         <!-- Identity -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -67,6 +69,7 @@
             <input id="invPhone" type="tel" class="w-full border rounded px-2 py-1" placeholder="Phone" required>
           </div>
         </div>
+
         <!-- Categories -->
         <div>
           <p class="text-sm font-semibold mb-2">I hereby certify that I qualify as an “Accredited Investor” under Rule 501 of Regulation D of the Securities Act of 1933 because:</p>
@@ -78,6 +81,7 @@
             <input id="cNetWorth" type="checkbox" class="mt-1">
             <span>Net Worth Test: My individual net worth, or joint net worth with my spouse, exceeds $1,000,000 (excluding the value of my primary residence).</span>
           </label>
+
           <p class="text-sm font-semibold mt-3">Other Accredited Categories (if applicable):</p>
           <label class="flex items-start gap-2 text-sm mt-2">
             <input id="cLicenses" type="checkbox" class="mt-1">
@@ -96,6 +100,7 @@
             <span>All of my equity owners are Accredited Investors.</span>
           </label>
         </div>
+
         <!-- Acknowledgments -->
         <div class="text-sm space-y-2 mt-2">
           <p><strong>Acknowledgments:</strong></p>
@@ -103,6 +108,7 @@
           <p>I agree to provide further documentation (such as tax returns, W-2s, brokerage statements, or a letter from my CPA/attorney) if required to verify my status under Rule 506(c).</p>
           <p>I represent and warrant that the above statements are true and correct.</p>
         </div>
+
         <!-- Signature -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
@@ -114,11 +120,13 @@
             <input id="invDate" type="date" class="w-full border rounded px-2 py-1" required>
           </div>
         </div>
+
         <!-- Submit -->
         <div class="flex items-center justify-end gap-2">
           <button type="button" onclick="closeInvestorModal()" class="px-3 py-2 rounded border">Cancel</button>
           <button id="invSubmitBtn" type="submit" class="px-4 py-2 rounded bg-blue-600 text-white">Submit Certification</button>
         </div>
+
         <p id="investorConfirmation" class="mt-3 text-green-700 font-semibold text-center hidden">
           Thank you — your Accredited Investor Certification has been prepared. Please send the email to complete submission.
         </p>
@@ -164,7 +172,7 @@
   <!-- Strip 1 -->
   <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
     <!-- Box 1 -->
-    <div id="box1" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
+    <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
       <h2 class="text-lg font-bold mb-4 text-center">Commission Communication Menu</h2>
       <ul class="space-y-3">
         <li>
@@ -193,10 +201,13 @@
       <h2 id="formTitle" class="text-lg font-bold mb-4 text-center">Listed Property Communication Form</h2>
       <form id="listingForm" class="space-y-2" autocomplete="off">
         <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded" required>
+
         <!-- Address -->
         <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-1 rounded" autocomplete="street-address" spellcheck="false" required >
+
         <!-- Parcel -->
         <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
+
         <!-- Phone/Broker/Agent -->
         <div id="listedPhoneRow" class="relative">
           <input type="tel" id="agentPhone" placeholder="Phone" class="w-full border p-1 rounded">
@@ -205,16 +216,21 @@
           <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
           <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (###) ###-####</span>
         </div>
+
         <!-- Agent Email (NEW) -->
         <input type="email" id="agentEmail" placeholder="Agent’s Email – NOT your email" class="w-full border p-1 rounded">
+
         <!-- Brokerage (HIDDEN for FSBO) -->
         <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
+
         <!-- Agent (HIDDEN for FSBO) -->
         <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
+
         <!-- FSBO-only contact -->
         <div id="fsboEmailRow" class="hidden">
           <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border p-1 rounded">
         </div>
+
         <!-- Commission -->
         <div class="flex gap-2">
           <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border p-1 rounded">
@@ -223,6 +239,7 @@
             <option value="$">$</option>
           </select>
         </div>
+
         <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-2">
           Submit Guaranteed Commission
         </button>
@@ -230,7 +247,7 @@
     </div>
 
     <!-- Box 3 -->
-    <div id="box3wrap" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
+    <div class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
       <h2 class="text-lg font-bold mb-2 text-center">Irrevocable Seller Communication</h2>
 
       <!-- LISTED ISC -->
@@ -289,6 +306,7 @@
         </div>
       </div>
     </div>
+
     <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </section>
 
@@ -325,6 +343,7 @@
       const form = document.getElementById('investorForm'); if (!form) return;
       const confirmEl = document.getElementById('investorConfirmation');
       const toEmail = "founder@guaranteedcommission.com";
+
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         const name  = document.getElementById('invName').value.trim();
@@ -332,6 +351,7 @@
         const phone = document.getElementById('invPhone').value.trim();
         const sig   = document.getElementById('invSignature').value.trim();
         const date  = document.getElementById('invDate').value || new Date().toISOString().slice(0,10);
+
         const checks = {
           Income_Test: document.getElementById('cIncome').checked,
           Net_Worth_Test: document.getElementById('cNetWorth').checked,
@@ -340,7 +360,9 @@
           Entity_5M_Assets: document.getElementById('cEntity').checked,
           All_Equity_Owners_Accredited: document.getElementById('cOwners').checked
         };
+
         if (!name || !email || !phone || !sig) { alert('Please complete Name, Email, Phone, and Signature.'); return; }
+
         const bLines = [
           "Accredited Investor Certification (SEC Rule 501 of Regulation D)",
           "",
@@ -365,11 +387,11 @@
           `Signature: ${sig}`,
           `Date: ${date}`
         ].join('\n');
+
         const mailto = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent('Accredited Investor Certification')}&body=${encodeURIComponent(bLines)}`;
         try { window.location.href = mailto; } catch {}
         if (confirmEl) confirmEl.classList.remove('hidden');
       });
-
     // Keep commission menu open while hovering submenu (robust hover)
     (function(){
       const li = document.querySelector('.group');
@@ -398,9 +420,6 @@
     function selectPlan(planName){
       localStorage.setItem("selectedPlan", planName);
       showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
-      // After plan toggles, re-equalize heights
-      setTimeout(equalizeStrip1, 0);
-      setTimeout(equalizeStrip1, 150);
     }
 
     /* Toggle form + ISC */
@@ -438,6 +457,7 @@
       }
     }
 
+    // On load
     /* On load */
     window.addEventListener('DOMContentLoaded', () => {
       const lastSelected = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
@@ -447,7 +467,6 @@
       const lastSearch = localStorage.getItem('lastSearch') || '';
       const box = document.getElementById('searchBox');
       if (box) box.value = lastSearch;
-
       // Phone mask: (###) ###-####
       const phoneInput = document.getElementById('agentPhone');
       const phoneError = document.getElementById('phoneError');
@@ -461,15 +480,14 @@
         phoneInput.classList.toggle('border-red-500', !ok && d.length===10);
         phoneError.classList.toggle('hidden', ok || d.length<10);
         syncAll();
-        equalizeStrip1();
       });
 
       // Live sync to ISC
       ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission'].forEach(id=>{
         const el=document.getElementById(id); if(!el) return;
-        el.addEventListener('input', function(){ syncAll(); equalizeStrip1(); });
+        el.addEventListener('input', syncAll);
       });
-      document.getElementById('commissionType')?.addEventListener('change', function(){ syncAll(); equalizeStrip1(); });
+      document.getElementById('commissionType')?.addEventListener('change', syncAll);
 
       function syncAll(){
         const fullAddr = (document.getElementById('address').value || '').trim();
@@ -519,26 +537,51 @@
       renderStrip2Tiles(lastSearch);
       renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
       wireSearch();
-
-      // Equalize heights once painted, then after a tick
-      equalizeStrip1();
-      setTimeout(equalizeStrip1, 200);
-      window.addEventListener('resize', equalizeStrip1);
     });
 
-    // Equalize Strip 1 using Box 1 as baseline (no scaling, no visual change)
-    function equalizeStrip1(){
-      const box1 = document.getElementById('box1');
-      const box2 = document.getElementById('formBlock');
-      const box3 = document.getElementById('box3wrap');
-      if (!box1 || !box2 || !box3) return;
+    /* Submit */
+    function submitForm(){
+      const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
+      const requiredIds = ['name','address','agentPhone'];
+      if (isFSBO) requiredIds.push('apn','fsboEmailInput');
+      let ok=true;
+      for(const id of requiredIds){
+        const el=document.getElementById(id);
+        if(!el||!el.value.trim()){ if(el) el.classList.add('border-red-500'); ok=false; }
+        else el.classList.remove('border-red-500');
+      }
+      if(!ok){ alert('Please complete all required fields.'); return; }
 
-      // Reset to natural to measure fresh
-      [box1, box2, box3].forEach(b => { b.style.height = 'auto'; });
+      const addressEl=document.getElementById('address');
+      const addrVal=(addressEl.value||'').trim();
+      if(!isValidFullAddress(addrVal)){
+        addressEl.classList.add('border-red-500');
+        alert('Please use full address format: Street, City, ST 12345');
+        return;
+      } else addressEl.classList.remove('border-red-500');
 
-      const baseline = box1.getBoundingClientRect().height;
-      // Fix all to baseline height
-      [box1, box2, box3].forEach(b => { b.style.height = baseline + 'px'; });
+      const fsboEmailEl=document.getElementById('fsboEmailInput');
+      const formData={
+        name:document.getElementById('name').value.trim(),
+        address:addrVal,
+        apn:document.getElementById('apn').value.trim(),
+        commission:document.getElementById('commission').value.trim(),
+        commissionType:document.getElementById('commissionType').value,
+        phone:document.getElementById('agentPhone').value.trim(),
+        brokerage:document.getElementById('brokerage').value.trim(),
+        agent:document.getElementById('agent').value.trim(),
+        agentEmail:document.getElementById('agentEmail').value.trim(),
+        fsboEmail:fsboEmailEl?fsboEmailEl.value.trim():''
+      };
+      localStorage.setItem("formData",JSON.stringify(formData));
+      if(formData.address){
+        const short=formData.address.split(',')[0];
+        localStorage.setItem('shortAddress',short);
+      }
+      const plan=localStorage.getItem('selectedPlan')||'Listed Property Basic';
+      localStorage.setItem('postSignatureOptions',plan.includes('FSBO')?'fsbo':'listed');
+      localStorage.setItem('nextAfterLogin','/verify-code.html');
+      window.location.href="/login.html";
     }
 
     // ---------- Strip 2 helpers ----------
@@ -732,4 +775,5 @@
       });
     })();
   </script>
-</body></html>
+</body>
+</html>
