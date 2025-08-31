@@ -6,6 +6,12 @@
   <title>GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    :root{
+      /* micro-tuning knobs */
+      --title-bottom-gap: .75rem;         /* controls spacing under all three titles */
+      --box2-first-input-offset: 1rem;    /* lowers Box 2 first input ~1 line */
+    }
+
     .font-cursive { font-family: 'Brush Script MT', cursive; }
 
     /* Nav hover */
@@ -20,29 +26,36 @@
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
 
-    /* --- Strip 1 (same-size boxes; Box 1 baseline; no scrollbars) --- */
-    #box1, #formBlock, #box3 { overflow: hidden; } /* no scrollbars */
-    .gc-title { text-align:center; font-weight:700; font-size:1.125rem; line-height:1.25; margin:0 0 .75rem; } /* unified titles */
+    /* --- Strip 1: same-size boxes (Box 1 = baseline), no scrollbars --- */
+    #box1, #formBlock, #box3 { overflow: hidden; } /* avoid scrollbars */
+    .gc-title { text-align:center; font-weight:700; font-size:1.125rem; line-height:1.25; margin:0 0 var(--title-bottom-gap); }
 
-    /* Lower Box 2 form by ~1 line for alignment */
-    .gc-form-offset { margin-top: 1rem; }
+    /* Lower Box 2 form by ~1 line */
+    .gc-form-offset { margin-top: var(--box2-first-input-offset); }
 
-    /* Box 2 compact modes (real reflow) to avoid scrollbars while fitting baseline height */
-    #formBlock.compact * { line-height: 1.25; }
-    #formBlock.compact h2.gc-title { font-size: 1.05rem; margin-bottom: .6rem; }
-    #formBlock.compact input, #formBlock.compact select, #formBlock.compact button { padding: .3rem .45rem !important; font-size: .85rem !important; }
+    /* Real-Reflow compact tiers for Box 2 (form) */
+    #formBlock.compact * { line-height:1.25; }
+    #formBlock.compact h2.gc-title { font-size:1.05rem; }
+    #formBlock.compact input, #formBlock.compact select, #formBlock.compact button { padding:.3rem .45rem !important; font-size:.85rem !important; }
     #formBlock.compact .space-y-2 > * { margin-top:.25rem !important; margin-bottom:.25rem !important; }
 
-    #formBlock.compact2 * { line-height: 1.2; }
-    #formBlock.compact2 h2.gc-title { font-size: 1.0rem; margin-bottom: .45rem; }
-    #formBlock.compact2 input, #formBlock.compact2 select, #formBlock.compact2 button { padding: .25rem .4rem !important; font-size: .8rem !important; }
+    #formBlock.compact2 * { line-height:1.2; }
+    #formBlock.compact2 h2.gc-title { font-size:1.0rem; }
+    #formBlock.compact2 input, #formBlock.compact2 select, #formBlock.compact2 button { padding:.25rem .4rem !important; font-size:.8rem !important; }
     #formBlock.compact2 .space-y-2 > * { margin-top:.2rem !important; margin-bottom:.2rem !important; }
 
-    /* Box 3 scale-fit wrapper to avoid scrollbars while showing whole ISC */
-    #box3Inner { transform-origin: top center; display:inline-block; }
+    #formBlock.compact3 * { line-height:1.15; }
+    #formBlock.compact3 h2.gc-title { font-size:.95rem; }
+    #formBlock.compact3 input, #formBlock.compact3 select, #formBlock.compact3 button { padding:.22rem .35rem !important; font-size:.75rem !important; }
+    #formBlock.compact3 .space-y-2 > * { margin-top:.18rem !important; margin-bottom:.18rem !important; }
 
-    /* Slightly smaller listed ISC paragraphs to help visibility in fixed box */
-    #iscTextListed p { font-size: 0.95rem; line-height: 1.35; }
+    /* Real-Reflow compact tiers for Box 3 (ISC) – keep text razor sharp */
+    #box3.compact * { line-height:1.35; }
+    #box3.compact p { font-size:.95rem; }
+    #box3.compact2 * { line-height:1.3; }
+    #box3.compact2 p { font-size:.9rem; }
+    #box3.compact3 * { line-height:1.25; }
+    #box3.compact3 p { font-size:.85rem; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -211,7 +224,7 @@
       </ul>
     </div>
 
-    <!-- Box 2 -->
+    <!-- Box 2 (form) -->
     <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
       <h2 id="formTitle" class="gc-title">Listed Property Communication Form</h2>
       <form id="listingForm" class="gc-form-offset space-y-2" autocomplete="off">
@@ -258,50 +271,48 @@
       </form>
     </div>
 
-    <!-- Box 3 -->
+    <!-- Box 3 (ISC) -->
     <div id="box3" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
-      <div id="box3Inner">
-        <h2 class="gc-title">Irrevocable Seller Communication</h2>
+      <h2 class="gc-title">Irrevocable Seller Communication</h2>
 
-        <!-- LISTED ISC -->
-        <div id="iscTextListed">
-          <p>To the escrow holder/closing agent,</p>
-          <p class="mt-2">
-            I, <span id="letterName">[name]</span>, am the owner/seller of
-            <span id="letterAddressFull">[full address]</span>,
-            # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
-            <span id="letterAddressShort1">[short address]</span> is listed for sale by
-            <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent,
-            <span id="letterAgentPhone">[agent phone]</span>, <span id="letterAgentEmail">[agent email]</span>.
-          </p>
-          <p class="mt-2">
-            Let it be known: if a buyer’s agent/broker facilitates the sale of
-            <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed
-            to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for
-            broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed
-            <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
-          </p>
-          <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
-        </div>
+      <!-- LISTED ISC -->
+      <div id="iscTextListed">
+        <p>To the escrow holder/closing agent,</p>
+        <p class="mt-2">
+          I, <span id="letterName">[name]</span>, am the owner/seller of
+          <span id="letterAddressFull">[full address]</span>,
+          # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
+          <span id="letterAddressShort1">[short address]</span> is listed for sale by
+          <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent,
+          <span id="letterAgentPhone">[agent phone]</span>, <span id="letterAgentEmail">[agent email]</span>.
+        </p>
+        <p class="mt-2">
+          Let it be known: if a buyer’s agent/broker facilitates the sale of
+          <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed
+          to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for
+          broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed
+          <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
+        </p>
+        <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+      </div>
 
-        <!-- FSBO ISC -->
-        <div id="iscTextFSBO" class="hidden">
-          <p>To the escrow holder/closing agent,</p>
-          <p class="mt-2">
-            I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
-            <span id="letterAddressFullFSBO">[full address]</span>, #
-            <span id="letterAPNFSBO">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
-            <span id="letterAddressShort1FSBO">[short address]</span> is listed for sale by owner (Me).
-            My phone number is <span id="fsboPhone"></span>. My email address is <span id="fsboEmail"></span>.
-          </p>
-          <p class="mt-2">
-            Let it be known: if a buyer’s agent/broker facilitates the sale of
-            <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent) are irrevocably
-            instructed to credit/compensate the buyer’s broker a commission not to exceed
-            <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
-          </p>
-          <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
-        </div>
+      <!-- FSBO ISC -->
+      <div id="iscTextFSBO" class="hidden">
+        <p>To the escrow holder/closing agent,</p>
+        <p class="mt-2">
+          I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
+          <span id="letterAddressFullFSBO">[full address]</span>, #
+          <span id="letterAPNFSBO">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
+          <span id="letterAddressShort1FSBO">[short address]</span> is listed for sale by owner (Me).
+          My phone number is <span id="fsboPhone"></span>. My email address is <span id="fsboEmail"></span>.
+        </p>
+        <p class="mt-2">
+          Let it be known: if a buyer’s agent/broker facilitates the sale of
+          <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent) are irrevocably
+          instructed to credit/compensate the buyer’s broker a commission not to exceed
+          <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
+        </p>
+        <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
       </div>
     </div>
   </section>
@@ -370,9 +381,9 @@
     function selectPlan(planName){
       localStorage.setItem("selectedPlan", planName);
       showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
-      // After plan change, refit heights (Box1 baseline)
+      // Refit after plan change
       setTimeout(fitStrip1, 0);
-      setTimeout(fitStrip1, 150);
+      setTimeout(fitStrip1, 120);
     }
 
     /* Toggle form + ISC */
@@ -410,39 +421,38 @@
       }
     }
 
-    // Fit Strip 1 to Box1 baseline: Box2 compacts as needed; Box3 scales to fit
+    // Fit Strip 1: lock Box 1 height, compact Box 2 & 3 tiers (no scrollbars, crisp text)
     function fitStrip1(){
-      const box1 = document.getElementById('box1');
-      const box2 = document.getElementById('formBlock');
-      const box3 = document.getElementById('box3');
-      if (!box1 || !box2 || !box3) return;
+      const b1 = document.getElementById('box1');
+      const b2 = document.getElementById('formBlock');
+      const b3 = document.getElementById('box3');
+      if (!b1 || !b2 || !b3) return;
 
-      // Reset state to measure box1 naturally
-      [box1, box2, box3].forEach(b => b.style.height = 'auto');
-      box2.classList.remove('compact','compact2');
-      const box3Inner = document.getElementById('box3Inner'); // may not exist yet
-      if (box3Inner) { box3Inner.style.transform = 'scale(1)'; box3Inner.style.marginTop='0px'; }
+      // Reset to measure baseline properly
+      [b1, b2, b3].forEach(b => b.style.height='auto');
+      b2.classList.remove('compact','compact2','compact3');
+      b3.classList.remove('compact','compact2','compact3');
 
-      // 1) Lock all to Box 1 height (yesterday baseline)
-      const baseline = box1.getBoundingClientRect().height || box1.clientHeight;
-      [box1, box2, box3].forEach(b => b.style.height = baseline + 'px');
+      // 1) Lock to Box 1 height
+      const baseline = b1.getBoundingClientRect().height || b1.clientHeight;
+      [b1, b2, b3].forEach(b => b.style.height = baseline + 'px');
 
-      // 2) Box 2: compact if overflow
-      if (box2.scrollHeight > box2.clientHeight + 1) box2.classList.add('compact');
-      // recheck after first compaction
-      if (box2.scrollHeight > box2.clientHeight + 1) box2.classList.add('compact2');
-
-      // 3) Box 3: scale fit (full content, no scrollbars)
-      const inner = document.getElementById('box3Inner');
-      if (inner) {
-        const innerH = inner.scrollHeight;
-        const s = Math.min(1, baseline / innerH);
-        inner.style.transform = `scale(${s})`;
-        // center vertically
-        const used = innerH * s;
-        const leftover = baseline - used;
-        inner.style.marginTop = (leftover > 0 ? leftover/2 : 0) + 'px';
+      // 2) Compact tiers function
+      function ensureFits(el){
+        const tiers = ['compact','compact2','compact3'];
+        for (let i=0;i<tiers.length;i++){
+          if (el.scrollHeight <= el.clientHeight + 1) return; // already fits
+          el.classList.add(tiers[i]);
+        }
       }
+      ensureFits(b2); // Box 2 (form)
+      ensureFits(b3); // Box 3 (ISC)
+
+      // If super edge case still a pixel off after class changes, try a second pass
+      setTimeout(()=>{
+        ensureFits(b2);
+        ensureFits(b3);
+      },0);
     }
 
     /* On load */
@@ -467,12 +477,14 @@
         fitStrip1();
       });
 
-      // Live sync to ISC; re-fit heights so listed/FSBO toggles reflow correctly
-      ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission'].forEach(id=>{
-        const el=document.getElementById(id); if(!el) return;
-        el.addEventListener('input', function(){ syncAll(); fitStrip1(); });
-      });
-      document.getElementById('commissionType')?.addEventListener('change', function(){ syncAll(); fitStrip1(); });
+      // Refit on any input impacting content height
+      ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission','commissionType']
+        .forEach(id=>{
+          const el=document.getElementById(id);
+          if(!el) return;
+          el.addEventListener('input', ()=>{ syncAll(); fitStrip1(); });
+          el.addEventListener('change', ()=>{ syncAll(); fitStrip1(); });
+        });
 
       function syncAll(){
         const fullAddr = (document.getElementById('address').value || '').trim();
@@ -522,9 +534,9 @@
       renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
       wireSearch();
 
-      // Fit once painted and again after layout settles
+      // Initial fit and on resize
       fitStrip1();
-      setTimeout(fitStrip1, 200);
+      setTimeout(fitStrip1, 150);
       window.addEventListener('resize', fitStrip1);
     });
 
