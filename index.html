@@ -12,9 +12,6 @@
     .group { position: relative; }
     #commissionMenu { display: none; position: absolute; left: 0; top: 100%; }
     .group:hover #commissionMenu,
-    .group:focus-within #commissionMenu { display: block; }
-    /* Keep menus hidden by default */
-    #commissionMenu { display: none; }
     .group:focus-within #commissionMenu,
     .group.nav-open #commissionMenu { display: block; }
 
@@ -39,7 +36,6 @@
       </div>
       <div class="flex items-center gap-2">
         <a href="/local-professionals.html" class="bg-amber-600 text-white text-xs font-semibold px-3 py-1 rounded">Local Professionals</a>
-        <!-- Header Log In button removed per your instruction -->
         <!-- Removed header Log In button per request -->
       </div>
     </div>
@@ -141,7 +137,6 @@
       <h2 class="text-lg font-bold mb-4">Press Inquiry Form</h2>
       <input type="text" id="pressName" placeholder="Full Name" class="w-full border p-1 mb-2 rounded">
       <input type="text" id="pressOrg" placeholder="Organization" class="w-full border p-1 mb-2 rounded">
-      <input type="tel" id="pressPhone" placeholder="Phone Number" class="w-full border p-1 mb-2 rounded">
       <input type="tel" id="pressPhone" placeholder="Phone" class="w-full border p-1 mb-2 rounded">
       <input type="email" id="pressEmail" placeholder="Email Address" class="w-full border p-1 mb-4 rounded">
       <button onclick="submitPressForm()" class="w-full bg-blue-600 text-white py-2 rounded">Submit</button>
@@ -152,9 +147,6 @@
   <!-- Nav -->
   <nav class="bg-gray-200 py-2">
     <ul class="flex justify-center space-x-8 font-semibold">
-      <li class="relative group">
-        <span class="hover:underline cursor-pointer">Communicate Guaranteed Commission</span>
-        <ul id="commissionMenu" class="absolute left-0 mt-2 w-64 bg-white border shadow text-sm text-gray-700 z-10">
       <li class="group">
         <span class="hover:underline cursor-pointer" tabindex="0" id="commissionToggle">Communicate Guaranteed Commission</span>
         <ul id="commissionMenu" class="mt-2 w-64 bg-white border shadow text-sm text-gray-700 z-10">
@@ -168,7 +160,6 @@
     </ul>
   </nav>
 
-  <!-- Strip 1 (Boxes 1–3) -->
   <!-- Strip 1 -->
   <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
     <!-- Box 1 -->
@@ -209,9 +200,6 @@
         <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
 
         <!-- Phone/Broker/Agent -->
-        <div id="listedPhoneRow" class="relative">
-          <input type="tel" id="agentPhone" placeholder="Phone" class="w-full border p-1 rounded">
-          <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (123-456-7890)</span>
         <div id="listedPhoneRow">
           <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
           <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (###) ###-####</span>
@@ -255,13 +243,10 @@
         <p>To the escrow holder/closing agent,</p>
         <p class="mt-2">
           I, <span id="letterName">[name]</span>, am the owner/seller of
-          <span id="letterAddressFull">[full address]</span>
-          <span id="apnSpanListed">, # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span></span>.
           <span id="letterAddressFull">[full address]</span>,
           # <span id="letterAPN">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
           <span id="letterAddressShort1">[short address]</span> is listed for sale by
           <span id="letterBrokerage">[listing brokerage]</span>, <span id="letterAgent">[listing agent]</span>, listing agent,
-          <span id="letterAgentPhone">[agent phone]</span>.
           <span id="letterAgentPhone">[agent phone]</span>, <span id="letterAgentEmail">[agent email]</span>.
         </p>
         <p class="mt-2">
@@ -310,12 +295,6 @@
     <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </section>
 
-  <!-- Footer with centered Press button -->
-  <footer class="bg-white border-t">
-    <div class="max-w-7xl mx-auto px-4 py-6 flex items-center justify-center">
-      <button onclick="openPressModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-2 rounded">
-        Press Inquiry
-      </button>
   <!-- Footer -->
   <footer class="bg-white border-t mt-8">
     <div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-gray-600 space-y-2">
@@ -338,60 +317,6 @@
     function closePressModal(){ document.getElementById('pressModal').classList.add('hidden'); }
     function submitPressForm(){ document.getElementById('pressConfirmation').classList.remove('hidden'); }
 
-    // ---- Investor Certification handler ----
-    (function wireInvestorForm(){
-      const form = document.getElementById('investorForm'); if (!form) return;
-      const confirmEl = document.getElementById('investorConfirmation');
-      const toEmail = "founder@guaranteedcommission.com";
-
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name  = document.getElementById('invName').value.trim();
-        const email = document.getElementById('invEmail').value.trim();
-        const phone = document.getElementById('invPhone').value.trim();
-        const sig   = document.getElementById('invSignature').value.trim();
-        const date  = document.getElementById('invDate').value || new Date().toISOString().slice(0,10);
-
-        const checks = {
-          Income_Test: document.getElementById('cIncome').checked,
-          Net_Worth_Test: document.getElementById('cNetWorth').checked,
-          Series_7_65_82: document.getElementById('cLicenses').checked,
-          Director_Officer_GP: document.getElementById('cOfficer').checked,
-          Entity_5M_Assets: document.getElementById('cEntity').checked,
-          All_Equity_Owners_Accredited: document.getElementById('cOwners').checked
-        };
-
-        if (!name || !email || !phone || !sig) { alert('Please complete Name, Email, Phone, and Signature.'); return; }
-
-        const bLines = [
-          "Accredited Investor Certification (SEC Rule 501 of Regulation D)",
-          "",
-          `Investor Name: ${name}`,
-          `Email: ${email}`,
-          `Phone: ${phone}`,
-          "",
-          "I hereby certify that I qualify as an “Accredited Investor” because:",
-          ` - Income Test: ${checks.Income_Test ? '☑' : '☐'}`,
-          ` - Net Worth Test: ${checks.Net_Worth_Test ? '☑' : '☐'}`,
-          "Other Accredited Categories:",
-          ` - Series 7/65/82: ${checks.Series_7_65_82 ? '☑' : '☐'}`,
-          ` - Director/Officer/GP: ${checks.Director_Officer_GP ? '☑' : '☐'}`,
-          ` - Entity with >$5,000,000 assets: ${checks.Entity_5M_Assets ? '☑' : '☐'}`,
-          ` - All equity owners are Accredited: ${checks.All_Equity_Owners_Accredited ? '☑' : '☐'}`,
-          "",
-          "Acknowledgments:",
-          "I understand that GuaranteedCommission.com (the “Company”) will rely on this certification in offering and selling securities in compliance with U.S. securities laws.",
-          "I agree to provide further documentation (such as tax returns, W-2s, brokerage statements, or a letter from my CPA/attorney) if required to verify my status under Rule 506(c).",
-          "I represent and warrant that the above statements are true and correct.",
-          "",
-          `Signature: ${sig}`,
-          `Date: ${date}`
-        ].join('\n');
-
-        const mailto = `mailto:${encodeURIComponent(toEmail)}?subject=${encodeURIComponent('Accredited Investor Certification')}&body=${encodeURIComponent(bLines)}`;
-        try { window.location.href = mailto; } catch {}
-        if (confirmEl) confirmEl.classList.remove('hidden');
-      });
     // Keep commission menu open while hovering submenu (robust hover)
     (function(){
       const li = document.querySelector('.group');
@@ -408,7 +333,6 @@
       document.getElementById('commissionToggle')?.addEventListener('blur', close);
     })();
 
-    // Utilities
     // Address validator
     function isValidFullAddress(s) {
       if (!s) return false;
@@ -457,16 +381,12 @@
       }
     }
 
-    // On load
     /* On load */
     window.addEventListener('DOMContentLoaded', () => {
       const lastSelected = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
       showForm('listed');
       localStorage.setItem('selectedPlan', lastSelected.includes('FSBO') ? 'Listed Property Basic' : lastSelected);
 
-      const lastSearch = localStorage.getItem('lastSearch') || '';
-      const box = document.getElementById('searchBox');
-      if (box) box.value = lastSearch;
       // Phone mask: (###) ###-####
       const phoneInput = document.getElementById('agentPhone');
       const phoneError = document.getElementById('phoneError');
@@ -534,7 +454,6 @@
 
       // ---- Strip 2 tiles + search ----
       buildTilesDataset();
-      renderStrip2Tiles(lastSearch);
       renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
       wireSearch();
     });
@@ -593,13 +512,6 @@
       if(p) return Math.round(p*(c/100));
       return null;
     }
-    function formatPhoneDisplay(s){
-      const d = String(s||'').replace(/\D/g,'').slice(0,10);
-      if (d.length===10) return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;
-      return s||'';
-    }
-
-    // UPDATED TILE: includes property type & dashed phone
     function renderTile(data){
       const {
         address="[full address]",
@@ -625,11 +537,8 @@
 
       const img = (photos && photos.length ? photos[primaryIndex||0] : "");
       const typeSeg = propertyType ? ` | ${propertyType}` : '';
-      const phoneDisp = formatPhoneDisplay(agentPhone);
-
       const card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
-      card.onclick = () => { window.location.href = `/listing.html?addr=${encodeURIComponent(address)}`; };
       card.onclick = () => {
         const slug = encodeURIComponent(address);
         window.location.href = `/listing.html?addr=${slug}`;
@@ -651,7 +560,6 @@
           <div class="text-sm font-medium">${address}</div>
           <div class="text-[12px] text-gray-600">
             ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}
-            ${agent ? ' — '+agent : ''}${phoneDisp ? ' — '+phoneDisp : ''}
             ${agent ? ' — '+agent : ''}${agentPhone ? ' — '+agentPhone : ''}
           </div>
         </div>
@@ -679,7 +587,6 @@
           status: agentListing.status || 'Active',
           brokerage: formData.brokerage,
           agent: formData.agent,
-          agentPhone: formatPhoneDisplay(formData.agentPhone),
           agentPhone: document.getElementById('agentPhone')?.value || formData.phone || '',
           plan,
           bedrooms: agentListing.bedrooms,
@@ -749,31 +656,6 @@
       btn.addEventListener('click', go);
       box.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); }});
     }
-  </script>
-
-  <!-- Header Log In router: send users to role-specific destinations -->
-  <script>
-    (function(){
-      const loginLinks = document.querySelectorAll('a[href="/login.html"], a[href="/login"]');
-      loginLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-          e.preventDefault();
-          const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-          const role = localStorage.getItem('userRole') || '';
-          if (isLoggedIn) {
-            if (role === 'seller') {
-              window.location.href = '/dashboard.html';
-            } else if (role === 'listing_agent') {
-              window.location.href = '/agent-detail.html';
-            } else {
-              window.location.href = '/search.html';
-            }
-          } else {
-            window.location.href = '/login.html';
-          }
-        });
-      });
-    })();
   </script>
 </body>
 </html>
