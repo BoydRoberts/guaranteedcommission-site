@@ -61,21 +61,28 @@
 <body class="bg-gray-100 text-gray-800">
   <!-- Header -->
   <header class="bg-white shadow">
-    <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
-      <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
-        Accredited Investors Only
-      </button>
-      <!-- CHANGED: add logo to the left of the title -->
-      <div class="text-center flex-1 flex items-center justify-center gap-2">
-        <img src="/logo.svg" alt="GuaranteedCommission Logo" class="h-8 w-8 object-contain">
+  <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
+    <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
+      Accredited Investors Only
+    </button>
+    <div class="text-center flex-1">
+      <!-- Logo + Site Name -->
+      <div class="flex items-center justify-center gap-2">
+        <img src="/logo.png" alt="GuaranteedCommission Logo" class="h-8 w-8 object-contain">
         <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
       </div>
-      <div class="flex items-center gap-2">
-        <a href="/local-professionals.html" class="bg-amber-600 text-white text-xs font-semibold px-3 py-1 rounded">Local Professionals</a>
-        <!-- Removed header Log In button per request -->
-      </div>
+      <!-- Tagline (restored) -->
+      <p class="text-sm text-red-600 mt-1 px-2">
+        Guaranteeing commissions so your home will sell quickly at a higher price.
+      </p>
     </div>
-  </header>
+    <div class="flex items-center gap-2">
+      <a href="/local-professionals.html" class="bg-amber-600 text-white text-xs font-semibold px-3 py-1 rounded">Local Professionals</a>
+      <!-- Removed header Log In button per request -->
+    </div>
+  </div>
+</header>
+
 
   <!-- Investor Modal (SEC Rule 501 Certification) -->
   <div id="investorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
