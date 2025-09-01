@@ -65,11 +65,10 @@
       <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
         Accredited Investors Only
       </button>
-      <div class="text-center flex-1">
+      <!-- CHANGED: add logo to the left of the title -->
+      <div class="text-center flex-1 flex items-center justify-center gap-2">
+        <img src="/logo.svg" alt="GuaranteedCommission Logo" class="h-8 w-8 object-contain">
         <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
-        <p class="text-sm text-red-600 mt-1 px-2">
-          Guaranteeing commissions so your home will sell quickly at a higher price.
-        </p>
       </div>
       <div class="flex items-center gap-2">
         <a href="/local-professionals.html" class="bg-amber-600 text-white text-xs font-semibold px-3 py-1 rounded">Local Professionals</a>
@@ -332,9 +331,12 @@
     <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </section>
 
-  <!-- Footer -->
+  <!-- Footer (Press button restored) -->
   <footer class="bg-white border-t mt-8">
-    <div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-gray-600 space-y-2">
+    <div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-gray-600 space-y-3">
+      <button onclick="openPressModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-2 rounded">
+        Press Inquiry
+      </button>
       <p>© 2025 GuaranteedCommission.com. All rights reserved.</p>
       <p>Boyd Roberts · California Licensed Real Estate Broker · DRE License #01354788</p>
       <p>
