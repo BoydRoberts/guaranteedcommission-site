@@ -235,20 +235,23 @@
     </section>
   </div>
 
-  <!-- Strip 2: Search / Tiles (pure white like header) -->
-  <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12" style="background-color:#ffffff;">
-    <!-- Centered search header -->
-    <div class="text-center mb-4">
-      <div class="flex items-center justify-center">
-        <div class="flex items-center gap-2">
-          <input id="searchBox" type="text" placeholder="Search city, neighborhood, or ZIP…" class="border rounded px-3 py-2 w-72 sm:w-96">
-          <button id="searchBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Search Guaranteed Commissions</button>
+  <!-- Strip 2: Search / Tiles (full-bleed white + extra spacing) -->
+  <div style="background-color:#ffffff;">
+    <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12">
+      <!-- Centered search header, nudged down ~1/4 inch -->
+      <div class="text-center mb-4 mt-6">
+        <div class="flex items-center justify-center">
+          <div class="flex items-center gap-2">
+            <input id="searchBox" type="text" placeholder="Search city, neighborhood, or ZIP…" class="border rounded px-3 py-2 w-72 sm:w-96">
+            <button id="searchBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Search Guaranteed Commissions</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-  </section>
+      <!-- Tiles grid, nudged down ~1/4 inch -->
+      <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6"></div>
+    </section>
+  </div>
 
   <!-- Footer (Press button restored) -->
   <footer class="bg-white border-t mt-8">
