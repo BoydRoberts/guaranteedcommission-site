@@ -235,11 +235,11 @@
     </section>
   </div>
 
-  <!-- Strip 2: Search / Tiles (full-bleed white + extra spacing) -->
+  <!-- Strip 2: Search / Tiles (full-bleed white + fixed top spacing) -->
   <div style="background-color:#ffffff;">
-    <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12">
-      <!-- Centered search header, nudged down ~1/4 inch -->
-      <div class="text-center mb-4 mt-6">
+    <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12 pt-6">
+      <!-- Centered search header (no collapsing margin) -->
+      <div class="text-center mb-4 mt-0">
         <div class="flex items-center justify-center">
           <div class="flex items-center gap-2">
             <input id="searchBox" type="text" placeholder="Search city, neighborhood, or ZIP…" class="border rounded px-3 py-2 w-72 sm:w-96">
@@ -248,7 +248,7 @@
         </div>
       </div>
 
-      <!-- Tiles grid, nudged down ~1/4 inch -->
+      <!-- Tiles grid, nudged down -->
       <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6"></div>
     </section>
   </div>
