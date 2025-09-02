@@ -6,14 +6,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// ⬇️ Replace the object below with YOUR firebaseConfig from the console
 const firebaseConfig = {
-  // apiKey: "YOUR_KEY",
-  // authDomain: "YOUR_DOMAIN",
-  // projectId: "YOUR_PROJECT_ID",
-  // storageBucket: "YOUR_BUCKET",
-  // messagingSenderId: "YOUR_SENDER_ID",
-  // appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyB2ajOd_C8rfjOogqnGo-bZrD8kvjQ8XT4",
+  authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
+  projectId: "guaranteedcommission-d4d91",
+  storageBucket: "guaranteedcommission-d4d91.firebasestorage.app",
+  messagingSenderId: "900066461936",
+  appId: "1:900066461936:web:31c07e0bc2fd47414b9a35"
 };
 
 export const app = initializeApp(firebaseConfig);
