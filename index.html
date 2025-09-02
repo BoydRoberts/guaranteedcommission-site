@@ -148,7 +148,7 @@
         </div>
 
         <!-- Signature -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 md-grid-cols-2 gap-3">
           <div>
             <label class="block text-sm font-semibold">Signature (type full name)</label>
             <input id="invSignature" type="text" class="w-full border rounded px-2 py-1 font-cursive" placeholder="Type your full name" required>
@@ -553,8 +553,8 @@
       window.addEventListener('resize', fitStrip1);
     });
 
-    /* Submit */
-    function submitForm(){
+    /* Submit — UPGRADED: also writes a listing stub to Firestore (non-blocking) */
+    async function submitForm(){
       const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
       const requiredIds = ['name','address','agentPhone'];
       if (isFSBO) requiredIds.push('apn','fsboEmailInput');
@@ -585,7 +585,7 @@
         brokerage:document.getElementById('brokerage').value.trim(),
         agent:document.getElementById('agent').value.trim(),
         agentEmail:document.getElementById('agentEmail').value.trim(),
-        fsboEmail:document.getElementById('fsboEmailInput')?.value.trim() || ''
+        fsboEmail:fsboEmailEl?fsboEmailEl.value.trim():''
       };
       localStorage.setItem("formData",JSON.stringify(formData));
       if(formData.address){
@@ -595,6 +595,41 @@
       const plan=localStorage.getItem('selectedPlan')||'Listed Property Basic';
       localStorage.setItem('postSignatureOptions',plan.includes('FSBO')?'fsbo':'listed');
       localStorage.setItem('nextAfterLogin','/verify-code.html');
+
+      /* NEW: Firestore save (non-blocking) */
+      try {
+        const db = window.gc && window.gc.db;
+        if (db) {
+          const { addDoc, collection, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+          const payload = {
+            address: formData.address,
+            shortAddress: (formData.address.split(",")[0] || "").trim(),
+            apn: formData.apn || "",
+            plan,
+            status: "Draft",
+            commission: formData.commission || "",
+            commissionType: formData.commissionType || "%",
+            ownerName: formData.name || "",
+            ownerEmail: isFSBO ? (formData.fsboEmail || "") : "",
+            agentName: formData.agent || "",
+            agentPhone: formData.phone || "",
+            agentEmail: formData.agentEmail || "",
+            brokerage: formData.brokerage || "",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            source: "index.box2"
+          };
+          const ref = await addDoc(collection(db, "listings"), payload);
+          localStorage.setItem("lastListingId", ref.id);
+          localStorage.setItem("lastListingAddress", payload.address || "");
+          console.log("[firestore] listing created:", ref.id);
+        } else {
+          console.warn("[firestore] db not available — skipped server save");
+        }
+      } catch (err) {
+        console.warn("[firestore] save failed; continuing local-only:", err);
+      }
+
       window.location.href="/login.html";
     }
 
@@ -749,6 +784,7 @@
       box.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); }});
     }
   </script>
-<script type="module" src="/scripts/firebase-init.js"></script>
+  <!-- Firebase init include -->
+  <script type="module" src="/scripts/firebase-init.js"></script>
 </body>
 </html>
