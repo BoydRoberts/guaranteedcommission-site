@@ -13,15 +13,15 @@
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
 
-    /* Listing tile (exact visual as before) */
+    /* Listing tile */
     .tile-photo { width:100%; height: 20rem; object-fit: cover; background:#e5e7eb; }
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
-    .heart-btn { position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
     /* Map should fill its card completely */
     .mapboxgl-canvas { display:block !important; }
 
-    /* ISC: full area clickable; no extra borders around the container itself */
+    /* ISC column: full area clickable with no extra border inside */
     .click-wrap { position: relative; width:100%; height:100%; }
     .click-wrap a.overlay { position:absolute; inset:0; z-index:10; text-indent:-9999px; }
     .isc-iframe { width:100%; height:100%; border:0; margin:0; display:block; background:#fff; }
@@ -41,7 +41,7 @@
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- Top strip: 40 | 20 | 40  (all bottoms aligned to tile height) -->
+    <!-- Top strip: 40 | 20 | 40 -->
     <section id="topRow" class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
       <!-- Left: LISTING TILE (reference height) -->
@@ -56,29 +56,28 @@
             <div id="tilePrice" class="truncate">$—</div>
             <div id="tileCommission" class="truncate text-red-600">Commission — | $—</div>
           </div>
-          <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Active</div>
+          <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
           <div id="tileAddress" class="text-sm font-medium">[full address]</div>
           <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] — [listing agent] — [agent phone]</div>
         </div>
-        <a id="tileClick" href="#" class="absolute inset-0" aria-label="Open full listing detail"></a>
       </article>
 
-      <!-- Middle: MAP (height forced to exactly match tile) -->
+      <!-- Middle: MAP -->
       <aside id="mapCard" class="lg:col-span-1 card overflow-hidden p-0" style="height:auto;">
         <div id="mapCanvas" style="width:100%; height:100%;"></div>
       </aside>
 
-      <!-- Right: ISC (height forced to exactly match tile; inner iframe scrolls if longer) -->
+      <!-- Right: ISC (iframe preview, full clickable) -->
       <aside id="iscCard" class="lg:col-span-2 overflow-hidden p-0 m-0" style="background:transparent; border:0; box-shadow:none; border-radius:0; height:auto;">
         <div class="click-wrap">
-          <a class="overlay" href="/printable-isc.html" target="_blank" aria-label="Open full ISC PDF">Open</a>
+          <a class="overlay" href="/printable-isc.html" target="_blank" aria-label="Open full ISC">Open</a>
           <iframe id="iscIframe" src="/printable-isc.html" class="isc-iframe"></iframe>
         </div>
       </aside>
 
     </section>
 
-    <!-- LOWER SECTION: Photos & Description -->
+    <!-- LOWER SECTION: Photos & Description for Plus/FSBO -->
     <section class="space-y-6">
       <div id="galleryCard" class="card p-5 hidden">
         <h3 class="text-lg font-semibold mb-3">Photos</h3>
@@ -93,161 +92,242 @@
 
   </main>
 
+  <!-- Firebase init -->
+  <script type="module" src="/scripts/firebase-init.js"></script>
+
   <script>
+    // --- Configs and helpers ---
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
     if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
     const $ = (id) => document.getElementById(id);
     const getJSON = (k, fb={}) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
     const commissionAmt = (p, c, t)=>{ const P=Number(p||0), C=Number(c||0); if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0); };
-    const fmtPhone = (s)=>{ const d=String(s||'').replace(/\D/g,'').slice(0,10); return d.length===10?`${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`:(s||''); };
 
-    // ----- Data -----
-    const url = new URL(location.href);
-    const addrParam = url.searchParams.get('addr');
-    const formData = getJSON('formData', {});
-    const agentListing = getJSON('agentListing', {});
-    const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+    // Safe ISC text from Box 2 only (no merge from agentListing)
+    function fillIscFromFormData() {
+      const data = getJSON("formData", {});
+      const planSel = (localStorage.getItem('selectedPlan') || '').trim();
+      const isFSBO = planSel.includes("FSBO");
+      const commissionType = data.commissionType || "%";
+      const commission = data.commission || "";
+      const fullAddress = data.address || "";
+      const shortAddress = fullAddress.split(",")[0] || "[short address]";
+      const apn = data.apn || "[APN]";
+      const name = data.name || "[name]";
+      const agentPhone = data.agentPhone || data.phone || "[agent phone]";
+      const brokerage = data.brokerage || "[listing brokerage]";
+      const agent = data.agent || "[listing agent]";
+      const agentEmail = data.agentEmail || "[agent email]";
+      const suffix = commissionType === "%" ? " of the total purchase price" : "";
+      const commissionDisplay = commissionType === "$" ? `$${commission}` : `${commission}%`;
 
-    const fullAddress = decodeURIComponent(addrParam || formData.address || "[full address]");
-    const price = agentListing.price ?? "";
-    const cRaw = agentListing.commission ?? formData.commission ?? "";
-    const cType= agentListing.commissionType ?? formData.commissionType ?? "%";
-    const cAmt = (function(p,c,t){ const P=Number(p||0), C=Number(c||0); if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0); })(price,cRaw,cType);
-    const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
-    const banner = (agentListing.bannerText||"").trim();
-    let photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
-    const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
-    const photo = photos[primaryIndex] || "";
-    const bds = agentListing.bedrooms ?? "—";
-    const ba  = agentListing.bathrooms ?? "—";
-    const sqft= agentListing.sqft ? Number(agentListing.sqft).toLocaleString() : "—";
-    const pType= agentListing.propertyType || "";
-    const status = agentListing.status || "Draft";
-    const brokerage = formData.brokerage || (plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
-    const agentName = formData.agent || (plan.includes("FSBO") ? "" : "[listing agent]");
-    const agentPhone = fmtPhone(agentListing.agentPhone || formData.agentPhone || formData.phone || (plan.includes("FSBO") ? "" : "[agent phone]"));
+      let text = `To the escrow holder/closing agent,\n\n`;
 
-    // ----- Paint tile “as before” -----
-    (function paintTile(){
-      $("tilePhoto").src = photo || "";
-      const bEl = $("tileBanner");
-      if (banner) { bEl.textContent = banner; bEl.classList.remove('hidden'); }
+      if (isFSBO) {
+        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by owner (Me). My phone number is ${agentPhone}. My email address is ${data.fsboEmail || "[owner/seller email]"}.\n\n`;
+        text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${suffix}.`;
+      } else {
+        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by ${brokerage}, ${agent}, listing agent, ${agentPhone}, ${agentEmail}.\n\n`;
+        text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${suffix}.`;
+      }
+      // We leave the actual printing/view to /printable-isc.html; iframe shows it.
+      return { isFSBO, text };
+    }
 
-      const KEY='gcFavorites';
-      const favs = ()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch{return[]}}; const setF = a=>{try{localStorage.setItem(KEY,JSON.stringify(a||[]))}catch{}};
-      const isFav = id => favs().includes(id);
-      const tog = id => { const a=favs(); const i=a.indexOf(id); if(i>=0)a.splice(i,1); else a.push(id); setF(a); return a.includes(id); };
-      const svg = a => a?`<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>` :`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
-      const id=(fullAddress||'').toLowerCase();
-      $("tileHeart").innerHTML = svg(isFav(id));
-      $("tileHeart").onclick=(e)=>{e.preventDefault();e.stopPropagation();$("tileHeart").innerHTML=svg(tog(id));};
+    // --- Data loading sequence ---
+    (async function boot() {
+      try {
+        const url = new URL(window.location.href);
+        const listingId = url.searchParams.get('id') || localStorage.getItem('lastListingId') || "";
 
-      $("tilePrice").textContent = money(price);
-      $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
-      $("tileFacts").textContent = `${bds} bds | ${ba} ba | ${sqft} sqft${pType?' | '+pType:''} | ${status}`;
-      $("tileAddress").textContent = fullAddress;
-      $("tileContact").textContent = `${(plan.includes("FSBO")?"FOR SALE BY OWNER":(brokerage||"[listing brokerage]")).toUpperCase()}${agentName?' — '+agentName:''}${agentPhone?' — '+agentPhone:''}`;
-      $("tileClick").href = `/listing.html?addr=${encodeURIComponent(fullAddress)}`;
-    })();
+        // Always prefer Firestore when we have an id
+        let docData = null;
+        if (listingId && window.gc && window.gc.db) {
+          try {
+            const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+            const snap = await getDoc(doc(window.gc.db, "listings", listingId));
+            if (snap.exists()) {
+              docData = snap.data();
+            }
+          } catch (e) {
+            console.warn("[listing] Firestore fetch failed, falling back to minimal:", e);
+          }
+        }
 
-    // ----- Map -----
-    let _mapInstance;
-    (async function bootMap(){
-      try{
-        const center = await (async()=>{try{
-          const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fullAddress)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
-          const d=await r.json();
-          return d?.features?.[0]?.center || [-117.7854,33.5427];
-        }catch{return [-117.7854,33.5427]}})();
-        _mapInstance = new mapboxgl.Map({
-          container:'mapCanvas',
-          style:'mapbox://styles/mapbox/streets-v12',
-          center, zoom:14
-        });
-        _mapInstance.addControl(new mapboxgl.NavigationControl());
-        new mapboxgl.Marker().setLngLat(center).addTo(_mapInstance);
-        requestAnimationFrame(()=>_mapInstance.resize());
-        setTimeout(()=>_mapInstance.resize(), 250);
-      }catch{
-        $("mapCanvas").innerHTML = '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
+        // Render strictly from the Firestore doc if present; else minimal from formData only
+        if (docData) {
+          renderFromDoc(docData);
+        } else {
+          renderMinimalFromForm();
+        }
+
+        // Final alignment and map size fix after paint
+        setTimeout(alignHeights, 80);
+        window.addEventListener('resize', alignHeights);
+      } catch (e) {
+        console.error("Boot failed:", e);
+        renderMinimalFromForm();
       }
     })();
 
-    // ----- Height alignment: map & ISC match tile height exactly -----
-    function alignToTileHeight(){
+    // --- Renderers ---
+    function renderFromDoc(d) {
+      // Normalize types
+      const address = d.address || "[full address]";
+      const price = (d.price ?? ""); // might be absent; that's okay
+      const cRaw = d.commission ?? "";
+      const cType= d.commissionType || "%";
+      const cAmt = commissionAmt(price, cRaw, cType);
+      const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
+      const banner = (d.bannerText || "").trim();
+      const pType = d.propertyType || "";
+      const bds = d.bedrooms ?? "—";
+      const ba  = d.bathrooms ?? "—";
+      const sqft= d.sqft ? Number(d.sqft).toLocaleString() : "—";
+      const status = d.status || "Draft";
+      const brokerage = d.brokerage || (d.plan && d.plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
+      const agentName = d.agentName || "[listing agent]";
+      const agentPhone = d.agentPhone || "[agent phone]";
+
+      // Photos: use only photos coming from the doc (no reuse from any other listing)
+      const photos = Array.isArray(d.photos) ? d.photos : [];
+      const primaryIndex = (typeof d.primaryIndex === "number" ? d.primaryIndex : 0);
+      const primaryPhoto = photos[primaryIndex] || "";
+
+      // Tile
+      $("tilePhoto").src = primaryPhoto || "";
+      const bEl = $("tileBanner");
+      if (banner) { bEl.textContent = banner; bEl.classList.remove('hidden'); } else { bEl.classList.add('hidden'); }
+
+      // heart (local-only favorite; key by address)
+      const KEY='gcFavorites';
+      const favs = ()=>{ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch { return []; } };
+      const setF = a=>{ try { localStorage.setItem(KEY, JSON.stringify(a||[])); } catch {} };
+      const isFav = id => favs().includes(id);
+      const tog = id => { const a=favs(); const i=a.indexOf(id); if(i>=0)a.splice(i,1); else a.push(id); setF(a); return a.includes(id); };
+      const svg = a => a?`<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
+        :`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+      const favId = (address||'').toLowerCase();
+      $("tileHeart").innerHTML = svg(isFav(favId));
+      $("tileHeart").onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); $("tileHeart").innerHTML=svg(tog(favId)); };
+
+      // Lines
+      $("tilePrice").textContent = money(price);
+      $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
+      $("tileFacts").textContent = `${bds} bds | ${ba} ba | ${sqft} sqft${pType ? " | "+pType : ""} | ${status}`;
+      $("tileAddress").textContent = address;
+      $("tileContact").textContent = `${(d.plan && d.plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
+
+      // Click over tile → keep consistent behavior
+      document.getElementById("tileCard").onclick = () => {
+        // stay on page or build a deep link if you later support different pages
+        window.location.href = `/listing.html?id=${encodeURIComponent(localStorage.getItem('lastListingId') || '')}`;
+      };
+
+      // Description & Gallery (doc-only)
+      const desc = (d.description || "").trim();
+      if (desc) {
+        $("dDescription").textContent = desc;
+        $("descCard").classList.remove("hidden");
+      }
+      const otherPhotos = photos.filter((_, i) => i !== primaryIndex);
+      if (otherPhotos.length > 0) {
+        const grid = $("galleryGrid");
+        grid.innerHTML = "";
+        otherPhotos.forEach(src => {
+          const img = document.createElement("img");
+          img.src = src; img.alt = "Listing photo";
+          img.className = "w-full h-32 object-cover rounded bg-gray-100";
+          grid.appendChild(img);
+        });
+        $("galleryCard").classList.remove("hidden");
+      }
+
+      // Map
+      bootMapFor(address);
+    }
+
+    function renderMinimalFromForm() {
+      const fd = getJSON("formData", {});
+      const address = fd.address || "[full address]";
+      const commissionType = fd.commissionType || "%";
+      const commission = fd.commission || "";
+      const price = ""; // unknown
+      const cAmt = commissionAmt(price, commission, commissionType);
+      const cPctLabel = commission ? (commissionType === '$' ? money(commission) : (Number(commission)+'%')) : "—";
+      const planSel = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+      const isFSBO = planSel.includes("FSBO");
+      const brokerage = fd.brokerage || (isFSBO ? "FOR SALE BY OWNER" : "[listing brokerage]");
+      const agentName = fd.agent || (isFSBO ? "" : "[listing agent]");
+      const agentPhone = fd.agentPhone || (isFSBO ? "" : "[agent phone]");
+
+      // No cross-listing photos: always blank
+      $("tilePhoto").src = "";
+      $("tileBanner").classList.add("hidden");
+
+      $("tilePrice").textContent = money(price);
+      $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
+      $("tileFacts").textContent = `— bds | — ba | — sqft | Draft`;
+      $("tileAddress").textContent = address;
+      $("tileContact").textContent = `${(isFSBO ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
+
+      // Map
+      bootMapFor(address);
+    }
+
+    // Align map and ISC to tile height
+    function alignHeights(){
       const tile = $("tileCard");
       const mapCard = $("mapCard");
       const iscCard = $("iscCard");
       if (!tile || !mapCard || !iscCard) return;
-
-      // Reset heights
       mapCard.style.height = iscCard.style.height = '';
-
-      const h = tile.getBoundingClientRect().height; // tile’s rendered height
+      const h = tile.getBoundingClientRect().height;
       mapCard.style.height = h + "px";
       iscCard.style.height = h + "px";
-
-      // Make ISC iframe fit the box exactly (scroll inside if longer)
+      if (typeof _mapInstance?.resize === "function") _mapInstance.resize();
       const iscIframe = $("iscIframe");
       if (iscIframe) iscIframe.style.height = "100%";
-
-      // Resize map to fit its new height
-      if (typeof _mapInstance?.resize === "function") _mapInstance.resize();
-
-      // *** NEW: strip any print buttons/margins inside the ISC iframe (no UI) ***
-      try {
-        const doc = $("iscIframe").contentDocument || $("iscIframe").contentWindow?.document;
-        if (doc && !doc.querySelector('#__gc_strip_style')) {
-          const style = doc.createElement('style');
-          style.id = '__gc_strip_style';
-          style.textContent = `
-            html, body { margin:0 !important; padding:0 !important; background:#fff !important; }
-            button, .print, [data-print], #printBtn, #printButton { display:none !important; }
-            #counters, .counters, #viewCounter { display:none !important; }
-          `;
-          doc.head.appendChild(style);
-        }
-      } catch(e) { /* cross-doc safe-guard; same-origin expected */ }
     }
 
-    // Align after everything paints
-    window.addEventListener('load', ()=> {
-      setTimeout(alignToTileHeight, 50);
-      setTimeout(alignToTileHeight, 300);
-    });
-    window.addEventListener('resize', alignToTileHeight);
-    // Also align each time the ISC iframe loads/reloads
-    $("iscIframe").addEventListener('load', ()=> {
-      alignToTileHeight();
-      setTimeout(alignToTileHeight, 200);
-    });
+    // Map
+    let _mapInstance;
+    async function bootMapFor(fullAddress){
+      try {
+        const center = await geocode(fullAddress);
+        _mapInstance = new mapboxgl.Map({
+          container:'mapCanvas',
+          style:'mapbox://styles/mapbox/streets-v12',
+          center: center || [-117.7854,33.5427],
+          zoom: center ? 14 : 12
+        });
+        _mapInstance.addControl(new mapboxgl.NavigationControl());
+        if (center) new mapboxgl.Marker().setLngLat(center).addTo(_mapInstance);
+        requestAnimationFrame(()=>_mapInstance.resize());
+        setTimeout(()=>_mapInstance.resize(), 250);
+      } catch {
+        $("mapCanvas").innerHTML = '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
+      }
+    }
+    async function geocode(q) {
+      if (!MAPBOX_TOKEN || !q) return null;
+      try {
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const data = await resp.json();
+        const f = data?.features?.[0];
+        return f ? f.center : null; // [lng, lat]
+      } catch { return null; }
+    }
 
-    // ----- Gallery -----
-    (function gallery(){
-      const arr = Array.isArray(agentListing.photos)?agentListing.photos:[];
-      const primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
-      const other = arr.filter((_,i)=>i!==primaryIndex);
-      if (!other.length) return;
-      const grid = $("galleryGrid");
-      other.forEach(src=>{
-        const img=document.createElement('img');
-        img.src=src; img.alt='Listing photo';
-        img.className='w-full h-32 object-cover rounded bg-gray-100';
-        grid.appendChild(img);
-      });
-      $("galleryCard").classList.remove("hidden");
-    })();
-
-    // ----- Description -----
-    (function desc(){
-      const d=(agentListing.description||"").trim();
-      if (!d) return;
-      $("dDescription").textContent = d;
-      $("descCard").classList.remove("hidden");
+    // Fill ISC iframe text from Box 2 (unchanged behavior)
+    (function syncIscSidecar(){
+      // We keep /printable-isc.html to actually render; the iframe shows it
+      const isc = fillIscFromFormData();
+      // Nothing else needed here; /printable-isc.html reads localStorage itself
     })();
   </script>
 </body>
 </html>
-
