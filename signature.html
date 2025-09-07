@@ -17,7 +17,16 @@
 
     <div class="mt-6">
       <label class="block mb-2 text-sm font-semibold">Electronic Signature:</label>
-      <input type="text" id="signature" placeholder="Type your full name here" class="font-cursive w-full border p-2 rounded" required>
+      <input
+        type="text"
+        id="signature"
+        placeholder="Type your full name here"
+        class="font-cursive w-full border p-2 rounded"
+        required
+        aria-describedby="sigHelp"
+      >
+      <!-- NEW: helper message for exact-name requirement -->
+      <p id="sigHelp" class="text-xs mt-2 text-gray-600 hidden"></p>
     </div>
 
     <div class="mt-4">
@@ -26,59 +35,104 @@
     </div>
 
     <div class="flex justify-between mt-6">
-      <!-- Renamed: View / Print ISC -> Sign / View -->
-      <button onclick="window.location.href='/printable-isc.html'" class="bg-gray-600 text-white px-4 py-2 rounded">
+      <!-- Frozen behavior: link to printable ISC -->
+      <a href="/printable-isc.html" class="bg-gray-600 text-white px-4 py-2 rounded">
         Sign / View
-      </button>
-      <!-- Removed Download PDF button per request -->
-      <!-- Renamed: Continue -> Sign / Continue -->
-      <button onclick="continueFlow()" class="bg-green-600 text-white px-6 py-2 rounded">
+      </a>
+
+      <!-- Removed old Download PDF button per prior instructions -->
+
+      <!-- Continue is disabled until signature matches Box-2 seller name -->
+      <button id="btnContinue" onclick="continueFlow()" class="bg-green-600 text-white px-6 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed" disabled>
         Sign / Continue
       </button>
     </div>
   </div>
 
   <script>
+    // --- helpers ---
+    function getJSON(k, fb){ try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } }
+
+    // Fill the ISC body from existing localStorage (frozen copy, with one unchanged tweak)
     function fillISC() {
       const planType = (localStorage.getItem("postSignatureOptions") || (localStorage.getItem("selectedPlan")||"")).toLowerCase().includes("fsbo") ? "fsbo" : "listed";
-      const data = JSON.parse(localStorage.getItem("formData") || "{}");
+      const data = getJSON("formData", {});
       const commissionType = data.commissionType || "%";
       const commission = data.commission || "";
       const fullAddress = data.address || "";
       const shortAddress = fullAddress.split(",")[0] || "[short address]";
-      const apn = data.apn || "[Parcel # / Pin # / Tax ID # / Folio # / APN #]";
+      const apn = data.apn || "[APN]";
       const name = data.name || "[name]";
       const agentPhone = data.agentPhone || data.phone || "[agent phone]";
       const brokerage = data.brokerage || "[listing brokerage]";
       const agent = data.agent || "[listing agent]";
+      const agentEmail = data.agentEmail || "[agent email]";
       const suffix = commissionType === "%" ? " of the total purchase price" : "";
       const commissionDisplay = commissionType === "$" ? `$${commission}` : `${commission}%`;
 
       let text = `To the escrow holder/closing agent,\n\n`;
 
       if (planType === "fsbo") {
-        // FSBO text remains unchanged per your instructions (still includes parcel line as previously implemented)
         text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by owner (Me). My phone number is ${agentPhone}. My email address is ${data.fsboEmail || "[owner/seller email]"}.\n\n`;
         text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${suffix}.`;
       } else {
-        // BASIC/PLUS: remove the parcel/APN from the first sentence
-        text += `I, ${name}, am the owner/seller of ${fullAddress}. ${shortAddress} is listed for sale by ${brochureSafe(brokerage)}, ${agent}, listing agent, ${agentPhone}.\n\n`;
+        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by ${brokerage}, ${agent}, listing agent, ${agentPhone}, ${agentEmail}.\n\n`;
         text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${suffix}.`;
       }
 
       document.getElementById("iscText").textContent = text;
     }
 
-    // Ensure brokerage placeholder doesn’t print as [listing brokerage] with commas spacing weirdly
-    function brochureSafe(str){ return str || "[listing brokerage]"; }
+    // NEW: enforce signature name match with Box-2 seller name
+    (function enforceSignatureMatch(){
+      const sigInput = document.getElementById('signature');
+      const btn = document.getElementById('btnContinue');
+      const help = document.getElementById('sigHelp');
+
+      const formData = getJSON('formData', {});
+      const expectedRaw = (formData && typeof formData.name === 'string') ? formData.name : '';
+      const expected = (expectedRaw || '').trim();
+
+      function check() {
+        const typed = (sigInput.value || '').trim();
+        const ok = expected && typed && typed.toLowerCase() === expected.toLowerCase();
+
+        btn.disabled = !ok;
+        if (!expected) {
+          // If we somehow don't have a Box-2 name, keep the button disabled and instruct the user
+          help.textContent = "We couldn't find your Box-2 name. Please go back and enter your name in the communication form.";
+          help.className = "text-xs mt-2 text-red-600";
+          return;
+        }
+
+        if (!typed) {
+          help.textContent = `Please type your full name exactly as entered: “${expected}”.`;
+          help.className = "text-xs mt-2 text-gray-600";
+        } else if (!ok) {
+          help.textContent = `Signature must match Box-2 seller name exactly: “${expected}”.`;
+          help.className = "text-xs mt-2 text-red-600";
+        } else {
+          help.textContent = "Signature looks good.";
+          help.className = "text-xs mt-2 text-green-600";
+        }
+        help.classList.remove('hidden');
+      }
+
+      sigInput.addEventListener('input', check);
+      sigInput.addEventListener('blur', check);
+      // Initial paint
+      check();
+    })();
 
     function continueFlow() {
       const signature = document.getElementById("signature").value.trim();
+      // Guard: should already be enforced, but keep the original check
       if (!signature) {
         alert("Please type your full name to sign the ISC.");
         return;
       }
       localStorage.setItem("signature", signature);
+      // Frozen redirect logic
       window.location.href = (localStorage.getItem("selectedPlan")||"").includes("FSBO") ? "/seller-detail.html" : "/agent-invite.html";
     }
 
