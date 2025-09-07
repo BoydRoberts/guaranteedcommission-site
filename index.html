@@ -553,7 +553,7 @@
       window.addEventListener('resize', fitStrip1);
     });
 
-    /* Submit — UPGRADED: also writes a listing stub to Firestore (non-blocking) */
+    /* Submit — UPGRADED: data-bleed guard + Firestore save (non-blocking) */
     async function submitForm(){
       const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
       const requiredIds = ['name','address','agentPhone'];
@@ -573,6 +573,17 @@
         alert('Please use full address format: Street, City, ST 12345');
         return;
       } else addressEl.classList.remove('border-red-500');
+
+      // 🔹 NEW: Data-bleed guard — clear prior listing state BEFORE saving new data
+      try {
+        ['agentListing','checkoutData','intakeFollowups','lastListingId','lastListingAddress'].forEach(k=>localStorage.removeItem(k));
+        // Remove any namespaced drafts from past tests
+        Object.keys(localStorage).forEach(k=>{
+          if (k.startsWith('formData:') || k.startsWith('agentListing:')) localStorage.removeItem(k);
+        });
+      } catch(e) {
+        console.warn('[bleed-guard] cleanup skipped:', e);
+      }
 
       const fsboEmailEl=document.getElementById('fsboEmailInput');
       const formData={
@@ -596,7 +607,7 @@
       localStorage.setItem('postSignatureOptions',plan.includes('FSBO')?'fsbo':'listed');
       localStorage.setItem('nextAfterLogin','/verify-code.html');
 
-      /* NEW: Firestore save (non-blocking) */
+      /* Firestore save (non-blocking) */
       try {
         const db = window.gc && window.gc.db;
         if (db) {
@@ -610,7 +621,7 @@
             commission: formData.commission || "",
             commissionType: formData.commissionType || "%",
             ownerName: formData.name || "",
-            ownerEmail: isFSBO ? (formData.fsboEmail || "") : "",
+            ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",
             agentName: formData.agent || "",
             agentPhone: formData.phone || "",
             agentEmail: formData.agentEmail || "",
