@@ -315,21 +315,11 @@
 
     $("saveBtn").addEventListener("click", () => { saveDraft(); alert("Saved."); });
 
-    // ---------- September 2025 Agent Promo (UI only on this page) ----------
-    function isAgentSeptemberPromoActive() {
-      try {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = now.getMonth(); // 0-11
-        return checkoutData.payer === "agent" && y === 2025 && m === 8; // September 2025
-      } catch { return false; }
-    }
-
     // ---------- upgrades panel (agent pays) ----------
     function row(label, price, key, opts={}) {
       const checked = !!checkoutData.upgrades[key];
       const paid = opts.paid === true;
-      const note = (opts.note ? `<span class="text-indigo-700 ml-2">${opts.note}</span>` : (paid ? `<span class="text-green-700 ml-2">(paid by agent)</span>` : ""));
+      const note = paid ? `<span class="text-green-700 ml-2">(paid by agent)</span>` : (opts.note ? `<span class="text-indigo-700 ml-2">${opts.note}</span>` : "");
       return `
         <label class="flex items-center justify-between border rounded-lg px-3 py-2 ${paid?'bg-gray-50':''}">
           <div>
@@ -345,14 +335,26 @@
     function paintUpgrades() {
       const box = $("upgradesBox");
       const isBasic = plan === "Listed Property Basic";
-      const promo = isAgentSeptemberPromoActive();
 
-      // Compute display price for Plus (promo makes it $0 in UI)
-      const displayPlusPrice = promo ? 0 : checkoutData.prices.plus;
-      const plusNote = promo ? "September promo — free for agents" : "";
+      // ---------- September 2025 Agent Promo (UI ONLY) ----------
+      // If payer is agent AND month is September 2025, show Plus = $0 with a small promo note.
+      let displayPlusPrice = checkoutData.prices.plus;
+      let plusNote = "";
+      try {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth(); // 0..11  (8 = September)
+        if (checkoutData.payer === "agent" && y === 2025 && m === 8) {
+          displayPlusPrice = 0;
+          plusNote = "September promo — free for agents";
+        }
+      } catch (e) {
+        // if date parsing fails, do nothing and keep standard price
+      }
+      // -----------------------------------------------------------
 
       const html = [
-        (isBasic || checkoutData.upgrades.upgradeToPlus)
+        isBasic || checkoutData.upgrades.upgradeToPlus
           ? row("Upgrade to Listed Property Plus", displayPlusPrice, "upgradeToPlus", {paid:false, note: plusNote})
           : "",
         row("Banner", checkoutData.prices.banner, "banner", {paid: checkoutData.upgrades.banner}),
@@ -361,7 +363,6 @@
         plan.includes("FSBO") ? row("Confidential FSBO Upgrade", checkoutData.prices.confidential, "confidential", {paid: checkoutData.upgrades.confidential}) : ""
       ].join("");
       box.innerHTML = html;
-
       box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
         cb.addEventListener("change", (e)=>{
           const k = e.target.getAttribute("data-key");
