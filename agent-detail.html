@@ -69,7 +69,51 @@
           </div>
         </div>
 
-        <!-- APN / Parcel (FSBO path would not be here; but keep field for Listed) -->
+        <!-- Zillow-style basics: Beds / Baths / Sqft / Year Built / Lot Size / Property Type -->
+        <!-- Zillow-style basics -->
+        <div>
+          <label class="block text-sm font-semibold mb-1">Property Facts</label>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <span class="block text-xs text-gray-600 mb-1">Bedrooms</span>
+              <input id="bedrooms" type="number" min="0" step="1" placeholder="e.g., 3" class="w-full border p-2 rounded">
+            </div>
+            <div>
+              <span class="block text-xs text-gray-600 mb-1">Bathrooms</span>
+              <input id="bathrooms" type="number" min="0" step="0.5" placeholder="e.g., 2.5" class="w-full border p-2 rounded">
+            </div>
+            <div>
+              <span class="block text-xs text-gray-600 mb-1">Square Footage</span>
+              <input id="sqft" type="number" min="0" step="1" placeholder="e.g., 2000" class="w-full border p-2 rounded">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div>
+              <span class="block text-xs text-gray-600 mb-1">Year Built</span>
+              <input id="yearBuilt" type="number" min="1800" step="1" placeholder="e.g., 1998" class="w-full border p-2 rounded">
+            </div>
+            <div>
+              <span class="block text-xs text-gray-600 mb-1">Lot Size (sqft)</span>
+              <input id="lotSize" type="number" min="0" step="1" placeholder="e.g., 6000" class="w-full border p-2 rounded">
+            </div>
+            <div>
+              <span class="block text-xs text-gray-600 mb-1">Property Type</span>
+              <select id="propertyType" class="w-full border p-2 rounded">
+                <option value="">Select…</option>
+                <option>Single Family</option>
+                <option>Condo</option>
+                <option>Townhouse</option>
+                <option>Multi-Family</option>
+                <option>Land</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- APN / Parcel (kept) -->
+        <!-- APN / Parcel -->
         <div>
           <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
           <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
@@ -91,21 +135,20 @@
           <p id="descGateNote" class="lock-note mt-1 hidden">Upgrade to Listed Property Plus to enable Description.</p>
         </div>
 
-        <!-- Banner -->
+        <!-- Banner / Preferred Area (Premium) / Pin Area -->
+        <!-- Banner / Preferred Area / Pin Area -->
         <div>
           <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
           <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
           <p id="bannerGateNote" class="lock-note mt-1 hidden">Purchase Banner to enable this field.</p>
         </div>
 
-        <!-- Preferred Placement (Premium) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
           <input id="preferredArea" placeholder="e.g., Laguna Beach, Top of the World" class="w-full border p-2 rounded">
           <p id="premiumGateNote" class="lock-note mt-1 hidden">Purchase Premium Placement to enable this field.</p>
         </div>
 
-        <!-- Pin Placement -->
         <div>
           <label class="block text-sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
           <input id="pinArea" placeholder="e.g., Laguna Beach, Village" class="w-full border p-2 rounded">
@@ -139,18 +182,37 @@
       </form>
     </section>
 
-    <!-- RIGHT: Upgrades (Agent can pay) -->
-    <aside class="bg-white rounded shadow p-5">
-      <h2 class="text-lg font-semibold">Upgrades</h2>
-      <p class="text-sm text-gray-600">You can purchase add-ons here. Already-paid items are locked.</p>
+    <!-- RIGHT: Upgrades + September Free Promo -->
+    <!-- RIGHT: Promo + Upgrades -->
+    <aside class="space-y-4">
+      <!-- Promo card -->
+      <section class="bg-white rounded shadow p-5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold">September Free Promo</h2>
+          <span id="promoBadge" class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">Inactive</span>
+        </div>
+        <p class="text-sm text-gray-600 mt-2">
+          Listing agents can upgrade <strong>Banner</strong>, <strong>Premium</strong>, and <strong>Pin</strong> for <strong>FREE</strong> during September 2025.
+        </p>
+        <button id="applyPromoBtn" class="mt-3 w-full bg-blue-600 text-white px-3 py-2 rounded disabled:opacity-50">
+          Apply September Free Upgrades
+        </button>
+        <p id="promoNote" class="text-xs text-gray-500 mt-2"></p>
+      </section>
 
-      <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
+      <!-- Upgrades box (respects free pricing when promo applied) -->
+      <!-- Upgrades (agent can pay) -->
+      <section class="bg-white rounded shadow p-5">
+        <h2 class="text-lg font-semibold">Upgrades</h2>
+        <p class="text-sm text-gray-600">Agent can turn on upgrades here. Free pricing applies if September Promo is active.</p>
+        <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
 
-      <div class="mt-4 flex items-center gap-2">
-        <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
-        <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
-      </div>
-      <p class="text-xs text-gray-500 mt-2">Purchases are final. Paid items show “paid by agent.”</p>
+        <div class="mt-4 flex items-center gap-2">
+          <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
+          <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">Purchases are final. Paid items show “paid by agent.”</p>
+      </section>
     </aside>
   </div>
 
@@ -162,6 +224,10 @@
     const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
     const formData = getJSON("formData", {});
     const agentListing = getJSON("agentListing", {});
+    const now = new Date();
+    const isSept2025 = (now.getFullYear() === 2025 && now.getMonth() === 8); // September = 8 (zero-based)
+
+    // checkoutData baseline
     const checkoutData = getJSON("checkoutData", null) || {
       plan,
       base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
@@ -170,46 +236,47 @@
       meta: {},
       payer: "agent"
     };
-    const flags = getJSON("intakeFollowups", {});
-    const isPlus = plan === "Listed Property Plus" || plan.includes("FSBO"); // agent page is for listed path primarily
 
+    const flags = getJSON("intakeFollowups", {});
+    const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
+
+    // Header pills
     $("planPill").textContent = plan;
     $("payerBadge").textContent = checkoutData.payer === "agent" ? "You are paying for upgrades on this screen." : "";
 
+    // Prefill basics
     $("fullAddress").value = formData.address || "";
     $("status").value = agentListing.status || "";
     $("price").value = agentListing.price ?? "";
 
-    // Commission locked
     const commission = agentListing.commission ?? (formData.commission || "");
     const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
-    $("commission").value = commission;
-    $("commissionType").value = commissionType;
+    $("commission").value = commission; $("commissionType").value = commissionType;
 
-    $("apn").value = formData.apn || agentListing.apn || "";
+    // Property facts
+    $("bedrooms").value     = agentListing.bedrooms ?? "";
+    $("bathrooms").value    = agentListing.bathrooms ?? "";
+    $("sqft").value         = agentListing.sqft ?? "";
+    $("yearBuilt").value    = agentListing.yearBuilt ?? "";
+    $("lotSize").value      = agentListing.lotSize ?? "";
+    $("propertyType").value = agentListing.propertyType ?? "";
+    $("apn").value          = formData.apn || agentListing.apn || "";
 
     // Photos
     const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
     let primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
     const maxPhotos = isPlus ? 20 : 1;
-    $("photoHelp").textContent = isPlus
-      ? "You can upload up to 20 photos."
-      : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+    $("photoHelp").textContent = isPlus ? "You can upload up to 20 photos." : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
 
     function renderThumbs() {
       const grid = $("photoGrid");
       grid.innerHTML = "";
       (photos || []).forEach((src, idx) => {
         const img = new Image();
-        img.src = src;
-        img.alt = "Photo " + (idx + 1);
+        img.src = src; img.alt = "Photo " + (idx + 1);
         img.className = "thumb border " + (idx === primaryIndex ? "border-green-500" : "border-gray-300");
         img.title = (idx === primaryIndex) ? "Primary photo" : "Click to set as primary";
-        img.addEventListener("click", () => {
-          primaryIndex = idx;
-          saveDraft();
-          renderThumbs();
-        });
+        img.addEventListener("click", () => { primaryIndex = idx; saveDraft(); renderThumbs(); });
         grid.appendChild(img);
       });
     }
@@ -219,77 +286,42 @@
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
       let spaceLeft = maxPhotos - (photos.length || 0);
-      if (spaceLeft <= 0) {
-        alert(`You have reached the photo limit for your plan (${maxPhotos}).`);
-        e.target.value = "";
-        return;
-      }
+      if (spaceLeft <= 0) { alert(`You have reached the photo limit for your plan (${maxPhotos}).`); e.target.value = ""; return; }
       const toRead = files.slice(0, spaceLeft);
-      const readAsDataURL = (file) => new Promise((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = () => res(reader.result);
-        reader.onerror = rej;
-        reader.readAsDataURL(file);
-      });
-      for (const f of toRead) {
-        try {
-          const dataUrl = await readAsDataURL(f);
-          photos.push(dataUrl);
-        } catch(e) { console.error(e); }
-      }
-      saveDraft();
-      renderThumbs();
-      e.target.value = "";
+      const readAsDataURL = (file) => new Promise((res, rej) => { const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); });
+      for (const f of toRead) { try { photos.push(await readAsDataURL(f)); } catch(e){} }
+      saveDraft(); renderThumbs(); e.target.value = "";
     });
 
     // Description gate
     $("description").value = agentListing.description ?? "";
-    if (!isPlus) {
-      $("description").classList.add("dimmed");
-      $("description").setAttribute("disabled","disabled");
-      $("descGateNote").classList.remove("hidden");
-    }
+    if (!isPlus) { $("description").classList.add("dimmed"); $("description").setAttribute("disabled","disabled"); $("descGateNote").classList.remove("hidden"); }
 
     // Banner gate
     $("bannerText").value = agentListing.bannerText ?? "";
-    if (!checkoutData.upgrades.banner) {
-      $("bannerText").classList.add("dimmed");
-      $("bannerText").setAttribute("disabled","disabled");
-      $("bannerGateNote").classList.remove("hidden");
-    }
+    if (!checkoutData.upgrades.banner) { $("bannerText").classList.add("dimmed"); $("bannerText").setAttribute("disabled","disabled"); $("bannerGateNote").classList.remove("hidden"); }
 
     // Preferred area (premium)
-    $("preferredArea").value = agentListing.preferredArea
-      ?? checkoutData.meta.preferredArea
-      ?? flags.preferredArea
-      ?? "";
-    if (!checkoutData.upgrades.premium && !checkoutData.upgrades.pin) {
-      $("preferredArea").classList.add("dimmed");
-      $("preferredArea").setAttribute("disabled","disabled");
-      $("premiumGateNote").classList.remove("hidden");
-    }
+    $("preferredArea").value = agentListing.preferredArea ?? checkoutData.meta.preferredArea ?? flags.preferredArea ?? "";
+    if (!checkoutData.upgrades.premium && !checkoutData.upgrades.pin) { $("preferredArea").classList.add("dimmed"); $("preferredArea").setAttribute("disabled","disabled"); $("premiumGateNote").classList.remove("hidden"); }
 
     // Pin area
-    $("pinArea").value = agentListing.pinArea
-      ?? checkoutData.meta.pinArea
-      ?? flags.pinArea
-      ?? "";
-    if (!checkoutData.upgrades.pin) {
-      $("pinArea").classList.add("dimmed");
-      $("pinArea").setAttribute("disabled","disabled");
-      $("pinGateNote").classList.remove("hidden");
-    }
+    $("pinArea").value = agentListing.pinArea ?? checkoutData.meta.pinArea ?? flags.pinArea ?? "";
+    if (!checkoutData.upgrades.pin) { $("pinArea").classList.add("dimmed"); $("pinArea").setAttribute("disabled","disabled"); $("pinGateNote").classList.remove("hidden"); }
 
-    // Agent confirm fields (editable)
+    // Agent info
     $("brokerage").value  = formData.brokerage || agentListing.brokerage || "";
     $("agentName").value  = formData.agent || agentListing.agentName || "";
     $("agentEmail").value = agentListing.agentEmail || "";
     $("agentPhone").value = formData.agentPhone || agentListing.agentPhone || "";
 
-    ["status","price","description","bannerText","preferredArea","pinArea","brokerage","agentName","agentEmail","agentPhone","apn"].forEach(id=>{
-      const el = $(id);
-      if (!el) return;
-      el.addEventListener("input", saveDraft);
+    // Save listeners
+    [
+      "status","price","description","bannerText","preferredArea","pinArea","brokerage","agentName","agentEmail","agentPhone","apn",
+      "bedrooms","bathrooms","sqft","yearBuilt","lotSize","propertyType"
+    ].forEach(id=>{
+      const el = $(id); if (!el) return;
+      el.addEventListener("input", saveDraft); el.addEventListener("change", saveDraft);
     });
 
     function saveDraft() {
@@ -308,23 +340,65 @@
         agentEmail: $("agentEmail").value || "",
         agentPhone: $("agentPhone").value || "",
         photos: photos.slice(0, maxPhotos),
-        primaryIndex: primaryIndex
+        primaryIndex: primaryIndex,
+        bedrooms: $("bedrooms").value || "",
+        bathrooms: $("bathrooms").value || "",
+        sqft: $("sqft").value || "",
+        yearBuilt: $("yearBuilt").value || "",
+        lotSize: $("lotSize").value || "",
+        propertyType: $("propertyType").value || ""
       };
       localStorage.setItem("agentListing", JSON.stringify(payload));
     }
 
     $("saveBtn").addEventListener("click", () => { saveDraft(); alert("Saved."); });
 
+    // ------------ September Free Promo ------------
+    const promoBadge = $("promoBadge");
+    const applyPromoBtn = $("applyPromoBtn");
+    const promoNote = $("promoNote");
+
+    function paintPromoState() {
+      const active = isSept2025 && checkoutData.payer === "agent";
+      promoBadge.textContent = active ? "Active" : "Inactive";
+      promoBadge.className = active
+        ? "text-xs px-2 py-1 rounded bg-green-100 text-green-800"
+        : "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700";
+      applyPromoBtn.disabled = !active;
+      promoNote.textContent = active
+        ? "Click to apply free pricing (Banner, Premium, Pin set to $0) for September when paid by agent."
+        : "Promo applies only during September 2025 and only when upgrades are paid by the agent.";
+    }
+
+    function applySeptemberFree() {
+      // Set zero prices for these three and mark meta flag; preserve Plus/fsbo defaults
+      checkoutData.prices.banner = 0;
+      checkoutData.prices.premium = 0;
+      checkoutData.prices.pin = 0;
+      checkoutData.meta = checkoutData.meta || {};
+      checkoutData.meta.septemberAgentFree = true;
+      setJSON("checkoutData", checkoutData);
+      alert("September Free applied. Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.");
+      paintUpgrades(); // repaint price labels
+      paintUpgrades();
+    }
+
+    applyPromoBtn.addEventListener("click", applySeptemberFree);
+    paintPromoState();
+
+    // ------------ Upgrades panel ------------
     // ---------- upgrades panel (agent pays) ----------
     function row(label, price, key, opts={}) {
       const checked = !!checkoutData.upgrades[key];
       const paid = opts.paid === true;
-      const note = paid ? `<span class="text-green-700 ml-2">(paid by agent)</span>` : (opts.note ? `<span class="text-indigo-700 ml-2">${opts.note}</span>` : "");
+      const priceLabel = (price === 0) ? "FREE" : `$${price}`;
+      const extraNote = opts.note ? `<span class="text-indigo-700 ml-2">${opts.note}</span>` : "";
+      const note = paid ? `<span class="text-green-700 ml-2">(paid by agent)</span>` : extraNote;
       return `
         <label class="flex items-center justify-between border rounded-lg px-3 py-2 ${paid?'bg-gray-50':''}">
           <div>
             <span class="font-medium">${label}</span>
-            <span class="text-gray-500"> — $${price}</span>
+            <span class="text-gray-500"> — ${priceLabel}</span>
             ${note}
           </div>
           <input type="checkbox" data-key="${key}" class="h-4 w-4" ${checked?'checked':''} ${paid?'disabled':''}/>
@@ -336,33 +410,32 @@
       const box = $("upgradesBox");
       const isBasic = plan === "Listed Property Basic";
 
-      // ---------- September 2025 Agent Promo (UI ONLY) ----------
+      // ---------- September 2025 Agent Promo (UI ONLY for PLUS) ----------
       // If payer is agent AND month is September 2025, show Plus = $0 with a small promo note.
-      let displayPlusPrice = checkoutData.prices.plus;
+      let displayPlusPrice = (checkoutData.prices && typeof checkoutData.prices.plus === "number") ? checkoutData.prices.plus : 20;
       let plusNote = "";
       try {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = now.getMonth(); // 0..11  (8 = September)
-        if (checkoutData.payer === "agent" && y === 2025 && m === 8) {
+        if (checkoutData.payer === "agent" && isSept2025) {
           displayPlusPrice = 0;
           plusNote = "September promo — free for agents";
         }
       } catch (e) {
-        // if date parsing fails, do nothing and keep standard price
+        /* keep default */
       }
       // -----------------------------------------------------------
 
+      const p = checkoutData.prices || {};
       const html = [
         isBasic || checkoutData.upgrades.upgradeToPlus
           ? row("Upgrade to Listed Property Plus", displayPlusPrice, "upgradeToPlus", {paid:false, note: plusNote})
           : "",
-        row("Banner", checkoutData.prices.banner, "banner", {paid: checkoutData.upgrades.banner}),
-        row("Premium Placement", checkoutData.prices.premium, "premium", {paid: checkoutData.upgrades.premium}),
-        row("Pin Placement", checkoutData.prices.pin, "pin", {paid: checkoutData.upgrades.pin}),
-        plan.includes("FSBO") ? row("Confidential FSBO Upgrade", checkoutData.prices.confidential, "confidential", {paid: checkoutData.upgrades.confidential}) : ""
+        row("Banner", (p.banner ?? 10), "banner", {paid: checkoutData.upgrades.banner}),
+        row("Premium Placement", (p.premium ?? 10), "premium", {paid: checkoutData.upgrades.premium}),
+        row("Pin Placement", (p.pin ?? 50), "pin", {paid: checkoutData.upgrades.pin}),
+        plan.includes("FSBO") ? row("Confidential FSBO Upgrade", (p.confidential ?? 100), "confidential", {paid: checkoutData.upgrades.confidential}) : ""
       ].join("");
       box.innerHTML = html;
+
       box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
         cb.addEventListener("change", (e)=>{
           const k = e.target.getAttribute("data-key");
@@ -380,8 +453,19 @@
           } else if (k === "confidential") {
             checkoutData.upgrades.confidential = checked;
           }
-          checkoutData.payer = "agent"; // mark that agent is initiating
           setJSON("checkoutData", checkoutData);
+          // Enable typing into gated fields when selected
+          if (k === "banner") {
+            $("bannerText").disabled = !checked && !isPlus;
+            $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
+          }
+          if (k === "premium" || k === "pin") {
+            const premOn = checkoutData.upgrades.premium || checkoutData.upgrades.pin;
+            $("preferredArea").disabled = !premOn;
+            $("preferredArea").classList.toggle("dimmed", !premOn);
+            $("pinArea").disabled = !checkoutData.upgrades.pin;
+            $("pinArea").classList.toggle("dimmed", !checkoutData.upgrades.pin);
+          }
         });
       });
     }
@@ -396,6 +480,12 @@
     });
 
     $("goCheckoutBtn").addEventListener("click", () => { window.location.href = "/checkout.html"; });
+    // >>> ONE-LINE GUARD ADDED HERE <<<
+    $("goCheckoutBtn").addEventListener("click", () => {
+      checkoutData.payer = "agent";            // ensure agent payer for redirect after Stripe
+      setJSON("checkoutData", checkoutData);   // persist before navigation
+      window.location.href = "/checkout.html";
+    });
   </script>
 </body>
 </html>
