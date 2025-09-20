@@ -43,19 +43,27 @@
   <script>
     function getJSON(k, fb) { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } }
 
-    const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const fd   = getJSON("formData", {});
-    const signed = getJSON("signedISC", {}); // { name, date }
+    const url = new URL(location.href);
+    const listingId = url.searchParams.get('id') || localStorage.getItem('lastListingId') || '';
+    const FD_KEY  = listingId ? `formData:${listingId}` : 'formData';
+    const SIG_KEY = listingId ? `signedISC:${listingId}` : 'signedISC';
 
-    const isFSBO   = plan.includes("FSBO");
+    const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+    const isFSBO = plan.includes("FSBO");
+
+    // Prefer namespaced data; fallback to generic only if needed
+    const fd = getJSON(FD_KEY, getJSON("formData", {}));
+    const signed = getJSON(SIG_KEY, getJSON("signedISC", {}));
+
     const fullAddr = (fd.address || "").trim() || "[full address]";
     const short    = fullAddr.split(",")[0] || "[short address]";
     const apn      = (fd.apn || "").trim();
     const name     = (fd.name || signed.name || "[name]");
     const phone    = fd.agentPhone || (isFSBO ? "[owner/seller phone]" : "[agent phone]");
-    const email    = fd.fsboEmail || "[owner/seller email]";
+    const email    = isFSBO ? (fd.fsboEmail || "[owner/seller email]") : "[owner/seller email]";
     const brokerage= fd.brokerage || (isFSBO ? "" : "[listing brokerage]");
     const agent    = fd.agent || (isFSBO ? "" : "[listing agent]");
+    const agentEmail = fd.agentEmail || "[agent email]";
 
     const cType = fd.commissionType || "%";
     const cVal  = (fd.commission || "").trim();
@@ -66,15 +74,12 @@
 
     let p1 = "", p2 = "";
     if (isFSBO) {
-      p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by owner (Me). ` +
-           `My phone number is ${phone}. My email address is ${email}.`;
-      p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) ` +
-           `are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commDisplay}${commDisplay ? commSuffix : ""}.`;
+      p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email address is ${email}.`;
+      p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commDisplay}${commDisplay ? commSuffix : ""}.`;
     } else {
-      p1 = `I, ${name}, am the owner/seller of ${fullAddr}. ${short} is listed for sale by ${brokerage}, ${agent}, listing agent, ${phone}.`;
-      p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) ` +
-           `are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for ` +
-           `broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commDisplay}${commDisplay ? commSuffix : ""}.`;
+      p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by ${brokera
+ge}, ${agent}, listing agent, ${phone}, ${agentEmail}.`;
+      p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commDisplay}${commDisplay ? commSuffix : ""}.`;
     }
 
     document.getElementById("p1").textContent = p1;
@@ -85,9 +90,10 @@
     document.getElementById("sigName").textContent = sigName;
     document.getElementById("sigDate").textContent = sigDate;
 
-    // Unified ISC view counter
+    // Unified (per-listing) ISC view counter
     (function counters(){
-      const key = "iscViews:" + (fullAddr||"").toLowerCase();
+      const base = (listingId || fullAddr || "listing").toString().toLowerCase();
+      const key = "iscViews:" + base;
       let n = Number(localStorage.getItem(key) || 0); n += 1;
       localStorage.setItem(key, String(n));
       document.getElementById("counters").textContent = `This Irrevocable Seller Communication has been viewed ${n} time(s).`;
