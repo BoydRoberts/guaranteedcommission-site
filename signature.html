@@ -25,7 +25,6 @@
         required
         aria-describedby="sigHelp"
       >
-      <!-- NEW: helper message for exact-name requirement -->
       <p id="sigHelp" class="text-xs mt-2 text-gray-600 hidden"></p>
     </div>
 
@@ -35,15 +34,10 @@
     </div>
 
     <div class="flex justify-between mt-6">
-      <!-- Frozen behavior: link to printable ISC -->
-      <a href="/printable-isc.html" class="bg-gray-600 text-white px-4 py-2 rounded">
+      <a id="viewPrintable" href="/printable-isc.html" class="bg-gray-600 text-white px-4 py-2 rounded">
         Sign / View
       </a>
-
-      <!-- Removed old Download PDF button per prior instructions -->
-
-      <!-- Continue is disabled until signature matches Box-2 seller name -->
-      <button id="btnContinue" onclick="continueFlow()" class="bg-green-600 text-white px-6 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+      <button id="btnContinue" class="bg-green-600 text-white px-6 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed" disabled>
         Sign / Continue
       </button>
     </div>
@@ -53,10 +47,25 @@
     // --- helpers ---
     function getJSON(k, fb){ try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } }
 
-    // Fill the ISC body from existing localStorage (frozen copy, with one unchanged tweak)
-    function fillISC() {
+    // Per-listing context
+    const url = new URL(location.href);
+    const listingId = url.searchParams.get('id') || localStorage.getItem('lastListingId') || '';
+    const FD_KEY  = listingId ? `formData:${listingId}` : 'formData';
+    const SIG_KEY = listingId ? `signedISC:${listingId}` : 'signedISC';
+
+    // Fill date
+    document.getElementById("date").textContent = new Date().toLocaleDateString();
+
+    // Link printable with same id
+    (function linkPrintable(){
+      const a = document.getElementById('viewPrintable');
+      a.href = listingId ? `/printable-isc.html?id=${encodeURIComponent(listingId)}` : `/printable-isc.html`;
+    })();
+
+    // Build ISC body from existing localStorage (unchanged wording)
+    (function fillISC() {
+      const data = getJSON(FD_KEY, getJSON('formData', {}));
       const planType = (localStorage.getItem("postSignatureOptions") || (localStorage.getItem("selectedPlan")||"")).toLowerCase().includes("fsbo") ? "fsbo" : "listed";
-      const data = getJSON("formData", {});
       const commissionType = data.commissionType || "%";
       const commission = data.commission || "";
       const fullAddress = data.address || "";
@@ -81,17 +90,16 @@
       }
 
       document.getElementById("iscText").textContent = text;
-    }
+    })();
 
-    // NEW: enforce signature name match with Box-2 seller name
+    // Enforce signature name match with Box-2 seller name; store per listing
     (function enforceSignatureMatch(){
       const sigInput = document.getElementById('signature');
       const btn = document.getElementById('btnContinue');
       const help = document.getElementById('sigHelp');
 
-      const formData = getJSON('formData', {});
-      const expectedRaw = (formData && typeof formData.name === 'string') ? formData.name : '';
-      const expected = (expectedRaw || '').trim();
+      const formData = getJSON(FD_KEY, getJSON('formData', {}));
+      const expected = (formData && typeof formData.name === 'string') ? formData.name.trim() : '';
 
       function check() {
         const typed = (sigInput.value || '').trim();
@@ -99,9 +107,9 @@
 
         btn.disabled = !ok;
         if (!expected) {
-          // If we somehow don't have a Box-2 name, keep the button disabled and instruct the user
           help.textContent = "We couldn't find your Box-2 name. Please go back and enter your name in the communication form.";
           help.className = "text-xs mt-2 text-red-600";
+          help.classList.remove('hidden');
           return;
         }
 
@@ -120,24 +128,18 @@
 
       sigInput.addEventListener('input', check);
       sigInput.addEventListener('blur', check);
-      // Initial paint
       check();
+
+      btn.addEventListener('click', () => {
+        const signature = (sigInput.value || '').trim();
+        if (!signature) return;
+        const payload = { name: signature, date: new Date().toISOString().slice(0,10) };
+        localStorage.setItem(SIG_KEY, JSON.stringify(payload)); // per-listing signature
+
+        const isFSBO = (localStorage.getItem("selectedPlan")||"").includes("FSBO");
+        window.location.href = isFSBO ? "/seller-detail.html" : "/agent-invite.html";
+      });
     })();
-
-    function continueFlow() {
-      const signature = document.getElementById("signature").value.trim();
-      // Guard: should already be enforced, but keep the original check
-      if (!signature) {
-        alert("Please type your full name to sign the ISC.");
-        return;
-      }
-      localStorage.setItem("signature", signature);
-      // Frozen redirect logic
-      window.location.href = (localStorage.getItem("selectedPlan")||"").includes("FSBO") ? "/seller-detail.html" : "/agent-invite.html";
-    }
-
-    document.getElementById("date").textContent = new Date().toLocaleDateString();
-    window.addEventListener("DOMContentLoaded", fillISC);
   </script>
 </body>
 </html>
