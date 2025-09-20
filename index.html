@@ -339,6 +339,7 @@
 
       <!-- Tiles grid, nudged down -->
       <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6"></div>
+      <p id="tilesEmpty" class="text-sm text-gray-500 text-center hidden mt-6">No listings yet. Create one above, then return here.</p>
     </section>
   </div>
 
@@ -543,9 +544,11 @@
       syncAll();
 
       // ---- Strip 2 tiles + search ----
-      buildTilesDataset();
-      renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
-      wireSearch();
+      (async () => {
+        await buildTilesDataset();                       // CHANGED: Firestore-only, async
+        renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
+        wireSearch();
+      })();
 
       // Initial fit and on resize
       fitStrip1();
@@ -574,12 +577,11 @@
         return;
       } else addressEl.classList.remove('border-red-500');
 
-      // 🔹 NEW: Data-bleed guard — clear prior listing state BEFORE saving new data
+      // 🔹 Data-bleed guard — clear prior listing state BEFORE saving new data
       try {
-        ['agentListing','checkoutData','intakeFollowups','lastListingId','lastListingAddress'].forEach(k=>localStorage.removeItem(k));
-        // Remove any namespaced drafts from past tests
+        ['agentListing','checkoutData','intakeFollowups','lastListingId','lastListingAddress','signature','signedISC'].forEach(k=>localStorage.removeItem(k));
         Object.keys(localStorage).forEach(k=>{
-          if (k.startsWith('formData:') || k.startsWith('agentListing:')) localStorage.removeItem(k);
+          if (k.startsWith('formData:') || k.startsWith('agentListing:') || k.startsWith('signedISC:')) localStorage.removeItem(k);
         });
       } catch(e) {
         console.warn('[bleed-guard] cleanup skipped:', e);
@@ -622,10 +624,10 @@
             commissionType: formData.commissionType || "%",
             ownerName: formData.name || "",
             ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",
-            agentName: formData.agent || "",
-            agentPhone: formData.phone || "",
-            agentEmail: formData.agentEmail || "",
-            brokerage: formData.brokerage || "",
+            agentName: plan.includes('FSBO') ? "" : (formData.agent || ""),
+            agentPhone: plan.includes('FSBO') ? "" : (formData.phone || ""),
+            agentEmail: plan.includes('FSBO') ? "" : (formData.agentEmail || ""),
+            brokerage: plan.includes('FSBO') ? "" : (formData.brokerage || ""),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             source: "index.box2"
@@ -633,6 +635,7 @@
           const ref = await addDoc(collection(db, "listings"), payload);
           localStorage.setItem("lastListingId", ref.id);
           localStorage.setItem("lastListingAddress", payload.address || "");
+          localStorage.setItem(`formData:${ref.id}`, JSON.stringify(formData));  /* CHANGED: namespaced mirror */
           console.log("[firestore] listing created:", ref.id);
         } else {
           console.warn("[firestore] db not available — skipped server save");
@@ -644,7 +647,7 @@
       window.location.href="/login.html";
     }
 
-    // ---------- Strip 2 helpers ----------
+    // ---------- Strip 2 helpers (Firestore-only) ----------
     function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
     function commissionDollars(price, val, type){
       const p=Number(price||0), c=Number(val||0);
@@ -653,42 +656,34 @@
       if(p) return Math.round(p*(c/100));
       return null;
     }
+    function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c])); }
+
     function renderTile(data){
       const {
-        address="[full address]",
-        price,
-        commission,
-        commissionType="%",
-        bannerText="",
-        photos=[],
-        primaryIndex=0,
-        status="Active",
-        brokerage="[listing brokerage]",
-        agent="[listing agent]",
-        plan="Listed Property Basic",
-        bedrooms, bathrooms, sqft,
-        propertyType,
-        agentPhone
+        id, address="[full address]",
+        price, commission, commissionType="%",
+        bannerText="", photos=[], primaryIndex=0,
+        status="Active", brokerage="[listing brokerage]", agent="", agentPhone,
+        plan="Listed Property Basic", bedrooms, bathrooms, sqft, propertyType
       } = data || {};
 
       const calc = commissionDollars(price, commission, commissionType);
       const line1Left  = fmtUSD(price);
       const line1Mid   = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
-      const line1Right = (calc!=null) ? `$${calc.toLocaleString()}` : '—';
+      const line1Right = (calc!=null) ? `$${calc.toLocaleString()}` : '$—';
 
-      const img = (photos && photos.length ? photos[primaryIndex||0] : "");
-      const typeSeg = propertyType ? ` | ${propertyType}` : '';
+      const img = (Array.isArray(photos) && photos.length ? photos[primaryIndex||0] : "");
+      const typeSeg = propertyType ? ` | ${escapeHTML(propertyType)}` : '';
       const card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
       card.onclick = () => {
-        const slug = encodeURIComponent(address);
-        window.location.href = `/listing.html?addr=${slug}`;
+        if (id) window.location.href = `/listing.html?id=${encodeURIComponent(id)}`;  /* CHANGED: enforce id link */
       };
 
       card.innerHTML = `
         <div class="relative">
           <img class="gc-photo" src="${img || ''}" alt="Listing photo">
-          ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ``}
+          ${bannerText ? `<div class="gc-ribbon">${escapeHTML(bannerText)}</div>` : ``}
         </div>
         <div class="p-3 space-y-1">
           <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
@@ -696,12 +691,12 @@
             <div class="truncate text-red-600">Commission ${line1Mid} | ${line1Right}</div>
           </div>
           <div class="text-[12px] text-gray-700">
-            ${bedrooms ?? '—'} bds | ${bathrooms ?? '—'} ba | ${sqft ? Number(sqft).toLocaleString() : '—'} sqft${typeSeg} | ${status}
+            ${bedrooms ?? '—'} bds | ${bathrooms ?? '—'} ba | ${sqft ? Number(sqft).toLocaleString() : '—'} sqft${typeSeg} | ${escapeHTML(status||'')}
           </div>
-          <div class="text-sm font-medium">${address}</div>
+          <div class="text-sm font-medium">${escapeHTML(address)}</div>
           <div class="text-[12px] text-gray-600">
             ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}
-            ${agent ? ' — '+agent : ''}${agentPhone ? ' — '+agentPhone : ''}
+            ${agent ? ' — '+escapeHTML(agent) : ''}${agentPhone ? ' — '+escapeHTML(agentPhone) : ''}
           </div>
         </div>
       `;
@@ -709,76 +704,54 @@
     }
 
     let _tilesData = [];
-    function buildTilesDataset(){
+    async function buildTilesDataset(){
       _tilesData = [];
-      const formData = JSON.parse(localStorage.getItem('formData') || '{}');
-      const agentListing = JSON.parse(localStorage.getItem('agentListing') || '{}');
-      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-
-      const hasLive = formData && formData.address;
-      if (hasLive) {
-        _tilesData.push({
-          address: formData.address,
-          price: agentListing.price,
-          commission: agentListing.commission ?? formData.commission,
-          commissionType: agentListing.commissionType ?? formData.commissionType ?? '%',
-          bannerText: agentListing.bannerText,
-          photos: Array.isArray(agentListing.photos) ? agentListing.photos : [],
-          primaryIndex: typeof agentListing.primaryIndex==='number' ? agentListing.primaryIndex : 0,
-          status: agentListing.status || 'Active',
-          brokerage: formData.brokerage,
-          agent: formData.agent,
-          agentPhone: document.getElementById('agentPhone')?.value || formData.phone || '',
-          plan,
-          bedrooms: agentListing.bedrooms,
-          bathrooms: agentListing.bathrooms,
-          sqft: agentListing.sqft,
-          propertyType: agentListing.propertyType || ''
+      const grid = document.getElementById('tileGrid');
+      const empty = document.getElementById('tilesEmpty');
+      grid.innerHTML = '';
+      const db = window.gc && window.gc.db;
+      if (!db) { empty.classList.remove('hidden'); return; }
+      try {
+        const { getDocs, collection, query, orderBy, limit } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+        const q = query(collection(db, "listings"), orderBy("createdAt","desc"), limit(60));
+        const snap = await getDocs(q);
+        snap.forEach(doc => {
+          const d = doc.data() || {};
+          _tilesData.push({
+            id: doc.id,
+            address: d.address || "",
+            price: d.price,
+            commission: d.commission,
+            commissionType: d.commissionType || '%',
+            bannerText: d.bannerText || "",
+            photos: Array.isArray(d.photos) ? d.photos : [],
+            primaryIndex: (typeof d.primaryIndex === 'number' ? d.primaryIndex : 0),
+            status: d.status || "Active",
+            brokerage: d.brokerage || "",
+            agent: d.agentName || d.agent || "",
+            agentPhone: d.agentPhone || "",
+            plan: d.plan || "Listed Property Basic",
+            bedrooms: d.bedrooms, bathrooms: d.bathrooms, sqft: d.sqft, propertyType: d.propertyType || ""
+          });
         });
+        if (!_tilesData.length) empty.classList.remove('hidden'); else empty.classList.add('hidden');
+      } catch(e){
+        console.warn('[tiles] failed to load:', e);
+        empty.classList.remove('hidden');
       }
-
-      // Samples for demo (with propertyType)
-      const samples = [
-        {
-          address: "237 San Joaquin Street, Laguna Beach, CA 92651",
-          price: 1895000, commission: 2.5, commissionType: '%',
-          bannerText: "Open Sunday 1–4",
-          photos: ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop"],
-          primaryIndex: 0, status: "Active",
-          brokerage: "Pacific Estates", agent: "Jordan Crisp",
-          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000
-        },
-        {
-          address: "14 Maple Ave, Montclair, NJ 07042",
-          price: 925000, commission: 25000, commissionType: '$',
-          photos: ["https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop"],
-          primaryIndex: 0, status: "In Contract",
-          brokerage: "HomeWorks Realty", agent: "A. Brooks",
-          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400
-        },
-        {
-          address: "1020 Cedar Dr, Austin, TX 78704",
-          price: 650000, commission: 3.0, commissionType: '%',
-          bannerText: "Hot Home",
-          photos: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop"],
-          primaryIndex: 0, status: "Active",
-          brokerage: "", agent: "",
-          plan: "FSBO Plus", bedrooms: 3, bathrooms: 2, sqft: 1680
-        }
-      ];
-      const haveAddr = new Set(_tilesData.map(d => (d.address||'').toLowerCase()));
-      samples.forEach(s => { if(!haveAddr.has((s.address||'').toLowerCase())) _tilesData.push(s); });
     }
 
     function renderStrip2Tiles(filterText=""){
       const grid = document.getElementById('tileGrid');
+      const empty = document.getElementById('tilesEmpty');
       grid.innerHTML = '';
       const q = (filterText || '').toLowerCase();
       const list = q ? _tilesData.filter(d => (d.address||'').toLowerCase().includes(q)) : _tilesData;
       if (!list.length) {
-        grid.innerHTML = `<div class="text-sm text-gray-500 text-center">No results. Try a different search.</div>`;
+        empty.classList.remove('hidden');
         return;
       }
+      empty.classList.add('hidden');
       list.forEach(d => grid.appendChild(renderTile(d)));
     }
 
