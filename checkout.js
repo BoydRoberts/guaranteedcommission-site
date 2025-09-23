@@ -1,4 +1,4 @@
-// /checkout.js — build 2025-09-01a + agent payer hotfix + agent redirect
+// /checkout.js — build 2025-09-01a + hotfix: agent payer + agent success redirect
 document.addEventListener("DOMContentLoaded", () => {
   console.log("[checkout.js] build 2025-09-01a + agent payer hotfix");
 
@@ -79,13 +79,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!data.payer) data.payer = "seller";
   }
 
-  // HOTFIX: listing agents get payer=agent (September promo eligibility + agent flow)
+  // 🔧 HOTFIX: if current user is a listing agent, force payer=agent so September promo applies
   const role = (localStorage.getItem("userRole") || "").trim();
   if (role === "listing_agent") {
     data.payer = "agent";
     localStorage.setItem("checkoutData", JSON.stringify(data));
   }
 
+  // ---- September agent promo helper ----
   function isAgentSeptemberPromoActive() {
     try {
       const now = new Date();
@@ -95,6 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch { return false; }
   }
 
+  // ---- totals ----
   function recompute(d) {
     let plan = d.plan;
     let base = d.base;
@@ -112,11 +114,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     let total = base;
-
     if (d.upgrades.banner)  total += d.prices.banner;
     if (d.upgrades.pin)     total += d.prices.pin;
     else if (d.upgrades.premium) total += d.prices.premium;
-
     if (plan === "FSBO Plus") {
       if (d.upgrades.confidential) total += d.prices.confidential;
     } else {
@@ -129,6 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
   data = recompute(data);
   localStorage.setItem("checkoutData", JSON.stringify(data));
 
+  // ---- summary ----
   function renderSummary() {
     $("planName").textContent = data.plan;
     $("basePrice").textContent = (data.base || 0);
@@ -277,7 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!items.length) throw new Error("No purchasable line items.");
 
-      // Success URL depends on payer (agents must NOT go to signature)
+      // 🔧 HOTFIX: successUrl depends on payer (agents must NOT go to signature)
       const success = (data.payer === "agent")
         ? (window.location.origin + "/agent-detail.html")
         : (window.location.origin + "/signature.html");
