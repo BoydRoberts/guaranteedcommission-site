@@ -1,18 +1,6 @@
-// /checkout.js — build 2025-09-01a (adds Sept 2025 agent promo: Upgrade to Plus = $0)
-/*
-  Promo behavior:
-  - Active when:
-      - Payer is "agent"
-      - Current date in Sept 2025 (inclusive)
-  - Effects:
-      - UI shows Upgrade to Plus as $0 (and marks as September promo)
-      - Totals do NOT include the PLUS price
-      - Stripe line items do NOT include the PLUS item
-  - All other prices unchanged
-*/
-
+// /checkout.js — build 2025-09-01a + agent payer hotfix + agent redirect
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-09-01a");
+  console.log("[checkout.js] build 2025-09-01a + agent payer hotfix");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -22,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let stripe = null;
   try { stripe = Stripe(STRIPE_PUBLISHABLE_KEY); } catch (e) { console.error("Stripe init error:", e); }
 
-  // ---- Who line (no ~$) ----
+  // Who line material
   const formData = getJSON("formData", {});
   const agentListing = getJSON("agentListing", {});
   const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
@@ -63,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
       prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
       meta: {},
       total: 0,
-      payer: "seller" // default unless set elsewhere
+      payer: "seller"
     };
   } else {
     if (Array.isArray(data.upgrades)) {
@@ -91,47 +79,44 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!data.payer) data.payer = "seller";
   }
 
-  // ---- September agent promo helper ----
+  // HOTFIX: listing agents get payer=agent (September promo eligibility + agent flow)
+  const role = (localStorage.getItem("userRole") || "").trim();
+  if (role === "listing_agent") {
+    data.payer = "agent";
+    localStorage.setItem("checkoutData", JSON.stringify(data));
+  }
+
   function isAgentSeptemberPromoActive() {
     try {
       const now = new Date();
       const y = now.getFullYear();
       const m = now.getMonth(); // 0=Jan ... 8=Sep
-      // Active only in September 2025
       return (data.payer === "agent") && (y === 2025) && (m === 8);
     } catch { return false; }
   }
 
-  // ---- totals ----
   function recompute(d) {
     let plan = d.plan;
     let base = d.base;
 
     const promo = isAgentSeptemberPromoActive();
 
-    // Handle a Basic plan that upgrades to Plus
     if (plan === "Listed Property Basic" && d.upgrades.upgradeToPlus) {
       plan = "Listed Property Plus";
-      // If September agent promo: base for Plus becomes $0
       base = promo ? 0 : d.prices.plus;
       localStorage.setItem("selectedPlan", "Listed Property Plus");
     }
 
-    // If originally Plus (no upgrade checkbox), honor promo base for agents in Sept
     if (plan === "Listed Property Plus" && promo) {
       base = 0;
     }
 
     let total = base;
 
-    // Banner
-    if (d.upgrades.banner) total += d.prices.banner;
-
-    // Pin / Premium
+    if (d.upgrades.banner)  total += d.prices.banner;
     if (d.upgrades.pin)     total += d.prices.pin;
     else if (d.upgrades.premium) total += d.prices.premium;
 
-    // Confidential is FSBO only
     if (plan === "FSBO Plus") {
       if (d.upgrades.confidential) total += d.prices.confidential;
     } else {
@@ -144,7 +129,6 @@ document.addEventListener("DOMContentLoaded", () => {
   data = recompute(data);
   localStorage.setItem("checkoutData", JSON.stringify(data));
 
-  // ---- summary ----
   function renderSummary() {
     $("planName").textContent = data.plan;
     $("basePrice").textContent = (data.base || 0);
@@ -171,7 +155,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ---- toggles ----
   function renderLastChance() {
     const box = $("upsellChoices");
     box.innerHTML = "";
@@ -182,7 +165,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const toggles = [];
     if (isBasic) {
-      // Upgrade to Plus toggle — show $0 if promo active
       toggles.push({
         key:"upgradeToPlus",
         label:"Upgrade to Listed Property Plus",
@@ -216,7 +198,6 @@ document.addEventListener("DOMContentLoaded", () => {
           data.upgrades.upgradeToPlus = checked;
           if (checked) {
             data.plan = "Listed Property Plus";
-            // base will be set by recompute (and $0 if promo)
             localStorage.setItem("selectedPlan", "Listed Property Plus");
           } else {
             const originallyBasic = (localStorage.getItem("originalPlan") || "Listed Property Basic");
@@ -249,7 +230,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = "/upsell.html";
   });
 
-  // ---- Pay Now: build lineItems and call server ----
+  // ---- Pay Now ----
   $("payNowBtn").addEventListener("click", async () => {
     const btn = $("payNowBtn");
     btn.disabled = true;
@@ -257,9 +238,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       if (!stripe) throw new Error("Stripe not available on this page.");
-      if ((data.total || 0) <= 0) { window.location.href = "/signature.html"; return; }
+      if ((data.total || 0) <= 0) {
+        // zero total: route based on payer
+        if (data.payer === "agent") { window.location.href = "/agent-detail.html"; }
+        else { window.location.href = "/signature.html"; }
+        return;
+      }
 
-      // Stripe Price IDs (test)
       const PRICE_IDS = {
         PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
         FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
@@ -271,36 +256,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const promo = isAgentSeptemberPromoActive();
 
-      // Build lineItems per current plan/upgrades
       const items = [];
       const isFSBO = data.plan === "FSBO Plus";
       const isPlus = data.plan === "Listed Property Plus";
       const isBasic= data.plan === "Listed Property Basic";
 
-      // Base plan / upgrade to plus
       if (isFSBO && (data.base ?? data.prices.fsbo) > 0) {
         items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
       } else if (isPlus) {
-        // If we are Plus due to upgrade or selected plan:
-        // Only charge for PLUS if promo is NOT active
         const shouldChargePlus = (data.base ?? 0) > 0 && !promo;
         if (shouldChargePlus) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
       } else if (isBasic && data.upgrades.upgradeToPlus && !promo) {
-        // Upgrading in Basic path: charge only if not promo
         items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
       }
 
       if (data.upgrades.banner)  items.push({ price: PRICE_IDS.BANNER,  quantity: 1 });
       if (data.upgrades.pin)     items.push({ price: PRICE_IDS.PIN,     quantity: 1 });
       else if (data.upgrades.premium) items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
-
       if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
 
       if (!items.length) throw new Error("No purchasable line items.");
 
+      // Success URL depends on payer (agents must NOT go to signature)
+      const success = (data.payer === "agent")
+        ? (window.location.origin + "/agent-detail.html")
+        : (window.location.origin + "/signature.html");
+
       const payload = {
         lineItems: items,
-        successUrl: window.location.origin + "/signature.html",
+        successUrl: success,
         cancelUrl:  window.location.origin + "/checkout.html"
       };
 
@@ -314,7 +298,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const out = ct.includes('application/json') ? await resp.json() : { error: "Non-JSON server response" };
       if (!resp.ok) throw new Error(out.error || "Server failed to create session.");
 
-      // Support both { url } and { id } returns
       if (out.url) { window.location.href = out.url; return; }
       if (out.id)  {
         const { error } = await stripe.redirectToCheckout({ sessionId: out.id });
@@ -332,7 +315,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ---- initial paint ----
   if (!localStorage.getItem("originalPlan")) {
     localStorage.setItem("originalPlan", planLS);
   }
