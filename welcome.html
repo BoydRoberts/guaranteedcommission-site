@@ -62,7 +62,7 @@
       <div id="lagentBox" class="hidden space-y-4">
         <div class="border rounded-lg p-4">
           <h3 class="font-semibold mb-2">Work on a listing</h3>
-          <div class="text-xs text-gray-600 mb-2">Select the property you want to edit.</div>
+          <p class="text-xs text-gray-600 mb-2">Select the property you want to edit.</p>
           <div class="flex items-center gap-2">
             <select id="agentListings" class="border rounded px-2 py-1 text-sm min-w-[18rem]">
               <option value="">Loading your listings…</option>
@@ -118,31 +118,17 @@
     </section>
   </main>
 
+  <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
+
   <script>
     const $ = (id) => document.getElementById(id);
     const role = localStorage.getItem('userRole') || '';
     const email = localStorage.getItem('loggedInEmail') || '';
     $('who').textContent = email || 'there';
 
-    // Seed minimal arrays so dropdowns aren’t empty (MVP local only)
-    function seedOnce(){
-      const s = localStorage.getItem('sellerListings');
-      if (!s) {
-        const fd = JSON.parse(localStorage.getItem('formData')||'{}');
-        const ag = JSON.parse(localStorage.getItem('agentListing')||'{}');
-        if (fd.address) {
-          localStorage.setItem('sellerListings', JSON.stringify([{ address: fd.address }]));
-        } else {
-          localStorage.setItem('sellerListings', JSON.stringify([]));
-        }
-      }
-      const a = localStorage.getItem('agentListings');
-      if (!a) localStorage.setItem('agentListings', JSON.stringify([]));
-    }
-    seedOnce();
-
     function openBox(id){ $(id).classList.remove('hidden'); }
+
     if (role === 'seller') openBox('sellerBox');
     else if (role === 'listing_agent') openBox('lagentBox');
     else if (role === 'buyers_agent') openBox('bagentBox');
@@ -153,9 +139,7 @@
     $('sellerNewGo')?.addEventListener('click', ()=>{
       const plan = $('sellerNewPlan').value;
       localStorage.setItem('selectedPlan', plan);
-      // send to Box 2 form
       location.href = '/index.html#strip2Search';
-      window.scrollTo(0,0);
     });
 
     // Seller: edit listing dropdown
@@ -174,12 +158,10 @@
         opt.value = item.address; opt.textContent = item.address;
         sel.appendChild(opt);
       });
-      $('sellerEditGo').addEventListener('click', ()=>{
-        location.href = '/seller-detail.html';
-      });
+      $('sellerEditGo').addEventListener('click', ()=> location.href = '/seller-detail.html');
     })();
 
-    // Shared: search / local pro buttons
+    // Shared
     $('sellerSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
     $('sellerProsGo')?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=search');
 
@@ -195,7 +177,7 @@
     $('otherSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
   </script>
 
-  <!-- Firestore-backed agent listings dropdown -->
+  <!-- Firestore-backed agent listings -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
