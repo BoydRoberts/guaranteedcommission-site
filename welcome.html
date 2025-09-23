@@ -61,12 +61,15 @@
       <!-- Listing Agent -->
       <div id="lagentBox" class="hidden space-y-4">
         <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Edit a listing</h3>
-          <div id="agentEditRow" class="flex items-center gap-2">
-            <select id="agentListings" class="border rounded px-2 py-1 text-sm"></select>
+          <h3 class="font-semibold mb-2">Work on a listing</h3>
+          <div class="text-xs text-gray-600 mb-2">Select the property you want to edit.</div>
+          <div class="flex items-center gap-2">
+            <select id="agentListings" class="border rounded px-2 py-1 text-sm min-w-[18rem]">
+              <option value="">Loading your listings…</option>
+            </select>
             <button id="agentEditGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</button>
           </div>
-          <p id="agentNoListings" class="hidden text-sm text-gray-700">No editable listings yet.</p>
+          <p id="agentNoListings" class="hidden text-sm text-gray-700 mt-2">No editable listings yet.</p>
         </div>
 
         <div class="border rounded-lg p-4">
@@ -115,6 +118,7 @@
     </section>
   </main>
 
+  <script type="module" src="/scripts/firebase-init.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const role = localStorage.getItem('userRole') || '';
@@ -171,7 +175,6 @@
         sel.appendChild(opt);
       });
       $('sellerEditGo').addEventListener('click', ()=>{
-        // Jump to intake page for edit (seller path)
         location.href = '/seller-detail.html';
       });
     })();
@@ -180,7 +183,6 @@
     $('sellerSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
     $('sellerProsGo')?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=search');
 
-    $('agentEditGo')?.addEventListener('click', ()=> location.href='/agent-detail.html');
     $('agentProApply')?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
     $('agentSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
 
@@ -191,6 +193,58 @@
     $('buyerSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
 
     $('otherSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
+  </script>
+
+  <!-- Firestore-backed agent listings dropdown -->
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import { collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    (async function loadAgentListings(){
+      const role = localStorage.getItem('userRole') || '';
+      const email = (localStorage.getItem('loggedInEmail') || '').trim().toLowerCase();
+      if (role !== 'listing_agent' || !email) return;
+
+      const sel = document.getElementById('agentListings');
+      const empty = document.getElementById('agentNoListings');
+      try {
+        const q = query(
+          collection(db, "listings"),
+          where("agentEmail", "==", email),
+          orderBy("updatedAt", "desc")
+        );
+        const snap = await getDocs(q);
+        const items = [];
+        snap.forEach(docu => {
+          const d = docu.data() || {};
+          items.push({ id: docu.id, address: d.address || "[address]", status: d.status || "Draft" });
+        });
+
+        sel.innerHTML = "";
+        if (!items.length) {
+          empty.classList.remove("hidden");
+          const opt = document.createElement("option");
+          opt.value = ""; opt.textContent = "No listings yet";
+          sel.appendChild(opt);
+        } else {
+          items.forEach(it => {
+            const opt = document.createElement("option");
+            opt.value = it.id;
+            opt.textContent = `${it.address} (${it.status})`;
+            sel.appendChild(opt);
+          });
+        }
+
+        document.getElementById('agentEditGo')?.addEventListener('click', () => {
+          const id = sel.value;
+          if (!id) { alert("Select a listing first."); return; }
+          localStorage.setItem("lastListingId", id);
+          window.location.href = "/agent-detail.html";
+        });
+      } catch (e) {
+        console.warn("[welcome] loadAgentListings failed", e);
+      }
+    })();
   </script>
 </body>
 </html>
