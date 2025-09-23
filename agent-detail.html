@@ -35,13 +35,11 @@
       <hr class="my-4"/>
 
       <form id="agentForm" class="space-y-5" autocomplete="off">
-        <!-- Address (read-only) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Full Property Address</label>
           <input id="fullAddress" class="w-full border p-2 rounded bg-gray-50" type="text" readonly>
         </div>
 
-        <!-- Status (required) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
           <select id="status" class="w-full border p-2 rounded" required>
@@ -52,7 +50,6 @@
           </select>
         </div>
 
-        <!-- Price & Commission (commission locked) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
@@ -69,7 +66,6 @@
           </div>
         </div>
 
-        <!-- Zillow-style basics: Beds / Baths / Sqft / Year Built / Lot Size / Property Type -->
         <div>
           <label class="block text-sm font-semibold mb-1">Property Facts</label>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -111,13 +107,11 @@
           </div>
         </div>
 
-        <!-- APN / Parcel -->
         <div>
           <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
           <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
         </div>
 
-        <!-- Photos -->
         <div>
           <label class="block text-sm font-semibold mb-1">Photos</label>
           <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
@@ -126,14 +120,12 @@
           <p class="text-xs text-gray-500 mt-2">Tip: click the thumbnail or use buttons to set primary, replace, or delete.</p>
         </div>
 
-        <!-- Description (Plus only) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Full Property Description</label>
           <textarea id="description" rows="6" placeholder="Enter full property description" class="w-full border p-2 rounded"></textarea>
           <p id="descGateNote" class="lock-note mt-1 hidden">Upgrade to Listed Property Plus to enable Description.</p>
         </div>
 
-        <!-- Banner / Preferred Area / Pin Area -->
         <div>
           <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
           <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
@@ -152,7 +144,7 @@
           <p id="pinGateNote" class="lock-note mt-1 hidden">Purchase Pin Placement to enable this field.</p>
         </div>
 
-        <!-- Listed agent confirms (you) -->
+        <!-- Agent contact (auto-populate) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-semibold mb-1">Listing Brokerage</label>
@@ -174,14 +166,12 @@
 
         <div class="pt-2 flex items-center gap-2">
           <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
-          <a href="/listing.html" class="bg-green-600 text-white px-4 py-2 rounded">Preview Full Listing Detail</a>
+          <a id="previewBtn" href="/listing.html" class="bg-green-600 text-white px-4 py-2 rounded">Preview Full Listing Detail</a>
         </div>
       </form>
     </section>
 
-    <!-- RIGHT: Promo + Upgrades -->
     <aside class="space-y-4">
-      <!-- Promo card -->
       <section class="bg-white rounded shadow p-5">
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold">September Free Promo</h2>
@@ -196,7 +186,6 @@
         <p id="promoNote" class="text-xs text-gray-500 mt-2"></p>
       </section>
 
-      <!-- Upgrades box -->
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrades</h2>
         <p class="text-sm text-gray-600">Agent can turn on upgrades here. Free pricing applies if September Promo is active.</p>
@@ -222,7 +211,6 @@
     const now = new Date();
     const isSept2025 = (now.getFullYear() === 2025 && now.getMonth() === 8);
 
-    // checkoutData baseline
     const checkoutData = getJSON("checkoutData", null) || {
       plan,
       base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
@@ -236,7 +224,7 @@
     const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
 
     $("planPill").textContent = plan;
-    $("payerBadge").textContent = ""; 
+    $("payerBadge").textContent = "";
 
     $("fullAddress").value = formData.address || "";
     $("status").value = agentListing.status || "";
@@ -246,6 +234,7 @@
     const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
     $("commission").value = commission; $("commissionType").value = commissionType;
 
+    // Property facts
     $("bedrooms").value     = agentListing.bedrooms ?? "";
     $("bathrooms").value    = agentListing.bathrooms ?? "";
     $("sqft").value         = agentListing.sqft ?? "";
@@ -254,13 +243,25 @@
     $("propertyType").value = agentListing.propertyType ?? "";
     $("apn").value          = formData.apn || agentListing.apn || "";
 
+    // Auto-populate agent contact at the bottom (email + phone) from account if empty
+    (function autoAgentContact(){
+      const email = (localStorage.getItem('loggedInEmail') || '').trim().toLowerCase();
+      const accounts = (function(){ try { return JSON.parse(localStorage.getItem('accounts')||'{}'); } catch { return {}; }})();
+      const acct = accounts[email] || {};
+      if (!agentListing.agentEmail && email) $("agentEmail").value = email;
+      else $("agentEmail").value = agentListing.agentEmail || "";
+      if (!agentListing.agentPhone && acct.phone) $("agentPhone").value = acct.phone;
+      else $("agentPhone").value = agentListing.agentPhone || "";
+      $("brokerage").value  = formData.brokerage || agentListing.brokerage || "";
+      $("agentName").value  = formData.agent || agentListing.agentName || "";
+    })();
+
     // Photos
     const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
     let primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
     const maxPhotos = isPlus ? 20 : 1;
     $("photoHelp").textContent = isPlus ? "You can upload up to 20 photos." : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
 
-    // REPLACED: renderThumbs with replace/delete/swap
     function renderThumbs() {
       const grid = $("photoGrid");
       grid.innerHTML = "";
@@ -331,31 +332,19 @@
       saveDraft(); renderThumbs(); e.target.value = "";
     });
 
-    // Description gate
     $("description").value = agentListing.description ?? "";
     if (!isPlus) { $("description").classList.add("dimmed"); $("description").setAttribute("disabled","disabled"); $("descGateNote").classList.remove("hidden"); }
 
-    // Banner gate
     $("bannerText").value = agentListing.bannerText ?? "";
     if (!checkoutData.upgrades.banner) { $("bannerText").classList.add("dimmed"); $("bannerText").setAttribute("disabled","disabled"); $("bannerGateNote").classList.remove("hidden"); }
 
-    // Preferred area (premium)
     $("preferredArea").value = agentListing.preferredArea ?? checkoutData.meta.preferredArea ?? flags.preferredArea ?? "";
     if (!checkoutData.upgrades.premium && !checkoutData.upgrades.pin) { $("preferredArea").classList.add("dimmed"); $("preferredArea").setAttribute("disabled","disabled"); $("premiumGateNote").classList.remove("hidden"); }
 
-    // Pin area
     $("pinArea").value = agentListing.pinArea ?? checkoutData.meta.pinArea ?? flags.pinArea ?? "";
     if (!checkoutData.upgrades.pin) { $("pinArea").classList.add("dimmed"); $("pinArea").setAttribute("disabled","disabled"); $("pinGateNote").classList.remove("hidden"); }
 
-    // Agent info
-    $("brokerage").value  = formData.brokerage || agentListing.brokerage || "";
-    $("agentName").value  = formData.agent || agentListing.agentName || "";
-    $("agentEmail").value = agentListing.agentEmail || "";
-    $("agentPhone").value = formData.agentPhone || agentListing.agentPhone || "";
-
-    // Save listeners
-    [
-      "status","price","description","bannerText","preferredArea","pinArea","brokerage","agentName","agentEmail","agentPhone","apn",
+    ["status","price","description","bannerText","preferredArea","pinArea","brokerage","agentName","agentEmail","agentPhone","apn",
       "bedrooms","bathrooms","sqft","yearBuilt","lotSize","propertyType"
     ].forEach(id=>{
       const el = $(id); if (!el) return;
@@ -391,7 +380,6 @@
 
     $("saveBtn").addEventListener("click", () => { saveDraft(); alert("Saved."); });
 
-    // ------------ September Free Promo ------------
     const promoBadge = $("promoBadge");
     const applyPromoBtn = $("applyPromoBtn");
     const promoNote = $("promoNote");
@@ -422,7 +410,6 @@
     applyPromoBtn.addEventListener("click", applySeptemberFree);
     paintPromoState();
 
-    // ---------- upgrades panel ----------
     function row(label, price, key, opts={}) {
       const checked = !!checkoutData.upgrades[key];
       const paid = opts.paid === true;
@@ -445,7 +432,6 @@
       const box = $("upgradesBox");
       const isBasic = plan === "Listed Property Basic";
 
-      // September 2025 Agent Promo (UI ONLY for PLUS)
       let displayPlusPrice = (checkoutData.prices && typeof checkoutData.prices.plus === "number") ? checkoutData.prices.plus : 20;
       let plusNote = "";
       try {
@@ -510,6 +496,13 @@
     });
 
     $("goCheckoutBtn").addEventListener("click", () => { window.location.href = "/checkout.html"; });
+
+    // Preview button should pass ?id=
+    (function wirePreview(){
+      const a = document.getElementById('previewBtn');
+      const id = localStorage.getItem('lastListingId') || '';
+      if (id) a.href = `/listing.html?id=${encodeURIComponent(id)}`;
+    })();
   </script>
 
   <!-- Firestore SAVE TO SERVER for agent -->
@@ -537,7 +530,8 @@
           status: payload.status || "Active",
           brokerage: payload.brokerage || form.brokerage || "",
           agentName: payload.agentName || form.agent || "",
-          agentPhone: payload.agentPhone || form.agentPhone || ""
+          agentPhone: payload.agentPhone || form.agentPhone || "",
+          agentEmail: payload.agentEmail || (localStorage.getItem('loggedInEmail') || '')
         };
         await updateDoc(doc(db, "listings", listingId), update);
         alert("Saved to server.");
