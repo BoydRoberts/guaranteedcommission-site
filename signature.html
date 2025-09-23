@@ -37,6 +37,7 @@
       <a id="viewPrintable" href="/printable-isc.html" class="bg-gray-600 text-white px-4 py-2 rounded">
         Sign / View
       </a>
+
       <button id="btnContinue" class="bg-green-600 text-white px-6 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed" disabled>
         Sign / Continue
       </button>
@@ -44,17 +45,22 @@
   </div>
 
   <script>
-    // --- helpers ---
+    // OPTIONAL guard: if a listing agent somehow lands here, bounce them
+    if ((localStorage.getItem('userRole') || '') === 'listing_agent') {
+      location.replace('/agent-detail.html');
+    }
+
     function getJSON(k, fb){ try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } }
 
-    // Per-listing context
     const url = new URL(location.href);
     const listingId = url.searchParams.get('id') || localStorage.getItem('lastListingId') || '';
-    const FD_KEY  = listingId ? `formData:${listingId}` : 'formData';
+    const FD_KEY = listingId ? `formData:${listingId}` : 'formData';
     const SIG_KEY = listingId ? `signedISC:${listingId}` : 'signedISC';
 
-    // Fill date
     document.getElementById("date").textContent = new Date().toLocaleDateString();
+
+    const formData = getJSON(FD_KEY, getJSON('formData', {}));
+    const planType = ((localStorage.getItem("postSignatureOptions") || (localStorage.getItem("selectedPlan")||"")).toLowerCase().includes("fsbo")) ? "fsbo" : "listed";
 
     // Link printable with same id
     (function linkPrintable(){
@@ -62,27 +68,24 @@
       a.href = listingId ? `/printable-isc.html?id=${encodeURIComponent(listingId)}` : `/printable-isc.html`;
     })();
 
-    // Build ISC body from existing localStorage (unchanged wording)
     (function fillISC() {
-      const data = getJSON(FD_KEY, getJSON('formData', {}));
-      const planType = (localStorage.getItem("postSignatureOptions") || (localStorage.getItem("selectedPlan")||"")).toLowerCase().includes("fsbo") ? "fsbo" : "listed";
-      const commissionType = data.commissionType || "%";
-      const commission = data.commission || "";
-      const fullAddress = data.address || "";
+      const commissionType = formData.commissionType || "%";
+      const commission = formData.commission || "";
+      const fullAddress = formData.address || "";
       const shortAddress = fullAddress.split(",")[0] || "[short address]";
-      const apn = data.apn || "[APN]";
-      const name = data.name || "[name]";
-      const agentPhone = data.agentPhone || data.phone || "[agent phone]";
-      const brokerage = data.brokerage || "[listing brokerage]";
-      const agent = data.agent || "[listing agent]";
-      const agentEmail = data.agentEmail || "[agent email]";
+      const apn = formData.apn || "[APN]";
+      const name = formData.name || "[name]";
+      const agentPhone = formData.agentPhone || formData.phone || "[agent phone]";
+      const brokerage = formData.brokerage || "[listing brokerage]";
+      const agent = formData.agent || "[listing agent]";
+      const agentEmail = formData.agentEmail || "[agent email]";
       const suffix = commissionType === "%" ? " of the total purchase price" : "";
       const commissionDisplay = commissionType === "$" ? `$${commission}` : `${commission}%`;
 
       let text = `To the escrow holder/closing agent,\n\n`;
 
       if (planType === "fsbo") {
-        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by owner (Me). My phone number is ${agentPhone}. My email address is ${data.fsboEmail || "[owner/seller email]"}.\n\n`;
+        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by owner (Me). My phone number is ${agentPhone}. My email address is ${formData.fsboEmail || "[owner/seller email]"}.\n\n`;
         text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${suffix}.`;
       } else {
         text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by ${brokerage}, ${agent}, listing agent, ${agentPhone}, ${agentEmail}.\n\n`;
@@ -92,7 +95,6 @@
       document.getElementById("iscText").textContent = text;
     })();
 
-    // Enforce signature name match with Box-2 seller name; store per listing
     (function enforceSignatureMatch(){
       const sigInput = document.getElementById('signature');
       const btn = document.getElementById('btnContinue');
@@ -134,7 +136,7 @@
         const signature = (sigInput.value || '').trim();
         if (!signature) return;
         const payload = { name: signature, date: new Date().toISOString().slice(0,10) };
-        localStorage.setItem(SIG_KEY, JSON.stringify(payload)); // per-listing signature
+        localStorage.setItem(SIG_KEY, JSON.stringify(payload));   // per-listing signature
 
         const isFSBO = (localStorage.getItem("selectedPlan")||"").includes("FSBO");
         window.location.href = isFSBO ? "/seller-detail.html" : "/agent-invite.html";
