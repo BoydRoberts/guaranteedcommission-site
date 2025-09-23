@@ -235,32 +235,26 @@
       else $('localProLink').classList.add('hidden');
     });
 
-    // Prefill (FSBO-only email/phone). For Basic/Plus: **do not prefill createEmail**
+    // Prefill
     (function prefill() {
       const fd = safeJSON(localStorage.getItem('formData')) || {};
       const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
 
-      // Name (if present)
       if (fd.name) $('c_name').value = fd.name;
 
-      // Email rules:
-      // FSBO → prefill from fsboEmail; Basic/Plus → leave blank (seller must type).
       if (plan.includes('FSBO') && fd.fsboEmail) {
         $('c_email').value = fd.fsboEmail;
       } else {
         $('c_email').value = '';
       }
 
-      // Sign-in convenience prefill (harmless)
       const last = localStorage.getItem('loggedInEmail') || '';
       if (last) $('email').value = last;
 
-      // Phone FSBO-only
       if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
         $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
 
-      // *** NEW: Force default to Create tab when arriving from Box 2 or via ?tab=create ***
       const url = new URL(location.href);
       const tabParam = (url.searchParams.get('tab') || '').toLowerCase();
       if (localStorage.getItem('nextAfterLogin') || tabParam === 'create') {
@@ -329,14 +323,19 @@
       const acct = accounts[email];
       if (!acct) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); return; }
       if (acct.password !== password) { setStatus('Invalid email or password.'); return; }
+
       localStorage.setItem('isLoggedIn','true');
       localStorage.setItem('loggedInEmail', email);
       if (acct.role) localStorage.setItem('userRole', acct.role);
 
-      if (!localStorage.getItem('verificationCode')) {
-        const code = String(Math.floor(100000 + Math.random()*900000));
-        localStorage.setItem('verificationCode', code);
-        localStorage.setItem('verifyTarget', email);
+      // Always create/refresh verification code
+      const code = String(Math.floor(100000 + Math.random()*900000));
+      localStorage.setItem('verificationCode', code);
+      localStorage.setItem('verifyTarget', email);
+
+      // 🔧 Route agents to Welcome after verification; others keep their normal flow
+      if ((acct.role || '') === 'listing_agent') {
+        localStorage.setItem('nextAfterLogin', '/welcome.html');
       }
 
       const next = localStorage.getItem('nextAfterLogin');
@@ -372,6 +371,11 @@
       const code = String(Math.floor(100000 + Math.random()*900000));
       localStorage.setItem('verificationCode', code);
       localStorage.setItem('verifyTarget', email);
+
+      // 🔧 New accounts: if agent, land at Welcome after verification
+      if (role === 'listing_agent') {
+        localStorage.setItem('nextAfterLogin', '/welcome.html');
+      }
 
       const next = localStorage.getItem('nextAfterLogin');
       if (next) { window.location.href = next; return; }
