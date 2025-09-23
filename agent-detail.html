@@ -70,7 +70,6 @@
         </div>
 
         <!-- Zillow-style basics: Beds / Baths / Sqft / Year Built / Lot Size / Property Type -->
-        <!-- Zillow-style basics -->
         <div>
           <label class="block text-sm font-semibold mb-1">Property Facts</label>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -112,7 +111,6 @@
           </div>
         </div>
 
-        <!-- APN / Parcel (kept) -->
         <!-- APN / Parcel -->
         <div>
           <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
@@ -124,8 +122,8 @@
           <label class="block text-sm font-semibold mb-1">Photos</label>
           <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
           <input id="photoInput" type="file" accept="image/*" multiple class="block">
-          <div id="photoGrid" class="flex flex-wrap gap-2 mt-3"></div>
-          <p class="text-xs text-gray-500 mt-2">Tip: click a thumbnail to set it as the primary photo.</p>
+          <div id="photoGrid" class="flex flex-col gap-2 mt-3"></div>
+          <p class="text-xs text-gray-500 mt-2">Tip: click the thumbnail or use buttons to set primary, replace, or delete.</p>
         </div>
 
         <!-- Description (Plus only) -->
@@ -135,7 +133,6 @@
           <p id="descGateNote" class="lock-note mt-1 hidden">Upgrade to Listed Property Plus to enable Description.</p>
         </div>
 
-        <!-- Banner / Preferred Area (Premium) / Pin Area -->
         <!-- Banner / Preferred Area / Pin Area -->
         <div>
           <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
@@ -182,7 +179,6 @@
       </form>
     </section>
 
-    <!-- RIGHT: Upgrades + September Free Promo -->
     <!-- RIGHT: Promo + Upgrades -->
     <aside class="space-y-4">
       <!-- Promo card -->
@@ -200,8 +196,7 @@
         <p id="promoNote" class="text-xs text-gray-500 mt-2"></p>
       </section>
 
-      <!-- Upgrades box (respects free pricing when promo applied) -->
-      <!-- Upgrades (agent can pay) -->
+      <!-- Upgrades box -->
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrades</h2>
         <p class="text-sm text-gray-600">Agent can turn on upgrades here. Free pricing applies if September Promo is active.</p>
@@ -225,7 +220,7 @@
     const formData = getJSON("formData", {});
     const agentListing = getJSON("agentListing", {});
     const now = new Date();
-    const isSept2025 = (now.getFullYear() === 2025 && now.getMonth() === 8); // September = 8 (zero-based)
+    const isSept2025 = (now.getFullYear() === 2025 && now.getMonth() === 8);
 
     // checkoutData baseline
     const checkoutData = getJSON("checkoutData", null) || {
@@ -240,11 +235,9 @@
     const flags = getJSON("intakeFollowups", {});
     const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
 
-    // Header pills
     $("planPill").textContent = plan;
-    $("payerBadge").textContent = checkoutData.payer === "agent" ? "You are paying for upgrades on this screen." : "";
+    $("payerBadge").textContent = ""; 
 
-    // Prefill basics
     $("fullAddress").value = formData.address || "";
     $("status").value = agentListing.status || "";
     $("price").value = agentListing.price ?? "";
@@ -253,7 +246,6 @@
     const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
     $("commission").value = commission; $("commissionType").value = commissionType;
 
-    // Property facts
     $("bedrooms").value     = agentListing.bedrooms ?? "";
     $("bathrooms").value    = agentListing.bathrooms ?? "";
     $("sqft").value         = agentListing.sqft ?? "";
@@ -268,16 +260,62 @@
     const maxPhotos = isPlus ? 20 : 1;
     $("photoHelp").textContent = isPlus ? "You can upload up to 20 photos." : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
 
+    // REPLACED: renderThumbs with replace/delete/swap
     function renderThumbs() {
       const grid = $("photoGrid");
       grid.innerHTML = "";
       (photos || []).forEach((src, idx) => {
+        const row = document.createElement("div");
+        row.className = "flex items-center gap-3";
+
         const img = new Image();
         img.src = src; img.alt = "Photo " + (idx + 1);
         img.className = "thumb border " + (idx === primaryIndex ? "border-green-500" : "border-gray-300");
         img.title = (idx === primaryIndex) ? "Primary photo" : "Click to set as primary";
         img.addEventListener("click", () => { primaryIndex = idx; saveDraft(); renderThumbs(); });
-        grid.appendChild(img);
+
+        const btns = document.createElement("div");
+        btns.className = "flex items-center gap-2 text-xs";
+
+        const bPrimary = document.createElement("button");
+        bPrimary.type = "button";
+        bPrimary.className = "px-2 py-1 border rounded";
+        bPrimary.textContent = "Set Primary";
+        bPrimary.onclick = () => { primaryIndex = idx; saveDraft(); renderThumbs(); };
+
+        const bReplace = document.createElement("button");
+        bReplace.type = "button";
+        bReplace.className = "px-2 py-1 border rounded";
+        bReplace.textContent = "Replace";
+        bReplace.onclick = () => {
+          const input = document.createElement("input");
+          input.type = "file"; input.accept = "image/*";
+          input.onchange = async (e) => {
+            const file = e.target.files?.[0]; if (!file) return;
+            const r = new FileReader();
+            r.onload = () => { photos[idx] = r.result; saveDraft(); renderThumbs(); };
+            r.readAsDataURL(file);
+          };
+          input.click();
+        };
+
+        const bDelete = document.createElement("button");
+        bDelete.type = "button";
+        bDelete.className = "px-2 py-1 border rounded";
+        bDelete.textContent = "Delete";
+        bDelete.onclick = () => {
+          photos.splice(idx, 1);
+          if (primaryIndex >= photos.length) primaryIndex = Math.max(0, photos.length - 1);
+          saveDraft(); renderThumbs();
+        };
+
+        btns.appendChild(bPrimary);
+        btns.appendChild(bReplace);
+        btns.appendChild(bDelete);
+
+        row.appendChild(img);
+        row.appendChild(btns);
+        grid.appendChild(row);
       });
     }
     renderThumbs();
@@ -371,7 +409,6 @@
     }
 
     function applySeptemberFree() {
-      // Set zero prices for these three and mark meta flag; preserve Plus/fsbo defaults
       checkoutData.prices.banner = 0;
       checkoutData.prices.premium = 0;
       checkoutData.prices.pin = 0;
@@ -379,15 +416,13 @@
       checkoutData.meta.septemberAgentFree = true;
       setJSON("checkoutData", checkoutData);
       alert("September Free applied. Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.");
-      paintUpgrades(); // repaint price labels
       paintUpgrades();
     }
 
     applyPromoBtn.addEventListener("click", applySeptemberFree);
     paintPromoState();
 
-    // ------------ Upgrades panel ------------
-    // ---------- upgrades panel (agent pays) ----------
+    // ---------- upgrades panel ----------
     function row(label, price, key, opts={}) {
       const checked = !!checkoutData.upgrades[key];
       const paid = opts.paid === true;
@@ -410,8 +445,7 @@
       const box = $("upgradesBox");
       const isBasic = plan === "Listed Property Basic";
 
-      // ---------- September 2025 Agent Promo (UI ONLY for PLUS) ----------
-      // If payer is agent AND month is September 2025, show Plus = $0 with a small promo note.
+      // September 2025 Agent Promo (UI ONLY for PLUS)
       let displayPlusPrice = (checkoutData.prices && typeof checkoutData.prices.plus === "number") ? checkoutData.prices.plus : 20;
       let plusNote = "";
       try {
@@ -419,10 +453,7 @@
           displayPlusPrice = 0;
           plusNote = "September promo — free for agents";
         }
-      } catch (e) {
-        /* keep default */
-      }
-      // -----------------------------------------------------------
+      } catch (e) {}
 
       const p = checkoutData.prices || {};
       const html = [
@@ -454,7 +485,6 @@
             checkoutData.upgrades.confidential = checked;
           }
           setJSON("checkoutData", checkoutData);
-          // Enable typing into gated fields when selected
           if (k === "banner") {
             $("bannerText").disabled = !checked && !isPlus;
             $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
@@ -480,11 +510,45 @@
     });
 
     $("goCheckoutBtn").addEventListener("click", () => { window.location.href = "/checkout.html"; });
-    // >>> ONE-LINE GUARD ADDED HERE <<<
-    $("goCheckoutBtn").addEventListener("click", () => {
-      checkoutData.payer = "agent";            // ensure agent payer for redirect after Stripe
-      setJSON("checkoutData", checkoutData);   // persist before navigation
-      window.location.href = "/checkout.html";
+  </script>
+
+  <!-- Firestore SAVE TO SERVER for agent -->
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    async function saveToFirestoreAgent() {
+      try {
+        const listingId = localStorage.getItem("lastListingId");
+        if (!listingId) { alert("No listing ID found for this session."); return; }
+        const payload = JSON.parse(localStorage.getItem("agentListing") || "{}");
+        const form = JSON.parse(localStorage.getItem("formData") || "{}");
+
+        const update = {
+          updatedAt: serverTimestamp(),
+          price: payload.price ?? "",
+          bedrooms: payload.bedrooms ?? "",
+          bathrooms: payload.bathrooms ?? "",
+          sqft: payload.sqft ?? "",
+          propertyType: payload.propertyType ?? "",
+          bannerText: payload.bannerText ?? "",
+          photos: Array.isArray(payload.photos) ? payload.photos.slice(0, 20) : [],
+          primaryIndex: (typeof payload.primaryIndex === "number" ? payload.primaryIndex : 0),
+          status: payload.status || "Active",
+          brokerage: payload.brokerage || form.brokerage || "",
+          agentName: payload.agentName || form.agent || "",
+          agentPhone: payload.agentPhone || form.agentPhone || ""
+        };
+        await updateDoc(doc(db, "listings", listingId), update);
+        alert("Saved to server.");
+      } catch (e) {
+        console.warn("[agent-detail] update failed", e);
+        alert("Could not save to server. Saved locally.");
+      }
+    }
+
+    document.getElementById("saveBtn")?.addEventListener("click", async () => {
+      try { await saveToFirestoreAgent(); } catch {}
     });
   </script>
 </body>
