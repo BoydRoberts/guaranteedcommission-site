@@ -37,7 +37,6 @@
       <a id="viewPrintable" href="/printable-isc.html" class="bg-gray-600 text-white px-4 py-2 rounded">
         Sign / View
       </a>
-
       <button id="btnContinue" class="bg-green-600 text-white px-6 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed" disabled>
         Sign / Continue
       </button>
@@ -45,16 +44,17 @@
   </div>
 
   <script>
-    // OPTIONAL guard: if a listing agent somehow lands here, bounce them
+    // Hard guard: agents cannot sign for sellers
     if ((localStorage.getItem('userRole') || '') === 'listing_agent') {
       location.replace('/agent-detail.html');
     }
 
     function getJSON(k, fb){ try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } }
 
+    // Per-listing context
     const url = new URL(location.href);
     const listingId = url.searchParams.get('id') || localStorage.getItem('lastListingId') || '';
-    const FD_KEY = listingId ? `formData:${listingId}` : 'formData';
+    const FD_KEY  = listingId ? `formData:${listingId}` : 'formData';
     const SIG_KEY = listingId ? `signedISC:${listingId}` : 'signedISC';
 
     document.getElementById("date").textContent = new Date().toLocaleDateString();
@@ -68,6 +68,7 @@
       a.href = listingId ? `/printable-isc.html?id=${encodeURIComponent(listingId)}` : `/printable-isc.html`;
     })();
 
+    // Build ISC body from namespaced/generic localStorage
     (function fillISC() {
       const commissionType = formData.commissionType || "%";
       const commission = formData.commission || "";
@@ -95,12 +96,12 @@
       document.getElementById("iscText").textContent = text;
     })();
 
+    // Enforce signature name match with Box-2 seller name; store per listing
     (function enforceSignatureMatch(){
       const sigInput = document.getElementById('signature');
       const btn = document.getElementById('btnContinue');
       const help = document.getElementById('sigHelp');
 
-      const formData = getJSON(FD_KEY, getJSON('formData', {}));
       const expected = (formData && typeof formData.name === 'string') ? formData.name.trim() : '';
 
       function check() {
@@ -136,7 +137,7 @@
         const signature = (sigInput.value || '').trim();
         if (!signature) return;
         const payload = { name: signature, date: new Date().toISOString().slice(0,10) };
-        localStorage.setItem(SIG_KEY, JSON.stringify(payload));   // per-listing signature
+        localStorage.setItem(SIG_KEY, JSON.stringify(payload)); // per-listing signature
 
         const isFSBO = (localStorage.getItem("selectedPlan")||"").includes("FSBO");
         window.location.href = isFSBO ? "/seller-detail.html" : "/agent-invite.html";
