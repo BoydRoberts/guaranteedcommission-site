@@ -85,9 +85,13 @@
       <form id="createForm" class="space-y-4 hidden" autocomplete="off" aria-labelledby="tab-create">
         <div>
           <label for="c_name" class="block text-sm font-medium text-gray-700">Full Name</label>
-          <input id="c_name" type="text" required
-                 class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                 placeholder="First Last" />
+          <div class="relative mt-1">
+            <input id="c_name" type="text" required
+                   class="w-full border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="First Last" />
+            <button type="button" id="toggleName"
+                    class="hidden absolute inset-y-0 right-0 px-3 text-sm text-blue-600 hover:underline select-none">Show</button>
+          </div>
         </div>
 
         <div>
@@ -117,6 +121,7 @@
             </button>
           </div>
 
+          <!-- Strength -->
           <div class="mt-2">
             <div class="h-2 w-full bg-gray-200 rounded" aria-hidden="true">
               <div id="strengthBar" class="h-2 w-0 rounded"></div>
@@ -175,14 +180,16 @@
         We never sell your data. Used only for escrow &amp; identification.
       </p>
 
+      <!-- Debug toggle -->
       <button id="dbgToggle" class="absolute top-2 right-2 text-[11px] px-2 py-1 rounded border">Debug</button>
       <pre id="dbgPanel" class="hidden mt-2 text-[11px] bg-gray-50 border rounded p-2 whitespace-pre-wrap break-all"></pre>
     </div>
   </main>
 
   <script>
-    console.log('[login] secure access build 2025-08-14b + welcome redirect');
+    console.log('[login] secure access build 2025-08-14b');
 
+    // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
     const statusBox = $('status');
     const safeJSON = (s)=>{ try { return JSON.parse(s); } catch { return null; } };
@@ -203,6 +210,7 @@
     }
     function isValidPhone(s){ return onlyDigits(s).length === 10; }
 
+    // Tabs
     const tabSignin = $('tab-signin');
     const tabCreate = $('tab-create');
     const loginForm = $('loginForm');
@@ -224,31 +232,47 @@
     $('goCreate')?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
     $('goSignin')?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
 
+    // Role link toggle
     $('createRole')?.addEventListener('change', (e)=>{
       const v = e.target.value;
       if (v==='listing_agent' || v==='buyers_agent') $('localProLink').classList.remove('hidden');
       else $('localProLink').classList.add('hidden');
     });
 
+    // Prefill (FSBO-only email/phone). For Basic/Plus: **do not prefill createEmail**
     (function prefill() {
       const fd = safeJSON(localStorage.getItem('formData')) || {};
       const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+
+      // Name (if present)
       if (fd.name) $('c_name').value = fd.name;
 
-      if (plan.includes('FSBO') && fd.fsboEmail) $('c_email').value = fd.fsboEmail;
-      else $('c_email').value = '';
+      // Email rules:
+      // FSBO → prefill from fsboEmail; Basic/Plus → leave blank (seller must type).
+      if (plan.includes('FSBO') && fd.fsboEmail) {
+        $('c_email').value = fd.fsboEmail;
+      } else {
+        $('c_email').value = '';
+      }
 
+      // Sign-in convenience prefill (harmless)
       const last = localStorage.getItem('loggedInEmail') || '';
       if (last) $('email').value = last;
 
+      // Phone FSBO-only
       if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
         $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
+
+      // *** Force default to Create tab when arriving from Box 2 or ?tab=create ***
       const url = new URL(location.href);
       const tabParam = (url.searchParams.get('tab') || '').toLowerCase();
-      if (localStorage.getItem('nextAfterLogin') || tabParam === 'create') showCreate();
+      if (localStorage.getItem('nextAfterLogin') || tabParam === 'create') {
+        showCreate();
+      }
     })();
 
+    // Show/Hide toggles
     function wireToggle(inputId, btnId) {
       const input = $(inputId);
       const btn = $(btnId);
@@ -265,6 +289,7 @@
     wireToggle('c_password','togglePwdC1');
     wireToggle('c_password2','togglePwdC2');
 
+    // Strength + match
     function scorePassword(p) {
       let s=0; if (!p) return 0;
       if (p.length>=10) s++; if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++;
@@ -285,25 +310,19 @@
     $('c_password')?.addEventListener('input', updateStrength);
     $('c_password2')?.addEventListener('input', updateStrength);
 
+    // Phone mask (create)
     $('c_phone')?.addEventListener('input', () => {
       const el = $('c_phone');
+      const cur = el.selectionStart;
       const before = el.value;
       el.value = formatPhone(before);
+      el.selectionStart = el.selectionEnd = Math.min(cur + (el.value.length - before.length), el.value.length);
     });
 
+    // Local accounts (demo in-browser)
     const ACC_KEY='accounts';
     const getAccounts = ()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
     const saveAccounts = (obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
-
-    // Route helper: default to Welcome; agents always go to Welcome
-    function routeAfterAuth() {
-      const role = (localStorage.getItem('userRole') || '').trim();
-      const next = localStorage.getItem('nextAfterLogin');
-      // Clear any stale "nextAfterLogin" that sent users into upsell/verify flows previously
-      localStorage.removeItem('nextAfterLogin');
-      if (role === 'listing_agent') return '/welcome.html';
-      return next || '/welcome.html';
-    }
 
     // Sign In
     $('loginForm').addEventListener('submit', (e) => {
@@ -318,8 +337,22 @@
       localStorage.setItem('loggedInEmail', email);
       if (acct.role) localStorage.setItem('userRole', acct.role);
 
-      // Agent & everyone else: go to Welcome, not Upsell/Signature
-      window.location.href = routeAfterAuth();
+      // If no origin flag, assume header login (so verify → Welcome)
+      if (!localStorage.getItem('loginOrigin')) {
+        localStorage.setItem('loginOrigin','header');
+      }
+
+      if (!localStorage.getItem('verificationCode')) {
+        const code = String(Math.floor(100000 + Math.random()*900000));
+        localStorage.setItem('verificationCode', code);
+        localStorage.setItem('verifyTarget', email);
+      }
+
+      const next = localStorage.getItem('nextAfterLogin');
+      if (next) { window.location.href = next; return; }
+
+      // Default destination → verify
+      window.location.href = '/verify-code.html';
     });
 
     // Create Account
@@ -344,10 +377,24 @@
       localStorage.setItem('loggedInEmail', email);
       localStorage.setItem('userRole', role);
 
-      // Everyone: go to Welcome
-      window.location.href = routeAfterAuth();
+      // If no origin flag, assume header login (so verify → Welcome)
+      if (!localStorage.getItem('loginOrigin')) {
+        localStorage.setItem('loginOrigin','header');
+      }
+
+      // Send code (simulated) + verify handoff
+      const code = String(Math.floor(100000 + Math.random()*900000));
+      localStorage.setItem('verificationCode', code);
+      localStorage.setItem('verifyTarget', email);
+
+      const next = localStorage.getItem('nextAfterLogin');
+      if (next) { window.location.href = next; return; }
+
+      // Default destination → verify
+      window.location.href = '/verify-code.html';
     });
 
+    // Debug panel
     $('dbgToggle').addEventListener('click', () => {
       const fd = safeJSON(localStorage.getItem('formData'));
       const dump = {
@@ -355,7 +402,10 @@
         selectedPlan: localStorage.getItem('selectedPlan'),
         loggedInEmail: localStorage.getItem('loggedInEmail'),
         userRole: localStorage.getItem('userRole'),
-        nextAfterLogin: localStorage.getItem('nextAfterLogin')
+        verificationCode: localStorage.getItem('verificationCode'),
+        verifyTarget: localStorage.getItem('verifyTarget'),
+        nextAfterLogin: localStorage.getItem('nextAfterLogin'),
+        loginOrigin: localStorage.getItem('loginOrigin')
       };
       const p = $('dbgPanel');
       p.classList.toggle('hidden');
