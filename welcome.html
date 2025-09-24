@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Welcome | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .card { background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); padding:1rem 1.25rem; }
+    .hint { font-size:12px; color:#6b7280; }
+    .row { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+    .hidden { display:none; }
+    .minw { min-width: 18rem; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
   <header class="bg-white shadow">
@@ -16,217 +23,320 @@
   </header>
 
   <main class="max-w-4xl mx-auto px-4 py-6">
-    <section class="bg-white rounded-2xl shadow p-6">
-      <h2 class="text-xl font-bold mb-1">Hi <span id="who"></span></h2>
-      <p class="text-sm text-gray-600 mb-4">Choose what you’d like to do next.</p>
+    <section class="card">
+      <h2 class="text-xl font-bold mb-1">Hi <span id="who">there</span></h2>
+      <p class="text-sm text-gray-600 mb-4">What would you like to do?</p>
 
-      <!-- Seller -->
-      <div id="sellerBox" class="hidden space-y-4">
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Enter a new listing</h3>
-          <div class="flex items-center gap-2">
-            <label class="text-sm">Plan</label>
-            <select id="sellerNewPlan" class="border rounded px-2 py-1 text-sm">
-              <option>Listed Property Basic</option>
-              <option>Listed Property Plus</option>
-              <option>FSBO Plus</option>
-            </select>
-            <button id="sellerNewGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Continue</button>
-          </div>
-        </div>
+      <!-- UNIVERSAL SELECTOR (we swap options based on role) -->
+      <div class="row mb-3">
+        <select id="actionSelect" class="border rounded px-3 py-2 text-sm minw">
+          <option value="">Select…</option>
+        </select>
 
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Edit a current listing</h3>
-          <div id="sellerEditRow" class="flex items-center gap-2">
-            <select id="sellerListings" class="border rounded px-2 py-1 text-sm"></select>
-            <button id="sellerEditGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</button>
-          </div>
-          <p id="sellerNoListings" class="hidden text-sm text-gray-700">
-            You do not have any current listings.
-            <button id="sellerCreateFromEmpty" class="underline text-blue-600">Enter a new listing?</button>
-          </p>
-        </div>
-
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Search commissions / create auto-email search</h3>
-          <button id="sellerSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
-        </div>
-
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Search Local Professionals by ZIP</h3>
-          <button id="sellerProsGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Local Professionals</button>
-        </div>
+        <!-- Continue button appears after a valid choice -->
+        <button id="continueBtn" class="px-4 py-2 rounded bg-blue-600 text-white text-sm hidden">
+          Continue
+        </button>
       </div>
 
-      <!-- Listing Agent -->
-      <div id="lagentBox" class="hidden space-y-4">
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Work on a listing</h3>
-          <p class="text-xs text-gray-600 mb-2">Select the property you want to edit.</p>
-          <div class="flex items-center gap-2">
-            <select id="agentListings" class="border rounded px-2 py-1 text-sm min-w-[18rem]">
-              <option value="">Loading your listings…</option>
-            </select>
-            <button id="agentEditGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</button>
-          </div>
-          <p id="agentNoListings" class="hidden text-sm text-gray-700 mt-2">No editable listings yet.</p>
-        </div>
-
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Become a Local Professional</h3>
-          <button id="agentProApply" class="px-3 py-2 rounded bg-amber-600 text-white text-sm">Apply</button>
-        </div>
-
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Search commissions / create auto-email search</h3>
-          <button id="agentSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
-        </div>
+      <!-- SELLER: plan picker appears when they choose "enter & sign" -->
+      <div id="sellerPlanRow" class="row hidden mb-3">
+        <label class="text-sm font-semibold">Choose your plan:</label>
+        <select id="sellerPlan" class="border rounded px-3 py-2 text-sm">
+          <option>Listed Property Basic</option>
+          <option>Listed Property Plus</option>
+          <option>FSBO Plus</option>
+        </select>
+        <span class="hint">You’ll go to the communication form (Box 2) with this plan selected.</span>
       </div>
 
-      <!-- Buyer’s Agent -->
-      <div id="bagentBox" class="hidden space-y-4">
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Become a Local Professional</h3>
-          <button id="bAgentProApply" class="px-3 py-2 rounded bg-amber-600 text-white text-sm">Apply</button>
-        </div>
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Create a new automatic search</h3>
-          <button id="bAgentSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
-        </div>
+      <!-- SELLER: listing dropdown (Firestore + local fallback) -->
+      <div id="sellerListRow" class="row hidden mb-3">
+        <label class="text-sm font-semibold">Select your listing:</label>
+        <select id="sellerListings" class="border rounded px-3 py-2 text-sm minw">
+          <option value="">Loading your listings…</option>
+        </select>
+        <span id="sellerNoListings" class="hint hidden">No listings found yet for your account.</span>
       </div>
 
-      <!-- Buyer -->
-      <div id="buyerBox" class="hidden space-y-4">
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Search Local Professionals by ZIP</h3>
-          <button id="buyerProsGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Local Professionals</button>
-        </div>
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Search commissions / create auto-email search</h3>
-          <button id="buyerSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
-        </div>
+      <!-- AGENT: listing dropdown (Firestore by agentEmail) -->
+      <div id="agentListRow" class="row hidden mb-3">
+        <label class="text-sm font-semibold">Select your listing:</label>
+        <select id="agentListings" class="border rounded px-3 py-2 text-sm minw">
+          <option value="">Loading your listings…</option>
+        </select>
+        <span id="agentNoListings" class="hint hidden">No listings found yet for your account.</span>
       </div>
 
-      <!-- Other -->
-      <div id="otherBox" class="hidden space-y-4">
-        <div class="border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Search commissions</h3>
-          <button id="otherSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
-        </div>
-      </div>
-
+      <!-- Small tips based on action -->
+      <p id="tip" class="hint hidden mt-2"></p>
     </section>
   </main>
 
   <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
-  <script>
-    const $ = (id) => document.getElementById(id);
-    const role = localStorage.getItem('userRole') || '';
-    const email = localStorage.getItem('loggedInEmail') || '';
-    $('who').textContent = email || 'there';
-
-    function openBox(id){ $(id).classList.remove('hidden'); }
-
-    if (role === 'seller') openBox('sellerBox');
-    else if (role === 'listing_agent') openBox('lagentBox');
-    else if (role === 'buyers_agent') openBox('bagentBox');
-    else if (role === 'buyer') openBox('buyerBox');
-    else openBox('otherBox');
-
-    // Seller: new listing plan
-    $('sellerNewGo')?.addEventListener('click', ()=>{
-      const plan = $('sellerNewPlan').value;
-      localStorage.setItem('selectedPlan', plan);
-      location.href = '/index.html#strip2Search';
-    });
-
-    // Seller: edit listing dropdown
-    (function(){
-      const list = JSON.parse(localStorage.getItem('sellerListings')||'[]');
-      const sel = $('sellerListings');
-      if (!sel) return;
-      if (!list.length) {
-        $('sellerEditRow').classList.add('hidden');
-        $('sellerNoListings').classList.remove('hidden');
-        $('sellerCreateFromEmpty').addEventListener('click', ()=> $('sellerNewGo').click());
-        return;
-      }
-      list.forEach(item=>{
-        const opt = document.createElement('option');
-        opt.value = item.address; opt.textContent = item.address;
-        sel.appendChild(opt);
-      });
-      $('sellerEditGo').addEventListener('click', ()=> location.href = '/seller-detail.html');
-    })();
-
-    // Shared
-    $('sellerSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
-    $('sellerProsGo')?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=search');
-
-    $('agentProApply')?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
-    $('agentSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
-
-    $('bAgentProApply')?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
-    $('bAgentSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
-
-    $('buyerProsGo')?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=search');
-    $('buyerSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
-
-    $('otherSearchGo')?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
-  </script>
-
-  <!-- Firestore-backed agent listings -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    import { collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      collection, query, where, orderBy, getDocs
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    (async function loadAgentListings(){
-      const role = localStorage.getItem('userRole') || '';
-      const email = (localStorage.getItem('loggedInEmail') || '').trim().toLowerCase();
-      if (role !== 'listing_agent' || !email) return;
+    // ------- helpers -------
+    const $ = (id) => document.getElementById(id);
+    const role = (localStorage.getItem('userRole') || '').trim();              // seller | listing_agent | buyers_agent | buyer | other
+    const email = (localStorage.getItem('loggedInEmail') || '').trim().toLowerCase();
+    const cameFrom = (localStorage.getItem('loginOrigin') || '').trim();       // 'box2' | 'header' | ''
 
-      const sel = document.getElementById('agentListings');
-      const empty = document.getElementById('agentNoListings');
+    // paint who
+    if (email) $('who').textContent = email;
+
+    // universal action mapping by role
+    const ACTIONS = {
+      seller: [
+        { v:"seller_enter_sign", t:"Enter a listing and sign an Irrevocable Seller Communication" },
+        { v:"seller_edit",       t:"Edit a current listing" },
+        { v:"search",            t:"Search guaranteed commissions" },
+        { v:"autosave",          t:"Set up an automatic guaranteed commission email search" }
+      ],
+      listing_agent: [
+        { v:"agent_edit",        t:"Edit a current listing" },
+        { v:"search",            t:"Search guaranteed commissions" },
+        { v:"autosave",          t:"Set up an automatic guaranteed commission email search" },
+        { v:"localpro",          t:"Become a Local Professional" }
+      ],
+      buyers_agent: [
+        { v:"search",            t:"Search guaranteed commissions" },
+        { v:"autosave",          t:"Set up an automatic guaranteed commission email search" },
+        { v:"localpro",          t:"Become a Local Professional" }
+      ],
+      buyer: [
+        { v:"search",            t:"Search guaranteed commissions" },
+        { v:"autosave",          t:"Set up an automatic guaranteed commission email search" }
+      ],
+      other: [
+        { v:"search",            t:"Search guaranteed commissions" },
+        { v:"autosave",          t:"Set up an automatic guaranteed commission email search" }
+      ]
+    };
+
+    // populate role-specific options
+    (function paintOptions(){
+      const sel = $('actionSelect');
+      const list = ACTIONS[role || 'other'] || ACTIONS.other;
+      sel.innerHTML = '<option value="">Select…</option>' + list.map(a => `<option value="${a.v}">${a.t}</option>`).join('');
+    })();
+
+    // show/hide helpers
+    function show(id, on=true){ const el=$(id); if(!el) return; el.classList.toggle('hidden', !on); }
+    function setTip(msg){ const el=$('tip'); if(!msg){ show('tip', false); return; } el.textContent = msg; show('tip', true); }
+
+    // Load seller listings from Firestore (by ownerEmail). Fallback to local list if none.
+    async function loadSellerListings(){
+      const sel = $('sellerListings');
+      const none = $('sellerNoListings');
+      sel.innerHTML = `<option value="">Loading your listings…</option>`;
+
+      let items = [];
       try {
-        const q = query(
-          collection(db, "listings"),
-          where("agentEmail", "==", email),
-          orderBy("updatedAt", "desc")
-        );
-        const snap = await getDocs(q);
-        const items = [];
-        snap.forEach(docu => {
-          const d = docu.data() || {};
-          items.push({ id: docu.id, address: d.address || "[address]", status: d.status || "Draft" });
-        });
+        // Primary: FSBO path uses ownerEmail; some "listed" flows may not have ownerEmail saved.
+        const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), orderBy("updatedAt", "desc"));
+        const snap1 = await getDocs(q1);
+        snap1.forEach(doc => items.push({ id: doc.id, address: (doc.data().address || "[address]"), status: (doc.data().status || "Draft") }));
 
-        sel.innerHTML = "";
+        // If none found, fallback to any local remembered seller listings (best-effort)
         if (!items.length) {
-          empty.classList.remove("hidden");
-          const opt = document.createElement("option");
-          opt.value = ""; opt.textContent = "No listings yet";
-          sel.appendChild(opt);
-        } else {
-          items.forEach(it => {
-            const opt = document.createElement("option");
-            opt.value = it.id;
-            opt.textContent = `${it.address} (${it.status})`;
-            sel.appendChild(opt);
-          });
+          const local = JSON.parse(localStorage.getItem('sellerListings') || '[]');
+          // local entries are { address }, we can't resolve IDs—so take them to seller-detail to continue
+          if (local.length) {
+            items = local.map((x, i) => ({ id: `local-${i}`, address: x.address || "[address]", status: "Local" }));
+          }
         }
+      } catch (e) {
+        console.warn("[welcome] seller listings lookup failed:", e);
+      }
 
-        document.getElementById('agentEditGo')?.addEventListener('click', () => {
-          const id = sel.value;
-          if (!id) { alert("Select a listing first."); return; }
-          localStorage.setItem("lastListingId", id);
-          window.location.href = "/agent-detail.html";
+      sel.innerHTML = "";
+      if (!items.length) {
+        none.classList.remove('hidden');
+        const opt = document.createElement('option');
+        opt.value = ""; opt.textContent = "No listings found";
+        sel.appendChild(opt);
+      } else {
+        none.classList.add('hidden');
+        items.forEach(it => {
+          const opt = document.createElement('option');
+          opt.value = it.id;
+          opt.textContent = `${it.address} (${it.status})`;
+          opt.setAttribute('data-address', it.address);
+          sel.appendChild(opt);
+        });
+      }
+    }
+
+    // Load agent listings from Firestore by agentEmail
+    async function loadAgentListings(){
+      const sel = $('agentListings');
+      const none = $('agentNoListings');
+      sel.innerHTML = `<option value="">Loading your listings…</option>`;
+
+      let items = [];
+      try {
+        const q = query(collection(db, "listings"), where("agentEmail", "==", email), orderBy("updatedAt", "desc"));
+        const snap = await getDocs(q);
+        snap.forEach(doc => {
+          const d = doc.data() || {};
+          items.push({ id: doc.id, address: d.address || "[address]", status: d.status || "Draft" });
         });
       } catch (e) {
-        console.warn("[welcome] loadAgentListings failed", e);
+        console.warn("[welcome] agent listings lookup failed:", e);
       }
-    })();
+
+      sel.innerHTML = "";
+      if (!items.length) {
+        none.classList.remove('hidden');
+        const opt = document.createElement('option');
+        opt.value = ""; opt.textContent = "No listings found";
+        sel.appendChild(opt);
+      } else {
+        none.classList.add('hidden');
+        items.forEach(it => {
+          const opt = document.createElement('option');
+          opt.value = it.id;
+          opt.textContent = `${it.address} (${it.status})`;
+          sel.appendChild(opt);
+        });
+      }
+    }
+
+    // Action selection behavior
+    $('actionSelect').addEventListener('change', async (e) => {
+      const v = e.target.value;
+
+      // reset sub-rows
+      show('sellerPlanRow', false);
+      show('sellerListRow', false);
+      show('agentListRow', false);
+      setTip('');
+      show('continueBtn', !!v);
+
+      if (role === 'seller') {
+        if (v === 'seller_enter_sign') {
+          show('sellerPlanRow', true);
+          setTip('You’ll go to the communication form (Box 2) with your chosen plan.');
+        } else if (v === 'seller_edit') {
+          show('sellerListRow', true);
+          setTip('Pick a listing to edit. If none appears, you may need to start a new one.');
+          await loadSellerListings();
+        } else if (v === 'search') {
+          setTip('You’ll be taken to the homepage search (Strip 2).');
+        } else if (v === 'autosave') {
+          setTip('You’ll go to search. After results, you can opt into email alerts (login required).');
+        }
+      } else if (role === 'listing_agent') {
+        if (v === 'agent_edit') {
+          show('agentListRow', true);
+          setTip('Pick the listing you want to edit.');
+          await loadAgentListings();
+        } else if (v === 'search') {
+          setTip('You’ll be taken to the homepage search (Strip 2).');
+        } else if (v === 'autosave') {
+          setTip('You’ll go to search. After results, you can opt into email alerts (login required).');
+        } else if (v === 'localpro') {
+          setTip('You’ll go to the Local Professionals signup.');
+        }
+      } else {
+        // buyers_agent / buyer / other
+        if (v === 'search') {
+          setTip('You’ll be taken to the homepage search (Strip 2).');
+        } else if (v === 'autosave') {
+          setTip('You’ll go to search. After results, you can opt into email alerts (login required).');
+        } else if (v === 'localpro') {
+          setTip('You’ll go to the Local Professionals signup.');
+        }
+      }
+    });
+
+    // Continue button
+    $('continueBtn').addEventListener('click', () => {
+      const choice = $('actionSelect').value;
+
+      // SELLER routes
+      if (role === 'seller') {
+        if (choice === 'seller_enter_sign') {
+          // Plan → Box 2 on index.html
+          const plan = $('sellerPlan').value || 'Listed Property Basic';
+          localStorage.setItem('selectedPlan', plan);
+          // mark that this navigation comes from header (not Box 2 flow),
+          // but since we're intentionally sending to Box 2 now, we can clear any previous origin
+          localStorage.setItem('loginOrigin','header');
+          location.href = '/index.html#strip2Search';  // Box 2 is in Strip 1; landing at home is fine
+          return;
+        }
+        if (choice === 'seller_edit') {
+          const sel = $('sellerListings');
+          const id = sel?.value || '';
+          const address = sel?.selectedOptions?.[0]?.getAttribute('data-address') || '';
+          if (!id) { alert('Please select a listing.'); return; }
+          // If this came from Firestore we have an id; if from local fallback we don’t — still send to seller-detail to finish
+          if (id.startsWith('local-')) {
+            if (address) localStorage.setItem('shortAddress', address.split(',')[0] || address);
+            location.href = '/seller-detail.html';
+          } else {
+            localStorage.setItem('lastListingId', id);
+            location.href = '/seller-detail.html';
+          }
+          return;
+        }
+        if (choice === 'search') {
+          location.href = '/index.html#strip2Search';
+          return;
+        }
+        if (choice === 'autosave') {
+          // opens search with filters panel and prompt banner
+          location.href = '/search.html?open=filters&prompt=save';
+          return;
+        }
+      }
+
+      // AGENT routes
+      if (role === 'listing_agent') {
+        if (choice === 'agent_edit') {
+          const sel = $('agentListings');
+          const id = sel?.value || '';
+          if (!id) { alert('Please select a listing.'); return; }
+          localStorage.setItem('lastListingId', id);
+          location.href = '/agent-detail.html';
+          return;
+        }
+        if (choice === 'search') {
+          location.href = '/index.html#strip2Search';
+          return;
+        }
+        if (choice === 'autosave') {
+          location.href = '/search.html?open=filters&prompt=save';
+          return;
+        }
+        if (choice === 'localpro') {
+          location.href = '/local-professionals.html?mode=apply';
+          return;
+        }
+      }
+
+      // BUYER'S AGENT / BUYER / OTHER routes
+      if (choice === 'search') {
+        location.href = '/index.html#strip2Search';
+        return;
+      }
+      if (choice === 'autosave') {
+        location.href = '/search.html?open=filters&prompt=save';
+        return;
+      }
+      if (choice === 'localpro') {
+        location.href = '/local-professionals.html?mode=apply';
+        return;
+      }
+    });
   </script>
 </body>
 </html>
