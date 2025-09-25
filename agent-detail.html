@@ -12,7 +12,7 @@
     .pill { font-size: 11px; padding: 2px 6px; border-radius: 9999px; background:#eef2ff; color:#3730a3; }
   </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-900">
 
   <div class="max-w-6xl mx-auto mt-8 px-3">
     <div class="flex items-start justify-between">
@@ -35,11 +35,13 @@
       <hr class="my-4"/>
 
       <form id="agentForm" class="space-y-5" autocomplete="off">
+        <!-- Address (read-only) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Full Property Address</label>
           <input id="fullAddress" class="w-full border p-2 rounded bg-gray-50" type="text" readonly>
         </div>
 
+        <!-- Status (required) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
           <select id="status" class="w-full border p-2 rounded" required>
@@ -50,6 +52,7 @@
           </select>
         </div>
 
+        <!-- Price & Commission (commission locked) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
@@ -66,6 +69,7 @@
           </div>
         </div>
 
+        <!-- Property Facts -->
         <div>
           <label class="block text-sm font-semibold mb-1">Property Facts</label>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -107,11 +111,13 @@
           </div>
         </div>
 
+        <!-- APN / Parcel -->
         <div>
           <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
           <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
         </div>
 
+        <!-- Photos -->
         <div>
           <label class="block text-sm font-semibold mb-1">Photos</label>
           <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
@@ -120,12 +126,14 @@
           <p class="text-xs text-gray-500 mt-2">Tip: click the thumbnail or use buttons to set primary, replace, or delete.</p>
         </div>
 
+        <!-- Description (Plus only) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Full Property Description</label>
           <textarea id="description" rows="6" placeholder="Enter full property description" class="w-full border p-2 rounded"></textarea>
           <p id="descGateNote" class="lock-note mt-1 hidden">Upgrade to Listed Property Plus to enable Description.</p>
         </div>
 
+        <!-- Banner / Preferred Area / Pin Area -->
         <div>
           <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
           <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
@@ -134,17 +142,17 @@
 
         <div>
           <label class="block text-sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
-          <input id="preferredArea" placeholder="e.g., Laguna Beach, Top of the World" class="w-full border p-2 rounded">
+          <input id="preferredArea" placeholder="e.g., Newport Beach, Harbor View Homes" class="w-full border p-2 rounded">
           <p id="premiumGateNote" class="lock-note mt-1 hidden">Purchase Premium Placement to enable this field.</p>
         </div>
 
         <div>
           <label class="block text-sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
-          <input id="pinArea" placeholder="e.g., Laguna Beach, Village" class="w-full border p-2 rounded">
+          <input id="pinArea" placeholder="e.g., Newport Beach, Eastbluff" class="w-full border p-2 rounded">
           <p id="pinGateNote" class="lock-note mt-1 hidden">Purchase Pin Placement to enable this field.</p>
         </div>
 
-        <!-- Agent contact (auto-populate) -->
+        <!-- Agent confirms -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-semibold mb-1">Listing Brokerage</label>
@@ -166,34 +174,39 @@
 
         <div class="pt-2 flex items-center gap-2">
           <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
-          <a id="previewBtn" href="/listing.html" class="bg-green-600 text-white px-4 py-2 rounded">Preview Full Listing Detail</a>
+          <a href="/listing.html" class="bg-green-600 text-white px-4 py-2 rounded">Preview Full Listing Detail</a>
+          <button id="goCheckoutBtn" type="button" class="px-3 py-2 rounded border">Go to Checkout</button>
         </div>
       </form>
     </section>
 
+    <!-- RIGHT: Promo + Upgrades -->
     <aside class="space-y-4">
+      <!-- October Free Promo (works in Sept & Oct 2025) -->
       <section class="bg-white rounded shadow p-5">
         <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold">September Free Promo</h2>
+          <h2 class="text-lg font-semibold">October Free Promo</h2>
           <span id="promoBadge" class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">Inactive</span>
         </div>
         <p class="text-sm text-gray-600 mt-2">
-          Listing agents can upgrade <strong>Banner</strong>, <strong>Premium</strong>, and <strong>Pin</strong> for <strong>FREE</strong> during September 2025.
+          Listing agents can upgrade <strong>Banner</strong>, <strong>Premium</strong>, and <strong>Pin</strong> for <strong>FREE</strong> during October 2025
+          (promo also active during September to support early rollout).
         </p>
         <button id="applyPromoBtn" class="mt-3 w-full bg-blue-600 text-white px-3 py-2 rounded disabled:opacity-50">
-          Apply September Free Upgrades
+          Apply October Free Upgrades
         </button>
         <p id="promoNote" class="text-xs text-gray-500 mt-2"></p>
       </section>
 
+      <!-- Upgrades (agent pays) -->
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrades</h2>
-        <p class="text-sm text-gray-600">Agent can turn on upgrades here. Free pricing applies if September Promo is active.</p>
+        <p class="text-sm text-gray-600">Agent can turn on upgrades here. Free pricing applies if October Promo is active (and during September).</p>
         <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
 
         <div class="mt-4 flex items-center gap-2">
           <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
-          <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
+          <button id="goCheckoutBtn2" class="px-3 py-2 rounded border">Go to Checkout</button>
         </div>
         <p class="text-xs text-gray-500 mt-2">Purchases are final. Paid items show “paid by agent.”</p>
       </section>
@@ -209,8 +222,11 @@
     const formData = getJSON("formData", {});
     const agentListing = getJSON("agentListing", {});
     const now = new Date();
-    const isSept2025 = (now.getFullYear() === 2025 && now.getMonth() === 8);
+    // PROMO ACTIVE in September (8) and October (9) 2025
+    const promoActiveWindow = (y, m) => (y === 2025 && (m === 8 || m === 9));
+    const isSeptOrOct2025 = promoActiveWindow(now.getFullYear(), now.getMonth());
 
+    // checkoutData baseline (payer=agent to enable promo)
     const checkoutData = getJSON("checkoutData", null) || {
       plan,
       base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
@@ -223,9 +239,11 @@
     const flags = getJSON("intakeFollowups", {});
     const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
 
+    // Header pills
     $("planPill").textContent = plan;
     $("payerBadge").textContent = "";
 
+    // Prefill basics
     $("fullAddress").value = formData.address || "";
     $("status").value = agentListing.status || "";
     $("price").value = agentListing.price ?? "";
@@ -243,25 +261,13 @@
     $("propertyType").value = agentListing.propertyType ?? "";
     $("apn").value          = formData.apn || agentListing.apn || "";
 
-    // Auto-populate agent contact at the bottom (email + phone) from account if empty
-    (function autoAgentContact(){
-      const email = (localStorage.getItem('loggedInEmail') || '').trim().toLowerCase();
-      const accounts = (function(){ try { return JSON.parse(localStorage.getItem('accounts')||'{}'); } catch { return {}; }})();
-      const acct = accounts[email] || {};
-      if (!agentListing.agentEmail && email) $("agentEmail").value = email;
-      else $("agentEmail").value = agentListing.agentEmail || "";
-      if (!agentListing.agentPhone && acct.phone) $("agentPhone").value = acct.phone;
-      else $("agentPhone").value = agentListing.agentPhone || "";
-      $("brokerage").value  = formData.brokerage || agentListing.brokerage || "";
-      $("agentName").value  = formData.agent || agentListing.agentName || "";
-    })();
-
     // Photos
     const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
     let primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
     const maxPhotos = isPlus ? 20 : 1;
     $("photoHelp").textContent = isPlus ? "You can upload up to 20 photos." : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
 
+    // Render thumbs with primary/replace/delete
     function renderThumbs() {
       const grid = $("photoGrid");
       grid.innerHTML = "";
@@ -325,26 +331,77 @@
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
       let spaceLeft = maxPhotos - (photos.length || 0);
-      if (spaceLeft <= 0) { alert(`You have reached the photo limit for your plan (${maxPhotos}).`); e.target.value = ""; return; }
+      if (spaceLeft <= 0) {
+        alert(`You have reached the photo limit for your plan (${maxPhotos}).`);
+        e.target.value = "";
+        return;
+      }
       const toRead = files.slice(0, spaceLeft);
-      const readAsDataURL = (file) => new Promise((res, rej) => { const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); });
-      for (const f of toRead) { try { photos.push(await readAsDataURL(f)); } catch(e){} }
-      saveDraft(); renderThumbs(); e.target.value = "";
+      const readAsDataURL = (file) => new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      for (const f of toRead) {
+        try {
+          const dataUrl = await readAsDataURL(f);
+          photos.push(dataUrl);
+        } catch(e) { console.error(e); }
+      }
+      saveDraft();
+      renderThumbs();
+      e.target.value = "";
     });
 
+    // Description gate
     $("description").value = agentListing.description ?? "";
-    if (!isPlus) { $("description").classList.add("dimmed"); $("description").setAttribute("disabled","disabled"); $("descGateNote").classList.remove("hidden"); }
+    if (!isPlus) {
+      $("description").classList.add("dimmed");
+      $("description").setAttribute("disabled","disabled");
+      $("descGateNote").classList.remove("hidden");
+    }
 
+    // Banner field (requires banner upgrade)
     $("bannerText").value = agentListing.bannerText ?? "";
-    if (!checkoutData.upgrades.banner) { $("bannerText").classList.add("dimmed"); $("bannerText").setAttribute("disabled","disabled"); $("bannerGateNote").classList.remove("hidden"); }
+    if (!checkoutData.upgrades.banner) {
+      $("bannerText").classList.add("dimmed");
+      $("bannerText").setAttribute("disabled","disabled");
+      $("bannerGateNote").classList.remove("hidden");
+    }
 
-    $("preferredArea").value = agentListing.preferredArea ?? checkoutData.meta.preferredArea ?? flags.preferredArea ?? "";
-    if (!checkoutData.upgrades.premium && !checkoutData.upgrades.pin) { $("preferredArea").classList.add("dimmed"); $("preferredArea").setAttribute("disabled","disabled"); $("premiumGateNote").classList.remove("hidden"); }
+    // Preferred area (requires premium)
+    $("preferredArea").value = agentListing.preferredArea
+      ?? checkoutData.meta.preferredArea
+      ?? flags.preferredArea
+      ?? "";
+    if (!checkoutData.upgrades.premium && !checkoutData.upgrades.pin) {
+      $("preferredArea").classList.add("dimmed");
+      $("preferredArea").setAttribute("disabled","disabled");
+      $("premiumGateNote").classList.remove("hidden");
+    }
 
-    $("pinArea").value = agentListing.pinArea ?? checkoutData.meta.pinArea ?? flags.pinArea ?? "";
-    if (!checkoutData.upgrades.pin) { $("pinArea").classList.add("dimmed"); $("pinArea").setAttribute("disabled","disabled"); $("pinGateNote").classList.remove("hidden"); }
+    // Pin area (requires pin)
+    $("pinArea").value = agentListing.pinArea
+      ?? checkoutData.meta.pinArea
+      ?? flags.pinArea
+      ?? "";
+    if (!checkoutData.upgrades.pin) {
+      $("pinArea").classList.add("dimmed");
+      $("pinArea").setAttribute("disabled","disabled");
+      $("pinGateNote").classList.remove("hidden");
+    }
 
-    ["status","price","description","bannerText","preferredArea","pinArea","brokerage","agentName","agentEmail","agentPhone","apn",
+    // Agent info
+    $("brokerage").value  = formData.brokerage || agentListing.brokerage || "";
+    $("agentName").value  = formData.agent || agentListing.agentName || "";
+    $("agentEmail").value = agentListing.agentEmail || "";
+    $("agentPhone").value = formData.agentPhone || agentListing.agentPhone || "";
+
+    // Save listeners
+    [
+      "status","price","description","bannerText","preferredArea","pinArea",
+      "brokerage","agentName","agentEmail","agentPhone","apn",
       "bedrooms","bathrooms","sqft","yearBuilt","lotSize","propertyType"
     ].forEach(id=>{
       const el = $(id); if (!el) return;
@@ -380,76 +437,61 @@
 
     $("saveBtn").addEventListener("click", () => { saveDraft(); alert("Saved."); });
 
+    // ---------- October Free Promo (active in Sept & Oct when payer=agent) ----------
     const promoBadge = $("promoBadge");
     const applyPromoBtn = $("applyPromoBtn");
     const promoNote = $("promoNote");
 
     function paintPromoState() {
-      const active = isSept2025 && checkoutData.payer === "agent";
+      const active = (checkoutData.payer === "agent") && isSeptOrOct2025;
       promoBadge.textContent = active ? "Active" : "Inactive";
       promoBadge.className = active
         ? "text-xs px-2 py-1 rounded bg-green-100 text-green-800"
         : "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700";
       applyPromoBtn.disabled = !active;
       promoNote.textContent = active
-        ? "Click to apply free pricing (Banner, Premium, Pin set to $0) for September when paid by agent."
-        : "Promo applies only during September 2025 and only when upgrades are paid by the agent.";
+        ? "Click to apply free pricing (Banner, Premium, Pin set to $0) for October 2025. Promo is also live in September."
+        : "Promo applies during October 2025 (and is enabled in September 2025 for early rollout) when upgrades are paid by the agent.";
     }
 
-    function applySeptemberFree() {
+    function applyFreePromo() {
       checkoutData.prices.banner = 0;
       checkoutData.prices.premium = 0;
       checkoutData.prices.pin = 0;
       checkoutData.meta = checkoutData.meta || {};
-      checkoutData.meta.septemberAgentFree = true;
+      checkoutData.meta.octoberAgentFree = true;
       setJSON("checkoutData", checkoutData);
-      alert("September Free applied. Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.");
-      paintUpgrades();
+      alert("October Free applied. Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.");
+      paintUpgrades(); // repaint price labels
     }
 
-    applyPromoBtn.addEventListener("click", applySeptemberFree);
+    applyPromoBtn.addEventListener("click", applyFreePromo);
     paintPromoState();
 
+    // ---------- upgrades panel ----------
     function row(label, price, key, opts={}) {
       const checked = !!checkoutData.upgrades[key];
-      const paid = opts.paid === true;
       const priceLabel = (price === 0) ? "FREE" : `$${price}`;
-      const extraNote = opts.note ? `<span class="text-indigo-700 ml-2">${opts.note}</span>` : "";
-      const note = paid ? `<span class="text-green-700 ml-2">(paid by agent)</span>` : extraNote;
+      const note = opts.note ? `<span class="text-indigo-700 ml-2">${opts.note}</span>` : "";
       return `
-        <label class="flex items-center justify-between border rounded-lg px-3 py-2 ${paid?'bg-gray-50':''}">
+        <label class="flex items-center justify-between border rounded-lg px-3 py-2">
           <div>
             <span class="font-medium">${label}</span>
             <span class="text-gray-500"> — ${priceLabel}</span>
             ${note}
           </div>
-          <input type="checkbox" data-key="${key}" class="h-4 w-4" ${checked?'checked':''} ${paid?'disabled':''}/>
+          <input type="checkbox" data-key="${key}" class="h-4 w-4" ${checked?'checked':''}/>
         </label>
       `;
     }
 
     function paintUpgrades() {
       const box = $("upgradesBox");
-      const isBasic = plan === "Listed Property Basic";
-
-      let displayPlusPrice = (checkoutData.prices && typeof checkoutData.prices.plus === "number") ? checkoutData.prices.plus : 20;
-      let plusNote = "";
-      try {
-        if (checkoutData.payer === "agent" && isSept2025) {
-          displayPlusPrice = 0;
-          plusNote = "September promo — free for agents";
-        }
-      } catch (e) {}
-
       const p = checkoutData.prices || {};
       const html = [
-        isBasic || checkoutData.upgrades.upgradeToPlus
-          ? row("Upgrade to Listed Property Plus", displayPlusPrice, "upgradeToPlus", {paid:false, note: plusNote})
-          : "",
-        row("Banner", (p.banner ?? 10), "banner", {paid: checkoutData.upgrades.banner}),
-        row("Premium Placement", (p.premium ?? 10), "premium", {paid: checkoutData.upgrades.premium}),
-        row("Pin Placement", (p.pin ?? 50), "pin", {paid: checkoutData.upgrades.pin}),
-        plan.includes("FSBO") ? row("Confidential FSBO Upgrade", (p.confidential ?? 100), "confidential", {paid: checkoutData.upgrades.confidential}) : ""
+        row("Banner", (p.banner ?? 10), "banner"),
+        row("Premium Placement", (p.premium ?? 10), "premium"),
+        row("Pin Placement", (p.pin ?? 50), "pin", { note: "Includes Premium free" })
       ].join("");
       box.innerHTML = html;
 
@@ -457,20 +499,12 @@
         cb.addEventListener("change", (e)=>{
           const k = e.target.getAttribute("data-key");
           const checked = e.target.checked;
-          if (k === "upgradeToPlus") {
-            checkoutData.upgrades.upgradeToPlus = checked;
-            localStorage.setItem("selectedPlan", checked ? "Listed Property Plus" : "Listed Property Basic");
-          } else if (k === "banner") {
-            checkoutData.upgrades.banner = checked;
-          } else if (k === "premium") {
-            checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
-          } else if (k === "pin") {
-            checkoutData.upgrades.pin = checked;
-            if (checked) checkoutData.upgrades.premium = true;
-          } else if (k === "confidential") {
-            checkoutData.upgrades.confidential = checked;
-          }
+          if (k === "banner")      checkoutData.upgrades.banner  = checked;
+          if (k === "premium")     checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
+          if (k === "pin")        {checkoutData.upgrades.pin     = checked; if (checked) checkoutData.upgrades.premium = true;}
           setJSON("checkoutData", checkoutData);
+
+          // Enable typing into gated fields when selected
           if (k === "banner") {
             $("bannerText").disabled = !checked && !isPlus;
             $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
@@ -489,20 +523,15 @@
 
     $("updateUpgradesBtn").addEventListener("click", () => {
       checkoutData.meta.preferredArea = $("preferredArea").value || checkoutData.meta.preferredArea || "";
-      checkoutData.meta.pinArea = $("pinArea").value || checkoutData.meta.pinArea || "";
+      checkoutData.meta.pinArea       = $("pinArea").value       || checkoutData.meta.pinArea       || "";
       checkoutData.payer = "agent";
       setJSON("checkoutData", checkoutData);
       alert("Upgrades updated. Go to Checkout to pay (if needed).");
     });
 
+    // Both buttons route to checkout (kept behavior)
     $("goCheckoutBtn").addEventListener("click", () => { window.location.href = "/checkout.html"; });
-
-    // Preview button should pass ?id=
-    (function wirePreview(){
-      const a = document.getElementById('previewBtn');
-      const id = localStorage.getItem('lastListingId') || '';
-      if (id) a.href = `/listing.html?id=${encodeURIComponent(id)}`;
-    })();
+    $("goCheckoutBtn2").addEventListener("click", () => { window.location.href = "/checkout.html"; });
   </script>
 
   <!-- Firestore SAVE TO SERVER for agent -->
@@ -531,7 +560,7 @@
           brokerage: payload.brokerage || form.brokerage || "",
           agentName: payload.agentName || form.agent || "",
           agentPhone: payload.agentPhone || form.agentPhone || "",
-          agentEmail: payload.agentEmail || (localStorage.getItem('loggedInEmail') || '')
+          agentEmail: payload.agentEmail || form.agentEmail || ""
         };
         await updateDoc(doc(db, "listings", listingId), update);
         alert("Saved to server.");
