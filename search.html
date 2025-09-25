@@ -16,9 +16,9 @@
     .pill button { background:none; border:none; color:#555; font-size:14px; cursor:pointer; line-height:1; }
     details[open] summary svg { transform: rotate(180deg); }
 
-    /* NEW: banner prompt after results */
+    /* Email/alerts banner */
     #saveBanner { display:none; }
-    .banner { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; }
+    .banner { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:8px; }
     .banner .btn { border-radius:8px; padding:.5rem .75rem; font-size:.875rem; }
   </style>
 </head>
@@ -40,7 +40,8 @@
   <section class="bg-white border-y">
     <div class="max-w-7xl mx-auto px-4 py-4">
       <div class="flex flex-col items-center gap-3">
-        <!-- Main query + Saved Searches dropdown + Save button -->
+
+        <!-- Query + Saved dropdown -->
         <div class="w-full md:w-3/4 lg:w-2/3 flex items-center gap-2">
           <input id="qBox" class="border rounded px-3 py-2 w-full" placeholder="City, neighborhood, or ZIP">
           <button id="applyBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Search</button>
@@ -59,6 +60,7 @@
             <span class="font-semibold">Advanced filters</span>
             <svg width="16" height="16" viewBox="0 0 24 24" class="transition"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
           </summary>
+
           <div class="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
             <div>
               <label class="block text-gray-600 mb-1">Min Price ($)</label>
@@ -114,8 +116,8 @@
           </div>
         </details>
 
-        <!-- NEW: Save-search banner (shown after results) -->
-        <div id="saveBanner" class="w-full md:w-3/4 lg:w-2/3 banner rounded-lg p-3 mt-2">
+        <!-- Email/alerts banner -->
+        <div id="saveBanner" class="w-full md:w-3/4 lg:w-2/3 banner p-3 mt-2">
           <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div class="text-sm">
               <strong>Email these results?</strong> We’ll send today’s matches now and alert you when new listings appear.
@@ -150,100 +152,33 @@
     </section>
   </main>
 
-  <!-- Tiles -->
-  <script src="/scripts/tiles.js"></script>
+  <!-- Firebase init -->
+  <script type="module" src="/scripts/firebase-init.js"></script>
 
-  <script>
-    // Mapbox token
-    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
-    if (MAPBOX_TOKEN && mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import {
+      collection, query, orderBy, getDocs, limit
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+    // ===== Helpers =====
     const $ = (id) => document.getElementById(id);
     const getParam = (k) => new URL(location.href).searchParams.get(k);
-    const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+    const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+    const isLoggedIn = () => (localStorage.getItem('isLoggedIn') || '') === 'true';
 
-    // Demo dataset (reuse pattern)
-    function buildDataset(){
-      const formData  = JSON.parse(localStorage.getItem('formData') || '{}');
-      const agentData = JSON.parse(localStorage.getItem('agentListing') || '{}');
-      const selectedPlan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-
-      const list = [];
-      if (formData.address) {
-        list.push({
-          formData,
-          agentData: Object.assign({ status: agentData.status || 'Active', createdAt: agentData.createdAt || Date.now()-3600*1000 }, agentData),
-          plan: selectedPlan
-        });
-      }
-      list.push(
-        {
-          formData:  { address: '237 San Joaquin Street, Laguna Beach, CA 92651', brokerage:'Pacific Estates', agent:'Jordan Crisp', agentPhone:'(949) 555-1212' },
-          agentData: { price:1895000, commission:2.5, commissionType:'%', bedrooms:3, bathrooms:2, sqft:2000, propertyType:'Single Family', bannerText:'Open Sun 1–4', status:'Active',
-                       photos:['https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop'], createdAt: Date.now()-2*3600*1000 },
-          plan: 'Listed Property Plus'
-        },
-        {
-          formData:  { address: '14 Maple Ave, Montclair, NJ 07042', brokerage:'HomeWorks Realty', agent:'A. Brooks', agentPhone:'(973) 555-2121' },
-          agentData: { price:925000, commission:25000, commissionType:'$', bedrooms:4, bathrooms:3, sqft:2400, propertyType:'Townhouse', status:'In Contract',
-                       photos:['https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop'], createdAt: Date.now()-5*3600*1000 },
-          plan: 'Listed Property Basic'
-        },
-        {
-          formData:  { address: '1020 Cedar Dr, Austin, TX 78704' },
-          agentData: { price:650000, commission:3.0, commissionType:'%', bedrooms:3, bathrooms:2, sqft:1680, propertyType:'Condo', bannerText:'Hot Home', status:'Active',
-                       photos:['https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop'], createdAt: Date.now()-24*3600*1000 },
-          plan: 'FSBO Plus'
-        }
-      );
-      return list;
+    function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
+    function commissionDollars(price, val, type){
+      const p=Number(price||0), c=Number(val||0);
+      if(!c) return null;
+      if(type==='$') return Math.round(c);
+      if(p) return Math.round(p*(c/100));
+      return null;
     }
+    function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c])); }
 
-    // Matching with filters
-    function matchesFilters(item, q, f) {
-      const addr = (item.formData?.address || '').toLowerCase();
-      if (q && !addr.includes(q.toLowerCase().trim())) return false;
-
-      const price = Number(item.agentData?.price || 0);
-      if (f.priceMin && price && price < f.priceMin) return false;
-      if (f.priceMax && price && price > f.priceMax) return false;
-
-      const beds = Number(item.agentData?.bedrooms || 0);
-      const baths = Number(item.agentData?.bathrooms || 0);
-      if (f.bedsMin && beds < f.bedsMin) return false;
-      if (f.bathsMin && baths < f.bathsMin) return false;
-
-      if (f.status) {
-        const normalized = (String(item.agentData?.status||'').toLowerCase()==='in_contract') ? 'In Contract' : (item.agentData?.status||'');
-        if (normalized !== f.status) return false;
-      }
-
-      if (f.propType) {
-        const type = String(item.agentData?.propertyType || '').toLowerCase();
-        if (!type || type !== f.propType.toLowerCase()) return false;
-      }
-
-      const commType = item.agentData?.commissionType || item.formData?.commissionType || '%';
-      const commVal = Number(item.agentData?.commission ?? item.formData?.commission ?? 0);
-      if (f.commPctMin) {
-        if (commType === '%' && commVal < f.commPctMin) return false;
-        if (commType === '$') {
-          const p = Number(item.agentData?.price || 0);
-          if (p && (commVal / p * 100) < f.commPctMin) return false;
-        }
-      }
-      if (f.commUsdMin) {
-        if (commType === '$' && commVal < f.commUsdMin) return false;
-        if (commType === '%') {
-          const p = Number(item.agentData?.price || 0);
-          if (p && Math.round(p * (commVal/100)) < f.commUsdMin) return false;
-        }
-      }
-
-      return true;
-    }
-
+    // ===== Filters & pills =====
     function readFiltersFromUI() {
       const val = (id) => (document.getElementById(id)?.value || '').trim();
       const num = (id) => {
@@ -294,36 +229,10 @@
       if (filters.commUsdMin) pill(`$${Number(filters.commUsdMin).toLocaleString()}+ comm`,'commUsdMin');
     }
 
-    // Saved searches
-    function getSavedSearches(){ return getJSON('savedSearches', []); }
-    function setSavedSearches(arr){ setJSON('savedSearches', arr); }
-    function refreshSavedDropdown(){
-      const dd = $("savedSearchesDropdown");
-      dd.innerHTML = `<option value="">Saved Searches</option>`;
-      getSavedSearches().forEach(s=>{
-        const opt = document.createElement('option');
-        opt.value = s.id; opt.textContent = s.name || s.q || 'Search';
-        dd.appendChild(opt);
-      });
-    }
-    function saveCurrentSearch(name, q, filters, opts={}){
-      const arr = getSavedSearches();
-      const record = {
-        id: 'ss_' + Date.now(),
-        name: name || (q || 'Search') + ' #' + (arr.length+1),
-        q, filters,
-        alerts: !!opts.alerts,          // NEW: alerts toggle (true when saving from banner)
-        lastSent: opts.lastSent || null,// NEW: when we sent the initial email (future backend)
-        lastChecked: Date.now()
-      };
-      arr.unshift(record);
-      setSavedSearches(arr);
-      refreshSavedDropdown();
-      $("savedSearchesDropdown").value = record.id;
-      return record;
-    }
+    // ===== Map =====
+    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
+    if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
-    // Map helpers
     let map;
     async function geocodeCenter(q){
       if (!MAPBOX_TOKEN) return null;
@@ -341,8 +250,8 @@
     }
     async function addMarkers(items){
       if (!map) return;
-      for (const item of items.slice(0, 30)) {
-        const addr = item?.formData?.address;
+      for (const item of items.slice(0, 50)) {
+        const addr = (item.address || '').trim();
         if (!addr) continue;
         try {
           const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
@@ -353,17 +262,156 @@
           el.style.width = "10px"; el.style.height = "10px";
           el.style.background = "#dc2626"; el.style.border = "2px solid #fff";
           el.style.borderRadius = "50%"; el.style.boxShadow = "0 1px 2px rgba(0,0,0,.3)";
-          el.title = (addr||'');
+          el.title = addr;
           new mapboxgl.Marker(el).setLngLat(c).addTo(map);
           el.addEventListener("click", () => {
-            const slug = encodeURIComponent(addr);
-            window.location.href = `/listing.html?addr=${slug}`;
+            if (item.id) window.location.href = `/listing.html?id=${encodeURIComponent(item.id)}`;
           });
         } catch {}
       }
     }
 
-    // NEW: show or hide the save banner after results
+    // ===== Firestore fetch (no demo data) =====
+    async function fetchListingsFromFirestore(limitTo=200){
+      const items = [];
+      const q = query(collection(db, "listings"), orderBy("createdAt","desc"), limit(limitTo));
+      const snap = await getDocs(q);
+      snap.forEach(doc => {
+        const d = doc.data() || {};
+        items.push({ id: doc.id, ...d });
+      });
+      return items;
+    }
+
+    // ===== Filtering logic against Firestore docs =====
+    function matchesFilters(doc, qtext, f){
+      const address = (doc.address || '').toLowerCase();
+      if (qtext && !address.includes(qtext.toLowerCase().trim())) return false;
+
+      const price = Number(doc.price || 0);
+      if (f.priceMin && price && price < f.priceMin) return false;
+      if (f.priceMax && price && price > f.priceMax) return false;
+
+      const beds = Number(doc.bedrooms || 0);
+      const baths = Number(doc.bathrooms || 0);
+      if (f.bedsMin && beds < f.bedsMin) return false;
+      if (f.bathsMin && baths < f.bathsMin) return false;
+
+      if (f.status) {
+        const normalized = (String(doc.status||'').toLowerCase()==='in_contract') ? 'In Contract' : (doc.status||'');
+        if (normalized !== f.status) return false;
+      }
+
+      if (f.propType) {
+        const type = String(doc.propertyType || '').toLowerCase();
+        if (!type || type !== f.propType.toLowerCase()) return false;
+      }
+
+      const commType = doc.commissionType || '%';
+      const commVal = Number(doc.commission || 0);
+      if (f.commPctMin) {
+        if (commType === '%' && commVal < f.commPctMin) return false;
+        if (commType === '$') {
+          const p = Number(doc.price || 0);
+          if (p && (commVal / p * 100) < f.commPctMin) return false;
+        }
+      }
+      if (f.commUsdMin) {
+        if (commType === '$' && commVal < f.commUsdMin) return false;
+        if (commType === '%') {
+          const p = Number(doc.price || 0);
+          if (p && Math.round(p * (commVal/100)) < f.commUsdMin) return false;
+        }
+      }
+
+      return true;
+    }
+
+    // ===== Render tiles =====
+    function renderTile(doc){
+      const {
+        id, address="", price, commission, commissionType="%", status="Active",
+        bannerText="", photos=[], primaryIndex=0, brokerage="", agentName="", agentPhone="", plan="Listed Property Basic",
+        bedrooms, bathrooms, sqft, propertyType=""
+      } = doc || {};
+      const calc = commissionDollars(price, commission, commissionType);
+      const left  = fmtUSD(price);
+      const mid   = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
+      const right = (calc!=null) ? `$${calc.toLocaleString()}` : '$—';
+      const img = (Array.isArray(photos) && photos.length) ? photos[primaryIndex||0] : '';
+
+      const card = document.createElement('article');
+      card.className = "gc-tile cursor-pointer";
+      card.onclick = () => { if (id) window.location.href = `/listing.html?id=${encodeURIComponent(id)}`; };
+
+      card.innerHTML = `
+        <div class="relative">
+          <img class="gc-photo" src="${img || ''}" alt="Listing photo">
+          ${bannerText ? `<div class="gc-ribbon">${escapeHTML(bannerText)}</div>` : ``}
+        </div>
+        <div class="p-3 space-y-1">
+          <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
+            <div class="truncate">${left}</div>
+            <div class="truncate text-red-600">Commission ${mid} | ${right}</div>
+          </div>
+          <div class="text-[12px] text-gray-700">
+            ${(bedrooms ?? '—')} bds | ${(bathrooms ?? '—')} ba | ${(sqft ? Number(sqft).toLocaleString() : '—')} sqft${propertyType ? ' | ' + escapeHTML(propertyType) : ''} | ${escapeHTML(status)}
+          </div>
+          <div class="text-sm font-medium">${escapeHTML(address)}</div>
+          <div class="text-[12px] text-gray-600">
+            ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}${agentName ? ' — '+escapeHTML(agentName) : ''}${agentPhone ? ' — '+escapeHTML(agentPhone) : ''}
+          </div>
+        </div>
+      `;
+      return card;
+    }
+
+    function renderTileList(list, container){
+      container.innerHTML = '';
+      if (!list.length) {
+        container.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
+        return;
+      }
+      list.forEach(doc => container.appendChild(renderTile(doc)));
+    }
+
+    // ===== Saved searches (dropdown + manual save) =====
+    function getSavedSearches(){ return getJSON('savedSearches', []); }
+    function setSavedSearches(arr){ setJSON('savedSearches', arr); }
+    function refreshSavedDropdown(){
+      const dd = $("savedSearchesDropdown");
+      dd.innerHTML = `<option value="">Saved Searches</option>`;
+      getSavedSearches().forEach(s=>{
+        const opt = document.createElement('option');
+        opt.value = s.id; opt.textContent = s.name || s.q || 'Search';
+        dd.appendChild(opt);
+      });
+    }
+    function saveCurrentSearch(name, q, filters, opts={}){
+      const email = (localStorage.getItem('loggedInEmail') || '').trim();
+      if (!email && opts.alerts) {
+        // alerts require login
+        $('saveLoginNeeded').classList.remove('hidden');
+        return null;
+      }
+      const arr = getSavedSearches();
+      const record = {
+        id: 'ss_' + Date.now(),
+        name: name || (q || 'Search') + ' #' + (arr.length+1),
+        q, filters,
+        email: email || '',
+        alerts: !!opts.alerts,
+        lastSent: opts.lastSent || null,
+        lastChecked: Date.now()
+      };
+      arr.unshift(record);
+      setSavedSearches(arr);
+      refreshSavedDropdown();
+      $("savedSearchesDropdown").value = record.id;
+      return record;
+    }
+
+    // ===== Email/alerts banner logic =====
     function showSaveBanner(show) {
       const b = $('saveBanner');
       b.style.display = show ? 'block' : 'none';
@@ -372,32 +420,17 @@
         $('saveConfirmed').classList.add('hidden');
       }
     }
-
-    function isLoggedIn() {
-      return (localStorage.getItem('isLoggedIn') || '') === 'true';
-    }
-
-    function composeCurrentSearchRecord() {
+    $('saveYesBtn').addEventListener('click', () => {
       const q = $("qBox").value.trim();
       const filters = readFiltersFromUI();
-      return { q, filters };
-    }
-
-    // Save banner button behavior
-    $('saveYesBtn').addEventListener('click', () => {
-      const { q, filters } = composeCurrentSearchRecord();
-      if (!isLoggedIn()) {
-        $('saveLoginNeeded').classList.remove('hidden');
-        return;
+      const rec = saveCurrentSearch('', q, filters, { alerts: true, lastSent: Date.now() });
+      if (rec) {
+        $('saveConfirmed').classList.remove('hidden');
       }
-      saveCurrentSearch('', q, filters, { alerts: true, lastSent: Date.now() });
-      $('saveConfirmed').classList.remove('hidden');
-      // Keep banner visible but show confirmation
     });
-    $('saveNoBtn').addEventListener('click', () => {
-      showSaveBanner(false);
-    });
+    $('saveNoBtn').addEventListener('click', () => { showSaveBanner(false); });
 
+    // ===== Main boot =====
     (async function boot(){
       const grid = $("grid");
       const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
@@ -409,14 +442,23 @@
       writeFiltersToUI(lastFilters);
       renderPills(lastFilters);
 
-      const dataset = buildDataset();
-
+      // Map
       await initMap(qParam);
-      const filtered = dataset.filter(it => matchesFilters(it, qParam, lastFilters));
-      renderTileList(filtered, grid, { clear: true });
+
+      // Firestore fetch (ONLY real data)
+      let docs = await fetchListingsFromFirestore(200);
+
+      // TEMP HARD GUARD (optional): if you only want "311 Vista Suerte" visible during cleanup
+      // docs = docs.filter(d => String(d.address||'').toLowerCase().includes('311 vista suerte'));
+
+      // Apply UI filters and text query
+      const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
+
+      // Render
+      renderTileList(filtered, grid);
       addMarkers(filtered);
 
-      // NEW: show save banner after results are painted
+      // Show email banner after results
       showSaveBanner(true);
 
       // Search button
@@ -427,29 +469,32 @@
       };
 
       // Filters
-      $("applyFiltersBtn").onclick = () => {
+      $("applyFiltersBtn").onclick = async () => {
         const f = readFiltersFromUI();
         setJSON('lastFilters', f);
-        renderPills(f);
+
+        // Reuse fetched docs (could re-fetch if you add server-side filtering later)
         const q = $("qBox").value.trim();
-        const refiltered = dataset.filter(it => matchesFilters(it, q, f));
+        const refiltered = docs.filter(d => matchesFilters(d, q, f));
         $("qLabel").textContent = q ? `Showing results for “${q}”` : 'Showing all listings';
-        renderTileList(refiltered, grid, { clear: true });
+        renderPills(f);
+        renderTileList(refiltered, grid);
         addMarkers(refiltered);
-        showSaveBanner(true);  // re-show banner after each filter apply
+        showSaveBanner(true);
       };
+
       $("clearFiltersBtn").onclick = () => {
         setJSON('lastFilters', {});
         document.querySelectorAll('#filtersPanel input, #filtersPanel select').forEach(el => el.value = '');
         renderPills({});
         const q = $("qBox").value.trim();
-        const refiltered = dataset.filter(it => matchesFilters(it, q, {}));
-        renderTileList(refiltered, grid, { clear: true });
+        const refiltered = docs.filter(d => matchesFilters(d, q, {}));
+        renderTileList(refiltered, grid);
         addMarkers(refiltered);
         showSaveBanner(true);
       };
 
-      // Save search button (manual, existing behavior—no alerts)
+      // Manual “Save Search” button (no alerts)
       $("saveSearchBtn").onclick = () => {
         const q = $("qBox").value.trim();
         const f = readFiltersFromUI();
@@ -457,7 +502,7 @@
         alert('Search saved.');
       };
 
-      // Saved dropdown switch
+      // Saved searches dropdown
       const dd = $("savedSearchesDropdown");
       dd.onchange = () => {
         const id = dd.value;
@@ -468,14 +513,14 @@
         $("qBox").value = sel.q || '';
         writeFiltersToUI(sel.filters || {});
         renderPills(sel.filters || {});
-        const refiltered = dataset.filter(it => matchesFilters(it, sel.q || '', sel.filters || {}));
+        const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
         $("qLabel").textContent = sel.q ? `Showing results for “${sel.q}”` : 'Showing all listings';
-        renderTileList(refiltered, grid, { clear: true });
+        renderTileList(refiltered, grid);
         addMarkers(refiltered);
         showSaveBanner(true);
       };
 
-      // === NEW: Open filters & prompt save via query params ===
+      // Open filters/prompt via query params
       (function(){
         const u = new URL(location.href);
         if (u.searchParams.get('open') === 'filters') {
@@ -486,7 +531,7 @@
         }
       })();
 
-      // Refresh Saved Searches dropdown on load
+      // Populate saved dropdown on load
       refreshSavedDropdown();
     })();
   </script>
