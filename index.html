@@ -544,8 +544,8 @@
       syncAll();
 
       // ---- Strip 2 tiles + search ----
-      // REPLACED: from local dataset to Firestore-only tiles with ID links
-      buildTilesFromFirestore();
+      buildTilesDataset();
+      renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
       wireSearch();
 
       // Initial fit and on resize
@@ -648,7 +648,7 @@
       window.location.href="/login.html";
     }
 
-    // ---------- Strip 2 helpers (kept) ----------
+    // ---------- Strip 2 helpers ----------
     function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
     function commissionDollars(price, val, type){
       const p=Number(price||0), c=Number(val||0);
@@ -657,78 +657,142 @@
       if(p) return Math.round(p*(c/100));
       return null;
     }
-
-    // ===== NEW: Firestore-only tiles with ID links =====
-    async function buildTilesFromFirestore(){
-      const grid = document.getElementById('tileGrid');
-      const empty = document.getElementById('tilesEmpty');
-      grid.innerHTML = '';
-      const db = window.gc && window.gc.db;
-      if (!db) { empty.classList.remove('hidden'); return; }
-      try {
-        const { getDocs, collection, query, orderBy, limit } =
-          await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-        const q = query(collection(db, "listings"), orderBy("createdAt","desc"), limit(60));
-        const snap = await getDocs(q);
-        const items = [];
-        snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-        if (!items.length) { empty.classList.remove('hidden'); return; }
-        empty.classList.add('hidden');
-        items.forEach(d => grid.appendChild(renderTileFromDoc(d)));
-      } catch(e){
-        console.warn('[tiles] failed to load:', e);
-        empty.classList.remove('hidden');
-      }
-    }
-
-    function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c])); }
-
-    function renderTileFromDoc(doc){
+    function renderTile(data){
       const {
-        id, address="", price, commission, commissionType="%", status="Active",
-        bannerText="", photos=[], primaryIndex=0, brokerage="", agentName="", agentPhone="", plan="Listed Property Basic",
-        bedrooms, bathrooms, sqft, propertyType=""
-      } = doc || {};
-      const calc = commissionDollars(price, commission, commissionType);
-      const left  = fmtUSD(price);
-      const mid   = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
-      const right = (calc!=null) ? `$${calc.toLocaleString()}` : '$—';
-      const img = (Array.isArray(photos) && photos.length) ? photos[primaryIndex||0] : '';
+        address="[full address]",
+        price,
+        commission,
+        commissionType="%",
+        bannerText="",
+        photos=[],
+        primaryIndex=0,
+        status="Active",
+        brokerage="[listing brokerage]",
+        agent="[listing agent]",
+        plan="Listed Property Basic",
+        bedrooms, bathrooms, sqft,
+        propertyType,
+        agentPhone
+      } = data || {};
 
+      const calc = commissionDollars(price, commission, commissionType);
+      const line1Left  = fmtUSD(price);
+      const line1Mid   = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
+      const line1Right = (calc!=null) ? `$${calc.toLocaleString()}` : '—';
+
+      const img = (photos && photos.length ? photos[primaryIndex||0] : "");
+      const typeSeg = propertyType ? ` | ${propertyType}` : '';
       const card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
-      card.onclick = () => { if (id) window.location.href = `/listing.html?id=${encodeURIComponent(id)}`; };
+      card.onclick = () => {
+        const slug = encodeURIComponent(address);
+        window.location.href = `/listing.html?addr=${slug}`;
+      };
 
       card.innerHTML = `
         <div class="relative">
           <img class="gc-photo" src="${img || ''}" alt="Listing photo">
-          ${bannerText ? `<div class="gc-ribbon">${escapeHTML(bannerText)}</div>` : ``}
+          ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ``}
         </div>
         <div class="p-3 space-y-1">
-          <div class="flex items-center justify_between text-[15px] sm:text-[16px] font-semibold">
-            <div class="truncate">${left}</div>
-            <div class="truncate text-red-600">Commission ${mid} | ${right}</div>
+          <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
+            <div class="truncate">${line1Left}</div>
+            <div class="truncate text-red-600">Commission ${line1Mid} | ${line1Right}</div>
           </div>
           <div class="text-[12px] text-gray-700">
-            ${(bedrooms ?? '—')} bds | ${(bathrooms ?? '—')} ba | ${(sqft ? Number(sqft).toLocaleString() : '—')} sqft${propertyType ? ' | ' + escapeHTML(propertyType) : ''} | ${escapeHTML(status)}
+            ${bedrooms ?? '—'} bds | ${bathrooms ?? '—'} ba | ${sqft ? Number(sqft).toLocaleString() : '—'} sqft${typeSeg} | ${status}
           </div>
-          <div class="text-sm font-medium">${escapeHTML(address)}</div>
+          <div class="text-sm font-medium">${address}</div>
           <div class="text-[12px] text-gray-600">
-            ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}${agentName ? ' — '+escapeHTML(agentName) : ''}${agentPhone ? ' — '+escapeHTML(agentPhone) : ''}
+            ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}${agent ? ' — '+agent : ''}${agentPhone ? ' — '+agentPhone : ''}
           </div>
         </div>
       `;
       return card;
     }
 
-    // Search wiring: if empty search, refresh Firestore tiles (not local demo)
+    let _tilesData = [];
+    function buildTilesDataset(){
+      _tilesData = [];
+      const formData = JSON.parse(localStorage.getItem('formData') || '{}');
+      const agentListing = JSON.parse(localStorage.getItem('agentListing') || '{}');
+      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+
+      const hasLive = formData && formData.address;
+      if (hasLive) {
+        _tilesData.push({
+          address: formData.address,
+          price: agentListing.price,
+          commission: agentListing.commission ?? formData.commission,
+          commissionType: agentListing.commissionType ?? formData.commissionType ?? '%',
+          bannerText: agentListing.bannerText,
+          photos: Array.isArray(agentListing.photos) ? agentListing.photos : [],
+          primaryIndex: typeof agentListing.primaryIndex==='number' ? agentListing.primaryIndex : 0,
+          status: agentListing.status || 'Active',
+          brokerage: formData.brokerage,
+          agent: formData.agent,
+          agentPhone: document.getElementById('agentPhone')?.value || formData.phone || '',
+          plan,
+          bedrooms: agentListing.bedrooms,
+          bathrooms: agentListing.bathrooms,
+          sqft: agentListing.sqft,
+          propertyType: agentListing.propertyType || ''
+        });
+      }
+
+      // Samples for demo
+      const samples = [
+        {
+          address: "237 San Joaquin Street, Laguna Beach, CA 92651",
+          price: 1895000, commission: 2.5, commissionType: '%',
+          bannerText: "Open Sunday 1–4",
+          photos: ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop"],
+          primaryIndex: 0, status: "Active",
+          brokerage: "Pacific Estates", agent: "Jordan Crisp",
+          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000
+        },
+        {
+          address: "14 Maple Ave, Montclair, NJ 07042",
+          price: 925000, commission: 25000, commissionType: '$',
+          photos: ["https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop"],
+          primaryIndex: 0, status: "In Contract",
+          brokerage: "HomeWorks Realty", agent: "A. Brooks",
+          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400
+        },
+        {
+          address: "1020 Cedar Dr, Austin, TX 78704",
+          price: 650000, commission: 3.0, commissionType: '%',
+          bannerText: "Hot Home",
+          photos: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop"],
+          primaryIndex: 0, status: "Active",
+          brokerage: "", agent: "",
+          plan: "FSBO Plus", bedrooms: 3, bathrooms: 2, sqft: 1680
+        }
+      ];
+      const haveAddr = new Set(_tilesData.map(d => (d.address||'').toLowerCase()));
+      samples.forEach(s => { if(!haveAddr.has((s.address||'').toLowerCase())) _tilesData.push(s); });
+    }
+
+    function renderStrip2Tiles(filterText=""){
+      const grid = document.getElementById('tileGrid');
+      grid.innerHTML = '';
+      const q = (filterText || '').toLowerCase();
+      const list = q ? _tilesData.filter(d => (d.address||'').toLowerCase().includes(q)) : _tilesData;
+      if (!list.length) {
+        document.getElementById('tilesEmpty').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('tilesEmpty').classList.add('hidden');
+      list.forEach(d => grid.appendChild(renderTile(d)));
+    }
+
     function wireSearch(){
       const box = document.getElementById('searchBox');
       const btn = document.getElementById('searchBtn');
       const go = () => {
         const q = (box.value || '').trim();
         localStorage.setItem('lastSearch', q);
-        if (!q) { buildTilesFromFirestore(); return; }
+        if (!q) { renderStrip2Tiles(''); return; }
         window.location.href = `/search.html?q=${encodeURIComponent(q)}`;
       };
       btn.addEventListener('click', go);
@@ -737,5 +801,82 @@
   </script>
   <!-- Firebase init include -->
   <script type="module" src="/scripts/firebase-init.js"></script>
+
+  <!-- HOTFIX: Firestore-only tiles & Vista Suerte filter (non-destructive) -->
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    (async function repaintTilesVistaOnly(){
+      try {
+        const grid = document.getElementById('tileGrid');
+        const empty = document.getElementById('tilesEmpty');
+        if (!grid || !db) return;
+
+        const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(100)));
+        const items = [];
+        snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+
+        // Vista Suerte only (temporary guard)
+        const filtered = items.filter(d => String(d.address || '').toLowerCase().includes('311 vista suerte'));
+
+        grid.innerHTML = '';
+        if (!filtered.length) {
+          empty?.classList.remove('hidden');
+          return;
+        }
+        empty?.classList.add('hidden');
+
+        filtered.forEach(d => {
+          const img = (Array.isArray(d.photos) && d.photos.length) ? d.photos[d.primaryIndex || 0] : '';
+          const price = d.price;
+          const commissionType = d.commissionType || '%';
+          const commission = d.commission;
+          const calc = commissionType === '$'
+            ? Number(commission || 0)
+            : (Number(price || 0) ? Math.round(Number(price) * (Number(commission || 0) / 100)) : 0);
+          const left = price ? ('$' + Number(price).toLocaleString()) : '$—';
+          const mid  = commission ? (commissionType === '%' ? `${commission}%` : '$' + Number(commission).toLocaleString()) : '—';
+          const right= calc ? ('$' + calc.toLocaleString()) : '$—';
+          const status = d.status || 'Draft';
+          const bedrooms = d.bedrooms ?? '—';
+          const bathrooms= d.bathrooms ?? '—';
+          const sqft = d.sqft ? Number(d.sqft).toLocaleString() : '—';
+          const plan = d.plan || '';
+          const brokerage = d.brokerage || (plan.includes('FSBO') ? 'FOR SALE BY OWNER' : '[listing brokerage]');
+          const agentName = d.agentName || '';
+          const agentPhone= d.agentPhone || '';
+
+          const card = document.createElement('article');
+          card.className = "gc-tile cursor-pointer";
+          card.innerHTML = `
+            <div class="relative">
+              <img class="gc-photo" src="${img || ''}" alt="Listing photo">
+              ${d.bannerText ? `<div class="gc-ribbon">${d.bannerText}</div>` : ``}
+            </div>
+            <div class="p-3 space-y-1">
+              <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
+                <div class="truncate">${left}</div>
+                <div class="truncate text-red-600">Commission ${mid} | ${right}</div>
+              </div>
+              <div class="text-[12px] text-gray-700">
+                ${bedrooms} bds | ${bathrooms} ba | ${sqft} sqft | ${status}
+              </div>
+              <div class="text-sm font-medium">${d.address || ''}</div>
+              <div class="text-[12px] text-gray-600">
+                ${(plan.includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage || '[listing brokerage]')).toUpperCase()}${agentName ? ' — ' + agentName : ''}${agentPhone ? ' — ' + agentPhone : ''}
+              </div>
+            </div>
+          `;
+          card.addEventListener('click', () => {
+            if (d.id) window.location.href = `/listing.html?id=${encodeURIComponent(d.id)}`;
+          });
+          grid.appendChild(card);
+        });
+      } catch (e) {
+        console.warn("[index hotfix] Vista Suerte repaint failed:", e);
+      }
+    })();
+  </script>
 </body>
 </html>
