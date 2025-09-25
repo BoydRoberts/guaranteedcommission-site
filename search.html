@@ -176,7 +176,7 @@
       if(p) return Math.round(p*(c/100));
       return null;
     }
-    function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[c])); }
+    function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;","&gt;":"&gt;",'"':"&quot;","'":"&#039;" }[c])); }
 
     // ===== Filters & pills =====
     function readFiltersFromUI() {
@@ -448,8 +448,8 @@
       // Firestore fetch (ONLY real data)
       let docs = await fetchListingsFromFirestore(200);
 
-      // TEMP HARD GUARD (optional): if you only want "311 Vista Suerte" visible during cleanup
-      // docs = docs.filter(d => String(d.address||'').toLowerCase().includes('311 vista suerte'));
+      // >>> TEMP HARD GUARD (ACTIVE): show ONLY 311 Vista Suerte during cleanup
+      docs = docs.filter(d => String(d.address||'').toLowerCase().includes('311 vista suerte'));
 
       // Apply UI filters and text query
       const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
@@ -469,11 +469,10 @@
       };
 
       // Filters
-      $("applyFiltersBtn").onclick = async () => {
+      $("applyFiltersBtn").onclick = () => {
         const f = readFiltersFromUI();
         setJSON('lastFilters', f);
 
-        // Reuse fetched docs (could re-fetch if you add server-side filtering later)
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, f));
         $("qLabel").textContent = q ? `Showing results for “${q}”` : 'Showing all listings';
