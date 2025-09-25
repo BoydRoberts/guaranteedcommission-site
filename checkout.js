@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-09-01a + hotfix: agent payer + agent success redirect
+// /checkout.js — build 2025-10-01a (October promo active in Sept & Oct 2025 for agents)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-09-01a + agent payer hotfix");
+  console.log("[checkout.js] build 2025-10-01a (Oct promo; agents)");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -79,20 +79,20 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!data.payer) data.payer = "seller";
   }
 
-  // 🔧 HOTFIX: if current user is a listing agent, force payer=agent so September promo applies
+  // Force payer=agent when the logged-in role is listing_agent (enables promo)
   const role = (localStorage.getItem("userRole") || "").trim();
   if (role === "listing_agent") {
     data.payer = "agent";
     localStorage.setItem("checkoutData", JSON.stringify(data));
   }
 
-  // ---- September agent promo helper ----
-  function isAgentSeptemberPromoActive() {
+  // ---- October promo helper (active for agents in Sept & Oct 2025) ----
+  function isAgentSeptOctPromoActive() {
     try {
       const now = new Date();
       const y = now.getFullYear();
-      const m = now.getMonth(); // 0=Jan ... 8=Sep
-      return (data.payer === "agent") && (y === 2025) && (m === 8);
+      const m = now.getMonth(); // 0=Jan ... 8=Sep ... 9=Oct
+      return (data.payer === "agent") && (y === 2025) && (m === 8 || m === 9);
     } catch { return false; }
   }
 
@@ -101,24 +101,34 @@ document.addEventListener("DOMContentLoaded", () => {
     let plan = d.plan;
     let base = d.base;
 
-    const promo = isAgentSeptemberPromoActive();
+    const promo = isAgentSeptOctPromoActive();
 
+    // Basic → Plus upgrade base
     if (plan === "Listed Property Basic" && d.upgrades.upgradeToPlus) {
       plan = "Listed Property Plus";
       base = promo ? 0 : d.prices.plus;
       localStorage.setItem("selectedPlan", "Listed Property Plus");
     }
 
+    // If already Plus plan and promo active, Plus base is 0
     if (plan === "Listed Property Plus" && promo) {
       base = 0;
     }
 
     let total = base;
-    if (d.upgrades.banner)  total += d.prices.banner;
-    if (d.upgrades.pin)     total += d.prices.pin;
-    else if (d.upgrades.premium) total += d.prices.premium;
+
+    // Upgrades
+    const bannerPrice  = promo ? 0 : (d.prices.banner  ?? 10);
+    const premiumPrice = promo ? 0 : (d.prices.premium ?? 10);
+    const pinPrice     = promo ? 0 : (d.prices.pin     ?? 50);
+
+    if (d.upgrades.banner)   total += bannerPrice;
+    if (d.upgrades.pin)      total += pinPrice;
+    else if (d.upgrades.premium) total += premiumPrice;
+
+    // Confidential (FSBO only)
     if (plan === "FSBO Plus") {
-      if (d.upgrades.confidential) total += d.prices.confidential;
+      if (d.upgrades.confidential) total += (d.prices.confidential ?? 100);
     } else {
       d.upgrades.confidential = false;
     }
@@ -135,16 +145,22 @@ document.addEventListener("DOMContentLoaded", () => {
     $("basePrice").textContent = (data.base || 0);
     $("totalAmount").textContent = (data.total || 0);
 
-    const promo = isAgentSeptemberPromoActive();
+    const promo = isAgentSeptOctPromoActive();
     const sel = [];
     if (data.upgrades.upgradeToPlus) {
-      if (promo) sel.push(`Upgrade to Listed Property Plus ($0 — September promo)`);
+      if (promo) sel.push(`Upgrade to Listed Property Plus ($0 — October promo)`);
       else sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
     }
-    if (data.upgrades.banner) sel.push(`Banner ($${data.prices.banner})`);
-    if (data.upgrades.pin) sel.push(`Pin Placement ($${data.prices.pin})`);
-    else if (data.upgrades.premium) sel.push(`Premium Placement ($${data.prices.premium})`);
+
+    const bannerPrice  = promo ? 0 : (data.prices.banner  ?? 10);
+    const premiumPrice = promo ? 0 : (data.prices.premium ?? 10);
+    const pinPrice     = promo ? 0 : (data.prices.pin     ?? 50);
+
+    if (data.upgrades.banner)  sel.push(`Banner ($${bannerPrice})`);
+    if (data.upgrades.pin)     sel.push(`Pin Placement ($${pinPrice})`);
+    else if (data.upgrades.premium) sel.push(`Premium Placement ($${premiumPrice})`);
     if (data.plan === "FSBO Plus" && data.upgrades.confidential) sel.push(`Confidential FSBO Upgrade ($${data.prices.confidential})`);
+
     $("selectedList").innerHTML = sel.length ? sel.map(s => `<li>${s}</li>`).join("") : `<li class="text-gray-400">None</li>`;
 
     if ((data.total || 0) <= 0) {
@@ -156,13 +172,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // ---- toggles ----
   function renderLastChance() {
     const box = $("upsellChoices");
     box.innerHTML = "";
 
     const isBasic = data.plan === "Listed Property Basic";
     const isFSBO  = data.plan === "FSBO Plus";
-    const promo   = isAgentSeptemberPromoActive();
+    const promo   = isAgentSeptOctPromoActive();
 
     const toggles = [];
     if (isBasic) {
@@ -170,13 +187,18 @@ document.addEventListener("DOMContentLoaded", () => {
         key:"upgradeToPlus",
         label:"Upgrade to Listed Property Plus",
         price: promo ? 0 : data.prices.plus,
-        note: promo ? "(September promo — free for agents)" : "",
+        note: promo ? "(October promo — free for agents; also active in September 2025)" : "",
         checked:data.upgrades.upgradeToPlus
       });
     }
-    toggles.push({ key:"banner",  label:"Banner",  price:data.prices.banner,  checked:data.upgrades.banner });
-    toggles.push({ key:"premium", label:"Premium Placement", price:data.prices.premium, checked:data.upgrades.premium && !data.upgrades.pin });
-    toggles.push({ key:"pin",     label:"Pin Placement", price:data.prices.pin, checked:data.upgrades.pin, note:"(includes Premium free)" });
+
+    const bannerPrice  = promo ? 0 : (data.prices.banner  ?? 10);
+    const premiumPrice = promo ? 0 : (data.prices.premium ?? 10);
+    const pinPrice     = promo ? 0 : (data.prices.pin     ?? 50);
+
+    toggles.push({ key:"banner",  label:"Banner",  price:bannerPrice,  checked:data.upgrades.banner });
+    toggles.push({ key:"premium", label:"Premium Placement", price:premiumPrice, checked:data.upgrades.premium && !data.upgrades.pin });
+    toggles.push({ key:"pin",     label:"Pin Placement", price:pinPrice, checked:data.upgrades.pin, note:"(includes Premium free)" });
     if (isFSBO) toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price:data.prices.confidential, checked:data.upgrades.confidential });
 
     box.innerHTML = toggles.map(t => `
@@ -246,6 +268,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // Stripe Price IDs (test)
       const PRICE_IDS = {
         PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
         FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
@@ -255,13 +278,14 @@ document.addEventListener("DOMContentLoaded", () => {
         CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm"
       };
 
-      const promo = isAgentSeptemberPromoActive();
+      const promo = isAgentSeptOctPromoActive();
 
       const items = [];
       const isFSBO = data.plan === "FSBO Plus";
       const isPlus = data.plan === "Listed Property Plus";
       const isBasic= data.plan === "Listed Property Basic";
 
+      // Base plan / upgrade to plus
       if (isFSBO && (data.base ?? data.prices.fsbo) > 0) {
         items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
       } else if (isPlus) {
@@ -271,14 +295,19 @@ document.addEventListener("DOMContentLoaded", () => {
         items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
       }
 
-      if (data.upgrades.banner)  items.push({ price: PRICE_IDS.BANNER,  quantity: 1 });
-      if (data.upgrades.pin)     items.push({ price: PRICE_IDS.PIN,     quantity: 1 });
-      else if (data.upgrades.premium) items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
+      // Upgrades
+      if (data.upgrades.banner && !promo)   items.push({ price: PRICE_IDS.BANNER,  quantity: 1 });
+      if (data.upgrades.pin) {
+        if (!promo) items.push({ price: PRICE_IDS.PIN, quantity: 1 });
+      } else if (data.upgrades.premium) {
+        if (!promo) items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
+      }
+
       if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
 
       if (!items.length) throw new Error("No purchasable line items.");
 
-      // 🔧 HOTFIX: successUrl depends on payer (agents must NOT go to signature)
+      // Success URL depends on payer
       const success = (data.payer === "agent")
         ? (window.location.origin + "/agent-detail.html")
         : (window.location.origin + "/signature.html");
