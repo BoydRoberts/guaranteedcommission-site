@@ -122,10 +122,8 @@
     codeInput.addEventListener('input', (e) => {
       const digits = (e.target.value || '').replace(/\D/g, '').slice(0, 6);
       if (e.target.value !== digits) e.target.value = digits;
-      // clear any prior custom validity
       e.target.setCustomValidity('');
       if (digits.length === 6) {
-        // small delay to allow UI paint, then submit
         setTimeout(() => $('verifyForm').requestSubmit(), 10);
       }
     });
@@ -190,8 +188,8 @@
       safeSet('isVerified', 'true');
       setStatus('Verified! Redirecting…', true);
 
-      // >>>> ROUTING CHANGE (surgical) <<<<
-      // If they came from Box 2, keep the fast path (upsell/sign).
+      // Routing rule:
+      // If they came from Box 2, keep fast path (upsell/sign).
       // Otherwise (header login), land on Welcome with the new dropdown.
       const origin = (safeGet('loginOrigin') || '').trim().toLowerCase();
 
