@@ -51,10 +51,10 @@
     </section>
 
     <!-- Top strip: 40 | 20 | 40 -->
-    <section id="topRow" class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+    <section id="topRow" class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start hidden">
 
       <!-- Left: LISTING TILE (reference height) -->
-      <article id="tileCard" class="lg:col-span-2 card relative cursor-pointer">
+      <article id="tileCard" class="lg:col-span-2 card relative">
         <div class="relative">
           <img id="tilePhoto" class="tile-photo" alt="Listing photo"/>
           <div id="tileBanner" class="tile-banner hidden"></div>
@@ -110,40 +110,9 @@
     if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
     const $ = (id) => document.getElementById(id);
-    const getJSON = (k, fb={}) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
     const commissionAmt = (p, c, t)=>{ const P=Number(p||0), C=Number(c||0); if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0); };
-
-    // Safe ISC text from Box 2 only (no merge from agentListing)
-    function fillIscFromFormData() {
-      const data = getJSON("formData", {});
-      const planSel = (localStorage.getItem('selectedPlan') || '').trim();
-      const isFSBO = planSel.includes("FSBO");
-      const commissionType = data.commissionType || "%";
-      const commission = data.commission || "";
-      const fullAddress = data.address || "";
-      const shortAddress = fullAddress.split(",")[0] || "[short address]";
-      const apn = data.apn || "[APN]";
-      const name = data.name || "[name]";
-      const agentPhone = data.agentPhone || data.phone || "[agent phone]";
-      const brokerage = data.brokerage || "[listing brokerage]";
-      const agent = data.agent || "[listing agent]";
-      const agentEmail = data.agentEmail || "[agent email]";
-      const suffix = commissionType === "%" ? " of the total purchase price" : "";
-      const commissionDisplay = commissionType === "$" ? `$${commission}` : `${commission}%`;
-
-      let text = `To the escrow holder/closing agent,\n\n`;
-
-      if (isFSBO) {
-        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by owner (Me). My phone number is ${agentPhone}. My email address is ${data.fsboEmail || "[owner/seller email]"}.\n\n`;
-        text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${suffix}.`;
-      } else {
-        text += `I, ${name}, am the owner/seller of ${fullAddress}, #${apn}. ${shortAddress} is listed for sale by ${brokerage}, ${agent}, listing agent, ${agentPhone}, ${agentEmail}.\n\n`;
-        text += `Let it be known: if a buyer’s agent/broker facilitates the sale of ${shortAddress}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${suffix}.`;
-      }
-      return { isFSBO, text };
-    }
 
     (async function boot() {
       try {
@@ -173,13 +142,12 @@
           }
         }
 
-        if (docData) {
-          renderFromDoc(docData, listingId);
-        } else {
-          // no local fallback — show friendly message
+        if (!docData) {
           $("invalidBox").classList.remove("hidden");
           return;
         }
+
+        renderFromDoc(docData);
 
         // Align heights after paint
         setTimeout(alignHeights, 80);
@@ -190,7 +158,7 @@
       }
     })();
 
-    function renderFromDoc(d, listingId) {
+    function renderFromDoc(d) {
       // Normalize types
       const address = d.address || "[full address]";
       const price = (d.price ?? "");
@@ -227,20 +195,20 @@
       $("tileAddress").textContent = address;
       $("tileContact").textContent = `${(d.plan && d.plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
 
-      // Clicking tile keeps us here (no navigation change)
+      // Disable tile navigation (we are already on the page for this listing)
       document.getElementById("tileCard").onclick = (e) => { e.preventDefault(); };
 
       // Description
       const desc = (d.description || "").trim();
       if (desc) {
-        $("dDescription").textContent = desc;
-        document.getElementById("descCard")?.classList.remove("hidden");
+        document.getElementById("dDescription").textContent = desc;
+        document.getElementById("descCard").classList.remove("hidden");
       }
 
       // Other photos
       const others = photos.filter((_, i) => i !== primaryIndex);
       if (others.length > 0) {
-        const grid = $("galleryGrid");
+        const grid = document.getElementById("galleryGrid");
         grid.innerHTML = "";
         others.forEach(src => {
           const img = document.createElement("img");
@@ -248,7 +216,7 @@
           img.className = "w-full h-32 object-cover rounded bg-gray-100";
           grid.appendChild(img);
         });
-        document.getElementById("galleryCard")?.classList.remove("hidden");
+        document.getElementById("galleryCard").classList.remove("hidden");
       }
 
       // Map
@@ -257,15 +225,15 @@
 
     // Align map and ISC to tile height
     function alignHeights(){
-      const tile = $("tileCard");
-      const mapCard = $("mapCard");
-      const iscCard = $("iscCard");
+      const tile = document.getElementById("tileCard");
+      const mapCard = document.getElementById("mapCard");
+      const iscCard = document.getElementById("iscCard");
       if (!tile || !mapCard || !iscCard) return;
       mapCard.style.height = iscCard.style.height = '';
       const h = tile.getBoundingClientRect().height;
       mapCard.style.height = h + "px";
       iscCard.style.height = h + "px";
-      const iscIframe = $("iscIframe");
+      const iscIframe = document.getElementById("iscIframe");
       if (iscIframe) iscIframe.style.height = "100%";
     }
 
@@ -285,13 +253,14 @@
         requestAnimationFrame(()=>_mapInstance.resize());
         setTimeout(()=>_mapInstance.resize(), 250);
       } catch {
-        $("mapCanvas").innerHTML = '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
+        document.getElementById("mapCanvas").innerHTML = '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
       }
     }
     async function geocode(q) {
-      if (!MAPBOX_TOKEN || !q) return null;
+      const token = MAPBOX_TOKEN;
+      if (!token || !q) return null;
       try {
-        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${token}`);
         const data = await resp.json();
         const f = data?.features?.[0];
         return f ? f.center : null; // [lng, lat]
