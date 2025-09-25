@@ -1,32 +1,24 @@
-<script>
-/**
- * Zillow-style listing tiles with:
- * - Photo + banner + heart (favorite)
- * - Top line (bigger): Price (left) | "Commission X% | $Y" (right, red)
- * - Second line: "3 bds | 2 ba | 2,000 sqft | Single Family | Active"
- * - Third: full address
- * - Fourth: Brokerage — Agent — Phone
- * - Whole tile is clickable to /listing.html?addr=<encoded>
- *
- * Data:
- *   formData: { address, brokerage, agent, agentPhone, ... }
- *   agentData: {
- *     price, commission, commissionType ('%'|'$'),
- *     bedrooms, bathrooms, sqft, status, photos, primaryIndex, bannerText,
- *     propertyType
- *   }
- */
+// /scripts/tiles.js — render-only (no demo data, no fetching)
+// Exposes:
+//   window.renderTile(doc)
+//   window.renderTileList(list, container, options)
+//
+// Expected doc shape (Firestore):
+// {
+//   id, address, price, commission, commissionType ('%'|'$'),
+//   bedrooms, bathrooms, sqft, propertyType, status,
+//   plan, bannerText, photos: [url,...], primaryIndex,
+//   brokerage, agentName, agentPhone
+// }
 
 (function (global) {
-  // ---------- favorites ----------
-  const FAV_KEY = 'gcFavorites';
-  function getFavs() { try { const v = JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; } }
-  function setFavs(arr) { try { localStorage.setItem(FAV_KEY, JSON.stringify(arr || [])); } catch {} }
-  function isFav(id) { return getFavs().includes(id); }
-  function toggleFav(id) { const favs = getFavs(); const i = favs.indexOf(id); if (i >= 0) favs.splice(i, 1); else favs.push(id); setFavs(favs); return favs.includes(id); }
+  "use strict";
 
   // ---------- helpers ----------
-  function money(n) { const v = Number(n || 0); return v ? "$" + v.toLocaleString() : "$—"; }
+  function money(n) {
+    const v = Number(n || 0);
+    return v ? "$" + v.toLocaleString() : "$—";
+  }
   function commissionAmount(price, commission, type) {
     const p = Number(price || 0), c = Number(commission || 0);
     if (!c) return 0;
@@ -34,57 +26,62 @@
     if (!p) return 0;
     return Math.round(p * (c / 100));
   }
-  function primaryPhoto(agentData) {
-    const arr = Array.isArray(agentData?.photos) ? agentData.photos : [];
-    const idx = (typeof agentData?.primaryIndex === 'number') ? agentData.primaryIndex : 0;
-    return arr[idx] || "";
+  function safeText(s, fb = "—") {
+    const t = (s ?? "").toString().trim();
+    return t ? t : fb;
   }
-  function safeText(s, fb = "—") { const t = (s ?? "").toString().trim(); return t ? t : fb; }
-  function escapeHtml(s) { return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c])); }
-  function statusLabel(s) { const t = (s || "").toLowerCase(); if (t === "in_contract") return "In Contract"; return s ? s.replace(/\b\w/g, m => m.toUpperCase()) : "Draft"; }
+  function escapeHtml(s) {
+    return String(s || "").replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+    }[c]));
+  }
+  function statusLabel(s) {
+    const t = (s || "").toLowerCase();
+    if (t === "in_contract") return "In Contract";
+    return s ? s.replace(/\b\w/g, m => m.toUpperCase()) : "Draft";
+  }
 
-  // ---------- view ----------
-  function renderTile(opts) {
-    const { container, formData = {}, agentData = {}, plan = "Listed Property Basic", onClick } = opts || {};
-    if (!container) throw new Error("renderTile: container is required");
+  // ---------- single tile ----------
+  function renderTile(doc, options) {
+    const opts = Object.assign({ onClick: null }, options || {});
+    const d = doc || {};
 
-    const address = safeText(formData.address, "[full address]");
-    const price = agentData.price;
-    const cType = agentData.commissionType ?? formData.commissionType ?? "%";
-    const cVal = (agentData.commission ?? formData.commission ?? "");
-    const cAmt = commissionAmount(price, cVal, cType);
+    const id = d.id || "";
+    const address = safeText(d.address, "[full address]");
+    const price = d.price;
+    const cType = d.commissionType || "%";
+    const cVal  = (d.commission != null ? d.commission : "");
+    const cAmt  = commissionAmount(price, cVal, cType);
 
-    const bds = agentData.bedrooms ?? "—";
-    const ba = agentData.bathrooms ?? "—";
-    const sqft = agentData.sqft ? Number(agentData.sqft).toLocaleString() : "—";
-    const pType = safeText(agentData.propertyType || "", "").trim(); // may be empty
-    const status = safeText(agentData.status, "Draft");
-    const banner = (agentData.bannerText || "").trim();
+    const bds = (d.bedrooms != null ? d.bedrooms : "—");
+    const ba  = (d.bathrooms != null ? d.bathrooms : "—");
+    const sqft= d.sqft ? Number(d.sqft).toLocaleString() : "—";
+    const pType = safeText(d.propertyType || "", "").trim(); // may be empty
+    const status = safeText(d.status, "Draft");
+    const banner = (d.bannerText || "").trim();
+    const plan = (d.plan || "").toString();
 
-    const brokerage = safeText(formData.brokerage, plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
-    const agentName = safeText(formData.agent, plan.includes("FSBO") ? "" : "[listing agent]");
-    const agentPhone = safeText(formData.agentPhone, plan.includes("FSBO") ? "" : "[agent phone]");
+    const brokerage = safeText(d.brokerage, plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
+    const agentName = safeText(d.agentName, plan.includes("FSBO") ? "" : "[listing agent]");
+    const agentPhone= safeText(d.agentPhone, plan.includes("FSBO") ? "" : "[agent phone]");
 
-    const photo = primaryPhoto(agentData);
+    const photos = Array.isArray(d.photos) ? d.photos : [];
+    const primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
+    const photo = photos[primaryIndex] || "";
 
     const card = document.createElement("article");
-    card.className = "bg-white rounded-2xl shadow hover:shadow-md transition overflow-hidden cursor-pointer w-full";
+    card.className = "gc-tile cursor-pointer";
 
+    // commission label
     let rightLabel = "Commission ";
-    rightLabel += (cVal === "" ? "—" : (cType === "$" ? money(cVal) : (Number(cVal) + "%")));
+    rightLabel += (cVal === "" || cVal == null ? "—" : (cType === "$" ? money(cVal) : (Number(cVal) + "%")));
     rightLabel += " | ";
     rightLabel += cAmt ? money(cAmt) : "$—";
 
-    const favId = address.toLowerCase();
-    const favActive = isFav(favId);
-
     card.innerHTML = `
       <div class="relative">
-        <img class="w-full h-48 object-cover bg-gray-100" alt="Listing photo" src="${photo}">
-        ${banner ? `<div class="absolute top-2 left-2 bg-black/80 text-white text-[11px] font-semibold rounded-full px-2 py-1">${escapeHtml(banner)}</div>` : ``}
-        <button type="button" data-like class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow hover:bg-white" aria-label="Like" title="Save">
-          ${heartSvg(favActive)}
-        </button>
+        <img class="gc-photo" alt="Listing photo" src="${photo}">
+        ${banner ? `<div class="gc-ribbon">${escapeHtml(banner)}</div>` : ``}
       </div>
 
       <div class="p-3 space-y-1">
@@ -94,7 +91,7 @@
           <div class="truncate text-red-600">${escapeHtml(rightLabel)}</div>
         </div>
 
-        <!-- Second line: "3 bds | 2 ba | 2,000 sqft | Single Family | Active" -->
+        <!-- Second line -->
         <div class="text-[12px] text-gray-700">
           ${escapeHtml(`${bds} bds | ${ba} ba | ${sqft} sqft${pType ? ' | ' + pType : ''} | ${statusLabel(status)}`)}
         </div>
@@ -110,49 +107,39 @@
     `;
 
     card.addEventListener("click", () => {
-      if (typeof onClick === "function") return onClick({ formData, agentData, plan, el: card });
-      if (formData.address) {
-        const slug = encodeURIComponent(formData.address);
-        window.location.href = `/listing.html?addr=${slug}`;
-      } else {
-        window.location.href = `/listing.html`;
+      if (typeof opts.onClick === "function") {
+        return opts.onClick({ doc: d, el: card });
+      }
+      // default behavior: go by Firestore id if present
+      if (id) {
+        window.location.href = `/listing.html?id=${encodeURIComponent(id)}`;
       }
     });
 
-    const likeBtn = card.querySelector('[data-like]');
-    likeBtn?.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const nowFav = toggleFav(favId);
-      likeBtn.innerHTML = heartSvg(nowFav);
-    });
-
-    container.appendChild(card);
     return card;
   }
 
-  function heartSvg(active) {
-    return active
-      ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626" aria-hidden="true"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
-      : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
-  }
-
+  // ---------- list renderer ----------
   function renderTileList(list, container, options) {
-    const opts = Object.assign({ clear: true, onClick: null }, options || {});
+    const opts = Object.assign({ clear: true, onClick: null, emptyText: "No results. Try a different search." }, options || {});
     if (!container) return;
     if (opts.clear) container.innerHTML = "";
-    (list || []).forEach(item => {
-      renderTile({
-        container,
-        formData: item.formData || {},
-        agentData: item.agentData || {},
-        plan: item.plan || "Listed Property Basic",
-        onClick: opts.onClick
-      });
+    const items = Array.isArray(list) ? list : [];
+    if (!items.length) {
+      const div = document.createElement("div");
+      div.className = "text-sm text-gray-500";
+      div.textContent = opts.emptyText;
+      container.appendChild(div);
+      return;
+    }
+    items.forEach(doc => {
+      const tile = renderTile(doc, { onClick: opts.onClick });
+      container.appendChild(tile);
     });
   }
 
+  // expose
   global.renderTile = renderTile;
   global.renderTileList = renderTileList;
+
 })(window);
-</script>
