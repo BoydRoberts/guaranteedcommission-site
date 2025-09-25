@@ -86,12 +86,10 @@
     const $ = (id) => document.getElementById(id);
     const role = (localStorage.getItem('userRole') || '').trim();              // seller | listing_agent | buyers_agent | buyer | other
     const email = (localStorage.getItem('loggedInEmail') || '').trim().toLowerCase();
-    const cameFrom = (localStorage.getItem('loginOrigin') || '').trim();       // 'box2' | 'header' | ''
 
-    // paint who
     if (email) $('who').textContent = email;
 
-    // universal action mapping by role
+    // Role-based actions (single dropdown)
     const ACTIONS = {
       seller: [
         { v:"seller_enter_sign", t:"Enter a listing and sign an Irrevocable Seller Communication" },
@@ -120,14 +118,12 @@
       ]
     };
 
-    // populate role-specific options
     (function paintOptions(){
       const sel = $('actionSelect');
       const list = ACTIONS[role || 'other'] || ACTIONS.other;
       sel.innerHTML = '<option value="">Select…</option>' + list.map(a => `<option value="${a.v}">${a.t}</option>`).join('');
     })();
 
-    // show/hide helpers
     function show(id, on=true){ const el=$(id); if(!el) return; el.classList.toggle('hidden', !on); }
     function setTip(msg){ const el=$('tip'); if(!msg){ show('tip', false); return; } el.textContent = msg; show('tip', true); }
 
@@ -139,15 +135,13 @@
 
       let items = [];
       try {
-        // Primary: FSBO path uses ownerEmail; some "listed" flows may not have ownerEmail saved.
         const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), orderBy("updatedAt", "desc"));
         const snap1 = await getDocs(q1);
         snap1.forEach(doc => items.push({ id: doc.id, address: (doc.data().address || "[address]"), status: (doc.data().status || "Draft") }));
 
-        // If none found, fallback to any local remembered seller listings (best-effort)
+        // Fallback to any local remembered seller listings if Firestore has none
         if (!items.length) {
           const local = JSON.parse(localStorage.getItem('sellerListings') || '[]');
-          // local entries are { address }, we can't resolve IDs—so take them to seller-detail to continue
           if (local.length) {
             items = local.map((x, i) => ({ id: `local-${i}`, address: x.address || "[address]", status: "Local" }));
           }
@@ -159,13 +153,13 @@
       sel.innerHTML = "";
       if (!items.length) {
         none.classList.remove('hidden');
-        const opt = document.createElement('option');
+        const opt = document.createElement("option");
         opt.value = ""; opt.textContent = "No listings found";
         sel.appendChild(opt);
       } else {
         none.classList.add('hidden');
         items.forEach(it => {
-          const opt = document.createElement('option');
+          const opt = document.createElement("option");
           opt.value = it.id;
           opt.textContent = `${it.address} (${it.status})`;
           opt.setAttribute('data-address', it.address);
@@ -184,9 +178,9 @@
       try {
         const q = query(collection(db, "listings"), where("agentEmail", "==", email), orderBy("updatedAt", "desc"));
         const snap = await getDocs(q);
-        snap.forEach(doc => {
-          const d = doc.data() || {};
-          items.push({ id: doc.id, address: d.address || "[address]", status: d.status || "Draft" });
+        snap.forEach(docu => {
+          const d = docu.data() || {};
+          items.push({ id: docu.id, address: d.address || "[address]", status: d.status || "Draft" });
         });
       } catch (e) {
         console.warn("[welcome] agent listings lookup failed:", e);
@@ -195,13 +189,13 @@
       sel.innerHTML = "";
       if (!items.length) {
         none.classList.remove('hidden');
-        const opt = document.createElement('option');
+        const opt = document.createElement("option");
         opt.value = ""; opt.textContent = "No listings found";
         sel.appendChild(opt);
       } else {
         none.classList.add('hidden');
         items.forEach(it => {
-          const opt = document.createElement('option');
+          const opt = document.createElement("option");
           opt.value = it.id;
           opt.textContent = `${it.address} (${it.status})`;
           sel.appendChild(opt);
@@ -267,10 +261,9 @@
           // Plan → Box 2 on index.html
           const plan = $('sellerPlan').value || 'Listed Property Basic';
           localStorage.setItem('selectedPlan', plan);
-          // mark that this navigation comes from header (not Box 2 flow),
-          // but since we're intentionally sending to Box 2 now, we can clear any previous origin
+          // Mark that this navigation came from header (we're intentionally sending to Box 2 now)
           localStorage.setItem('loginOrigin','header');
-          location.href = '/index.html#strip2Search';  // Box 2 is in Strip 1; landing at home is fine
+          location.href = '/index.html#strip2Search';
           return;
         }
         if (choice === 'seller_edit') {
@@ -278,7 +271,6 @@
           const id = sel?.value || '';
           const address = sel?.selectedOptions?.[0]?.getAttribute('data-address') || '';
           if (!id) { alert('Please select a listing.'); return; }
-          // If this came from Firestore we have an id; if from local fallback we don’t — still send to seller-detail to finish
           if (id.startsWith('local-')) {
             if (address) localStorage.setItem('shortAddress', address.split(',')[0] || address);
             location.href = '/seller-detail.html';
@@ -293,7 +285,6 @@
           return;
         }
         if (choice === 'autosave') {
-          // opens search with filters panel and prompt banner
           location.href = '/search.html?open=filters&prompt=save';
           return;
         }
