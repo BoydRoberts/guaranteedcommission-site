@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-10-01a (October promo active in Sept & Oct 2025 for agents)
+// /checkout.js — build 2025-10-01b (October promo active in Sept & Oct 2025 for agents; success URL passes ?id=)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-10-01a (Oct promo; agents)");
+  console.log("[checkout.js] build 2025-10-01b (Oct promo; agents; pass id)");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let stripe = null;
   try { stripe = Stripe(STRIPE_PUBLISHABLE_KEY); } catch (e) { console.error("Stripe init error:", e); }
 
-  // Who line material
+  // Who line (unchanged)
   const formData = getJSON("formData", {});
   const agentListing = getJSON("agentListing", {});
   const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
@@ -261,10 +261,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       if (!stripe) throw new Error("Stripe not available on this page.");
+
+      // Always pass the id to success URL
+      const listingId = (localStorage.getItem("lastListingId") || "").trim();
+      const successSignature = window.location.origin + "/signature.html" + (listingId ? `?id=${encodeURIComponent(listingId)}` : "");
+      const successAgent     = window.location.origin + "/agent-detail.html";
+
+      // Zero total: route now (no Stripe)
       if ((data.total || 0) <= 0) {
-        // zero total: route based on payer
-        if (data.payer === "agent") { window.location.href = "/agent-detail.html"; }
-        else { window.location.href = "/signature.html"; }
+        if (data.payer === "agent") {
+          window.location.href = successAgent;
+        } else {
+          window.location.href = successSignature;
+        }
         return;
       }
 
@@ -307,14 +316,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!items.length) throw new Error("No purchasable line items.");
 
-      // Success URL depends on payer
-      const success = (data.payer === "agent")
-        ? (window.location.origin + "/agent-detail.html")
-        : (window.location.origin + "/signature.html");
+      // Success URL depends on payer — always append ?id= for sellers
+      const successUrl = (data.payer === "agent") ? successAgent : successSignature;
 
       const payload = {
         lineItems: items,
-        successUrl: success,
+        successUrl: successUrl,
         cancelUrl:  window.location.origin + "/checkout.html"
       };
 
