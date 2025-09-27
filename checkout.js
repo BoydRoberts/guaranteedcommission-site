@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let stripe = null;
   try { stripe = Stripe(STRIPE_PUBLISHABLE_KEY); } catch (e) { console.error("Stripe init error:", e); }
 
-  // Who line (unchanged)
+  // Who line
   const formData = getJSON("formData", {});
   const agentListing = getJSON("agentListing", {});
   const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
@@ -317,7 +317,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!items.length) throw new Error("No purchasable line items.");
 
       // Success URL depends on payer — always append ?id= for sellers
-      const successUrl = (data.payer === "agent") ? successAgent : successSignature;
+      const successUrl = (data.payer === "agent")
+        ? (window.location.origin + "/agent-detail.html")
+        : (window.location.origin + "/signature.html" + ((localStorage.getItem("lastListingId") || "").trim() ? `?id=${encodeURIComponent((localStorage.getItem("lastListingId") || "").trim())}` : ""));
 
       const payload = {
         lineItems: items,
@@ -352,6 +354,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Render
   if (!localStorage.getItem("originalPlan")) {
     localStorage.setItem("originalPlan", planLS);
   }
