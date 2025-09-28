@@ -47,7 +47,6 @@
     #formBlock.compact3 * { line-height:1.15; }
     #formBlock.compact3 h2.gc-title { font-size:.95rem; }
     #formBlock.compact3 input, #formBlock.compact3 select, #formBlock.compact button { padding:.22rem .35rem !important; font-size:.75rem !important; }
-    #formBlock.compact3 .space-y-2 > * { margin-top:.18rem !important; margin-bottom:.18rem !important; }
 
     /* Real-Reflow compact tiers for Box 3 (ISC) – keep text razor sharp */
     #box3.compact * { line-height:1.35; }
@@ -554,7 +553,7 @@
       window.addEventListener('resize', fitStrip1);
     });
 
-    /* Submit — UPGRADED: data-bleed guard + Firestore save (non-blocking) */
+    /* Submit — FIXED: always waits for Firestore, saves id before redirect */
     async function submitForm(){
       const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
       const requiredIds = ['name','address','agentPhone'];
@@ -575,15 +574,13 @@
         return;
       } else addressEl.classList.remove('border-red-500');
 
-      // 🔹 Data-bleed guard — clear prior listing state BEFORE saving new data
+      // Clear prior local state
       try {
         ['agentListing','checkoutData','intakeFollowups','lastListingId','lastListingAddress','signature','signedISC'].forEach(k=>localStorage.removeItem(k));
         Object.keys(localStorage).forEach(k=>{
           if (k.startsWith('formData:') || k.startsWith('agentListing:') || k.startsWith('signedISC:')) localStorage.removeItem(k);
         });
-      } catch(e) {
-        console.warn('[bleed-guard] cleanup skipped:', e);
-      }
+      } catch(e) { console.warn('[bleed-guard] cleanup skipped:', e); }
 
       const fsboEmailEl=document.getElementById('fsboEmailInput');
       const formData={
@@ -606,11 +603,12 @@
       const plan=localStorage.getItem('selectedPlan')||'Listed Property Basic';
       localStorage.setItem('postSignatureOptions',plan.includes('FSBO')?'fsbo':'listed');
 
-      // >>> NEW: mark origin so verify-code routes correctly <<<
+      // Route after login
       localStorage.setItem('loginOrigin','box2');
       localStorage.setItem('nextAfterLogin','/verify-code.html');
 
-      /* Firestore save (non-blocking) */
+      // Firestore save — WAIT for it, then save id to localStorage
+      let createdId = "";
       try {
         const db = window.gc && window.gc.db;
         if (db) {
@@ -624,7 +622,7 @@
             commission: formData.commission || "",
             commissionType: formData.commissionType || "%",
             ownerName: formData.name || "",
-            ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",
+            ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",  // listed flows: ownerEmail set later after login
             agentName: plan.includes('FSBO') ? "" : (formData.agent || ""),
             agentPhone: plan.includes('FSBO') ? "" : (formData.phone || ""),
             agentEmail: plan.includes('FSBO') ? "" : (formData.agentEmail || ""),
@@ -634,17 +632,28 @@
             source: "index.box2"
           };
           const ref = await addDoc(collection(db, "listings"), payload);
-          localStorage.setItem("lastListingId", ref.id);
+          createdId = ref.id;
+          localStorage.setItem("lastListingId", createdId);
           localStorage.setItem("lastListingAddress", payload.address || "");
-          localStorage.setItem(`formData:${ref.id}`, JSON.stringify(formData));
-          console.log("[firestore] listing created:", ref.id);
+          localStorage.setItem(`formData:${createdId}`, JSON.stringify(formData));
+          console.log("[firestore] listing created:", createdId);
         } else {
-          console.warn("[firestore] db not available — skipped server save");
+          alert("Database not ready. Please refresh the page and try again.");
+          return;
         }
       } catch (err) {
-        console.warn("[firestore] save failed; continuing local-only:", err);
+        console.warn("[firestore] save failed:", err);
+        alert("We couldn't save your listing. Please try again in a moment.");
+        return;
       }
 
+      // Safety: ensure id present before moving on
+      if (!createdId) {
+        alert("We couldn't create your listing. Please try again.");
+        return;
+      }
+
+      // Continue to login/verify (checkout.js will carry id to Signature)
       window.location.href="/login.html";
     }
 
