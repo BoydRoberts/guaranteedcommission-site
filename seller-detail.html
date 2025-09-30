@@ -14,7 +14,6 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <!-- Header -->
   <header class="bg-white shadow">
     <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
       <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
@@ -65,7 +64,7 @@
             <label class="block text-sm font-semibold mb-1">Commission (locked)</label>
             <div class="flex gap-2">
               <input id="commission" class="w-full border p-2 rounded bg-gray-50" readonly>
-              <input id="commissionType" class="w-24 border p-2 rounded bg-gray-50 text-center" readonly>
+              <input id="commissionType" class="w-20 border p-2 rounded bg-gray-50 text-center" readonly>
             </div>
             <p class="text-xs text-gray-500 mt-1">To change commission, cancel this listing and create a new Plus listing.</p>
           </div>
@@ -117,6 +116,7 @@
         <div>
           <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
           <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
+          <p id="apnReqMsg" class="text-xs text-gray-500 mt-1 hidden">FSBO requires an APN/Parcel value.</p>
         </div>
 
         <!-- Photos -->
@@ -135,13 +135,14 @@
           <p id="descGateNote" class="lock-note mt-1 hidden">Upgrade to Listed Property Plus to enable Description.</p>
         </div>
 
-        <!-- Banner / Preferred Area / Pin Area (gated by upgrades) -->
+        <!-- Banner (upsell-driven) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
           <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
           <p id="bannerGateNote" class="lock-note mt-1 hidden">Purchase Banner to enable this field.</p>
         </div>
 
+        <!-- Preferred / Pin -->
         <div>
           <label class="block text-sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
           <input id="preferredArea" placeholder="e.g., Newport Beach, Harbor View Homes" class="w-full border p-2 rounded">
@@ -154,7 +155,7 @@
           <p id="pinGateNote" class="lock-note mt-1 hidden">Purchase Pin Placement to enable this field.</p>
         </div>
 
-        <!-- Contact (Listed-only) -->
+        <!-- Listed-only: Brokerage/Agent confirms -->
         <div id="listedBlock">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -176,10 +177,9 @@
           </div>
         </div>
 
-        <div class="pt-2 flex items-center gap-2">
+        <div class="pt-2 grid grid-cols-2 gap-2">
           <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
-          <a id="previewBtn" href="/listing.html" class="bg-green-600 text-white px-4 py-2 rounded">Preview Full Listing Detail</a>
-          <button id="goCheckoutBtn" type="button" class="px-3 py-2 rounded border">Go to Checkout</button>
+          <a id="previewLink" href="/listing.html" class="text-center px-4 py-2 rounded bg-green-600 text-white">Preview Full Listing Detail</a>
         </div>
       </form>
     </section>
@@ -187,13 +187,13 @@
     <!-- RIGHT: Upgrades -->
     <aside class="space-y-4">
       <section class="bg-white rounded shadow p-5">
-        <h2 class="text-lg font-semibold">Upgrades</h2>
-        <p class="text-sm text-gray-600">Turn on upgrades here. (Sellers pay)</p>
+        <h2 class="text-lg font-semibold">Upgrade your listing</h2>
+
         <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
 
         <div class="mt-4 flex items-center gap-2">
           <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
-          <button id="goCheckoutBtn2" class="px-3 py-2 rounded border">Go to Checkout</button>
+          <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
         </div>
         <p class="text-xs text-gray-500 mt-2">Purchases are final.</p>
       </section>
@@ -201,25 +201,26 @@
 
   </main>
 
-  <!-- Logic -->
   <script>
     const $ = (id) => document.getElementById(id);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
+    // Source data
     const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const formData = getJSON("formData", {});
-    const agentListing = getJSON("agentListing", {});
+    const formData = getJSON("formData", {});  // box 2
+    const agentListing = getJSON("agentListing", {}); // seller photos/desc/banner possibly from agent page
     const checkoutData = getJSON("checkoutData", null) || {
       plan,
       base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
       upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
       prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
       meta: {},
-      payer: "seller"
+      payer: "seller" // ensure seller payer
     };
-    const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
+    const flags = getJSON("intakeFollowups", {});
     const isFSBO = plan.includes("FSBO");
+    const isPlus = plan === "Listed Property Plus" || isFSBO;
 
     // Header/who
     $("planPill").textContent = plan;
@@ -231,18 +232,14 @@
     $("status").value = agentListing.status || "";
     $("price").value = agentListing.price ?? "";
 
+    // Commission locked
     const commission = agentListing.commission ?? (formData.commission || "");
     const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
-    $("commission").value = commission; $("commissionType").value = commissionType;
+    $("commission").value = commission;
+    $("commissionType").value = commissionType;
 
-    // Property facts
-    $("bedrooms").value     = agentListing.bedrooms ?? "";
-    $("bathrooms").value    = agentListing.bathrooms ?? "";
-    $("sqft").value         = agentListing.sqft ?? "";
-    $("yearBuilt").value    = agentListing.yearBuilt ?? "";
-    $("lotSize").value      = agentListing.lotSize ?? "";
-    $("propertyType").value = agentListing.propertyType ?? "";
-    $("apn").value          = formData.apn || agentListing.apn || "";
+    $("apn").value = formData.apn || agentListing.apn || "";
+    if (isFSBO) $("apnReqMsg").classList.remove("hidden");
 
     // Photos
     const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
@@ -256,16 +253,19 @@
       const grid = $("photoGrid");
       grid.innerHTML = "";
       (photos || []).forEach((src, idx) => {
-        const row = document.createElement("div");
-        row.className = "flex items-center gap-3";
-
         const img = new Image();
-        img.src = src; img.alt = "Photo " + (idx + 1);
+        img.src = src;
+        img.alt = "Photo " + (idx + 1);
         img.className = "thumb border " + (idx === primaryIndex ? "border-green-500" : "border-gray-300");
         img.title = (idx === primaryIndex) ? "Primary photo" : "Click to set as primary";
-        img.addEventListener("click", () => { primaryIndex = idx; saveDraft(); renderThumbs(); });
-
-        const btns = document.createElement("div");
+        img.addEventListener("click", () => {
+          primaryIndex = idx;
+          saveDraft();
+          renderThumbs();
+        });
+        const row = document.createElement('div');
+        row.className = "flex items-center gap-3";
+        const btns = document.createElement('div');
         btns.className = "flex items-center gap-2 text-xs";
 
         const bPrimary = document.createElement("button");
@@ -297,7 +297,8 @@
         bDelete.onclick = () => {
           photos.splice(idx, 1);
           if (primaryIndex >= photos.length) primaryIndex = Math.max(0, photos.length - 1);
-          saveDraft(); renderThumbs();
+          saveDraft();
+          renderThumbs();
         };
 
         btns.appendChild(bPrimary);
@@ -328,9 +329,14 @@
         reader.readAsDataURL(file);
       });
       for (const f of toRead) {
-        try { photos.push(await readAsDataURL(f)); } catch(e) {}
+        try {
+          const dataUrl = await readAsDataURL(f);
+          photos.push(dataUrl);
+        } catch(e) { console.error(e); }
       }
-      saveDraft(); renderThumbs(); e.target.value = "";
+      saveDraft();
+      renderThumbs();
+      e.target.value = "";
     });
 
     // Description gate
@@ -341,7 +347,7 @@
       $("descGateNote").classList.remove("hidden");
     }
 
-    // Banner gate
+    // Banner field (requires banner upgrade)
     $("bannerText").value = agentListing.bannerText ?? "";
     if (!checkoutData.upgrades.banner) {
       $("bannerText").classList.add("dimmed");
@@ -350,14 +356,14 @@
     }
 
     // Preferred/Pin (premium/pin upgrades)
-    $("preferredArea").value = agentListing.preferredArea ?? checkoutData.meta.preferredArea ?? "";
-    $("pinArea").value = agentListing.pinArea ?? checkoutData.meta.pinArea ?? "";
-    const premiumOn = checkoutData.upgrades.premium || checkoutData.upgrades.pin;
-    $("preferredArea").disabled = !premiumOn;
-    $("preferredArea").classList.toggle("dimmed", !premiumOn);
+    $("preferredArea").value = agentListing.preferredArea ?? checkoutData.meta.preferredArea ?? flags.preferredArea ?? "";
+    $("pinArea").value = agentListing.pinArea ?? checkoutData.meta.pinArea ?? flags.pinArea ?? "";
+    const premOn = checkoutData.upgrades.premium || checkoutData.upgrades.pin;
+    $("preferredArea").disabled = !premOn;
+    $("preferredArea").classList.toggle("dimmed", !premOn);
     $("pinArea").disabled = !checkoutData.upgrades.pin;
     $("pinArea").classList.toggle("dimmed", !checkoutData.upgrades.pin);
-    if (!premiumOn) $("premiumGateNote").classList.remove("hidden");
+    if (!premOn) $("premiumGateNote").classList.remove("hidden");
     if (!checkoutData.upgrades.pin) $("pinGateNote").classList.remove("hidden");
 
     // Listed-only agent fields
@@ -378,7 +384,8 @@
       "bedrooms","bathrooms","sqft","yearBuilt","lotSize","propertyType"
     ].forEach(id=>{
       const el = $(id); if (!el) return;
-      el.addEventListener("input", saveDraft); el.addEventListener("change", saveDraft);
+      el.addEventListener("input", saveDraft);
+      el.addEventListener("change", saveDraft);
     });
 
     function saveDraft() {
@@ -405,7 +412,7 @@
         lotSize: $("lotSize").value || "",
         propertyType: $("propertyType").value || ""
       };
-      localStorage.setItem("agentListing", JSON.stringify(payload)); // reuse same key for consistency
+      localStorage.setItem("agentListing", JSON.stringify(payload)); // reuse same key
     }
 
     $("saveBtn").addEventListener("click", () => { saveDraft(); alert("Saved."); });
@@ -440,7 +447,6 @@
           if (k === "pin")        {checkoutData.upgrades.pin     = checked; if (checked) checkoutData.upgrades.premium = true;}
           setJSON("checkoutData", checkoutData);
 
-          // enable fields when selected
           if (k === "banner") {
             $("bannerText").disabled = !checked && !isPlus;
             $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
@@ -460,20 +466,31 @@
     $("updateUpgradesBtn").addEventListener("click", () => {
       checkoutData.meta.preferredArea = $("preferredArea").value || checkoutData.meta.preferredArea || "";
       checkoutData.meta.pinArea       = $("pinArea").value       || checkoutData.meta.pinArea       || "";
-      checkoutData.payer = "seller";
       setJSON("checkoutData", checkoutData);
       alert("Upgrades updated. Go to Checkout to pay (if needed).");
     });
-
-    // Checkout buttons (seller flow)
     $("goCheckoutBtn").addEventListener("click", () => { window.location.href = "/checkout.html"; });
-    $("goCheckoutBtn2").addEventListener("click", () => { window.location.href = "/checkout.html"; });
 
-    // Preview link should preserve ?id= when available
+    // Preview link — ALWAYS include ?id=, else helpful alert
     (function wirePreviewLink(){
-      const id = localStorage.getItem("lastListingId") || "";
-      const a = document.getElementById("previewBtn");
-      if (id) a.href = `/listing.html?id=${encodeURIComponent(id)}`;
+      const a = document.getElementById("previewLink");
+      if (!a) return;
+      let id = (localStorage.getItem("lastListingId") || "").trim();
+      if (!id) {
+        // Try ?id= in current URL as a fallback
+        try {
+          const u = new URL(location.href);
+          id = (u.searchParams.get("id") || "").trim();
+        } catch {}
+      }
+      if (id) {
+        a.href = "/listing.html?id=" + encodeURIComponent(id);
+      } else {
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          alert("We don’t have a listing id in this session yet. Save your listing, or open from Welcome after selecting a listing.");
+        });
+      }
     })();
   </script>
 
