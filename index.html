@@ -485,7 +485,7 @@
         this.value = v;
         const ok = /^\(\d{3}\)\s\d{3}-\d{4}$/.test(this.value);
         phoneInput.classList.toggle('border-red-500', !ok && d.length===10);
-        phoneError.classList.toggle('hidden', ok || d.length<10);
+        phoneError classList?.toggle('hidden', ok || d.length<10);
         syncAll();
         fitStrip1();
       });
@@ -553,7 +553,7 @@
       window.addEventListener('resize', fitStrip1);
     });
 
-    /* Submit — FIXED: always waits for Firestore, saves id before redirect */
+    /* Submit — UPGRADED: data-bleed guard + Firestore save (non-blocking) */
     async function submitForm(){
       const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
       const requiredIds = ['name','address','agentPhone'];
@@ -574,13 +574,15 @@
         return;
       } else addressEl.classList.remove('border-red-500');
 
-      // Clear prior local state
+      // 🔹 Data-bleed guard — clear prior listing state BEFORE saving new data
       try {
         ['agentListing','checkoutData','intakeFollowups','lastListingId','lastListingAddress','signature','signedISC'].forEach(k=>localStorage.removeItem(k));
         Object.keys(localStorage).forEach(k=>{
           if (k.startsWith('formData:') || k.startsWith('agentListing:') || k.startsWith('signedISC:')) localStorage.removeItem(k);
         });
-      } catch(e) { console.warn('[bleed-guard] cleanup skipped:', e); }
+      } catch(e) {
+        console.warn('[bleed-guard] cleanup skipped:', e);
+      }
 
       const fsboEmailEl=document.getElementById('fsboEmailInput');
       const formData={
@@ -603,12 +605,11 @@
       const plan=localStorage.getItem('selectedPlan')||'Listed Property Basic';
       localStorage.setItem('postSignatureOptions',plan.includes('FSBO')?'fsbo':'listed');
 
-      // Route after login
+      // >>> NEW: mark origin so verify-code routes correctly <<<
       localStorage.setItem('loginOrigin','box2');
       localStorage.setItem('nextAfterLogin','/verify-code.html');
 
-      // Firestore save — WAIT for it, then save id to localStorage
-      let createdId = "";
+      /* Firestore save (non-blocking) */
       try {
         const db = window.gc && window.gc.db;
         if (db) {
@@ -622,38 +623,27 @@
             commission: formData.commission || "",
             commissionType: formData.commissionType || "%",
             ownerName: formData.name || "",
-            ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",  // listed flows: ownerEmail set later after login
+            ownerEmail: plan includes('FSBO') ? (formData.fsboEmail || "") : "",
             agentName: plan.includes('FSBO') ? "" : (formData.agent || ""),
             agentPhone: plan.includes('FSBO') ? "" : (formData.phone || ""),
-            agentEmail: plan.includes('FSBO') ? "" : (formData.agentEmail || ""),
+            agentEmail: plan includes('FSBO') ? "" : (formData.agentEmail || ""),
             brokerage: plan.includes('FSBO') ? "" : (formData.brokerage || ""),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             source: "index.box2"
           };
           const ref = await addDoc(collection(db, "listings"), payload);
-          createdId = ref.id;
-          localStorage.setItem("lastListingId", createdId);
+          localStorage.setItem("lastListingId", ref.id);
           localStorage.setItem("lastListingAddress", payload.address || "");
-          localStorage.setItem(`formData:${createdId}`, JSON.stringify(formData));
-          console.log("[firestore] listing created:", createdId);
+          localStorage.setItem(`formData:${ref.id}`, JSON.stringify(formData));
+          console.log("[firestore] listing created:", ref.id);
         } else {
-          alert("Database not ready. Please refresh the page and try again.");
-          return;
+          console.warn("[firestore] db not available — skipped server save");
         }
       } catch (err) {
-        console.warn("[firestore] save failed:", err);
-        alert("We couldn't save your listing. Please try again in a moment.");
-        return;
+        console.warn("[firestore] save failed; continuing local-only:", err);
       }
 
-      // Safety: ensure id present before moving on
-      if (!createdId) {
-        alert("We couldn't create your listing. Please try again.");
-        return;
-      }
-
-      // Continue to login/verify (checkout.js will carry id to Signature)
       window.location.href="/login.html";
     }
 
@@ -749,37 +739,7 @@
         });
       }
 
-      // Samples for demo
-      const samples = [
-        {
-          address: "237 San Joaquin Street, Laguna Beach, CA 92651",
-          price: 1895000, commission: 2.5, commissionType: '%',
-          bannerText: "Open Sunday 1–4",
-          photos: ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=1200&auto=format&fit=crop"],
-          primaryIndex: 0, status: "Active",
-          brokerage: "Pacific Estates", agent: "Jordan Crisp",
-          plan: "Listed Property Plus", bedrooms: 3, bathrooms: 2, sqft: 2000
-        },
-        {
-          address: "14 Maple Ave, Montclair, NJ 07042",
-          price: 925000, commission: 25000, commissionType: '$',
-          photos: ["https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=1200&auto=format&fit=crop"],
-          primaryIndex: 0, status: "In Contract",
-          brokerage: "HomeWorks Realty", agent: "A. Brooks",
-          plan: "Listed Property Basic", bedrooms: 4, bathrooms: 3, sqft: 2400
-        },
-        {
-          address: "1020 Cedar Dr, Austin, TX 78704",
-          price: 650000, commission: 3.0, commissionType: '%',
-          bannerText: "Hot Home",
-          photos: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop"],
-          primaryIndex: 0, status: "Active",
-          brokerage: "", agent: "",
-          plan: "FSBO Plus", bedrooms: 3, bathrooms: 2, sqft: 1680
-        }
-      ];
-      const haveAddr = new Set(_tilesData.map(d => (d.address||'').toLowerCase()));
-      samples.forEach(s => { if(!haveAddr.has((s.address||'').toLowerCase())) _tilesData.push(s); });
+      /* DEMO LISTINGS REMOVED */
     }
 
     function renderStrip2Tiles(filterText=""){
@@ -810,82 +770,5 @@
   </script>
   <!-- Firebase init include -->
   <script type="module" src="/scripts/firebase-init.js"></script>
-
-  <!-- HOTFIX: Firestore-only tiles & Vista Suerte filter (non-destructive) -->
-  <script type="module">
-    import { db } from "/scripts/firebase-init.js";
-    import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-    (async function repaintTilesVistaOnly(){
-      try {
-        const grid = document.getElementById('tileGrid');
-        const empty = document.getElementById('tilesEmpty');
-        if (!grid || !db) return;
-
-        const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(100)));
-        const items = [];
-        snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-
-        // Vista Suerte only (temporary guard)
-        const filtered = items.filter(d => String(d.address || '').toLowerCase().includes('311 vista suerte'));
-
-        grid.innerHTML = '';
-        if (!filtered.length) {
-          empty?.classList.remove('hidden');
-          return;
-        }
-        empty?.classList.add('hidden');
-
-        filtered.forEach(d => {
-          const img = (Array.isArray(d.photos) && d.photos.length) ? d.photos[d.primaryIndex || 0] : '';
-          const price = d.price;
-          const commissionType = d.commissionType || '%';
-          const commission = d.commission;
-          const calc = commissionType === '$'
-            ? Number(commission || 0)
-            : (Number(price || 0) ? Math.round(Number(price) * (Number(commission || 0) / 100)) : 0);
-          const left = price ? ('$' + Number(price).toLocaleString()) : '$—';
-          const mid  = commission ? (commissionType === '%' ? `${commission}%` : '$' + Number(commission).toLocaleString()) : '—';
-          const right= calc ? ('$' + calc.toLocaleString()) : '$—';
-          const status = d.status || 'Draft';
-          const bedrooms = d.bedrooms ?? '—';
-          const bathrooms= d.bathrooms ?? '—';
-          const sqft = d.sqft ? Number(d.sqft).toLocaleString() : '—';
-          const plan = d.plan || '';
-          const brokerage = d.brokerage || (plan.includes('FSBO') ? 'FOR SALE BY OWNER' : '[listing brokerage]');
-          const agentName = d.agentName || '';
-          const agentPhone= d.agentPhone || '';
-
-          const card = document.createElement('article');
-          card.className = "gc-tile cursor-pointer";
-          card.innerHTML = `
-            <div class="relative">
-              <img class="gc-photo" src="${img || ''}" alt="Listing photo">
-              ${d.bannerText ? `<div class="gc-ribbon">${d.bannerText}</div>` : ``}
-            </div>
-            <div class="p-3 space-y-1">
-              <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
-                <div class="truncate">${left}</div>
-                <div class="truncate text-red-600">Commission ${mid} | ${right}</div>
-              </div>
-              <div class="text-[12px] text-gray-700">
-                ${bedrooms} bds | ${bathrooms} ba | ${sqft} sqft | ${status}
-              </div>
-              <div class="text-sm font-medium">${d.address || ''}</div>
-              <div class="text-[12px] text-gray-600">
-                ${(plan.includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage || '[listing brokerage]')).toUpperCase()}${agentName ? ' — ' + agentName : ''}${agentPhone ? ' — ' + agentPhone : ''}
-              </div>
-            </div>
-          `;
-          card.addEventListener('click', () => {
-            if (d.id) window.location.href = `/listing.html?id=${encodeURIComponent(d.id)}`;
-          });
-          grid.appendChild(card);
-        });
-      } catch (e) {
-        console.warn("[index hotfix] Vista Suerte repaint failed:", e);
-      }
-    })();
-  </script>
 </body>
 </html>
