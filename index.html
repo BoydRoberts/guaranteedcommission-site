@@ -484,8 +484,8 @@
         else if (d.length > 3) v = `(${d.slice(0,3)}) ${d.slice(3)}`;
         this.value = v;
         const ok = /^\(\d{3}\)\s\d{3}-\d{4}$/.test(this.value);
-        phoneInput.classList.toggle('border-red-500', !ok && d.length===10);
-        phoneError classList?.toggle('hidden', ok || d.length<10);
+        phoneError?.classList.toggle('hidden', ok || d.length < 10);
+        this.classList.toggle('border-red-500', !ok && d.length === 10);
         syncAll();
         fitStrip1();
       });
@@ -623,10 +623,10 @@
             commission: formData.commission || "",
             commissionType: formData.commissionType || "%",
             ownerName: formData.name || "",
-            ownerEmail: plan includes('FSBO') ? (formData.fsboEmail || "") : "",
+            ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",
             agentName: plan.includes('FSBO') ? "" : (formData.agent || ""),
             agentPhone: plan.includes('FSBO') ? "" : (formData.phone || ""),
-            agentEmail: plan includes('FSBO') ? "" : (formData.agentEmail || ""),
+            agentEmail: plan.includes('FSBO') ? "" : (formData.agentEmail || ""),
             brokerage: plan.includes('FSBO') ? "" : (formData.brokerage || ""),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -658,6 +658,7 @@
     }
     function renderTile(data){
       const {
+        id,
         address="[full address]",
         price,
         commission,
@@ -684,8 +685,12 @@
       const card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
       card.onclick = () => {
-        const slug = encodeURIComponent(address);
-        window.location.href = `/listing.html?addr=${slug}`;
+        if (id) {
+          window.location.href = `/listing.html?id=${encodeURIComponent(id)}`;
+        } else {
+          const slug = encodeURIComponent(address);
+          window.location.href = `/listing.html?addr=${slug}`;
+        }
       };
 
       card.innerHTML = `
@@ -770,30 +775,33 @@
   </script>
   <!-- Firebase init include -->
   <script type="module" src="/scripts/firebase-init.js"></script>
-<!-- Firestore tiles repaint (no demo, newest first) -->
-<script type="module">
-  import { db } from "/scripts/firebase-init.js";
-  import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  (async function loadTilesFromFirestore(){
-    try {
-      const grid  = document.getElementById('tileGrid');
-      const empty = document.getElementById('tilesEmpty');
-      if (!grid || !db) return;
+  <!-- Firestore tiles repaint (no demo, newest first) -->
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-      // Load newest listings
-      const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(100)));
-      const items = [];
-      snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
-      // Store into the existing global used by renderStrip2Tiles()
-      window._tilesData = items;
-      // Paint tiles using your existing renderer
-      renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
-    } catch (e) {
-      console.warn("[index] Firestore tiles load failed:", e);
-      document.getElementById('tilesEmpty')?.classList.remove('hidden');
-    }
-  })();
-</script>
+    (async function loadTilesFromFirestore(){
+      try {
+        const grid  = document.getElementById('tileGrid');
+        const empty = document.getElementById('tilesEmpty');
+        if (!grid || !db) return;
+
+        // Load newest listings
+        const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(100)));
+        const items = [];
+        snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+
+        // Store into the existing global used by renderStrip2Tiles()
+        window._tilesData = items;
+
+        // Paint tiles using your existing renderer
+        renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
+      } catch (e) {
+        console.warn("[index] Firestore tiles load failed:", e);
+        document.getElementById('tilesEmpty')?.classList.remove('hidden');
+      }
+    })();
+  </script>
 </body>
 </html>
