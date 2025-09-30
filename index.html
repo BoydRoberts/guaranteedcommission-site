@@ -770,5 +770,30 @@
   </script>
   <!-- Firebase init include -->
   <script type="module" src="/scripts/firebase-init.js"></script>
+<!-- Firestore tiles repaint (no demo, newest first) -->
+<script type="module">
+  import { db } from "/scripts/firebase-init.js";
+  import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  (async function loadTilesFromFirestore(){
+    try {
+      const grid  = document.getElementById('tileGrid');
+      const empty = document.getElementById('tilesEmpty');
+      if (!grid || !db) return;
+
+      // Load newest listings
+      const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(100)));
+      const items = [];
+      snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+      // Store into the existing global used by renderStrip2Tiles()
+      window._tilesData = items;
+      // Paint tiles using your existing renderer
+      renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
+    } catch (e) {
+      console.warn("[index] Firestore tiles load failed:", e);
+      document.getElementById('tilesEmpty')?.classList.remove('hidden');
+    }
+  })();
+</script>
 </body>
 </html>
