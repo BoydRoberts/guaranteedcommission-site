@@ -155,30 +155,17 @@
   <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
-  <script type="module">
-    import { db } from "/scripts/firebase-init.js";
-    import {
-      collection, query, orderBy, getDocs, limit
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  <script>
+    // Mapbox token
+    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
+    if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
-    // ===== Helpers =====
     const $ = (id) => document.getElementById(id);
     const getParam = (k) => new URL(location.href).searchParams.get(k);
-    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-    const isLoggedIn = () => (localStorage.getItem('isLoggedIn') || '') === 'true';
+    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-    function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
-    function commissionDollars(price, val, type){
-      const p=Number(price||0), c=Number(val||0);
-      if(!c) return null;
-      if(type==='$') return Math.round(c);
-      if(p) return Math.round(p*(c/100));
-      return null;
-    }
-    function escapeHTML(s){ return String(s||"").replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;","&gt;":"&gt;",'"':"&quot;","'":"&#039;" }[c])); }
-
-    // ===== Filters & pills =====
+    // Filters & pills
     function readFiltersFromUI() {
       const val = (id) => (document.getElementById(id)?.value || '').trim();
       const num = (id) => {
@@ -229,10 +216,7 @@
       if (filters.commUsdMin) pill(`$${Number(filters.commUsdMin).toLocaleString()}+ comm`,'commUsdMin');
     }
 
-    // ===== Map =====
-    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
-    if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
-
+    // Map helpers
     let map;
     async function geocodeCenter(q){
       if (!MAPBOX_TOKEN) return null;
@@ -251,7 +235,7 @@
     async function addMarkers(items){
       if (!map) return;
       for (const item of items.slice(0, 50)) {
-        const addr = (item.address || '').trim();
+        const addr = (item?.address || '').trim();
         if (!addr) continue;
         try {
           const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
@@ -262,28 +246,241 @@
           el.style.width = "10px"; el.style.height = "10px";
           el.style.background = "#dc2626"; el.style.border = "2px solid #fff";
           el.style.borderRadius = "50%"; el.style.boxShadow = "0 1px 2px rgba(0,0,0,.3)";
-          el.title = addr;
+          el.title = (addr||'');
           new mapboxgl.Marker(el).setLngLat(c).addTo(map);
           el.addEventListener("click", () => {
-            if (item.id) window.location.href = `/listing.html?id=${encodeURIComponent(item.id)}`;
+            if (item.id) {
+              window.location.href = `/listing.html?id=${encodeURIComponent(item.id)}`;
+            } else {
+              const slug = encodeURIComponent(addr);
+              window.location.href = `/listing.html?addr=${slug}`;
+            }
           });
         } catch {}
       }
     }
 
-    // ===== Firestore fetch (no demo data) =====
-    async function fetchListingsFromFirestore(limitTo=200){
-      const items = [];
-      const q = query(collection(db, "listings"), orderBy("createdAt","desc"), limit(limitTo));
-      const snap = await getDocs(q);
-      snap.forEach(doc => {
-        const d = doc.data() || {};
-        items.push({ id: doc.id, ...d });
+    // Saved searches
+    function getSavedSearches(){ return getJSON('savedSearches', []); }
+    function setSavedSearches(arr){ setJSON('savedSearches', arr); }
+    function refreshSavedDropdown(){
+      const dd = $("savedSearchesDropdown");
+      dd.innerHTML = `<option value="">Saved Searches</option>`;
+      getSavedSearches().forEach(s=>{
+        const opt = document.createElement('option');
+        opt.value = s.id; opt.textContent = s.name || s.q || 'Search';
+        dd.appendChild(opt);
       });
-      return items;
+    }
+    function saveCurrentSearch(name, q, filters, opts={}){
+      const email = (localStorage.getItem('loggedInEmail') || '').trim();
+      if (!email && opts.alerts) {
+        $('saveLoginNeeded').classList.remove('hidden');
+        return null;
+      }
+      const arr = getSavedSearches();
+      const record = {
+        id: 'ss_' + Date.now(),
+        name: name || (q || 'Search') + ' #' + (arr.length+1),
+        q, filters,
+        email: email || '',
+        alerts: !!opts.alerts,
+        lastSent: opts.lastSent || null,
+        lastChecked: Date.now()
+      };
+      arr.unshift(record);
+      setSavedSearches(arr);
+      refreshSavedDropdown();
+      $("savedSearchesDropdown").value = record.id;
+      return record;
     }
 
-    // ===== Filtering logic against Firestore docs =====
+    function showSaveBanner(show) {
+      const b = $('saveBanner');
+      b.style.display = show ? 'block' : 'none';
+      if (!show) {
+        $('saveLoginNeeded').classList.add('hidden');
+        $('saveConfirmed').classList.add('hidden');
+      }
+    }
+
+    // Render a tile
+    function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
+    function commissionDollars(price, val, type){
+      const p=Number(price||0), c=Number(val||0);
+      if(!c) return null;
+      if(type==='$') return Math.round(c);
+      if(p) return Math.round(p*(c/100));
+      return null;
+    }
+    function renderTileDoc(doc){
+      const {
+        id, address="", price, commission, commissionType="%", status="Active",
+        bannerText="", photos=[], primaryIndex=0, brokerage="", agentName="", agentPhone="", plan="Listed Property Basic",
+        bedrooms, bathrooms, sqft, propertyType=""
+      } = doc || {};
+      const calc = commissionDollars(price, commission, commissionType);
+      const left  = fmtUSD(price);
+      const mid   = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
+      const right = (calc!=null) ? `$${calc.toLocaleString()}` : '$—';
+      const img = (Array.isArray(photos) && photos.length) ? photos[primaryIndex||0] : '';
+
+      const card = document.createElement('article');
+      card.className = "gc-tile cursor-pointer";
+      card.onclick = () => {
+        if (id) window.location.href = `/listing.html?id=${encodeURIComponent(id)}`;
+        else window.location.href = `/listing.html?addr=${encodeURIComponent(address)}`;
+      };
+      card.innerHTML = `
+        <div class="relative">
+          <img class="gc-photo" src="${img || ''}" alt="Listing photo">
+          ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ``}
+        </div>
+        <div class="p-3 space-y-1">
+          <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
+            <div class="truncate">${left}</div>
+            <div class="truncate text-red-600">Commission ${mid} | ${right}</div>
+          </div>
+          <div class="text-[12px] text-gray-700">
+            ${(bedrooms ?? '—')} bds | ${(bathrooms ?? '—')} ba | ${(sqft ? Number(sqft).toLocaleString() : '—')} sqft${propertyType ? ' | ' + propertyType : ''} | ${status}
+          </div>
+          <div class="text-sm font-medium">${address}</div>
+          <div class="text-[12px] text-gray-600">
+            ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}
+          </div>
+        </div>
+      `;
+      return card;
+    }
+
+    // Main boot
+    (async function boot(){
+      const grid = $("grid");
+      const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
+      $("qBox").value = qParam;
+      $("qLabel").textContent = qParam ? `Showing results for “${qParam}”` : 'Showing all listings';
+      localStorage.setItem('lastSearch', qParam);
+
+      const lastFilters = getJSON('lastFilters', {});
+      writeFiltersToUI(lastFilters);
+      renderPills(lastFilters);
+
+      await initMap(qParam);
+
+      // Firestore fetch (ONLY real data)
+      let docs = [];
+      try {
+        const { db } = await import("/scripts/firebase-init.js");
+        const { collection, query, orderBy, getDocs, limit } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+        const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
+        snap.forEach(d => docs.push({ id: d.id, ...d.data() }));
+      } catch (e) {
+        console.warn("[search] Firestore fetch failed:", e);
+      }
+
+      // Apply UI filters and text query
+      const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
+
+      // Render
+      grid.innerHTML = '';
+      if (!filtered.length) {
+        grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
+      } else {
+        filtered.forEach(doc => grid.appendChild(renderTileDoc(doc)));
+      }
+      addMarkers(filtered);
+
+      // Show save banner after results
+      showSaveBanner(true);
+
+      // Search button
+      $("applyBtn").onclick = () => {
+        const q = $("qBox").value.trim();
+        localStorage.setItem('lastSearch', q);
+        location.href = `/search.html?q=${encodeURIComponent(q)}`;
+      };
+
+      // Filters
+      $("applyFiltersBtn").onclick = () => {
+        const f = readFiltersFromUI();
+        setJSON('lastFilters', f);
+        renderPills(f);
+        const q = $("qBox").value.trim();
+        const refiltered = docs.filter(d => matchesFilters(d, q, f));
+        $("qLabel").textContent = q ? `Showing results for “${q}”` : 'Showing all listings';
+        grid.innerHTML = '';
+        if (!refiltered.length) grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
+        else refiltered.forEach(doc => grid.appendChild(renderTileDoc(doc)));
+        addMarkers(refiltered);
+        showSaveBanner(true);
+      };
+
+      $("clearFiltersBtn").onclick = () => {
+        setJSON('lastFilters', {});
+        document.querySelectorAll('#filtersPanel input, #filtersPanel select').forEach(el => el.value = '');
+        renderPills({});
+        const q = $("qBox").value.trim();
+        const refiltered = docs.filter(d => matchesFilters(d, q, {}));
+        grid.innerHTML = '';
+        if (!refiltered.length) grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
+        else refiltered.forEach(doc => grid.appendChild(renderTileDoc(doc)));
+        addMarkers(refiltered);
+        showSaveBanner(true);
+      };
+
+      // Save search button (manual, no alerts)
+      $("saveSearchBtn").onclick = () => {
+        const q = $("qBox").value.trim();
+        const f = readFiltersFromUI();
+        saveCurrentSearch('', q, f, { alerts: false });
+        alert('Search saved.');
+      };
+
+      // Saved searches dropdown
+      const dd = $("savedSearchesDropdown");
+      dd.onchange = () => {
+        const id = dd.value;
+        if (!id) return;
+        const arr = getSavedSearches();
+        const sel = arr.find(s => s.id === id);
+        if (!sel) return;
+        $("qBox").value = sel.q || '';
+        writeFiltersToUI(sel.filters || {});
+        renderPills(sel.filters || {});
+        const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
+        $("qLabel").textContent = sel.q ? `Showing results for “${sel.q}”` : 'Showing all listings';
+        grid.innerHTML = '';
+        if (!refiltered.length) grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
+        else refiltered.forEach(doc => grid.appendChild(renderTileDoc(doc)));
+        addMarkers(refiltered);
+        showSaveBanner(true);
+      };
+
+      // Open filters/prompt via query params
+      (function(){
+        const u = new URL(location.href);
+        if (u.searchParams.get('open') === 'filters') {
+          document.getElementById('filtersPanel')?.setAttribute('open','');
+        }
+        if (u.searchParams.get('prompt') === 'save') {
+          showSaveBanner(true);
+        }
+      })();
+
+      // Populate saved dropdown on load
+      refreshSavedDropdown();
+
+      // Save banner buttons
+      $('saveYesBtn').addEventListener('click', () => {
+        const q = $("qBox").value.trim();
+        const filters = readFiltersFromUI();
+        const rec = saveCurrentSearch('', q, filters, { alerts: true, lastSent: Date.now() });
+        if (rec) $('saveConfirmed').classList.remove('hidden');
+      });
+      $('saveNoBtn').addEventListener('click', () => { showSaveBanner(false); });
+    })();
+
+    // Apply filters against a Firestore doc
     function matchesFilters(doc, qtext, f){
       const address = (doc.address || '').toLowerCase();
       if (qtext && !address.includes(qtext.toLowerCase().trim())) return false;
@@ -326,213 +523,6 @@
 
       return true;
     }
-
-    // ===== Render tiles =====
-    function renderTile(doc){
-      const {
-        id, address="", price, commission, commissionType="%", status="Active",
-        bannerText="", photos=[], primaryIndex=0, brokerage="", agentName="", agentPhone="", plan="Listed Property Basic",
-        bedrooms, bathrooms, sqft, propertyType=""
-      } = doc || {};
-      const calc = commissionDollars(price, commission, commissionType);
-      const left  = fmtUSD(price);
-      const mid   = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
-      const right = (calc!=null) ? `$${calc.toLocaleString()}` : '$—';
-      const img = (Array.isArray(photos) && photos.length) ? photos[primaryIndex||0] : '';
-
-      const card = document.createElement('article');
-      card.className = "gc-tile cursor-pointer";
-      card.onclick = () => { if (id) window.location.href = `/listing.html?id=${encodeURIComponent(id)}`; };
-
-      card.innerHTML = `
-        <div class="relative">
-          <img class="gc-photo" src="${img || ''}" alt="Listing photo">
-          ${bannerText ? `<div class="gc-ribbon">${escapeHTML(bannerText)}</div>` : ``}
-        </div>
-        <div class="p-3 space-y-1">
-          <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
-            <div class="truncate">${left}</div>
-            <div class="truncate text-red-600">Commission ${mid} | ${right}</div>
-          </div>
-          <div class="text-[12px] text-gray-700">
-            ${(bedrooms ?? '—')} bds | ${(bathrooms ?? '—')} ba | ${(sqft ? Number(sqft).toLocaleString() : '—')} sqft${propertyType ? ' | ' + escapeHTML(propertyType) : ''} | ${escapeHTML(status)}
-          </div>
-          <div class="text-sm font-medium">${escapeHTML(address)}</div>
-          <div class="text-[12px] text-gray-600">
-            ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}${agentName ? ' — '+escapeHTML(agentName) : ''}${agentPhone ? ' — '+escapeHTML(agentPhone) : ''}
-          </div>
-        </div>
-      `;
-      return card;
-    }
-
-    function renderTileList(list, container){
-      container.innerHTML = '';
-      if (!list.length) {
-        container.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
-        return;
-      }
-      list.forEach(doc => container.appendChild(renderTile(doc)));
-    }
-
-    // ===== Saved searches (dropdown + manual save) =====
-    function getSavedSearches(){ return getJSON('savedSearches', []); }
-    function setSavedSearches(arr){ setJSON('savedSearches', arr); }
-    function refreshSavedDropdown(){
-      const dd = $("savedSearchesDropdown");
-      dd.innerHTML = `<option value="">Saved Searches</option>`;
-      getSavedSearches().forEach(s=>{
-        const opt = document.createElement('option');
-        opt.value = s.id; opt.textContent = s.name || s.q || 'Search';
-        dd.appendChild(opt);
-      });
-    }
-    function saveCurrentSearch(name, q, filters, opts={}){
-      const email = (localStorage.getItem('loggedInEmail') || '').trim();
-      if (!email && opts.alerts) {
-        // alerts require login
-        $('saveLoginNeeded').classList.remove('hidden');
-        return null;
-      }
-      const arr = getSavedSearches();
-      const record = {
-        id: 'ss_' + Date.now(),
-        name: name || (q || 'Search') + ' #' + (arr.length+1),
-        q, filters,
-        email: email || '',
-        alerts: !!opts.alerts,
-        lastSent: opts.lastSent || null,
-        lastChecked: Date.now()
-      };
-      arr.unshift(record);
-      setSavedSearches(arr);
-      refreshSavedDropdown();
-      $("savedSearchesDropdown").value = record.id;
-      return record;
-    }
-
-    // ===== Email/alerts banner logic =====
-    function showSaveBanner(show) {
-      const b = $('saveBanner');
-      b.style.display = show ? 'block' : 'none';
-      if (!show) {
-        $('saveLoginNeeded').classList.add('hidden');
-        $('saveConfirmed').classList.add('hidden');
-      }
-    }
-    $('saveYesBtn').addEventListener('click', () => {
-      const q = $("qBox").value.trim();
-      const filters = readFiltersFromUI();
-      const rec = saveCurrentSearch('', q, filters, { alerts: true, lastSent: Date.now() });
-      if (rec) {
-        $('saveConfirmed').classList.remove('hidden');
-      }
-    });
-    $('saveNoBtn').addEventListener('click', () => { showSaveBanner(false); });
-
-    // ===== Main boot =====
-    (async function boot(){
-      const grid = $("grid");
-      const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
-      $("qBox").value = qParam;
-      $("qLabel").textContent = qParam ? `Showing results for “${qParam}”` : 'Showing all listings';
-      localStorage.setItem('lastSearch', qParam);
-
-      const lastFilters = getJSON('lastFilters', {});
-      writeFiltersToUI(lastFilters);
-      renderPills(lastFilters);
-
-      // Map
-      await initMap(qParam);
-
-      // Firestore fetch (ONLY real data)
-      let docs = await fetchListingsFromFirestore(200);
-
-      // >>> TEMP HARD GUARD (ACTIVE): show ONLY 311 Vista Suerte during cleanup
-      docs = docs.filter(d => String(d.address||'').toLowerCase().includes('311 vista suerte'));
-
-      // Apply UI filters and text query
-      const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
-
-      // Render
-      renderTileList(filtered, grid);
-      addMarkers(filtered);
-
-      // Show email banner after results
-      showSaveBanner(true);
-
-      // Search button
-      $("applyBtn").onclick = () => {
-        const q = $("qBox").value.trim();
-        localStorage.setItem('lastSearch', q);
-        location.href = `/search.html?q=${encodeURIComponent(q)}`;
-      };
-
-      // Filters
-      $("applyFiltersBtn").onclick = () => {
-        const f = readFiltersFromUI();
-        setJSON('lastFilters', f);
-
-        const q = $("qBox").value.trim();
-        const refiltered = docs.filter(d => matchesFilters(d, q, f));
-        $("qLabel").textContent = q ? `Showing results for “${q}”` : 'Showing all listings';
-        renderPills(f);
-        renderTileList(refiltered, grid);
-        addMarkers(refiltered);
-        showSaveBanner(true);
-      };
-
-      $("clearFiltersBtn").onclick = () => {
-        setJSON('lastFilters', {});
-        document.querySelectorAll('#filtersPanel input, #filtersPanel select').forEach(el => el.value = '');
-        renderPills({});
-        const q = $("qBox").value.trim();
-        const refiltered = docs.filter(d => matchesFilters(d, q, {}));
-        renderTileList(refiltered, grid);
-        addMarkers(refiltered);
-        showSaveBanner(true);
-      };
-
-      // Manual “Save Search” button (no alerts)
-      $("saveSearchBtn").onclick = () => {
-        const q = $("qBox").value.trim();
-        const f = readFiltersFromUI();
-        saveCurrentSearch('', q, f, { alerts: false });
-        alert('Search saved.');
-      };
-
-      // Saved searches dropdown
-      const dd = $("savedSearchesDropdown");
-      dd.onchange = () => {
-        const id = dd.value;
-        if (!id) return;
-        const arr = getSavedSearches();
-        const sel = arr.find(s => s.id === id);
-        if (!sel) return;
-        $("qBox").value = sel.q || '';
-        writeFiltersToUI(sel.filters || {});
-        renderPills(sel.filters || {});
-        const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
-        $("qLabel").textContent = sel.q ? `Showing results for “${sel.q}”` : 'Showing all listings';
-        renderTileList(refiltered, grid);
-        addMarkers(refiltered);
-        showSaveBanner(true);
-      };
-
-      // Open filters/prompt via query params
-      (function(){
-        const u = new URL(location.href);
-        if (u.searchParams.get('open') === 'filters') {
-          document.getElementById('filtersPanel')?.setAttribute('open','');
-        }
-        if (u.searchParams.get('prompt') === 'save') {
-          showSaveBanner(true);
-        }
-      })();
-
-      // Populate saved dropdown on load
-      refreshSavedDropdown();
-    })();
   </script>
 </body>
 </html>
