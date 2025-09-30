@@ -16,7 +16,7 @@
 
   <div class="max-w-6xl mx-auto mt-8 px-3">
     <div class="flex items-start justify-between">
-      <h1 class="text-2xl font-bold">Listing Detail Intake</h1>
+      <h1 class="text-2xl font-bold">Listing Detail Intake (Agent)</h1>
       <a href="/index.html" class="text-sm text-blue-600 hover:underline">Back to Home</a>
     </div>
   </div>
@@ -123,7 +123,7 @@
           <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
           <input id="photoInput" type="file" accept="image/*" multiple class="block">
           <div id="photoGrid" class="flex flex-col gap-2 mt-3"></div>
-          <p class="text-xs text-gray-500 mt-2">Tip: click the thumbnail or use buttons to set primary, replace, or delete.</p>
+          <p class="text-xs text-gray-500 mt-2">Tip: click thumbnail or use buttons to set primary, replace, or delete.</p>
         </div>
 
         <!-- Description (Plus only) -->
@@ -172,15 +172,14 @@
           </div>
         </div>
 
-        <div class="pt-2 flex items-center gap-2">
+        <div class="pt-2 grid grid-cols-2 gap-2">
           <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
-          <a href="/listing.html" class="bg-green-600 text-white px-4 py-2 rounded">Preview Full Listing Detail</a>
-          <button id="goCheckoutBtn" type="button" class="px-3 py-2 rounded border">Go to Checkout</button>
+          <a id="previewLink" href="/listing.html" class="text-center px-4 py-2 rounded bg-green-600 text-white">Preview Full Listing Detail</a>
         </div>
       </form>
     </section>
 
-    <!-- RIGHT: Promo + Upgrades -->
+    <!-- RIGHT: October Free Promo + Upgrades -->
     <aside class="space-y-4">
       <!-- October Free Promo (works in Sept & Oct 2025) -->
       <section class="bg-white rounded shadow p-5">
@@ -190,7 +189,7 @@
         </div>
         <p class="text-sm text-gray-600 mt-2">
           Listing agents can upgrade <strong>Banner</strong>, <strong>Premium</strong>, and <strong>Pin</strong> for <strong>FREE</strong> during October 2025
-          (promo also active during September to support early rollout).
+          (promo also active during September 2025 for early rollout).
         </p>
         <button id="applyPromoBtn" class="mt-3 w-full bg-blue-600 text-white px-3 py-2 rounded disabled:opacity-50">
           Apply October Free Upgrades
@@ -222,9 +221,7 @@
     const formData = getJSON("formData", {});
     const agentListing = getJSON("agentListing", {});
     const now = new Date();
-    // PROMO ACTIVE in September (8) and October (9) 2025
-    const promoActiveWindow = (y, m) => (y === 2025 && (m === 8 || m === 9));
-    const isSeptOrOct2025 = promoActiveWindow(now.getFullYear(), now.getMonth());
+    const isSeptOrOct2025 = (now.getFullYear() === 2025 && (now.getMonth() === 8 || now.getMonth() === 9)); // Sep=8, Oct=9
 
     // checkoutData baseline (payer=agent to enable promo)
     const checkoutData = getJSON("checkoutData", null) || {
@@ -267,7 +264,6 @@
     const maxPhotos = isPlus ? 20 : 1;
     $("photoHelp").textContent = isPlus ? "You can upload up to 20 photos." : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
 
-    // Render thumbs with primary/replace/delete
     function renderThumbs() {
       const grid = $("photoGrid");
       grid.innerHTML = "";
@@ -435,9 +431,7 @@
       localStorage.setItem("agentListing", JSON.stringify(payload));
     }
 
-    $("saveBtn").addEventListener("click", () => { saveDraft(); alert("Saved."); });
-
-    // ---------- October Free Promo (active in Sept & Oct when payer=agent) ----------
+    // ---------- October Free Promo ----------
     const promoBadge = $("promoBadge");
     const applyPromoBtn = $("applyPromoBtn");
     const promoNote = $("promoNote");
@@ -462,7 +456,7 @@
       checkoutData.meta.octoberAgentFree = true;
       setJSON("checkoutData", checkoutData);
       alert("October Free applied. Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.");
-      paintUpgrades(); // repaint price labels
+      paintUpgrades();
     }
 
     applyPromoBtn.addEventListener("click", applyFreePromo);
@@ -504,7 +498,7 @@
           if (k === "pin")        {checkoutData.upgrades.pin     = checked; if (checked) checkoutData.upgrades.premium = true;}
           setJSON("checkoutData", checkoutData);
 
-          // Enable typing into gated fields when selected
+          // Enable fields when selected
           if (k === "banner") {
             $("bannerText").disabled = !checked && !isPlus;
             $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
@@ -529,9 +523,33 @@
       alert("Upgrades updated. Go to Checkout to pay (if needed).");
     });
 
-    // Both buttons route to checkout (kept behavior)
-    $("goCheckoutBtn").addEventListener("click", () => { window.location.href = "/checkout.html"; });
+    // Go to checkout
     $("goCheckoutBtn2").addEventListener("click", () => { window.location.href = "/checkout.html"; });
+
+    // ---------- SAVE TO LOCAL (and Firestore module below saves to server) ----------
+    $("saveBtn").addEventListener("click", () => { saveDraft(); alert("Saved."); });
+
+    // ---------- PREVIEW LINK: ALWAYS INCLUDE ?id= ----------
+    (function wirePreviewLink(){
+      const a = document.getElementById("previewLink");
+      if (!a) return;
+      let id = (localStorage.getItem("lastListingId") || "").trim();
+      if (!id) {
+        // Try to read ?id= from current URL as a fallback
+        try {
+          const u = new URL(location.href);
+          id = (u.searchParams.get("id") || "").trim();
+        } catch {}
+      }
+      if (id) {
+        a.href = "/listing.html?id=" + encodeURIComponent(id);
+      } else {
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          alert("We don’t have a listing id in this session yet. Save your listing, or open from Welcome after selecting a listing.");
+        });
+      }
+    })();
   </script>
 
   <!-- Firestore SAVE TO SERVER for agent -->
