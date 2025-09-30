@@ -5,18 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Who Will Complete the Listing?</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .hint { font-size: 12px; color:#6b7280; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-xl bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">agent-invite build 2025-08-12a</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">agent-invite build</span>
       </div>
 
       <h1 class="text-2xl font-bold text-center">Who Will Complete the Listing?</h1>
       <p id="addrLine" class="text-sm text-gray-600 text-center mt-1"></p>
 
-      <!-- NEW: Current Price (placed above the choices) -->
+      <!-- Current Price (optional but helpful for the tile) -->
       <div class="mt-4">
         <label for="currentPrice" class="block text-sm font-semibold">Current Price</label>
         <input
@@ -24,10 +27,10 @@
           type="number"
           min="0"
           step="1000"
-          placeholder="Current Price"
+          placeholder="e.g., 2050000"
           class="mt-1 w-full border rounded px-3 py-2"
         />
-        <p class="text-xs text-gray-500 mt-1">Optional for now, but helpful for a complete tile right away.</p>
+        <p class="hint mt-1">Optional right now — helps your listing tile look complete.</p>
       </div>
 
       <div id="notice" class="hidden mt-4 text-sm rounded-lg p-3 bg-yellow-50 text-yellow-800"></div>
@@ -37,7 +40,7 @@
         <section class="border rounded-xl p-4">
           <h2 class="font-semibold mb-2">Invite my agent to complete listing</h2>
           <p class="text-sm text-gray-600 mb-3">
-            We’ll start your listing with the details you provided. Your agent can add photos, description, and any missing fields.
+            We’ll save your details, notify your agent, and return you to your Welcome page.
           </p>
 
           <label class="block text-sm font-medium">Agent Email</label>
@@ -72,14 +75,18 @@
   </div>
 
   <script>
-    console.log('[agent-invite] build 2025-08-12a');
+    console.log('[agent-invite] build');
 
     const $ = (id) => document.getElementById(id);
-    const plan = (localStorage.getItem('selectedPlan') || '').trim();
-    const formData = (function(){ try { return JSON.parse(localStorage.getItem('formData')||'{}'); } catch { return {}; } })();
-    const agentListing = (function(){ try { return JSON.parse(localStorage.getItem('agentListing')||'{}'); } catch { return {}; } })();
+    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+    const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-    // FSBO Plus skips this page entirely (no listing agent flow)
+    // Read plan + form data
+    const plan = (localStorage.getItem('selectedPlan') || '').trim();
+    const formData = getJSON('formData', {});
+    const agentListing = getJSON('agentListing', {});
+
+    // FSBO skips this page entirely (no listing agent flow)
     if (plan === 'FSBO Plus') {
       localStorage.setItem('nextAfterVerify', '/seller-detail.html');
       window.location.replace('/seller-detail.html');
@@ -89,7 +96,7 @@
     const addr = formData.address || localStorage.getItem('shortAddress') || '';
     if (addr) $('addrLine').textContent = addr;
 
-    // Prefill agent email if we captured it in Box 2
+    // Prefill agent email if we captured it earlier
     const pre = (formData.agentEmail || '').trim();
     if (pre) $('agentEmail').value = pre;
 
@@ -106,11 +113,10 @@
       n.classList.remove('hidden');
     }
 
-    // Helper: persist current price to agentListing (numeric)
+    // Save price helper (to agentListing)
     function saveCurrentPrice() {
       try {
         const raw = $('currentPrice').value;
-        // allow empty → remove price; else store as a number
         let priceVal = null;
         if (raw !== null && raw !== undefined && String(raw).trim() !== '') {
           const n = Number(raw);
@@ -118,7 +124,6 @@
         }
         const current = JSON.parse(localStorage.getItem('agentListing') || '{}');
         if (priceVal === null) {
-          // clear price if user emptied it
           delete current.price;
         } else {
           current.price = priceVal;
@@ -134,11 +139,11 @@
     $('currentPrice').addEventListener('change', saveCurrentPrice);
     $('currentPrice').addEventListener('blur', saveCurrentPrice);
 
-    // Invite flow – stores the email and proceeds to agent detail page
+    // Invite flow – store the email, confirm, send seller to Welcome
     $('inviteBtn').addEventListener('click', (e) => {
       e.preventDefault();
 
-      // Save price one more time before navigation
+      // Save price first
       saveCurrentPrice();
 
       const email = ($('agentEmail').value || '').trim();
@@ -147,17 +152,21 @@
         $('agentEmail').focus();
         return;
       }
+
+      // Persist in localStorage so other pages know the agent to invite
       localStorage.setItem('agentInviteEmail', email);
 
-      // keep it in formData as well for later pages
+      // Keep in formData for later pages
       try {
         const fd = JSON.parse(localStorage.getItem('formData') || '{}');
         fd.agentEmail = email;
         localStorage.setItem('formData', JSON.stringify(fd));
       } catch {}
 
-      // In real app you’d send an email invite here.
-      window.location.href = '/agent-detail.html';
+      // OPTIONAL: in a future backend, trigger an email invite here.
+
+      alert('Your agent has been invited. We’ll return you to your Welcome page.');
+      window.location.href = '/welcome.html';
     });
 
     // Seller completes: ensure we persist price before following link
