@@ -1,17 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Welcome | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .card { background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); padding:1rem 1.25rem; }
-    .hint { font-size:12px; color:#6b7280; }
-    .row { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
-    .hidden { display:none; }
-    .minw { min-width: 18rem; }
-  </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
   <header class="bg-white shadow">
@@ -23,53 +16,117 @@
   </header>
 
   <main class="max-w-4xl mx-auto px-4 py-6">
-    <section class="card">
+    <section class="bg-white rounded-2xl shadow p-6">
       <h2 class="text-xl font-bold mb-1">Hi <span id="who">there</span></h2>
-      <p class="text-sm text-gray-600 mb-4">What would you like to do?</p>
+      <p class="text-sm text-gray-600 mb-4">What would you like to do next?</p>
 
-      <!-- UNIVERSAL SELECTOR (we swap options based on role) -->
-      <div class="row mb-3">
-        <select id="actionSelect" class="border rounded px-3 py-2 text-sm minw">
-          <option value="">Select…</option>
-        </select>
+      <!-- Role-specific boxes -->
+      <div id="roleBoxes" class="space-y-4">
 
-        <!-- Continue button appears after a valid choice -->
-        <button id="continueBtn" class="px-4 py-2 rounded bg-blue-600 text-white text-sm hidden">
-          Continue
-        </button>
+        <!-- Seller -->
+        <div id="boxSeller" class="hidden space-y-4">
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">Enter a new listing</h3>
+            <div class="flex items-center gap-2">
+              <label class="text-sm">Plan</label>
+              <select id="sellerNewPlan" class="border rounded px-2 py-1 text-sm">
+                <option>Listed Property Basic</option>
+                <option>Listed Property Plus</option>
+                <option>FSBO Plus</option>
+              </select>
+              <button id="sellerNewGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Continue</button>
+            </div>
+          </div>
+
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">Edit a current listing</h3>
+            <div id="sellerEditRow" class="flex flex-col gap-2 md:flex-row md:items-center">
+              <select id="sellerListings" class="border rounded px-2 py-2 text-sm grow">
+                <option value="">Select your listing…</option>
+              </select>
+              <div class="flex gap-2">
+                <button id="sellerEditGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</button>
+                <a id="sellerPreview" class="px-3 py-2 rounded border text-sm" href="#" target="_blank" rel="noopener">Preview</a>
+              </div>
+            </div>
+            <p id="sellerNoListings" class="hidden text-sm text-gray-700 mt-2">
+              No listings found for your account.
+            </p>
+          </div>
+
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">Search commissions / create auto-email search</h3>
+            <button id="sellerSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
+          </div>
+        </div>
+
+        <!-- Listing Agent -->
+        <div id="boxAgent" class="hidden space-y-4">
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">Edit a current listing</h3>
+            <div id="agentEditRow" class="flex flex-col gap-2 md:flex-row md:items-center">
+              <select id="agentListings" class="border rounded px-2 py-2 text-sm grow">
+                <option value="">Select your listing…</option>
+              </select>
+              <div class="flex gap-2">
+                <button id="agentEditGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</button>
+                <a id="agentPreview" class="px-3 py-2 rounded border text-sm" href="#" target="_blank" rel="noopener">Preview</a>
+              </div>
+            </div>
+            <p id="agentNoListings" class="hidden text-sm text-gray-700 mt-2">
+              No listings found for your account.
+            </p>
+          </div>
+
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">Become a Local Professional</h3>
+            <button id="agentProApply" class="px-3 py-2 rounded bg-amber-600 text-white text-sm">Apply</button>
+          </div>
+
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">Search commissions / create auto-email search</h3>
+            <button id="agentSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
+          </div>
+        </div>
+
+        <!-- Buyer’s Agent -->
+        <div id="boxBuyersAgent" class="hidden space-y-4">
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">Become a Local Professional</h3>
+            <button id="bAgentProApply" class="px-3 py-2 rounded bg-amber-600 text-white text-sm">Apply</button>
+          </div>
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">Create a new automatic search</h3>
+            <button id="bAgentSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
+          </div>
+        </div>
+
+        <!-- Buyer -->
+        <div id="boxBuyer" class="hidden space-y-4">
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">Search Local Professionals by ZIP</h3>
+            <button id="buyerProsGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Local Professionals</button>
+          </div>
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">Search commissions / create auto-email search</h3>
+            <button id="buyerSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
+          </div>
+        </div>
+
+        <!-- Other / Fallback -->
+        <div id="boxOther" class="hidden space-y-4">
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">Search commissions</h3>
+            <button id="otherSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
+          </div>
+        </div>
+
       </div>
+    </section>
 
-      <!-- SELLER: plan picker appears when they choose "enter & sign" -->
-      <div id="sellerPlanRow" class="row hidden mb-3">
-        <label class="text-sm font-semibold">Choose your plan:</label>
-        <select id="sellerPlan" class="border rounded px-3 py-2 text-sm">
-          <option>Listed Property Basic</option>
-          <option>Listed Property Plus</option>
-          <option>FSBO Plus</option>
-        </select>
-        <span class="hint">You’ll go to the communication form (Box 2) with this plan selected.</span>
-      </div>
-
-      <!-- SELLER: listing dropdown (Firestore + local fallback) -->
-      <div id="sellerListRow" class="row hidden mb-3">
-        <label class="text-sm font-semibold">Select your listing:</label>
-        <select id="sellerListings" class="border rounded px-3 py-2 text-sm minw">
-          <option value="">Loading your listings…</option>
-        </select>
-        <span id="sellerNoListings" class="hint hidden">No listings found yet for your account.</span>
-      </div>
-
-      <!-- AGENT: listing dropdown (Firestore by agentEmail) -->
-      <div id="agentListRow" class="row hidden mb-3">
-        <label class="text-sm font-semibold">Select your listing:</label>
-        <select id="agentListings" class="border rounded px-3 py-2 text-sm minw">
-          <option value="">Loading your listings…</option>
-        </select>
-        <span id="agentNoListings" class="hint hidden">No listings found yet for your account.</span>
-      </div>
-
-      <!-- Small tips based on action -->
-      <p id="tip" class="hint hidden mt-2"></p>
+    <section id="listSection" class="mt-6 bg-white rounded-2xl shadow p-6 hidden">
+      <h3 class="font-semibold mb-2">Your listings</h3>
+      <div id="listingsTable" class="text-sm text-gray-800"></div>
     </section>
   </main>
 
@@ -79,255 +136,187 @@
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import {
-      collection, query, where, orderBy, getDocs
+      collection, getDocs, query, where, orderBy, limit
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // ------- helpers -------
-    const $ = (id) => document.getElementById(id);
-    const role = (localStorage.getItem('userRole') || '').trim();              // seller | listing_agent | buyers_agent | buyer | other
-    const email = (localStorage.getItem('loggedInEmail') || '').trim().toLowerCase();
+    const $ = (id)=>document.getElementById(id);
 
-    if (email) $('who').textContent = email;
+    // Who + role
+    const email = (localStorage.getItem('loggedInEmail') || '').trim();
+    const role  = (localStorage.getItem('userRole') || '').trim(); // 'seller', 'listing_agent', 'buyers_agent', 'buyer', 'other'
+    $("who").textContent = email || 'there';
 
-    // Role-based actions (single dropdown)
-    const ACTIONS = {
-      seller: [
-        { v:"seller_enter_sign", t:"Enter a listing and sign an Irrevocable Seller Communication" },
-        { v:"seller_edit",       t:"Edit a current listing" },
-        { v:"search",            t:"Search guaranteed commissions" },
-        { v:"autosave",          t:"Set up an automatic guaranteed commission email search" }
-      ],
-      listing_agent: [
-        { v:"agent_edit",        t:"Edit a current listing" },
-        { v:"search",            t:"Search guaranteed commissions" },
-        { v:"autosave",          t:"Set up an automatic guaranteed commission email search" },
-        { v:"localpro",          t:"Become a Local Professional" }
-      ],
-      buyers_agent: [
-        { v:"search",            t:"Search guaranteed commissions" },
-        { v:"autosave",          t:"Set up an automatic guaranteed commission email search" },
-        { v:"localpro",          t:"Become a Local Professional" }
-      ],
-      buyer: [
-        { v:"search",            t:"Search guaranteed commissions" },
-        { v:"autosave",          t:"Set up an automatic guaranteed commission email search" }
-      ],
-      other: [
-        { v:"search",            t:"Search guaranteed commissions" },
-        { v:"autosave",          t:"Set up an automatic guaranteed commission email search" }
-      ]
-    };
+    // Show role box
+    const show = (id)=>$(id).classList.remove('hidden');
+    if (role === 'seller') show('boxSeller');
+    else if (role === 'listing_agent') show('boxAgent');
+    else if (role === 'buyers_agent') show('boxBuyersAgent');
+    else if (role === 'buyer') show('boxBuyer');
+    else show('boxOther');
 
-    (function paintOptions(){
-      const sel = $('actionSelect');
-      const list = ACTIONS[role || 'other'] || ACTIONS.other;
-      sel.innerHTML = '<option value="">Select…</option>' + list.map(a => `<option value="${a.v}">${a.t}</option>`).join('');
+    // New Listing plan
+    $("sellerNewGo")?.addEventListener('click', ()=>{
+      const plan = $("sellerNewPlan").value;
+      localStorage.setItem('selectedPlan', plan);
+      location.href = '/index.html#strip2Search';
+      window.scrollTo(0,0);
+    });
+
+    // Shared search buttons
+    $("sellerSearchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
+    $("agentSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
+    $("bAgentSearchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
+    $("buyerSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
+    $("buyerProsGo")?.addEventListener('click',    ()=> location.href='/local-professionals.html?mode=search');
+    $("bAgentProApply")?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
+    $("agentProApply")?.addEventListener('click',  ()=> location.href='/local-professionals.html?mode=apply');
+    $("otherSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
+
+    // Fetch listings for this user (owner OR agent)
+    async function fetchMyListings() {
+      if (!email || !db) return [];
+
+      const items = [];
+      try {
+        // Query ownerEmail
+        const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), limit(50));
+        const s1 = await getDocs(q1);
+        s1.forEach(d => items.push({ id: d.id, ...d.data() }));
+
+        // Query agentEmail
+        const q2 = query(collection(db, "listings"), where("agentEmail", "==", email), limit(50));
+        const s2 = await getDocs(q2);
+        s2.forEach(d => items.push({ id: d.id, ...d.data() }));
+      } catch (e) {
+        console.warn("[welcome] fetch error:", e);
+      }
+
+      // De-dupe by id
+      const byId = {};
+      for (const it of items) byId[it.id] = it;
+      const list = Object.keys(byId).map(id => ({ id, ...byId[id] }));
+
+      // Sort by updatedAt then createdAt (desc). Timestamps may be missing locally
+      list.sort((a,b) => {
+        const au = a.updatedAt?.toMillis?.() ? a.updatedAt.toMillis() : 0;
+        const bu = b.updatedAt?.toMillis?.() ? b.updatedAt.toMillis() : 0;
+        const ac = a.createdAt?.toMillis?.() ? a.createdAt.toMillis() : 0;
+        const bc = b.createdAt?.toMillis?.() ? b.createdAt.toMillis() : 0;
+        return (bu - au) || (bc - ac);
+      });
+
+      return list;
+    }
+
+    function optionLabel(it) {
+      const addr = it.address || '[address]';
+      const status = it.status || 'Draft';
+      return `${addr} — ${status}`;
+    }
+
+    function fillDropdown(selectEl, list) {
+      selectEl.innerHTML = `<option value="">Select your listing…</option>`;
+      list.forEach(it => {
+        const opt = document.createElement('option');
+        opt.value = it.id;
+        opt.textContent = optionLabel(it);
+        selectEl.appendChild(opt);
+      });
+    }
+
+    function wireEditor(selectEl, editBtn, previewA, which) {
+      if (!selectEl || !editBtn || !previewA) return;
+      editBtn.addEventListener('click', () => {
+        const id = selectEl.value;
+        if (!id) { alert('Pick a listing first.'); return; }
+        localStorage.setItem('lastListingId', id);
+        previewA.href = '/listing.html?id=' + encodeURIComponent(id);
+        // Route to correct editor by role
+        if (role === 'seller') location.href = '/seller-detail.html?id=' + encodeURIComponent(id);
+        else if (role === 'listing_agent') location.href = '/agent-detail.html?id=' + encodeURIComponent(id);
+        else location.href = '/agent-detail.html?id=' + encodeURIComponent(id);
+      });
+      selectEl.addEventListener('change', () => {
+        const id = selectEl.value;
+        previewA.href = id ? ('/listing.html?id=' + encodeURIComponent(id)) : '#';
+      });
+    }
+
+    (async function boot(){
+      const list = await fetchMyListings();
+
+      // Seller
+      const sellerSel  = $("sellerListings");
+      const sellerGo   = $("sellerEditGo");
+      const sellerPrev = $("sellerPreview");
+      if (sellerSel) {
+        if (list.length) {
+          fillDropdown(sellerSel, list);
+          $("sellerNoListings")?.classList.add('hidden');
+        } else {
+          $("sellerNoListings")?.classList.remove('hidden');
+        }
+        wireEditor(sellerSel, sellerGo, sellerPrev, 'seller');
+      }
+
+      // Agent
+      const agentSel  = $("agentListings");
+      const agentGo   = $("agentEditGo");
+      const agentPrev = $("agentPreview");
+      if (agentSel) {
+        if (list.length) {
+          fillDropdown(agentSel, list);
+          $("agentNoListings")?.classList.add('hidden');
+        } else {
+          $("agentNoListings")?.classList.remove('hidden');
+        }
+        wireEditor(agentSel, agentGo, agentPrev, 'agent');
+      }
+
+      // Also paint a simple table below (optional, helpful)
+      if (list.length) {
+        const host = $("listingsTable");
+        const sec  = $("listSection");
+        if (host && sec) {
+          sec.classList.remove('hidden');
+          host.innerHTML = `
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-gray-600">
+                  <tr>
+                    <th class="px-3 py-2 text-left">Address</th>
+                    <th class="px-3 py-2 text-left">Status</th>
+                    <th class="px-3 py-2 text-left">Plan</th>
+                    <th class="px-3 py-2 text-left">Updated</th>
+                    <th class="px-3 py-2 text-left">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y">
+                  ${
+                    list.map(it=>{
+                      const upd = it.updatedAt?.toDate ? it.updatedAt.toDate() : null;
+                      const upds = upd ? upd.toLocaleDateString() : '';
+                      const addr = it.address || '';
+                      return `
+                        <tr>
+                          <td class="px-3 py-2">${addr}</td>
+                          <td class="px-3 py-2">${it.status || 'Draft'}</td>
+                          <td class="px-3 py-2">${it.plan || ''}</td>
+                          <td class="px-3 py-2">${upds}</td>
+                          <td class="px-3 py-2">
+                            <a class="text-blue-600 underline" href="/listing.html?id=${encodeURIComponent(it.id)}" target="_blank">Preview</a>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')
+                  }
+                </tbody>
+              </table>
+            </div>
+          `;
+        }
+      }
     })();
-
-    function show(id, on=true){ const el=$(id); if(!el) return; el.classList.toggle('hidden', !on); }
-    function setTip(msg){ const el=$('tip'); if(!msg){ show('tip', false); return; } el.textContent = msg; show('tip', true); }
-
-    // Load seller listings from Firestore (by ownerEmail). Fallback to local list if none.
-    async function loadSellerListings(){
-      const sel = $('sellerListings');
-      const none = $('sellerNoListings');
-      sel.innerHTML = `<option value="">Loading your listings…</option>`;
-
-      let items = [];
-      try {
-        const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), orderBy("updatedAt", "desc"));
-        const snap1 = await getDocs(q1);
-        snap1.forEach(doc => items.push({ id: doc.id, address: (doc.data().address || "[address]"), status: (doc.data().status || "Draft") }));
-
-        // Fallback to any local remembered seller listings if Firestore has none
-        if (!items.length) {
-          const local = JSON.parse(localStorage.getItem('sellerListings') || '[]');
-          if (local.length) {
-            items = local.map((x, i) => ({ id: `local-${i}`, address: x.address || "[address]", status: "Local" }));
-          }
-        }
-      } catch (e) {
-        console.warn("[welcome] seller listings lookup failed:", e);
-      }
-
-      sel.innerHTML = "";
-      if (!items.length) {
-        none.classList.remove('hidden');
-        const opt = document.createElement("option");
-        opt.value = ""; opt.textContent = "No listings found";
-        sel.appendChild(opt);
-      } else {
-        none.classList.add('hidden');
-        items.forEach(it => {
-          const opt = document.createElement("option");
-          opt.value = it.id;
-          opt.textContent = `${it.address} (${it.status})`;
-          opt.setAttribute('data-address', it.address);
-          sel.appendChild(opt);
-        });
-      }
-    }
-
-    // Load agent listings from Firestore by agentEmail
-    async function loadAgentListings(){
-      const sel = $('agentListings');
-      const none = $('agentNoListings');
-      sel.innerHTML = `<option value="">Loading your listings…</option>`;
-
-      let items = [];
-      try {
-        const q = query(collection(db, "listings"), where("agentEmail", "==", email), orderBy("updatedAt", "desc"));
-        const snap = await getDocs(q);
-        snap.forEach(docu => {
-          const d = docu.data() || {};
-          items.push({ id: docu.id, address: d.address || "[address]", status: d.status || "Draft" });
-        });
-      } catch (e) {
-        console.warn("[welcome] agent listings lookup failed:", e);
-      }
-
-      sel.innerHTML = "";
-      if (!items.length) {
-        none.classList.remove('hidden');
-        const opt = document.createElement("option");
-        opt.value = ""; opt.textContent = "No listings found";
-        sel.appendChild(opt);
-      } else {
-        none.classList.add('hidden');
-        items.forEach(it => {
-          const opt = document.createElement("option");
-          opt.value = it.id;
-          opt.textContent = `${it.address} (${it.status})`;
-          sel.appendChild(opt);
-        });
-      }
-    }
-
-    // Action selection behavior
-    $('actionSelect').addEventListener('change', async (e) => {
-      const v = e.target.value;
-
-      // reset sub-rows
-      show('sellerPlanRow', false);
-      show('sellerListRow', false);
-      show('agentListRow', false);
-      setTip('');
-      show('continueBtn', !!v);
-
-      if (role === 'seller') {
-        if (v === 'seller_enter_sign') {
-          show('sellerPlanRow', true);
-          setTip('You’ll go to the communication form (Box 2) with your chosen plan.');
-        } else if (v === 'seller_edit') {
-          show('sellerListRow', true);
-          setTip('Pick a listing to edit. If none appears, you may need to start a new one.');
-          await loadSellerListings();
-        } else if (v === 'search') {
-          setTip('You’ll be taken to the homepage search (Strip 2).');
-        } else if (v === 'autosave') {
-          setTip('You’ll go to search. After results, you can opt into email alerts (login required).');
-        }
-      } else if (role === 'listing_agent') {
-        if (v === 'agent_edit') {
-          show('agentListRow', true);
-          setTip('Pick the listing you want to edit.');
-          await loadAgentListings();
-        } else if (v === 'search') {
-          setTip('You’ll be taken to the homepage search (Strip 2).');
-        } else if (v === 'autosave') {
-          setTip('You’ll go to search. After results, you can opt into email alerts (login required).');
-        } else if (v === 'localpro') {
-          setTip('You’ll go to the Local Professionals signup.');
-        }
-      } else {
-        // buyers_agent / buyer / other
-        if (v === 'search') {
-          setTip('You’ll be taken to the homepage search (Strip 2).');
-        } else if (v === 'autosave') {
-          setTip('You’ll go to search. After results, you can opt into email alerts (login required).');
-        } else if (v === 'localpro') {
-          setTip('You’ll go to the Local Professionals signup.');
-        }
-      }
-    });
-
-    // Continue button
-    $('continueBtn').addEventListener('click', () => {
-      const choice = $('actionSelect').value;
-
-      // SELLER routes
-      if (role === 'seller') {
-        if (choice === 'seller_enter_sign') {
-          // Plan → Box 2 on index.html
-          const plan = $('sellerPlan').value || 'Listed Property Basic';
-          localStorage.setItem('selectedPlan', plan);
-          // Mark that this navigation came from header (we're intentionally sending to Box 2 now)
-          localStorage.setItem('loginOrigin','header');
-          location.href = '/index.html#strip2Search';
-          return;
-        }
-        if (choice === 'seller_edit') {
-          const sel = $('sellerListings');
-          const id = sel?.value || '';
-          const address = sel?.selectedOptions?.[0]?.getAttribute('data-address') || '';
-          if (!id) { alert('Please select a listing.'); return; }
-          if (id.startsWith('local-')) {
-            if (address) localStorage.setItem('shortAddress', address.split(',')[0] || address);
-            location.href = '/seller-detail.html';
-          } else {
-            localStorage.setItem('lastListingId', id);
-            location.href = '/seller-detail.html';
-          }
-          return;
-        }
-        if (choice === 'search') {
-          location.href = '/index.html#strip2Search';
-          return;
-        }
-        if (choice === 'autosave') {
-          location.href = '/search.html?open=filters&prompt=save';
-          return;
-        }
-      }
-
-      // AGENT routes
-      if (role === 'listing_agent') {
-        if (choice === 'agent_edit') {
-          const sel = $('agentListings');
-          const id = sel?.value || '';
-          if (!id) { alert('Please select a listing.'); return; }
-          localStorage.setItem('lastListingId', id);
-          location.href = '/agent-detail.html';
-          return;
-        }
-        if (choice === 'search') {
-          location.href = '/index.html#strip2Search';
-          return;
-        }
-        if (choice === 'autosave') {
-          location.href = '/search.html?open=filters&prompt=save';
-          return;
-        }
-        if (choice === 'localpro') {
-          location.href = '/local-professionals.html?mode=apply';
-          return;
-        }
-      }
-
-      // BUYER'S AGENT / BUYER / OTHER routes
-      if (choice === 'search') {
-        location.href = '/index.html#strip2Search';
-        return;
-      }
-      if (choice === 'autosave') {
-        location.href = '/search.html?open=filters&prompt=save';
-        return;
-      }
-      if (choice === 'localpro') {
-        location.href = '/local-professionals.html?mode=apply';
-        return;
-      }
-    });
   </script>
 </body>
 </html>
