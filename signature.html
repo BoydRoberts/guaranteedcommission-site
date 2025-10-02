@@ -70,17 +70,17 @@
     import { db } from "/scripts/firebase-init.js";
     import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // Block agents (keep your hard guard)
-    if ((localStorage.getItem('userRole') || '') === 'listing_agent') {
+    // Hard guard: agents cannot sign for sellers
+    if ((localStorage.getItem('userRole') || '').trim() === 'listing_agent') {
       location.replace('/agent-detail.html');
     }
 
     const $ = (id)=>document.getElementById(id);
     $("date").textContent = new Date().toLocaleDateString();
 
-    // Resolve listing id: prefer ?id=, else localStorage.lastListingId, else show invalid
+    // Resolve listing id: prefer ?id=, else localStorage.lastListingId
     const params = new URLSearchParams(location.search);
-    let listingId = params.get('id') || localStorage.getItem('lastListingId') || "";
+    let listingId = (params.get('id') || localStorage.getItem('lastListingId') || "").trim();
     if (!listingId) {
       $("invalidBox").classList.remove("hidden");
       throw new Error("Missing listing id");
@@ -92,7 +92,6 @@
       if (a) a.href = `/printable-isc.html?id=${encodeURIComponent(listingId)}`;
     })();
 
-    // Build ISC text from Firestore doc
     function buildIscTextFromDoc(d) {
       const addressFull = (d.address || "").trim();
       const short = addressFull.split(",")[0] || "[short address]";
@@ -148,11 +147,16 @@ Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, y
       $("iscText").textContent = buildIscTextFromDoc(docData);
       $("signWrap").classList.remove("hidden");
 
-      // Enforce exact match on ownerName
+      // Expected seller name (from Firestore)
       const expected = (docData.ownerName || "").trim();
+
+      // Pre-fill the signature input with expected name (still enforces exact match)
       const sigInput = $("signature");
       const btn = $("btnContinue");
       const help = $("sigHelp");
+      if (expected) {
+        sigInput.value = expected; // prefill
+      }
 
       function check() {
         const typed = (sigInput.value || "").trim();
@@ -181,21 +185,31 @@ Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, y
       sigInput.addEventListener('blur', check);
       check();
 
-      // Save signature to Firestore, keep your redirect
+      // Save signature to Firestore & ensure ownerEmail for listed flows
       $("btnContinue").addEventListener("click", async () => {
         const typed = (sigInput.value || "").trim();
         if (!typed) return;
 
+        const isFSBO = (docData.plan || "").includes("FSBO");
+        const loggedIn = (localStorage.getItem("loggedInEmail") || "").trim().toLowerCase();
+
         try {
-          await updateDoc(doc(db, "listings", listingId), {
-            signedISC: { name: typed, date: new Date().toISOString().slice(0,10), ts: serverTimestamp() }
-          });
+          const updates = {
+            signedISC: { name: typed, date: new Date().toISOString().slice(0,10), ts: serverTimestamp() },
+            updatedAt: serverTimestamp()
+          };
+          // For listed flows, tie the listing to the seller email so Welcome can find it
+          if (!isFSBO && loggedIn) {
+            updates.ownerEmail = loggedIn;
+          }
+
+          await updateDoc(doc(db, "listings", listingId), updates);
           $("sigSaved").classList.remove("hidden");
         } catch (e) {
           console.warn("[signature] save failed; continuing local-only:", e);
         }
 
-        const isFSBO = (docData.plan || "").includes("FSBO");
+        // Continue to intake / invite path
         window.location.href = isFSBO ? "/seller-detail.html" : "/agent-invite.html";
       });
     })();
