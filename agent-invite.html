@@ -13,7 +13,7 @@
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-xl bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">agent-invite build</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">agent-invite build 2025-10-01</span>
       </div>
 
       <h1 class="text-2xl font-bold text-center">Who Will Complete the Listing?</h1>
@@ -74,8 +74,12 @@
     </div>
   </div>
 
-  <script>
-    console.log('[agent-invite] build');
+  <!-- Firebase init -->
+  <script type="module" src="/scripts/firebase-init.js"></script>
+
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id) => document.getElementById(id);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -92,7 +96,7 @@
       window.location.replace('/seller-detail.html');
     }
 
-    // Paint address line (nice confidence cue)
+    // Paint address line
     const addr = formData.address || localStorage.getItem('shortAddress') || '';
     if (addr) $('addrLine').textContent = addr;
 
@@ -101,7 +105,7 @@
     if (pre) $('agentEmail').value = pre;
 
     // Prefill Current Price from agentListing if present
-    if (typeof agentListing.price !== 'undefined' && agentListing.price !== null && String(agentListing.price).trim() !== '') {
+    if (agentListing && typeof agentListing.price !== 'undefined' && agentListing.price !== null && String(agentListing.price).trim() !== '') {
       $('currentPrice').value = agentListing.price;
     }
 
@@ -123,24 +127,34 @@
           priceVal = isFinite(n) ? n : null;
         }
         const current = JSON.parse(localStorage.getItem('agentListing') || '{}');
-        if (priceVal === null) {
-          delete current.price;
-        } else {
-          current.price = priceVal;
-        }
+        if (priceVal === null) delete current.price;
+        else current.price = priceVal;
         localStorage.setItem('agentListing', JSON.stringify(current));
-      } catch(e) {
-        console.warn('[agent-invite] could not save current price:', e);
-      }
+      } catch(e) { console.warn('[agent-invite] could not save current price:', e); }
     }
-
-    // Save price on change/blur so it's ready before either path
     $('currentPrice').addEventListener('input', saveCurrentPrice);
     $('currentPrice').addEventListener('change', saveCurrentPrice);
     $('currentPrice').addEventListener('blur', saveCurrentPrice);
 
-    // Invite flow – store the email, confirm, send seller to Welcome
-    $('inviteBtn').addEventListener('click', (e) => {
+    // Write the invited agent email into Firestore so agent can see the listing
+    async function writeAgentToFirestore(agentEmail) {
+      try {
+        const id = (localStorage.getItem('lastListingId') || '').trim();
+        if (!id) return false;
+        const update = {
+          agentEmail: agentEmail,
+          updatedAt: serverTimestamp()
+        };
+        await updateDoc(doc(db, "listings", id), update);
+        return true;
+      } catch (e) {
+        console.warn('[agent-invite] Firestore update failed:', e);
+        return false;
+      }
+    }
+
+    // Invite flow – store locally, write to Firestore, send seller to Welcome
+    $('inviteBtn').addEventListener('click', async (e) => {
       e.preventDefault();
 
       // Save price first
@@ -153,19 +167,23 @@
         return;
       }
 
-      // Persist in localStorage so other pages know the agent to invite
+      // Persist locally
       localStorage.setItem('agentInviteEmail', email);
-
-      // Keep in formData for later pages
       try {
         const fd = JSON.parse(localStorage.getItem('formData') || '{}');
         fd.agentEmail = email;
         localStorage.setItem('formData', JSON.stringify(fd));
       } catch {}
 
-      // OPTIONAL: in a future backend, trigger an email invite here.
+      // Write to Firestore (so Welcome > Agent finds the listing)
+      const ok = await writeAgentToFirestore(email);
+      if (!ok) {
+        alert('Invite saved locally, but we could not update the server right now. Your agent may not see the listing yet.');
+      } else {
+        alert('Your agent has been invited. We’ll return you to your Welcome page.');
+      }
 
-      alert('Your agent has been invited. We’ll return you to your Welcome page.');
+      // Seller returns to Welcome (agent will log in separately)
       window.location.href = '/welcome.html';
     });
 
