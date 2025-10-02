@@ -12,16 +12,10 @@
 
   <style>
     .font-cursive { font-family: 'Brush Script MT', cursive; }
-
-    /* Listing tile */
     .tile-photo { width:100%; height: 20rem; object-fit: cover; background:#e5e7eb; }
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
     .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
-
-    /* Map should fill its card completely */
     .mapboxgl-canvas { display:block !important; }
-
-    /* ISC column: full area clickable with no extra border inside */
     .click-wrap { position: relative; width:100%; height:100%; }
     .click-wrap a.overlay { position:absolute; inset:0; z-index:10; text-indent:-9999px; }
     .isc-iframe { width:100%; height:100%; border:0; margin:0; display:block; background:#fff; }
@@ -30,7 +24,6 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <!-- Top bar -->
   <header class="bg-white border-b">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
       <a href="/index.html#strip2Search" class="text-sm text-blue-600 hover:underline">&larr; Back to Search</a>
@@ -41,7 +34,6 @@
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- Friendly invalid message -->
     <section id="invalidBox" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-5 text-yellow-900">
       <h2 class="text-lg font-semibold">Listing not available</h2>
       <p class="text-sm mt-1">This page requires a valid listing ID (e.g., <code>/listing.html?id=DOC_ID</code>), or an exact address using <code>?addr=</code>.</p>
@@ -50,10 +42,7 @@
       </div>
     </section>
 
-    <!-- Top strip: 40 | 20 | 40 -->
     <section id="topRow" class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start hidden">
-
-      <!-- Left: LISTING TILE (reference height) -->
       <article id="tileCard" class="lg:col-span-2 card relative">
         <div class="relative">
           <img id="tilePhoto" class="tile-photo" alt="Listing photo"/>
@@ -71,22 +60,18 @@
         </div>
       </article>
 
-      <!-- Middle: MAP -->
       <aside id="mapCard" class="lg:col-span-1 card overflow-hidden p-0" style="height:auto;">
         <div id="mapCanvas" style="width:100%; height:100%;"></div>
       </aside>
 
-      <!-- Right: ISC (iframe preview, full clickable) -->
       <aside id="iscCard" class="lg:col-span-2 overflow-hidden p-0 m-0" style="background:transparent; border:0; box-shadow:none; border-radius:0; height:auto;">
         <div class="click-wrap">
           <a id="iscOpenLink" class="overlay" href="/printable-isc.html" target="_blank" aria-label="Open full ISC">Open</a>
           <iframe id="iscIframe" src="/printable-isc.html" class="isc-iframe"></iframe>
         </div>
       </aside>
-
     </section>
 
-    <!-- LOWER SECTION: Photos & Description for Plus/FSBO -->
     <section class="space-y-6">
       <div id="galleryCard" class="card p-5 hidden">
         <h3 class="text-lg font-semibold mb-3">Photos</h3>
@@ -101,16 +86,13 @@
 
   </main>
 
-  <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
   <script>
-    // --- Configs and helpers ---
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
     if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
     const $ = (id) => document.getElementById(id);
-
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
     const commissionAmt = (p, c, t)=>{ const P=Number(p||0), C=Number(c||0); if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0); };
 
@@ -118,11 +100,8 @@
       try {
         const url = new URL(window.location.href);
         let listingId = url.searchParams.get('id') || (localStorage.getItem('lastListingId') || '').trim();
-
-        // Bonus: allow legacy addr= to resolve to an id
         const addrParam = url.searchParams.get('addr');
 
-        // If no id yet, but there is an address to resolve, try looking it up
         if (!listingId && addrParam && window.gc && window.gc.db) {
           try {
             const { getDocs, collection, query, where, limit } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
@@ -131,49 +110,45 @@
             if (!snap.empty) {
               const first = snap.docs[0];
               listingId = first.id;
-              // Save for downstream pages
               localStorage.setItem('lastListingId', listingId);
               history.replaceState({}, "", `/listing.html?id=${encodeURIComponent(listingId)}`);
             }
-          } catch (e) {
-            console.warn("[listing] address lookup failed:", e);
-          }
+          } catch (e) { console.warn("[listing] address lookup failed:", e); }
         }
 
-        // If still no id, show friendly message
-        if (!listingId) {
-          $("invalidBox").classList.remove("hidden");
-          return;
-        }
+        if (!listingId) { $("invalidBox").classList.remove("hidden"); return; }
 
-        // Update ISC links to carry id
-        const openA = document.getElementById("iscOpenLink");
-        const iscIframe = document.getElementById("iscIframe");
+        const openA = $("iscOpenLink");
+        const iscIframe = $("iscIframe");
         if (openA) openA.href = `/printable-isc.html?id=${encodeURIComponent(listingId)}`;
         if (iscIframe) iscIframe.src = `/printable-isc.html?id=${encodeURIComponent(listingId)}`;
 
-        // Fetch doc by id
-        let docData = null;
+        let d = null;
         if (window.gc && window.gc.db) {
           try {
             const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
             const snap = await getDoc(doc(window.gc.db, "listings", listingId));
-            if (snap.exists()) {
-              docData = snap.data();
+            if (snap.exists()) d = snap.data();
+          } catch (e) { console.warn("[listing] Firestore fetch failed:", e); }
+        }
+        if (!d) { $("invalidBox").classList.remove("hidden"); return; }
+
+        // Fallback photo: if Firestore has no photos, use localStorage.agentListing.photos
+        let photos = Array.isArray(d.photos) ? d.photos.slice() : [];
+        let primaryIndex = (typeof d.primaryIndex === "number" ? d.primaryIndex : 0);
+        if (!photos.length) {
+          try {
+            const local = JSON.parse(localStorage.getItem("agentListing") || "{}");
+            if (Array.isArray(local.photos) && local.photos.length) {
+              photos = local.photos.slice(0, 1); // MVP: show single local photo
+              primaryIndex = 0;
             }
-          } catch (e) {
-            console.warn("[listing] Firestore fetch failed:", e);
-          }
+          } catch {}
         }
+        d.photos = photos;
+        d.primaryIndex = primaryIndex;
 
-        if (!docData) {
-          $("invalidBox").classList.remove("hidden");
-          return;
-        }
-
-        renderFromDoc(docData);
-
-        // Align heights after paint
+        renderFromDoc(d);
         setTimeout(alignHeights, 80);
         window.addEventListener('resize', alignHeights);
       } catch (e) {
@@ -183,7 +158,6 @@
     })();
 
     function renderFromDoc(d) {
-      // Normalize types
       const address = d.address || "[full address]";
       const price = (d.price ?? "");
       const cRaw = d.commission ?? "";
@@ -200,15 +174,12 @@
       const agentName = d.agentName || "[listing agent]";
       const agentPhone = d.agentPhone || "[agent phone]";
 
-      // Photos
       const photos = Array.isArray(d.photos) ? d.photos : [];
       const primaryIndex = (typeof d.primaryIndex === "number" ? d.primaryIndex : 0);
       const primaryPhoto = photos[primaryIndex] || "";
 
-      // Show rows
       document.getElementById("topRow")?.classList.remove("hidden");
 
-      // Tile
       $("tilePhoto").src = primaryPhoto || "";
       const bEl = $("tileBanner");
       if (banner) { bEl.textContent = banner; bEl.classList.remove('hidden'); } else { bEl.classList.add('hidden'); }
@@ -219,17 +190,14 @@
       $("tileAddress").textContent = address;
       $("tileContact").textContent = `${(d.plan && d.plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
 
-      // Disable tile navigation (we are already on this listing page)
       document.getElementById("tileCard").onclick = (e) => { e.preventDefault(); };
 
-      // Description
       const desc = (d.description || "").trim();
       if (desc) {
         document.getElementById("dDescription").textContent = desc;
         document.getElementById("descCard").classList.remove("hidden");
       }
 
-      // Other photos
       const others = photos.filter((_, i) => i !== primaryIndex);
       if (others.length > 0) {
         const grid = document.getElementById("galleryGrid");
@@ -243,11 +211,9 @@
         document.getElementById("galleryCard").classList.remove("hidden");
       }
 
-      // Map
       bootMapFor(address);
     }
 
-    // Align map and ISC to tile height
     function alignHeights(){
       const tile = document.getElementById("tileCard");
       const mapCard = document.getElementById("mapCard");
@@ -261,7 +227,6 @@
       if (iscIframe) iscIframe.style.height = "100%";
     }
 
-    // Map
     let _mapInstance;
     async function bootMapFor(fullAddress){
       try {
