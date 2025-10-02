@@ -11,7 +11,10 @@
     <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
       <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
       <h1 class="text-lg font-semibold">Welcome</h1>
-      <a href="/search.html" class="text-sm text-blue-600 hover:underline">Search</a>
+      <div class="flex items-center gap-3">
+        <a href="/search.html" class="text-sm text-blue-600 hover:underline">Search</a>
+        <button id="logoutBtn" class="text-sm px-3 py-1 rounded border">Log out</button>
+      </div>
     </div>
   </header>
 
@@ -20,7 +23,6 @@
       <h2 class="text-xl font-bold mb-1">Hi <span id="who">there</span></h2>
       <p class="text-sm text-gray-600 mb-4">What would you like to do next?</p>
 
-      <!-- Role-specific boxes -->
       <div id="roleBoxes" class="space-y-4">
 
         <!-- Seller -->
@@ -124,6 +126,7 @@
       </div>
     </section>
 
+    <!-- Optional table -->
     <section id="listSection" class="mt-6 bg-white rounded-2xl shadow p-6 hidden">
       <h3 class="font-semibold mb-2">Your listings</h3>
       <div id="listingsTable" class="text-sm text-gray-800"></div>
@@ -142,9 +145,18 @@
     const $ = (id)=>document.getElementById(id);
 
     // Who + role
-    const email = (localStorage.getItem('loggedInEmail') || '').trim();
-    const role  = (localStorage.getItem('userRole') || '').trim(); // 'seller', 'listing_agent', 'buyers_agent', 'buyer', 'other'
-    $("who").textContent = email || 'there';
+    const emailRaw = (localStorage.getItem('loggedInEmail') || '').trim();
+    const email = emailRaw.toLowerCase(); // use lower for matching
+    const role  = (localStorage.getItem('userRole') || '').trim(); // 'seller', 'listing_agent', etc.
+    $("who").textContent = emailRaw || 'there';
+
+    // Logout
+    $("logoutBtn")?.addEventListener('click', () => {
+      try {
+        ['isLoggedIn','loggedInEmail','userRole','verificationCode','verifyTarget','nextAfterLogin','nextAfterVerify'].forEach(k=>localStorage.removeItem(k));
+      } catch {}
+      location.href = '/index.html';
+    });
 
     // Show role box
     const show = (id)=>$(id).classList.remove('hidden');
@@ -172,21 +184,33 @@
     $("agentProApply")?.addEventListener('click',  ()=> location.href='/local-professionals.html?mode=apply');
     $("otherSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
 
-    // Fetch listings for this user (owner OR agent)
+    // Fetch listings for this user (owner OR agent), robust and case-safe
     async function fetchMyListings() {
       if (!email || !db) return [];
 
       const items = [];
       try {
-        // Query ownerEmail
+        // Query ownerEmail == login lower
         const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), limit(50));
         const s1 = await getDocs(q1);
         s1.forEach(d => items.push({ id: d.id, ...d.data() }));
 
-        // Query agentEmail
+        // Query agentEmail == login lower
         const q2 = query(collection(db, "listings"), where("agentEmail", "==", email), limit(50));
         const s2 = await getDocs(q2);
         s2.forEach(d => items.push({ id: d.id, ...d.data() }));
+
+        // Fallback (in case older docs used mixed-case emails): pull the newest 50 and filter client-side
+        if (items.length === 0) {
+          const q3 = query(collection(db, "listings"), orderBy("createdAt","desc"), limit(50));
+          const s3 = await getDocs(q3);
+          s3.forEach(d => {
+            const data = d.data() || {};
+            const oe = (data.ownerEmail || '').toLowerCase();
+            const ae = (data.agentEmail || '').toLowerCase();
+            if (oe === email || ae === email) items.push({ id: d.id, ...data });
+          });
+        }
       } catch (e) {
         console.warn("[welcome] fetch error:", e);
       }
@@ -196,7 +220,7 @@
       for (const it of items) byId[it.id] = it;
       const list = Object.keys(byId).map(id => ({ id, ...byId[id] }));
 
-      // Sort by updatedAt then createdAt (desc). Timestamps may be missing locally
+      // Sort by updatedAt then createdAt (desc)
       list.sort((a,b) => {
         const au = a.updatedAt?.toMillis?.() ? a.updatedAt.toMillis() : 0;
         const bu = b.updatedAt?.toMillis?.() ? b.updatedAt.toMillis() : 0;
@@ -224,56 +248,65 @@
       });
     }
 
-    function wireEditor(selectEl, editBtn, previewA, which) {
+    function wireEditor(selectEl, editBtn, previewA) {
       if (!selectEl || !editBtn || !previewA) return;
+
+      // Update preview link when selection changes
+      selectEl.addEventListener('change', () => {
+        const id = selectEl.value;
+        previewA.href = id ? ('/listing.html?id=' + encodeURIComponent(id)) : '#';
+      });
+
       editBtn.addEventListener('click', () => {
         const id = selectEl.value;
         if (!id) { alert('Pick a listing first.'); return; }
         localStorage.setItem('lastListingId', id);
         previewA.href = '/listing.html?id=' + encodeURIComponent(id);
+
         // Route to correct editor by role
-        if (role === 'seller') location.href = '/seller-detail.html?id=' + encodeURIComponent(id);
-        else if (role === 'listing_agent') location.href = '/agent-detail.html?id=' + encodeURIComponent(id);
-        else location.href = '/agent-detail.html?id=' + encodeURIComponent(id);
-      });
-      selectEl.addEventListener('change', () => {
-        const id = selectEl.value;
-        previewA.href = id ? ('/listing.html?id=' + encodeURIComponent(id)) : '#';
+        if (role === 'seller') {
+          location.href = '/seller-detail.html?id=' + encodeURIComponent(id);
+        } else if (role === 'listing_agent') {
+          location.href = '/agent-detail.html?id=' + encodeURIComponent(id);
+        } else {
+          // Fallback: send other roles to agent editor for now
+          location.href = '/agent-detail.html?id=' + encodeURIComponent(id);
+        }
       });
     }
 
     (async function boot(){
       const list = await fetchMyListings();
 
-      // Seller
+      // Seller box
       const sellerSel  = $("sellerListings");
       const sellerGo   = $("sellerEditGo");
       const sellerPrev = $("sellerPreview");
       if (sellerSel) {
         if (list.length) {
-          fillDropdown(sellerSel, list);
           $("sellerNoListings")?.classList.add('hidden');
+          fillDropdown(sellerSel, list);
         } else {
           $("sellerNoListings")?.classList.remove('hidden');
         }
-        wireEditor(sellerSel, sellerGo, sellerPrev, 'seller');
+        wireEditor(sellerSel, sellerGo, sellerPrev);
       }
 
-      // Agent
+      // Agent box
       const agentSel  = $("agentListings");
       const agentGo   = $("agentEditGo");
       const agentPrev = $("agentPreview");
       if (agentSel) {
         if (list.length) {
-          fillDropdown(agentSel, list);
           $("agentNoListings")?.classList.add('hidden');
+          fillDropdown(agentSel, list);
         } else {
           $("agentNoListings")?.classList.remove('hidden');
         }
-        wireEditor(agentSel, agentGo, agentPrev, 'agent');
+        wireEditor(agentSel, agentGo, agentPrev);
       }
 
-      // Also paint a simple table below (optional, helpful)
+      // Optional table
       if (list.length) {
         const host = $("listingsTable");
         const sec  = $("listSection");
