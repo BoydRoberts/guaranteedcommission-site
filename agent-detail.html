@@ -181,7 +181,6 @@
 
     <!-- RIGHT: October Free Promo + Upgrades -->
     <aside class="space-y-4">
-      <!-- October Free Promo (works in Sept & Oct 2025) -->
       <section class="bg-white rounded shadow p-5">
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold">October Free Promo</h2>
@@ -189,7 +188,7 @@
         </div>
         <p class="text-sm text-gray-600 mt-2">
           Listing agents can upgrade <strong>Banner</strong>, <strong>Premium</strong>, and <strong>Pin</strong> for <strong>FREE</strong> during October 2025
-          (promo also active during September 2025 for early rollout).
+          (promo also active during September 2025).
         </p>
         <button id="applyPromoBtn" class="mt-3 w-full bg-blue-600 text-white px-3 py-2 rounded disabled:opacity-50">
           Apply October Free Upgrades
@@ -197,10 +196,9 @@
         <p id="promoNote" class="text-xs text-gray-500 mt-2"></p>
       </section>
 
-      <!-- Upgrades (agent pays) -->
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrades</h2>
-        <p class="text-sm text-gray-600">Agent can turn on upgrades here. Free pricing applies if October Promo is active (and during September).</p>
+        <p class="text-sm text-gray-600">Free pricing applies if October Promo is active (and during September).</p>
         <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
 
         <div class="mt-4 flex items-center gap-2">
@@ -218,12 +216,11 @@
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
     const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const formData = getJSON("formData", {});
-    const agentListing = getJSON("agentListing", {});
+    let formData = getJSON("formData", {});
+    let agentListing = getJSON("agentListing", {});
     const now = new Date();
     const isSeptOrOct2025 = (now.getFullYear() === 2025 && (now.getMonth() === 8 || now.getMonth() === 9)); // Sep=8, Oct=9
 
-    // checkoutData baseline (payer=agent to enable promo)
     const checkoutData = getJSON("checkoutData", null) || {
       plan,
       base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
@@ -240,7 +237,7 @@
     $("planPill").textContent = plan;
     $("payerBadge").textContent = "";
 
-    // Prefill basics
+    // Preset from local for now; we may overwrite from Firestore fetch below
     $("fullAddress").value = formData.address || "";
     $("status").value = agentListing.status || "";
     $("price").value = agentListing.price ?? "";
@@ -258,7 +255,13 @@
     $("propertyType").value = agentListing.propertyType ?? "";
     $("apn").value          = formData.apn || agentListing.apn || "";
 
-    // Photos
+    // Agent info (may be overwritten by Firestore load)
+    $("brokerage").value  = formData.brokerage || agentListing.brokerage || "";
+    $("agentName").value  = formData.agent || agentListing.agentName || "";
+    $("agentEmail").value = agentListing.agentEmail || "";
+    $("agentPhone").value = formData.agentPhone || agentListing.agentPhone || "";
+
+    // Photos setup
     const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
     let primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
     const maxPhotos = isPlus ? 20 : 1;
@@ -340,14 +343,9 @@
         reader.readAsDataURL(file);
       });
       for (const f of toRead) {
-        try {
-          const dataUrl = await readAsDataURL(f);
-          photos.push(dataUrl);
-        } catch(e) { console.error(e); }
+        try { photos.push(await readAsDataURL(f)); } catch(e) { console.error(e); }
       }
-      saveDraft();
-      renderThumbs();
-      e.target.value = "";
+      saveDraft(); renderThumbs(); e.target.value = "";
     });
 
     // Description gate
@@ -358,41 +356,13 @@
       $("descGateNote").classList.remove("hidden");
     }
 
-    // Banner field (requires banner upgrade)
+    // Banner field
     $("bannerText").value = agentListing.bannerText ?? "";
-    if (!checkoutData.upgrades.banner) {
-      $("bannerText").classList.add("dimmed");
-      $("bannerText").setAttribute("disabled","disabled");
-      $("bannerGateNote").classList.remove("hidden");
-    }
+    // we keep this enabled; payment handled at checkout
 
-    // Preferred area (requires premium)
-    $("preferredArea").value = agentListing.preferredArea
-      ?? checkoutData.meta.preferredArea
-      ?? flags.preferredArea
-      ?? "";
-    if (!checkoutData.upgrades.premium && !checkoutData.upgrades.pin) {
-      $("preferredArea").classList.add("dimmed");
-      $("preferredArea").setAttribute("disabled","disabled");
-      $("premiumGateNote").classList.remove("hidden");
-    }
-
-    // Pin area (requires pin)
-    $("pinArea").value = agentListing.pinArea
-      ?? checkoutData.meta.pinArea
-      ?? flags.pinArea
-      ?? "";
-    if (!checkoutData.upgrades.pin) {
-      $("pinArea").classList.add("dimmed");
-      $("pinArea").setAttribute("disabled","disabled");
-      $("pinGateNote").classList.remove("hidden");
-    }
-
-    // Agent info
-    $("brokerage").value  = formData.brokerage || agentListing.brokerage || "";
-    $("agentName").value  = formData.agent || agentListing.agentName || "";
-    $("agentEmail").value = agentListing.agentEmail || "";
-    $("agentPhone").value = formData.agentPhone || agentListing.agentPhone || "";
+    // Preferred / Pin gates
+    $("preferredArea").value = agentListing.preferredArea ?? checkoutData.meta.preferredArea ?? flags.preferredArea ?? "";
+    $("pinArea").value = agentListing.pinArea ?? checkoutData.meta.pinArea ?? flags.pinArea ?? "";
 
     // Save listeners
     [
@@ -413,8 +383,8 @@
         apn: $("apn").value || "",
         description: $("description").disabled ? (agentListing.description || "") : ($("description").value || ""),
         bannerText: $("bannerText").disabled ? (agentListing.bannerText || "") : ($("bannerText").value || ""),
-        preferredArea: $("preferredArea").disabled ? (agentListing.preferredArea || "") : ($("preferredArea").value || ""),
-        pinArea: $("pinArea").disabled ? (agentListing.pinArea || "") : ($("pinArea").value || ""),
+        preferredArea: $("preferredArea").value || "",
+        pinArea: $("pinArea").value || "",
         brokerage: $("brokerage").value || "",
         agentName: $("agentName").value || "",
         agentEmail: $("agentEmail").value || "",
@@ -431,11 +401,10 @@
       localStorage.setItem("agentListing", JSON.stringify(payload));
     }
 
-    // ---------- October Free Promo ----------
+    // ---------- October promo UI ----------
     const promoBadge = $("promoBadge");
     const applyPromoBtn = $("applyPromoBtn");
     const promoNote = $("promoNote");
-
     function paintPromoState() {
       const active = (checkoutData.payer === "agent") && isSeptOrOct2025;
       promoBadge.textContent = active ? "Active" : "Inactive";
@@ -444,10 +413,9 @@
         : "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700";
       applyPromoBtn.disabled = !active;
       promoNote.textContent = active
-        ? "Click to apply free pricing (Banner, Premium, Pin set to $0) for October 2025. Promo is also live in September."
-        : "Promo applies during October 2025 (and is enabled in September 2025 for early rollout) when upgrades are paid by the agent.";
+        ? "Click to apply free pricing (Banner, Premium, Pin set to $0) for October 2025 (also live in September)."
+        : "Promo applies during October 2025 (and in September 2025) when upgrades are paid by the agent.";
     }
-
     function applyFreePromo() {
       checkoutData.prices.banner = 0;
       checkoutData.prices.premium = 0;
@@ -458,11 +426,9 @@
       alert("October Free applied. Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.");
       paintUpgrades();
     }
-
     applyPromoBtn.addEventListener("click", applyFreePromo);
     paintPromoState();
 
-    // ---------- upgrades panel ----------
     function row(label, price, key, opts={}) {
       const checked = !!checkoutData.upgrades[key];
       const priceLabel = (price === 0) ? "FREE" : `$${price}`;
@@ -478,7 +444,6 @@
         </label>
       `;
     }
-
     function paintUpgrades() {
       const box = $("upgradesBox");
       const p = checkoutData.prices || {};
@@ -497,19 +462,6 @@
           if (k === "premium")     checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
           if (k === "pin")        {checkoutData.upgrades.pin     = checked; if (checked) checkoutData.upgrades.premium = true;}
           setJSON("checkoutData", checkoutData);
-
-          // Enable fields when selected
-          if (k === "banner") {
-            $("bannerText").disabled = !checked && !isPlus;
-            $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
-          }
-          if (k === "premium" || k === "pin") {
-            const premOn = checkoutData.upgrades.premium || checkoutData.upgrades.pin;
-            $("preferredArea").disabled = !premOn;
-            $("preferredArea").classList.toggle("dimmed", !premOn);
-            $("pinArea").disabled = !checkoutData.upgrades.pin;
-            $("pinArea").classList.toggle("dimmed", !checkoutData.upgrades.pin);
-          }
         });
       });
     }
@@ -526,16 +478,12 @@
     // Go to checkout
     $("goCheckoutBtn2").addEventListener("click", () => { window.location.href = "/checkout.html"; });
 
-    // ---------- SAVE TO LOCAL (and Firestore module below saves to server) ----------
-    $("saveBtn").addEventListener("click", () => { saveDraft(); alert("Saved."); });
-
     // ---------- PREVIEW LINK: ALWAYS INCLUDE ?id= ----------
     (function wirePreviewLink(){
       const a = document.getElementById("previewLink");
       if (!a) return;
       let id = (localStorage.getItem("lastListingId") || "").trim();
       if (!id) {
-        // Try to read ?id= from current URL as a fallback
         try {
           const u = new URL(location.href);
           id = (u.searchParams.get("id") || "").trim();
@@ -552,10 +500,38 @@
     })();
   </script>
 
-  <!-- Firestore SAVE TO SERVER for agent -->
+  <!-- Firestore SAVE/LOAD -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // Prefill from Firestore on load so agents see data without localStorage
+    (async function prefillFromServer(){
+      try {
+        let id = (localStorage.getItem("lastListingId") || "").trim();
+        if (!id) {
+          const u = new URL(location.href);
+          id = (u.searchParams.get("id") || "").trim();
+        }
+        if (!id) return;
+
+        const snap = await getDoc(doc(db, "listings", id));
+        if (!snap.exists()) return;
+        const d = snap.data() || {};
+
+        // If local empty, take from server
+        if (!document.getElementById("fullAddress").value) document.getElementById("fullAddress").value = d.address || "";
+        if (!document.getElementById("status").value)      document.getElementById("status").value      = d.status  || "";
+        if (!document.getElementById("price").value)       document.getElementById("price").value       = d.price   ?? "";
+
+        if (!document.getElementById("brokerage").value)   document.getElementById("brokerage").value   = d.brokerage  || "";
+        if (!document.getElementById("agentName").value)   document.getElementById("agentName").value   = d.agentName  || "";
+        if (!document.getElementById("agentEmail").value)  document.getElementById("agentEmail").value  = d.agentEmail || "";
+        if (!document.getElementById("agentPhone").value)  document.getElementById("agentPhone").value  = d.agentPhone || "";
+      } catch (e) {
+        console.warn("[agent-detail] prefill failed:", e);
+      }
+    })();
 
     async function saveToFirestoreAgent() {
       try {
