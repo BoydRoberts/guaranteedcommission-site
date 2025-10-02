@@ -126,7 +126,7 @@
       </div>
     </section>
 
-    <!-- Optional table -->
+    <!-- Listing table -->
     <section id="listSection" class="mt-6 bg-white rounded-2xl shadow p-6 hidden">
       <h3 class="font-semibold mb-2">Your listings</h3>
       <div id="listingsTable" class="text-sm text-gray-800"></div>
@@ -139,21 +139,22 @@
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import {
-      collection, getDocs, query, where, orderBy, limit
+      collection, getDocs, query, where, orderBy, limit, doc, updateDoc, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id)=>document.getElementById(id);
 
-    // Who + role
+    // Who + role (use lower-case for matching)
     const emailRaw = (localStorage.getItem('loggedInEmail') || '').trim();
-    const email = emailRaw.toLowerCase(); // use lower for matching
-    const role  = (localStorage.getItem('userRole') || '').trim(); // 'seller', 'listing_agent', etc.
+    const email = emailRaw.toLowerCase();
+    const role  = (localStorage.getItem('userRole') || '').trim();
     $("who").textContent = emailRaw || 'there';
 
     // Logout
     $("logoutBtn")?.addEventListener('click', () => {
       try {
-        ['isLoggedIn','loggedInEmail','userRole','verificationCode','verifyTarget','nextAfterLogin','nextAfterVerify'].forEach(k=>localStorage.removeItem(k));
+        ['isLoggedIn','loggedInEmail','userRole','verificationCode','verifyTarget','nextAfterLogin','nextAfterVerify','lastListingId','lastListingAddress']
+          .forEach(k=>localStorage.removeItem(k));
       } catch {}
       location.href = '/index.html';
     });
@@ -182,27 +183,26 @@
     $("buyerProsGo")?.addEventListener('click',    ()=> location.href='/local-professionals.html?mode=search');
     $("bAgentProApply")?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
     $("agentProApply")?.addEventListener('click',  ()=> location.href='/local-professionals.html?mode=apply');
-    $("otherSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
 
-    // Fetch listings for this user (owner OR agent), robust and case-safe
+    // Fetch listings for this user (owner OR agent) with dedupe
     async function fetchMyListings() {
       if (!email || !db) return [];
 
       const items = [];
       try {
         // Query ownerEmail == login lower
-        const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), limit(50));
+        const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), limit(75));
         const s1 = await getDocs(q1);
         s1.forEach(d => items.push({ id: d.id, ...d.data() }));
 
         // Query agentEmail == login lower
-        const q2 = query(collection(db, "listings"), where("agentEmail", "==", email), limit(50));
+        const q2 = query(collection(db, "listings"), where("agentEmail", "==", email), limit(75));
         const s2 = await getDocs(q2);
         s2.forEach(d => items.push({ id: d.id, ...d.data() }));
 
-        // Fallback (in case older docs used mixed-case emails): pull the newest 50 and filter client-side
+        // Fallback (older mixed-case emails)
         if (items.length === 0) {
-          const q3 = query(collection(db, "listings"), orderBy("createdAt","desc"), limit(50));
+          const q3 = query(collection(db, "listings"), orderBy("createdAt","desc"), limit(75));
           const s3 = await getDocs(q3);
           s3.forEach(d => {
             const data = d.data() || {};
@@ -215,10 +215,14 @@
         console.warn("[welcome] fetch error:", e);
       }
 
-      // De-dupe by id
-      const byId = {};
-      for (const it of items) byId[it.id] = it;
-      const list = Object.keys(byId).map(id => ({ id, ...byId[id] }));
+      // De-dupe by id + address (defensive)
+      const byKey = {};
+      for (const it of items) {
+        const addrKey = (it.address || '').trim().toLowerCase();
+        const key = it.id + '|' + addrKey;
+        byKey[key] = it;
+      }
+      const list = Object.keys(byKey).map(k => byKey[k]);
 
       // Sort by updatedAt then createdAt (desc)
       list.sort((a,b) => {
@@ -246,33 +250,54 @@
         opt.textContent = optionLabel(it);
         selectEl.appendChild(opt);
       });
+
+      // Auto-select the newest one and pre-wire Preview
+      if (list.length) {
+        selectEl.value = list[0].id;
+        const prev = selectEl.id === 'sellerListings' ? $('sellerPreview') : $('agentPreview');
+        if (prev) prev.href = '/listing.html?id=' + encodeURIComponent(list[0].id);
+      }
     }
 
-    function wireEditor(selectEl, editBtn, previewA) {
+    // Ensure links always have id (fallback to addr)
+    function safePreviewHref(it) {
+      if (it && it.id) return '/listing.html?id=' + encodeURIComponent(it.id);
+      const addr = (it.address || '').trim();
+      return addr ? '/listing.html?addr=' + encodeURIComponent(addr) : '#';
+    }
+
+    function wireEditor(selectEl, editBtn, previewA, list) {
       if (!selectEl || !editBtn || !previewA) return;
 
-      // Update preview link when selection changes
       selectEl.addEventListener('change', () => {
-        const id = selectEl.value;
-        previewA.href = id ? ('/listing.html?id=' + encodeURIComponent(id)) : '#';
+        const it = list.find(x => x.id === selectEl.value);
+        previewA.href = it ? safePreviewHref(it) : '#';
       });
 
       editBtn.addEventListener('click', () => {
-        const id = selectEl.value;
-        if (!id) { alert('Pick a listing first.'); return; }
-        localStorage.setItem('lastListingId', id);
-        previewA.href = '/listing.html?id=' + encodeURIComponent(id);
-
+        const it = list.find(x => x.id === selectEl.value);
+        if (!it) { alert('Pick a listing first.'); return; }
+        localStorage.setItem('lastListingId', it.id);
         // Route to correct editor by role
         if (role === 'seller') {
-          location.href = '/seller-detail.html?id=' + encodeURIComponent(id);
+          location.href = '/seller-detail.html?id=' + encodeURIComponent(it.id);
         } else if (role === 'listing_agent') {
-          location.href = '/agent-detail.html?id=' + encodeURIComponent(id);
+          location.href = '/agent-detail.html?id=' + encodeURIComponent(it.id);
         } else {
-          // Fallback: send other roles to agent editor for now
-          location.href = '/agent-detail.html?id=' + encodeURIComponent(id);
+          location.href = '/agent-detail.html?id=' + encodeURIComponent(it.id);
         }
       });
+    }
+
+    async function archiveListing(id) {
+      try {
+        await updateDoc(doc(db, "listings", id), { status: "Archived", updatedAt: serverTimestamp() });
+        alert("Listing archived.");
+        location.reload();
+      } catch (e) {
+        console.warn("[welcome] archive failed:", e);
+        alert("Could not archive. Try again.");
+      }
     }
 
     (async function boot(){
@@ -289,7 +314,7 @@
         } else {
           $("sellerNoListings")?.classList.remove('hidden');
         }
-        wireEditor(sellerSel, sellerGo, sellerPrev);
+        wireEditor(sellerSel, sellerGo, sellerPrev, list);
       }
 
       // Agent box
@@ -303,10 +328,10 @@
         } else {
           $("agentNoListings")?.classList.remove('hidden');
         }
-        wireEditor(agentSel, agentGo, agentPrev);
+        wireEditor(agentSel, agentGo, agentPrev, list);
       }
 
-      // Optional table
+      // Table (with Archive helper)
       if (list.length) {
         const host = $("listingsTable");
         const sec  = $("listSection");
@@ -329,15 +354,17 @@
                     list.map(it=>{
                       const upd = it.updatedAt?.toDate ? it.updatedAt.toDate() : null;
                       const upds = upd ? upd.toLocaleDateString() : '';
-                      const addr = it.address || '';
+                      const href = safePreviewHref(it);
+                      const isDup = list.filter(x => (x.address||'').trim().toLowerCase() === (it.address||'').trim().toLowerCase()).length > 1;
                       return `
                         <tr>
-                          <td class="px-3 py-2">${addr}</td>
+                          <td class="px-3 py-2">${it.address || ''}</td>
                           <td class="px-3 py-2">${it.status || 'Draft'}</td>
                           <td class="px-3 py-2">${it.plan || ''}</td>
                           <td class="px-3 py-2">${upds}</td>
-                          <td class="px-3 py-2">
-                            <a class="text-blue-600 underline" href="/listing.html?id=${encodeURIComponent(it.id)}" target="_blank">Preview</a>
+                          <td class="px-3 py-2 flex gap-3">
+                            <a class="text-blue-600 underline" href="${href}" target="_blank" rel="noopener">Preview</a>
+                            ${isDup ? `<button class="underline text-red-600" data-archive="${it.id}">Archive duplicate</button>` : ``}
                           </td>
                         </tr>
                       `;
@@ -347,6 +374,14 @@
               </table>
             </div>
           `;
+
+          // Wire archive buttons
+          host.querySelectorAll('[data-archive]').forEach(btn=>{
+            btn.addEventListener('click', (e)=>{
+              const id = e.currentTarget.getAttribute('data-archive');
+              if (confirm("Archive this duplicate listing?")) archiveListing(id);
+            });
+          });
         }
       }
     })();
