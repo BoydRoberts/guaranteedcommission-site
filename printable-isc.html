@@ -13,90 +13,178 @@
     }
   </style>
 </head>
-<body class="bg-white text-black p-8">
-  <div class="max-w-3xl mx-auto border p-6 rounded shadow bg-white">
-    <!-- Centered headline -->
-    <h1 class="text-xl font-bold text-center mb-4">Irrevocable Seller Communication</h1>
+<body class="bg-white text-black p-6 sm:p-8">
+  <div class="max-w-3xl mx-auto bg-white">
 
-    <div id="iscContent" class="text-sm space-y-4 leading-relaxed">
-      <p>To the escrow holder/closing agent,</p>
-
-      <p id="p1">Loading…</p>
-      <p id="p2"></p>
-
-      <p class="mt-6 text-center">
-        <span id="sigName" class="font-cursive">[Name]</span>
-        <span class="ml-2">Electronic Signature</span>
-        <span class="ml-4" id="sigDate">[date]</span>
-      </p>
-
-      <p class="text-xs text-gray-500 mt-8 text-center" id="counters"></p>
-      <!-- Very fine footer -->
-      <p class="text-[10px] text-gray-400 mt-6 text-center">GuaranteedCommission.com</p>
+    <!-- Local preview notice -->
+    <div id="localNotice" class="hidden mb-4 p-3 rounded border border-yellow-200 bg-yellow-50 text-yellow-900 text-sm">
+      Showing a local preview from your browser. Once the listing is saved to the server, this page will display the server copy.
     </div>
 
-    <div class="no-print mt-6 flex items-center justify-end gap-2">
-      <button onclick="window.print()" class="bg-gray-700 text-white px-3 py-2 rounded text-sm">Print</button>
+    <!-- Content card -->
+    <div class="border p-6 rounded shadow bg-white">
+      <h1 class="text-xl font-bold text-center mb-4">Irrevocable Seller Communication</h1>
+
+      <div id="iscContent" class="text-sm space-y-4 leading-relaxed">
+        <p>To the escrow holder/closing agent,</p>
+
+        <p id="p1">Loading…</p>
+        <p id="p2"></p>
+
+        <p class="mt-6 text-center">
+          <span id="sigName" class="font-cursive">[Name]</span>
+          <span class="ml-2">Electronic Signature</span>
+          <span class="ml-4" id="sigDate">[date]</span>
+        </p>
+
+        <p class="text-xs text-gray-500 mt-8 text-center" id="counters"></p>
+        <p class="text-[10px] text-gray-400 mt-6 text-center">GuaranteedCommission.com</p>
+      </div>
+
+      <div class="no-print mt-6 flex items-center justify-end gap-2">
+        <button onclick="window.print()" class="bg-gray-700 text-white px-3 py-2 rounded text-sm">Print</button>
+      </div>
     </div>
   </div>
 
-  <script>
-    function getJSON(k, fb) { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } }
+  <!-- Firebase init -->
+  <script type="module" src="/scripts/firebase-init.js"></script>
 
-    const url = new URL(location.href);
-    const listingId = url.searchParams.get('id') || localStorage.getItem('lastListingId') || '';
-    const FD_KEY  = listingId ? `formData:${listingId}` : 'formData';
-    const SIG_KEY = listingId ? `signedISC:${listingId}` : 'signedISC';
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import {
+      getDoc, doc, getDocs, collection, query, where, limit
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const isFSBO = plan.includes("FSBO");
+    // Safe JSON
+    function getJSON(key, fb) { try { return JSON.parse(localStorage.getItem(key)) ?? fb; } catch { return fb; } }
 
-    // Prefer namespaced data; fallback to generic only if needed
-    const fd = getJSON(FD_KEY, getJSON("formData", {}));
-    const signed = getJSON(SIG_KEY, getJSON("signedISC", {}));
+    const $ = (id)=>document.getElementById(id);
 
-    const fullAddr = (fd.address || "").trim() || "[full address]";
-    const short    = fullAddr.split(",")[0] || "[short address]";
-    const apn      = (fd.apn || "").trim();
-    const name     = (fd.name || signed.name || "[name]");
-    const phone    = fd.agentPhone || (isFSBO ? "[owner/seller phone]" : "[agent phone]");
-    const email    = isFSBO ? (fd.fsboEmail || "[owner/seller email]") : "[owner/seller email]";
-    const brokerage= fd.brokerage || (isFSBO ? "" : "[listing brokerage]");
-    const agent    = fd.agent || (isFSBO ? "" : "[listing agent]");
-    const agentEmail = fd.agentEmail || "[agent email]";
+    // Build body text from a server doc
+    function buildFromDoc(d) {
+      const addressFull = (d.address || "").trim();
+      const short = addressFull.split(",")[0] || "[short address]";
+      const apn = (d.apn || "").trim();
+      const name = (d.ownerName || (d.signedISC?.name) || "[name]");
+      const plan = (d.plan || "");
+      const isFSBO = plan.includes("FSBO");
 
-    const cType = fd.commissionType || "%";
-    const cVal  = (fd.commission || "").trim();
-    const commDisplay = cType === "$"
-      ? (cVal ? ("$" + Number(cVal).toLocaleString()) : "[commission]")
-      : (cVal ? (cVal + "%") : "[commission]");
-    const commSuffix  = (cType === "%") ? " of the total purchase price" : "";
+      const commissionType = d.commissionType || "%";
+      const cVal = (d.commission || "");
+      const commissionDisplay = commissionType === "$"
+        ? (cVal ? ("$" + Number(cVal).toLocaleString()) : "[commission]")
+        : (cVal ? (cVal + "%") : "[commission]");
+      const suffix = commissionType === "%" ? " of the total purchase price" : "";
 
-    let p1 = "", p2 = "";
-    if (isFSBO) {
-      p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email address is ${email}.`;
-      p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commDisplay}${commDisplay ? commSuffix : ""}.`;
-    } else {
-      p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by ${brokera
-ge}, ${agent}, listing agent, ${phone}, ${agentEmail}.`;
-      p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commDisplay}${commDisplay ? commSuffix : ""}.`;
+      let p1 = "", p2 = "";
+      if (isFSBO) {
+        const phone = d.agentPhone || d.ownerPhone || "[owner/seller phone]";
+        const email = d.ownerEmail || "[owner/seller email]";
+        p1 = `I, ${name}, am the owner/seller of ${addressFull}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email address is ${email}.`;
+        p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${commissionDisplay ? suffix : ""}.`;
+      } else {
+        const brokerage  = d.brokerage  || "[listing brokerage]";
+        const agentName  = d.agentName  || "[listing agent]";
+        const phone      = d.agentPhone || "[agent phone]";
+        const email      = d.agentEmail || "[agent email]";
+        p1 = `I, ${name}, am the owner/seller of ${addressFull}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by ${brokerage}, ${agentName}, listing agent, ${phone}, ${email}.`;
+        p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${commissionDisplay ? suffix : ""}.`;
+      }
+
+      const sigName = (d.signedISC?.name) || (d.ownerName) || "";
+      const sigDate = (d.signedISC?.date) || new Date().toISOString().slice(0,10);
+
+      return { p1, p2, sigName, sigDate };
     }
 
-    document.getElementById("p1").textContent = p1;
-    document.getElementById("p2").textContent = p2;
+    // Build body text from localStorage (preview)
+    function buildFromLocal() {
+      const fd   = getJSON("formData", {});
+      const signed = getJSON("signedISC", {}); // { name, date }
 
-    const sigName = signed.name || name || "[Name]";
-    const sigDate = signed.date || new Date().toISOString().slice(0,10);
-    document.getElementById("sigName").textContent = sigName;
-    document.getElementById("sigDate").textContent = sigDate;
+      const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+      const isFSBO   = plan.includes("FSBO");
+      const addressFull = (fd.address || "").trim() || "[full address]";
+      const short    = addressFull.split(",")[0] || "[short address]";
+      const apn      = (fd.apn || "").trim();
+      const name     = (fd.name || signed.name || "[name]");
+      const phone    = fd.agentPhone || (isFSBO ? "[owner/seller phone]" : "[agent phone]");
+      const emailFSBO= fd.fsboEmail || "[owner/seller email]";
+      const brokerage= fd.brokerage || "[listing brokerage]";
+      const agent    = fd.agent || "[listing agent]";
+      const agentEmail = fd.agentEmail || "[agent email]";
 
-    // Unified (per-listing) ISC view counter
-    (function counters(){
-      const base = (listingId || fullAddr || "listing").toString().toLowerCase();
-      const key = "iscViews:" + base;
-      let n = Number(localStorage.getItem(key) || 0); n += 1;
-      localStorage.setItem(key, String(n));
-      document.getElementById("counters").textContent = `This Irrevocable Seller Communication has been viewed ${n} time(s).`;
+      const cType = fd.commissionType || "%";
+      const cVal  = (fd.commission || "").trim();
+      const commissionDisplay = cType === "$"
+        ? (cVal ? ("$" + Number(cVal).toLocaleString()) : "[commission]")
+        : (cVal ? (cVal + "%") : "[commission]");
+      const suffix  = (cType === "%") ? " of the total purchase price" : "";
+
+      let p1 = "", p2 = "";
+      if (isFSBO) {
+        p1 = `I, ${name}, am the owner/seller of ${addressFull}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email address is ${emailFSBO}.`;
+        p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${commissionDisplay ? suffix : ""}.`;
+      } else {
+        p1 = `I, ${name}, am the owner/seller of ${addressFull}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by ${brokerage}, ${agent}, listing agent, ${phone}, ${agentEmail}.`;
+        p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${commissionDisplay ? suffix : ""}.`;
+      }
+
+      const sigName = signed.name || name || "";
+      const sigDate = signed.date || new Date().toISOString().slice(0,10);
+
+      return { p1, p2, sigName, sigDate };
+    }
+
+    (async function boot(){
+      const u = new URL(location.href);
+      let idParam   = (u.searchParams.get('id')   || '').trim();
+      let addrParam = (u.searchParams.get('addr') || '').trim();
+
+      // Try server by id
+      let data = null;
+      if (idParam && db) {
+        try {
+          const snap = await getDoc(doc(db,"listings", idParam));
+          if (snap.exists()) data = snap.data();
+        } catch (e) { console.warn("[isc] by id failed:", e); }
+      }
+
+      // Try server by exact address
+      if (!data && addrParam && db) {
+        try {
+          const snap = await getDocs(query(collection(db,"listings"), where("address","==", addrParam), limit(1)));
+          if (!snap.empty) data = snap.docs[0].data();
+        } catch (e) { console.warn("[isc] by address failed:", e); }
+      }
+
+      // Render
+      if (data) {
+        const t = buildFromDoc(data);
+        $("p1").textContent = t.p1;
+        $("p2").textContent = t.p2;
+        $("sigName").textContent = t.sigName || "[Name]";
+        $("sigDate").textContent = t.sigDate;
+      } else {
+        // Fallback to local preview
+        const t = buildFromLocal();
+        $("localNotice").classList.remove("hidden");
+        $("p1").textContent = t.p1;
+        $("p2").textContent = t.p2;
+        $("sigName").textContent = t.sigName || "[Name]";
+        $("sigDate").textContent = t.sigDate;
+      }
+
+      // Unified view counter (keyed by address if available)
+      (function counters(){
+        const fd  = getJSON("formData", {});
+        const addressKey = ((addrParam || fd.address || "")).toLowerCase();
+        const key = addressKey ? ("iscViews:" + addressKey) : "iscViews:generic";
+        let n = Number(localStorage.getItem(key) || 0); n += 1;
+        localStorage.setItem(key, String(n));
+        $("counters").textContent = `This Irrevocable Seller Communication has been viewed ${n} time(s).`;
+      })();
     })();
   </script>
 </body>
