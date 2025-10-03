@@ -10,15 +10,22 @@
     .dimmed { opacity: 0.5; pointer-events: none; }
     .lock-note { font-size: 12px; color:#6b7280; }
     .pill { font-size: 11px; padding: 2px 6px; border-radius: 9999px; background:#eef2ff; color:#3730a3; }
+    .note { font-size: 12px; }
+    .chip { font-size: 11px; padding:2px 6px; border-radius:9999px; background:#f3f4f6; color:#374151; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
 
+  <!-- Header -->
   <div class="max-w-6xl mx-auto mt-8 px-3">
     <div class="flex items-start justify-between">
       <h1 class="text-2xl font-bold">Listing Detail Intake (Agent)</h1>
-      <a href="/index.html" class="text-sm text-blue-600 hover:underline">Back to Home</a>
+      <div class="flex items-center gap-2">
+        <a href="/welcome.html" class="text-sm text-blue-600 hover:underline">Back to Welcome</a>
+        <a id="previewLink" href="/listing.html" target="_blank" class="text-sm text-blue-600 hover:underline">Preview Full Listing</a>
+      </div>
     </div>
+    <p id="statusBar" class="mt-2 text-sm text-gray-600"></p>
   </div>
 
   <div class="max-w-6xl mx-auto mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6 px-3">
@@ -56,7 +63,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
-            <input id="price" type="number" min="0" step="1000" placeholder="e.g., 850000" class="w-full border p-2 rounded">
+            <input id="price" type="number" min="0" step="1000" placeholder="e.g., 2050000" class="w-full border p-2 rounded">
           </div>
 
           <div>
@@ -83,18 +90,18 @@
             </div>
             <div>
               <span class="block text-xs text-gray-600 mb-1">Square Footage</span>
-              <input id="sqft" type="number" min="0" step="1" placeholder="e.g., 2000" class="w-full border p-2 rounded">
+              <input id="sqft" type="number" min="0" step="1" placeholder="e.g., 1860" class="w-full border p-2 rounded">
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
               <span class="block text-xs text-gray-600 mb-1">Year Built</span>
-              <input id="yearBuilt" type="number" min="1800" step="1" placeholder="e.g., 1998" class="w-full border p-2 rounded">
+              <input id="yearBuilt" type="number" min="1800" step="1" placeholder="e.g., 1976" class="w-full border p-2 rounded">
             </div>
             <div>
               <span class="block text-xs text-gray-600 mb-1">Lot Size (sqft)</span>
-              <input id="lotSize" type="number" min="0" step="1" placeholder="e.g., 6000" class="w-full border p-2 rounded">
+              <input id="lotSize" type="number" min="0" step="1" placeholder="e.g., 5000" class="w-full border p-2 rounded">
             </div>
             <div>
               <span class="block text-xs text-gray-600 mb-1">Property Type</span>
@@ -117,13 +124,17 @@
           <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
         </div>
 
-        <!-- Photos -->
+        <!-- Photos (Storage uploads) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Photos</label>
           <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
-          <input id="photoInput" type="file" accept="image/*" multiple class="block">
+
+          <div class="flex items-center gap-2">
+            <input id="photoInput" type="file" accept="image/*" multiple class="block">
+            <span id="photoNote" class="note text-gray-500">JPG/PNG are best. Uploads save automatically.</span>
+          </div>
+
           <div id="photoGrid" class="flex flex-col gap-2 mt-3"></div>
-          <p class="text-xs text-gray-500 mt-2">Tip: click thumbnail or use buttons to set primary, replace, or delete.</p>
         </div>
 
         <!-- Description (Plus only) -->
@@ -142,7 +153,7 @@
 
         <div>
           <label class="block text-sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
-          <input id="preferredArea" placeholder="e.g., Newport Beach, Harbor View Homes" class="w-full border p-2 rounded">
+          <input id="preferredArea" placeholder="e.g., Newport Beach, Harbor View" class="w-full border p-2 rounded">
           <p id="premiumGateNote" class="lock-note mt-1 hidden">Purchase Premium Placement to enable this field.</p>
         </div>
 
@@ -174,7 +185,7 @@
 
         <div class="pt-2 grid grid-cols-2 gap-2">
           <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
-          <a id="previewLink" href="/listing.html" class="text-center px-4 py-2 rounded bg-green-600 text-white">Preview Full Listing Detail</a>
+          <a id="goPreviewBtn" href="#" target="_blank" class="text-center px-4 py-2 rounded bg-green-600 text-white">Preview Full Listing Detail</a>
         </div>
       </form>
     </section>
@@ -210,75 +221,74 @@
     </aside>
   </div>
 
-  <script>
+  <!-- Firebase init -->
+  <script type="module" src="/scripts/firebase-init.js"></script>
+
+  <!-- Firestore + Storage logic -->
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import {
+      doc, getDoc, updateDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      getStorage, ref, uploadBytes, getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
     const $ = (id) => document.getElementById(id);
-    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-    const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    let formData = getJSON("formData", {});
-    let agentListing = getJSON("agentListing", {});
-    const now = new Date();
-    const isSeptOrOct2025 = (now.getFullYear() === 2025 && (now.getMonth() === 8 || now.getMonth() === 9)); // Sep=8, Oct=9
+    // ---- Identify listing id ----
+    function getListingId() {
+      const u = new URL(location.href);
+      const qid = (u.searchParams.get('id') || '').trim();
+      if (qid) return qid;
+      const ls = (localStorage.getItem('lastListingId') || '').trim();
+      return ls || '';
+    }
+    const listingId = getListingId();
 
-    const checkoutData = getJSON("checkoutData", null) || {
-      plan,
-      base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
-      upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
-      prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
-      meta: {},
-      payer: "agent"
-    };
+    function setStatus(msg, ok=true) {
+      const el = $("statusBar");
+      el.textContent = msg || '';
+      el.className = ok ? "mt-2 text-sm text-gray-600" : "mt-2 text-sm text-red-700";
+    }
 
-    const flags = getJSON("intakeFollowups", {});
+    // ---- Working state ----
+    let photos = [];          // array of URLs
+    let primaryIndex = 0;
+    let plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
     const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
+    const maxPhotos = isPlus ? 20 : 1;
 
-    // Header pills
+    // ---- UI paint helpers ----
     $("planPill").textContent = plan;
     $("payerBadge").textContent = "";
 
-    // Preset from local for now; we may overwrite from Firestore fetch below
-    $("fullAddress").value = formData.address || "";
-    $("status").value = agentListing.status || "";
-    $("price").value = agentListing.price ?? "";
-
-    const commission = agentListing.commission ?? (formData.commission || "");
-    const commissionType = agentListing.commissionType ?? (formData.commissionType || "%");
-    $("commission").value = commission; $("commissionType").value = commissionType;
-
-    // Property facts
-    $("bedrooms").value     = agentListing.bedrooms ?? "";
-    $("bathrooms").value    = agentListing.bathrooms ?? "";
-    $("sqft").value         = agentListing.sqft ?? "";
-    $("yearBuilt").value    = agentListing.yearBuilt ?? "";
-    $("lotSize").value      = agentListing.lotSize ?? "";
-    $("propertyType").value = agentListing.propertyType ?? "";
-    $("apn").value          = formData.apn || agentListing.apn || "";
-
-    // Agent info (may be overwritten by Firestore load)
-    $("brokerage").value  = formData.brokerage || agentListing.brokerage || "";
-    $("agentName").value  = formData.agent || agentListing.agentName || "";
-    $("agentEmail").value = agentListing.agentEmail || "";
-    $("agentPhone").value = formData.agentPhone || agentListing.agentPhone || "";
-
-    // Photos setup
-    const photos = Array.isArray(agentListing.photos) ? agentListing.photos : [];
-    let primaryIndex = (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0);
-    const maxPhotos = isPlus ? 20 : 1;
-    $("photoHelp").textContent = isPlus ? "You can upload up to 20 photos." : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+    function money(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
 
     function renderThumbs() {
       const grid = $("photoGrid");
       grid.innerHTML = "";
-      (photos || []).forEach((src, idx) => {
+
+      if (!photos.length) {
+        const p = document.createElement("p");
+        p.className = "text-sm text-gray-600";
+        p.textContent = "No photos yet.";
+        grid.appendChild(p);
+        return;
+      }
+
+      photos.forEach((url, idx) => {
         const row = document.createElement("div");
         row.className = "flex items-center gap-3";
 
         const img = new Image();
-        img.src = src; img.alt = "Photo " + (idx + 1);
+        img.src = url;
+        img.alt = "Photo " + (idx + 1);
         img.className = "thumb border " + (idx === primaryIndex ? "border-green-500" : "border-gray-300");
         img.title = (idx === primaryIndex) ? "Primary photo" : "Click to set as primary";
-        img.addEventListener("click", () => { primaryIndex = idx; saveDraft(); renderThumbs(); });
+        img.addEventListener("click", () => { primaryIndex = idx; renderThumbs(); });
 
         const btns = document.createElement("div");
         btns.className = "flex items-center gap-2 text-xs";
@@ -287,7 +297,11 @@
         bPrimary.type = "button";
         bPrimary.className = "px-2 py-1 border rounded";
         bPrimary.textContent = "Set Primary";
-        bPrimary.onclick = () => { primaryIndex = idx; saveDraft(); renderThumbs(); };
+        bPrimary.onclick = async () => {
+          primaryIndex = idx;
+          await savePhotosField();
+          renderThumbs();
+        };
 
         const bReplace = document.createElement("button");
         bReplace.type = "button";
@@ -298,9 +312,17 @@
           input.type = "file"; input.accept = "image/*";
           input.onchange = async (e) => {
             const file = e.target.files?.[0]; if (!file) return;
-            const r = new FileReader();
-            r.onload = () => { photos[idx] = r.result; saveDraft(); renderThumbs(); };
-            r.readAsDataURL(file);
+            setStatus("Uploading replacement…");
+            try {
+              const urlNew = await uploadOne(file);
+              photos[idx] = urlNew;
+              await savePhotosField();
+              renderThumbs();
+              setStatus("Replaced photo.", true);
+            } catch (err) {
+              setStatus("Could not replace photo.", false);
+              console.warn(err);
+            }
           };
           input.click();
         };
@@ -309,10 +331,12 @@
         bDelete.type = "button";
         bDelete.className = "px-2 py-1 border rounded";
         bDelete.textContent = "Delete";
-        bDelete.onclick = () => {
+        bDelete.onclick = async () => {
+          if (!confirm("Remove this photo from the listing?")) return;
           photos.splice(idx, 1);
           if (primaryIndex >= photos.length) primaryIndex = Math.max(0, photos.length - 1);
-          saveDraft(); renderThumbs();
+          await savePhotosField();
+          renderThumbs();
         };
 
         btns.appendChild(bPrimary);
@@ -324,249 +348,270 @@
         grid.appendChild(row);
       });
     }
-    renderThumbs();
 
+    // ---- Firestore save helpers ----
+    async function savePhotosField() {
+      if (!listingId) return;
+      try {
+        await updateDoc(doc(db, "listings", listingId), {
+          photos: photos.slice(0, maxPhotos),
+          primaryIndex: (typeof primaryIndex === "number" ? primaryIndex : 0),
+          updatedAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.warn("[agent-detail] photos update failed", e);
+      }
+    }
+
+    async function uploadOne(file) {
+      const storage = getStorage();
+      // use a simple path: listings/{listingId}/photos/{timestamp}_{basename}
+      const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
+      const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
+      const r = ref(storage, path);
+      await uploadBytes(r, file);
+      const url = await getDownloadURL(r);
+      return url;
+    }
+
+    // ---- Wire file input for NEW uploads ----
     $("photoInput").addEventListener("change", async (e) => {
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
-      let spaceLeft = maxPhotos - (photos.length || 0);
-      if (spaceLeft <= 0) {
-        alert(`You have reached the photo limit for your plan (${maxPhotos}).`);
+
+      try {
+        let slots = maxPhotos - photos.length;
+        if (slots <= 0) { alert(`You have reached the photo limit for your plan (${maxPhotos}).`); e.target.value = ""; return; }
+        const toUpload = files.slice(0, slots);
+
+        setStatus("Uploading photo(s)…");
+        for (const f of toUpload) {
+          try {
+            const url = await uploadOne(f);
+            photos.push(url);
+          } catch (err) {
+            console.warn("Upload failed", err);
+          }
+        }
+        await savePhotosField();
+        renderThumbs();
+        setStatus("Photos uploaded.", true);
+      } catch (err) {
+        setStatus("Upload failed.", false);
+      } finally {
         e.target.value = "";
-        return;
       }
-      const toRead = files.slice(0, spaceLeft);
-      const readAsDataURL = (file) => new Promise((res, rej) => {
-        const reader = new FileReader();
-        reader.onload = () => res(reader.result);
-        reader.onerror = rej;
-        reader.readAsDataURL(file);
-      });
-      for (const f of toRead) {
-        try { photos.push(await readAsDataURL(f)); } catch(e) { console.error(e); }
-      }
-      saveDraft(); renderThumbs(); e.target.value = "";
     });
 
-    // Description gate
-    $("description").value = agentListing.description ?? "";
-    if (!isPlus) {
-      $("description").classList.add("dimmed");
-      $("description").setAttribute("disabled","disabled");
-      $("descGateNote").classList.remove("hidden");
+    // ---- Prefill from Firestore on load ----
+    async function prefillFromServer() {
+      if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
+
+      try {
+        const snap = await getDoc(doc(db, "listings", listingId));
+        if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
+        const d = snap.data() || {};
+        plan = d.plan || plan;
+        $("planPill").textContent = plan;
+
+        $("fullAddress").value = d.address || "";
+        $("status").value = d.status || "";
+        $("price").value = d.price ?? "";
+        $("commission").value = d.commission ?? "";
+        $("commissionType").value = d.commissionType || "%";
+        $("apn").value = d.apn || "";
+
+        $("bedrooms").value = d.bedrooms ?? "";
+        $("bathrooms").value = d.bathrooms ?? "";
+        $("sqft").value = d.sqft ?? "";
+        $("yearBuilt").value = d.yearBuilt ?? "";
+        $("lotSize").value = d.lotSize ?? "";
+        $("propertyType").value = d.propertyType ?? "";
+
+        $("description").value = d.description ?? "";
+        $("bannerText").value = d.bannerText ?? "";
+        $("preferredArea").value = d.preferredArea ?? "";
+        $("pinArea").value = d.pinArea ?? "";
+
+        $("brokerage").value = d.brokerage || "";
+        $("agentName").value = d.agentName || "";
+        $("agentEmail").value = d.agentEmail || "";
+        $("agentPhone").value = d.agentPhone || "";
+
+        photos = Array.isArray(d.photos) ? d.photos.slice(0, maxPhotos) : [];
+        primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
+        renderThumbs();
+
+        // Wire the preview link
+        const a = $("previewLink");
+        const ap = $("goPreviewBtn");
+        if (a) a.href = "/listing.html?id=" + encodeURIComponent(listingId);
+        if (ap) ap.href = "/listing.html?id=" + encodeURIComponent(listingId);
+
+        setStatus("Loaded from server.", true);
+      } catch (e) {
+        console.warn("[agent-detail] load failed:", e);
+        setStatus("Could not load from server.", false);
+      }
     }
 
-    // Banner field
-    $("bannerText").value = agentListing.bannerText ?? "";
-    // we keep this enabled; payment handled at checkout
+    // ---- Save button (writes fields to Firestore) ----
+    $("saveBtn").addEventListener("click", async () => {
+      if (!listingId) { alert("No listing ID in this session."); return; }
 
-    // Preferred / Pin gates
-    $("preferredArea").value = agentListing.preferredArea ?? checkoutData.meta.preferredArea ?? flags.preferredArea ?? "";
-    $("pinArea").value = agentListing.pinArea ?? checkoutData.meta.pinArea ?? flags.pinArea ?? "";
-
-    // Save listeners
-    [
-      "status","price","description","bannerText","preferredArea","pinArea",
-      "brokerage","agentName","agentEmail","agentPhone","apn",
-      "bedrooms","bathrooms","sqft","yearBuilt","lotSize","propertyType"
-    ].forEach(id=>{
-      const el = $(id); if (!el) return;
-      el.addEventListener("input", saveDraft); el.addEventListener("change", saveDraft);
-    });
-
-    function saveDraft() {
       const payload = {
         status: $("status").value || "",
-        price: $("price").value || "",
-        commission: commission,
-        commissionType: commissionType,
+        price: Number($("price").value || 0) || "",
         apn: $("apn").value || "",
-        description: $("description").disabled ? (agentListing.description || "") : ($("description").value || ""),
-        bannerText: $("bannerText").disabled ? (agentListing.bannerText || "") : ($("bannerText").value || ""),
+        bedrooms: $("bedrooms").value || "",
+        bathrooms: $("bathrooms").value || "",
+        sqft: $("sqft").value || "",
+        yearBuilt: $("yearBuilt").value || "",
+        lotSize: $("lotSize").value || "",
+        propertyType: $("propertyType").value || "",
+        description: $("description").value || "",
+        bannerText: $("bannerText").value || "",
         preferredArea: $("preferredArea").value || "",
         pinArea: $("pinArea").value || "",
         brokerage: $("brokerage").value || "",
         agentName: $("agentName").value || "",
         agentEmail: $("agentEmail").value || "",
         agentPhone: $("agentPhone").value || "",
-        photos: photos.slice(0, maxPhotos),
-        primaryIndex: primaryIndex,
-        bedrooms: $("bedrooms").value || "",
-        bathrooms: $("bathrooms").value || "",
-        sqft: $("sqft").value || "",
-        yearBuilt: $("yearBuilt").value || "",
-        lotSize: $("lotSize").value || "",
-        propertyType: $("propertyType").value || ""
+        // photos & primaryIndex are saved automatically in savePhotosField() after each upload
+        updatedAt: serverTimestamp()
       };
-      localStorage.setItem("agentListing", JSON.stringify(payload));
-    }
 
-    // ---------- October promo UI ----------
-    const promoBadge = $("promoBadge");
-    const applyPromoBtn = $("applyPromoBtn");
-    const promoNote = $("promoNote");
-    function paintPromoState() {
-      const active = (checkoutData.payer === "agent") && isSeptOrOct2025;
-      promoBadge.textContent = active ? "Active" : "Inactive";
-      promoBadge.className = active
-        ? "text-xs px-2 py-1 rounded bg-green-100 text-green-800"
-        : "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700";
-      applyPromoBtn.disabled = !active;
-      promoNote.textContent = active
-        ? "Click to apply free pricing (Banner, Premium, Pin set to $0) for October 2025 (also live in September)."
-        : "Promo applies during October 2025 (and in September 2025) when upgrades are paid by the agent.";
-    }
-    function applyFreePromo() {
-      checkoutData.prices.banner = 0;
-      checkoutData.prices.premium = 0;
-      checkoutData.prices.pin = 0;
-      checkoutData.meta = checkoutData.meta || {};
-      checkoutData.meta.octoberAgentFree = true;
-      setJSON("checkoutData", checkoutData);
-      alert("October Free applied. Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.");
+      try {
+        await updateDoc(doc(db, "listings", listingId), payload);
+        setStatus("Saved to server.", true);
+        alert("Saved.");
+      } catch (e) {
+        console.warn("[agent-detail] save failed", e);
+        setStatus("Could not save to server.", false);
+        alert("Could not save. Try again.");
+      }
+    });
+
+    // ---- Promo (September/October 2025) ----
+    (function promoInit(){
+      const now = new Date();
+      const isSeptOrOct2025 = (now.getFullYear() === 2025 && (now.getMonth() === 8 || now.getMonth() === 9)); // Sep=8, Oct=9
+      const promoBadge = $("promoBadge");
+      const applyPromoBtn = $("applyPromoBtn");
+      const promoNote = $("promoNote");
+
+      const checkoutData = getJSON("checkoutData", null) || {
+        plan,
+        base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
+        upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
+        prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
+        meta: {},
+        payer: "agent"
+      };
+
+      function paintPromoState() {
+        const active = (checkoutData.payer === "agent") && isSeptOrOct2025;
+        promoBadge.textContent = active ? "Active" : "Inactive";
+        promoBadge.className = active
+          ? "text-xs px-2 py-1 rounded bg-green-100 text-green-800"
+          : "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700";
+        applyPromoBtn.disabled = !active;
+        promoNote.textContent = active
+          ? "Click to apply free pricing (Banner, Premium, Pin set to $0) for October 2025 (also live in September)."
+          : "Promo applies during October 2025 (and in September 2025) when upgrades are paid by the agent.";
+      }
+      paintPromoState();
+
+      function applyOctoberFree() {
+        checkoutData.prices.banner = 0;
+        checkoutData.prices.premium = 0;
+        checkoutData.prices.pin = 0;
+        checkoutData.meta = checkoutData.meta || {};
+        checkoutData.meta.octoberAgentFree = true;
+        setJSON("checkoutData", checkoutData);
+        alert("October Free applied. Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.");
+        paintUpgrades();
+      }
+      applyPromoBtn.addEventListener("click", applyOctoberFree);
+
+      function row(label, price, key, note="") {
+        const checked = !!checkoutData.upgrades[key];
+        const priceLabel = (price === 0) ? "FREE" : `$${price}`;
+        return `
+          <label class="flex items-center justify-between border rounded-lg px-3 py-2">
+            <div>
+              <span class="font-medium">${label}</span>
+              <span class="text-gray-500"> — ${priceLabel}</span>
+              ${note ? `<span class="ml-2 chip">${note}</span>` : ``}
+            </div>
+            <input type="checkbox" data-key="${key}" class="h-4 w-4" ${checked?'checked':''}/>
+          </label>
+        `;
+      }
+
+      function paintUpgrades() {
+        const box = $("upgradesBox");
+        const p = checkoutData.prices || {};
+        const html = [
+          row("Banner", (p.banner ?? 10), "banner"),
+          row("Premium Placement", (p.premium ?? 10), "premium"),
+          row("Pin Placement", (p.pin ?? 50), "pin", "Includes Premium")
+        ].join("");
+        box.innerHTML = html;
+
+        box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+          cb.addEventListener("change", (e)=>{
+            const k = e.target.getAttribute("data-key");
+            const checked = e.target.checked;
+            if (k === "banner")      checkoutData.upgrades.banner  = checked;
+            if (k === "premium")     checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
+            if (k === "pin")        {checkoutData.upgrades.pin     = checked; if (checked) checkoutData.upgrades.premium = true;}
+            setJSON("checkoutData", checkoutData);
+          });
+        });
+      }
       paintUpgrades();
-    }
-    applyPromoBtn.addEventListener("click", applyFreePromo);
-    paintPromoState();
 
-    function row(label, price, key, opts={}) {
-      const checked = !!checkoutData.upgrades[key];
-      const priceLabel = (price === 0) ? "FREE" : `$${price}`;
-      const note = opts.note ? `<span class="text-indigo-700 ml-2">${opts.note}</span>` : "";
-      return `
-        <label class="flex items-center justify-between border rounded-lg px-3 py-2">
-          <div>
-            <span class="font-medium">${label}</span>
-            <span class="text-gray-500"> — ${priceLabel}</span>
-            ${note}
-          </div>
-          <input type="checkbox" data-key="${key}" class="h-4 w-4" ${checked?'checked':''}/>
-        </label>
-      `;
-    }
-    function paintUpgrades() {
-      const box = $("upgradesBox");
-      const p = checkoutData.prices || {};
-      const html = [
-        row("Banner", (p.banner ?? 10), "banner"),
-        row("Premium Placement", (p.premium ?? 10), "premium"),
-        row("Pin Placement", (p.pin ?? 50), "pin", { note: "Includes Premium free" })
-      ].join("");
-      box.innerHTML = html;
-
-      box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
-        cb.addEventListener("change", (e)=>{
-          const k = e.target.getAttribute("data-key");
-          const checked = e.target.checked;
-          if (k === "banner")      checkoutData.upgrades.banner  = checked;
-          if (k === "premium")     checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
-          if (k === "pin")        {checkoutData.upgrades.pin     = checked; if (checked) checkoutData.upgrades.premium = true;}
-          setJSON("checkoutData", checkoutData);
-        });
+      $("updateUpgradesBtn").addEventListener("click", () => {
+        checkoutData.meta.preferredArea = $("preferredArea").value || checkoutData.meta.preferredArea || "";
+        checkoutData.meta.pinArea       = $("pinArea").value       || checkoutData.meta.pinArea       || "";
+        checkoutData.payer = "agent";
+        setJSON("checkoutData", checkoutData);
+        alert("Upgrades updated. Go to Checkout to pay (if needed).");
       });
-    }
-    paintUpgrades();
-
-    $("updateUpgradesBtn").addEventListener("click", () => {
-      checkoutData.meta.preferredArea = $("preferredArea").value || checkoutData.meta.preferredArea || "";
-      checkoutData.meta.pinArea       = $("pinArea").value       || checkoutData.meta.pinArea       || "";
-      checkoutData.payer = "agent";
-      setJSON("checkoutData", checkoutData);
-      alert("Upgrades updated. Go to Checkout to pay (if needed).");
-    });
-
-    // Go to checkout
-    $("goCheckoutBtn2").addEventListener("click", () => { window.location.href = "/checkout.html"; });
-
-    // ---------- PREVIEW LINK: ALWAYS INCLUDE ?id= ----------
-    (function wirePreviewLink(){
-      const a = document.getElementById("previewLink");
-      if (!a) return;
-      let id = (localStorage.getItem("lastListingId") || "").trim();
-      if (!id) {
-        try {
-          const u = new URL(location.href);
-          id = (u.searchParams.get("id") || "").trim();
-        } catch {}
-      }
-      if (id) {
-        a.href = "/listing.html?id=" + encodeURIComponent(id);
-      } else {
-        a.addEventListener("click", (e) => {
-          e.preventDefault();
-          alert("We don’t have a listing id in this session yet. Save your listing, or open from Welcome after selecting a listing.");
-        });
-      }
-    })();
-  </script>
-
-  <!-- Firestore SAVE/LOAD -->
-  <script type="module">
-    import { db } from "/scripts/firebase-init.js";
-    import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-    // Prefill from Firestore on load so agents see data without localStorage
-    (async function prefillFromServer(){
-      try {
-        let id = (localStorage.getItem("lastListingId") || "").trim();
-        if (!id) {
-          const u = new URL(location.href);
-          id = (u.searchParams.get("id") || "").trim();
-        }
-        if (!id) return;
-
-        const snap = await getDoc(doc(db, "listings", id));
-        if (!snap.exists()) return;
-        const d = snap.data() || {};
-
-        // If local empty, take from server
-        if (!document.getElementById("fullAddress").value) document.getElementById("fullAddress").value = d.address || "";
-        if (!document.getElementById("status").value)      document.getElementById("status").value      = d.status  || "";
-        if (!document.getElementById("price").value)       document.getElementById("price").value       = d.price   ?? "";
-
-        if (!document.getElementById("brokerage").value)   document.getElementById("brokerage").value   = d.brokerage  || "";
-        if (!document.getElementById("agentName").value)   document.getElementById("agentName").value   = d.agentName  || "";
-        if (!document.getElementById("agentEmail").value)  document.getElementById("agentEmail").value  = d.agentEmail || "";
-        if (!document.getElementById("agentPhone").value)  document.getElementById("agentPhone").value  = d.agentPhone || "";
-      } catch (e) {
-        console.warn("[agent-detail] prefill failed:", e);
-      }
+      $("goCheckoutBtn2").addEventListener("click", () => { window.location.href = "/checkout.html"; });
     })();
 
-    async function saveToFirestoreAgent() {
-      try {
-        const listingId = localStorage.getItem("lastListingId");
-        if (!listingId) { alert("No listing ID found for this session."); return; }
-        const payload = JSON.parse(localStorage.getItem("agentListing") || "{}");
-        const form = JSON.parse(localStorage.getItem("formData") || "{}");
-
-        const update = {
-          updatedAt: serverTimestamp(),
-          price: payload.price ?? "",
-          bedrooms: payload.bedrooms ?? "",
-          bathrooms: payload.bathrooms ?? "",
-          sqft: payload.sqft ?? "",
-          propertyType: payload.propertyType ?? "",
-          bannerText: payload.bannerText ?? "",
-          photos: Array.isArray(payload.photos) ? payload.photos.slice(0, 20) : [],
-          primaryIndex: (typeof payload.primaryIndex === "number" ? payload.primaryIndex : 0),
-          status: payload.status || "Active",
-          brokerage: payload.brokerage || form.brokerage || "",
-          agentName: payload.agentName || form.agent || "",
-          agentPhone: payload.agentPhone || form.agentPhone || "",
-          agentEmail: payload.agentEmail || form.agentEmail || ""
-        };
-        await updateDoc(doc(db, "listings", listingId), update);
-        alert("Saved to server.");
-      } catch (e) {
-        console.warn("[agent-detail] update failed", e);
-        alert("Could not save to server. Saved locally.");
+    // ---- Boot ----
+    (async function boot(){
+      // Preview links need the id
+      const pl = $("previewLink");
+      const pv = $("goPreviewBtn");
+      if (listingId) {
+        if (pl) pl.href = "/listing.html?id=" + encodeURIComponent(listingId);
+        if (pv) pv.href = "/listing.html?id=" + encodeURIComponent(listingId);
       }
-    }
 
-    document.getElementById("saveBtn")?.addEventListener("click", async () => {
-      try { await saveToFirestoreAgent(); } catch {}
-    });
+      // Address from local (nice to show quickly)
+      const fd = getJSON("formData", {});
+      if (fd.address && !$("fullAddress").value) $("fullAddress").value = fd.address;
+
+      // Prefill from server
+      await prefillFromServer();
+
+      // Description gate for non-Plus
+      if (!(plan === "Listed Property Plus" || plan === "FSBO Plus")) {
+        $("description").classList.add("dimmed");
+        $("description").setAttribute("disabled","disabled");
+        $("descGateNote").classList.remove("hidden");
+      }
+
+      // Photo help text
+      const isPlus = (plan === "Listed Property Plus" || plan === "FSBO Plus");
+      $("photoHelp").textContent = isPlus
+        ? "You can upload up to 20 photos."
+        : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+    })();
   </script>
 </body>
 </html>
