@@ -11,10 +11,27 @@
       body { background: white !important; }
       .no-print { display:none !important; }
     }
+    /* Embed mode tweaks (no borders, no outer margins) */
+    body.gc-embed {
+      background: transparent !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    .gc-embed .gc-card {
+      border: 0 !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+    }
+    .gc-embed .gc-wrap {
+      padding: 0 !important;
+      margin: 0 !important;
+      max-width: none !important;
+    }
   </style>
 </head>
 <body class="bg-white text-black p-6 sm:p-8">
-  <div class="max-w-3xl mx-auto bg-white">
+  <div id="wrap" class="gc-wrap max-w-3xl mx-auto bg-white">
 
     <!-- Local preview notice -->
     <div id="localNotice" class="hidden mb-4 p-3 rounded border border-yellow-200 bg-yellow-50 text-yellow-900 text-sm">
@@ -22,7 +39,7 @@
     </div>
 
     <!-- Content card -->
-    <div class="border p-6 rounded shadow bg-white">
+    <div id="card" class="gc-card border p-6 rounded shadow bg-white">
       <h1 class="text-xl font-bold text-center mb-4">Irrevocable Seller Communication</h1>
 
       <div id="iscContent" class="text-sm space-y-4 leading-relaxed">
@@ -60,6 +77,17 @@
     function getJSON(key, fb) { try { return JSON.parse(localStorage.getItem(key)) ?? fb; } catch { return fb; } }
 
     const $ = (id)=>document.getElementById(id);
+
+    // Detect embed mode (?embed=1)
+    const u0 = new URL(location.href);
+    const isEmbed = (u0.searchParams.get('embed') === '1');
+    if (isEmbed) {
+      document.body.classList.add('gc-embed');
+      // remove default body padding when embedded
+      try {
+        document.body.style.background = 'transparent';
+      } catch {}
+    }
 
     // Build body text from a server doc
     function buildFromDoc(d) {
@@ -101,8 +129,7 @@
     // Build body text from localStorage (preview)
     function buildFromLocal() {
       const fd   = getJSON("formData", {});
-      const signed = getJSON("signedISC", {}); // { name, date }
-
+      const signed = getJSON("signedISC", {});
       const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
       const isFSBO   = plan.includes("FSBO");
       const addressFull = (fd.address || "").trim() || "[full address]";
@@ -114,7 +141,6 @@
       const brokerage= fd.brokerage || "[listing brokerage]";
       const agent    = fd.agent || "[listing agent]";
       const agentEmail = fd.agentEmail || "[agent email]";
-
       const cType = fd.commissionType || "%";
       const cVal  = (fd.commission || "").trim();
       const commissionDisplay = cType === "$"
@@ -137,10 +163,25 @@
       return { p1, p2, sigName, sigDate };
     }
 
+    function postSize() {
+      try {
+        const h = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
+        window.parent?.postMessage({ type: "gc-isc-embed-size", height: h }, "*");
+      } catch {}
+    }
+
     (async function boot(){
       const u = new URL(location.href);
+      const isEmbed = (u.searchParams.get('embed') === '1');
       let idParam   = (u.searchParams.get('id')   || '').trim();
       let addrParam = (u.searchParams.get('addr') || '').trim();
+
+      // In embed mode, strip body/card padding/borders
+      if (isEmbed) {
+        document.body.classList.add('gc-embed');
+        document.getElementById('wrap')?.classList.add('gc-embed');
+        document.getElementById('card')?.classList.add('gc-embed');
+      }
 
       // Try server by id
       let data = null;
@@ -160,31 +201,35 @@
       }
 
       // Render
+      let t;
       if (data) {
-        const t = buildFromDoc(data);
-        $("p1").textContent = t.p1;
-        $("p2").textContent = t.p2;
-        $("sigName").textContent = t.sigName || "[Name]";
-        $("sigDate").textContent = t.sigDate;
+        t = buildFromDoc(data);
       } else {
         // Fallback to local preview
-        const t = buildFromLocal();
-        $("localNotice").classList.remove("hidden");
-        $("p1").textContent = t.p1;
-        $("p2").textContent = t.p2;
-        $("sigName").textContent = t.sigName || "[Name]";
-        $("sigDate").textContent = t.sigDate;
+        t = buildFromLocal();
+        document.getElementById("localNotice")?.classList.remove("hidden");
       }
 
-      // Unified view counter (keyed by address if available)
+      document.getElementById("p1").textContent = t.p1;
+      document.getElementById("p2").textContent = t.p2;
+      document.getElementById("sigName").textContent = t.sigName || "[Name]";
+      document.getElementById("sigDate").textContent = t.sigDate;
+
+      // View counter (based on address if we can infer)
       (function counters(){
-        const fd  = getJSON("formData", {});
-        const addressKey = ((addrParam || fd.address || "")).toLowerCase();
-        const key = addressKey ? ("iscViews:" + addressKey) : "iscViews:generic";
+        const addr = (data?.address || getJSON("formData", {}).address || "").toLowerCase();
+        const key = addr ? ("iscViews:" + addr) : "iscViews:generic";
         let n = Number(localStorage.getItem(key) || 0); n += 1;
         localStorage.setItem(key, String(n));
-        $("counters").textContent = `This Irrevocable Seller Communication has been viewed ${n} time(s).`;
+        document.getElementById("counters").textContent = `This Irrevocable Seller Communication has been viewed ${n} time(s).`;
       })();
+
+      // Post height to parent (so parent resizes and no scrollbars appear)
+      postSize();
+      // Re-post after fonts/layout settle
+      setTimeout(postSize, 150);
+      setTimeout(postSize, 400);
+      setTimeout(postSize, 1200);
     })();
   </script>
 </body>
