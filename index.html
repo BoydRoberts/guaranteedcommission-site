@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root{
-      /* micro-tuning knobs */
       --title-bottom-gap: .75rem;         /* controls spacing under all three titles */
       --box2-first-input-offset: 1rem;    /* lowers Box 2 first input ~1 line */
     }
@@ -27,7 +26,7 @@
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
 
     /* --- Strip 1: same-size boxes (Box 1 = baseline), no scrollbars --- */
-    #box1, #formBlock, #box3 { overflow: hidden; } /* avoid scrollbars */
+    #box1, #formBlock, #box3 { overflow: hidden; }
     .gc-title { text-align:center; font-weight:700; font-size:1.125rem; line-height:1.25; margin:0 0 var(--title-bottom-gap); }
 
     /* Lower Box 2 form by ~1 line */
@@ -48,7 +47,7 @@
     #formBlock.compact3 h2.gc-title { font-size:.95rem; }
     #formBlock.compact3 input, #formBlock.compact3 select, #formBlock.compact button { padding:.22rem .35rem !important; font-size:.75rem !important; }
 
-    /* Real-Reflow compact tiers for Box 3 (ISC) – keep text razor sharp */
+    /* Real-Reflow compact tiers for Box 3 (ISC) */
     #box3.compact * { line-height:1.35; }
     #box3.compact p { font-size:.95rem; }
     #box3.compact2 * { line-height:1.3; }
@@ -65,24 +64,21 @@
         Accredited Investors Only
       </button>
       <div class="text-center flex-1">
-        <!-- Logo + Site Name -->
         <div class="flex items-center justify-center gap-1">
           <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-8 w-8 object-contain">
           <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
         </div>
-        <!-- Tagline -->
         <p class="text-sm text-red-600 mt-1 px-2">
           Guaranteeing commissions so your home will sell quickly at a higher price.
         </p>
       </div>
       <div class="flex items-center gap-2">
         <a href="/local-professionals.html" class="bg-amber-600 text-white text-xs font-semibold px-3 py-1 rounded">Local Professionals</a>
-        <!-- Removed header Log In button per request -->
       </div>
     </div>
   </header>
 
-  <!-- Investor Modal (restored) -->
+  <!-- Investor Modal -->
   <div id="investorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl relative p-5 max-h-[85vh] overflow-auto">
       <button onclick="closeInvestorModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
@@ -91,7 +87,6 @@
       <p class="text-sm text-gray-600 mb-3">(SEC Rule 501 of Regulation D)</p>
 
       <form id="investorForm" class="space-y-4">
-        <!-- Identity -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label class="block text-sm font-semibold">Investor Name</label>
@@ -107,15 +102,13 @@
           </div>
         </div>
 
-        <!-- Acknowledgments -->
         <div class="text-sm space-y-2 mt-2">
           <p><strong>Acknowledgments:</strong></p>
-          <p>I understand that GuaranteedCommission.com (the “Company”) will rely on this certification in offering and selling securities in compliance with U.S. securities laws.</p>
+          <p>I understand that GuaranteedCommission.com will rely on this certification in offering and selling securities in compliance with U.S. securities laws.</p>
           <p>I agree to provide further documentation if required to verify my status under Rule 506(c).</p>
           <p>I represent and warrant that the above statements are true and correct.</p>
         </div>
 
-        <!-- Signature -->
         <div class="grid grid-cols-1 md-grid-cols-2 gap-3">
           <div>
             <label class="block text-sm font-semibold">Signature (type full name)</label>
@@ -127,7 +120,6 @@
           </div>
         </div>
 
-        <!-- Submit -->
         <div class="flex items-center justify-end gap-2">
           <button type="button" onclick="closeInvestorModal()" class="px-3 py-2 rounded border">Cancel</button>
           <button id="invSubmitBtn" type="submit" class="px-4 py-2 rounded bg-blue-600 text-white">Submit Certification</button>
@@ -170,10 +162,10 @@
     </ul>
   </nav>
 
-  <!-- Strip 1 (full-bleed #4DA6FF background) -->
+  <!-- Strip 1 -->
   <div style="background-color:#4DA6FF;">
     <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
-      <!-- Box 1 (baseline) -->
+      <!-- Box 1 -->
       <div id="box1" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
         <h2 class="gc-title">Commission Communication Menu</h2>
         <ul class="space-y-3">
@@ -198,39 +190,27 @@
         </ul>
       </div>
 
-      <!-- Box 2 (form) -->
+      <!-- Box 2 -->
       <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
         <h2 id="formTitle" class="gc-title">Listed Property Communication Form</h2>
         <form id="listingForm" class="gc-form-offset space-y-2" autocomplete="off">
           <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded" required>
-
-          <!-- Address -->
           <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-1 rounded" autocomplete="street-address" spellcheck="false" required >
-
-          <!-- Parcel -->
           <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
 
-          <!-- Phone/Broker/Agent -->
           <div id="listedPhoneRow">
             <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
             <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (###) ###-####</span>
           </div>
 
-          <!-- Agent Email (NEW) -->
           <input type="email" id="agentEmail" placeholder="Agent’s Email – NOT your email" class="w-full border p-1 rounded">
-
-          <!-- Brokerage (HIDDEN for FSBO) -->
           <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
-
-          <!-- Agent (HIDDEN for FSBO) -->
           <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
 
-          <!-- FSBO-only contact -->
           <div id="fsboEmailRow" class="hidden">
             <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border p-1 rounded">
           </div>
 
-          <!-- Commission -->
           <div class="flex gap-2">
             <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border p-1 rounded">
             <select id="commissionType" class="border p-1 rounded">
@@ -245,11 +225,10 @@
         </form>
       </div>
 
-      <!-- Box 3 (ISC) -->
+      <!-- Box 3 (ISC live preview text) -->
       <div id="box3" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm">
         <h2 class="gc-title">Irrevocable Seller Communication</h2>
 
-        <!-- LISTED ISC -->
         <div id="iscTextListed">
           <p>To the escrow holder/closing agent,</p>
           <p class="mt-2">
@@ -270,7 +249,6 @@
           <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
         </div>
 
-        <!-- FSBO ISC -->
         <div id="iscTextFSBO" class="hidden">
           <p>To the escrow holder/closing agent,</p>
           <p class="mt-2">
@@ -292,10 +270,9 @@
     </section>
   </div>
 
-  <!-- Strip 2: Search / Tiles (full-bleed white + fixed top spacing) -->
+  <!-- Strip 2: Search / Tiles -->
   <div style="background-color:#ffffff;">
     <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12 pt-6">
-      <!-- Centered search header (no collapsing margin) -->
       <div class="text-center mb-4 mt-0">
         <div class="flex items-center justify-center">
           <div class="flex items-center gap-2">
@@ -305,13 +282,12 @@
         </div>
       </div>
 
-      <!-- Tiles grid, nudged down -->
       <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6"></div>
       <p id="tilesEmpty" class="text-sm text-gray-500 text-center hidden mt-6">No listings yet. Create one above, then return here.</p>
     </section>
   </div>
 
-  <!-- Footer (Press button restored) -->
+  <!-- Footer -->
   <footer class="bg-white border-t mt-8">
     <div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-gray-600 space-y-3">
       <button onclick="openPressModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-2 rounded">
@@ -336,7 +312,7 @@
     function closePressModal(){ document.getElementById('pressModal').classList.add('hidden'); }
     function submitPressForm(){ document.getElementById('pressConfirmation').classList.remove('hidden'); }
 
-    // Keep commission menu open while hovering submenu (robust hover)
+    // Keep commission submenu open on hover
     (function(){
       const li = document.querySelector('.group');
       const menu = document.getElementById('commissionMenu');
@@ -363,7 +339,6 @@
     function selectPlan(planName){
       localStorage.setItem("selectedPlan", planName);
       showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
-      // Refit after plan change
       setTimeout(fitStrip1, 0);
       setTimeout(fitStrip1, 120);
     }
@@ -403,34 +378,30 @@
       }
     }
 
-    // Fit Strip 1: lock Box 1 height, compact Box 2 & 3 tiers (no scrollbars, crisp text)
+    // Fit Strip 1 (boxes equal height, compact tiers)
     function fitStrip1(){
       const b1 = document.getElementById('box1');
       const b2 = document.getElementById('formBlock');
       const b3 = document.getElementById('box3');
       if (!b1 || !b2 || !b3) return;
 
-      // Reset to measure baseline properly
       [b1, b2, b3].forEach(b => b.style.height='auto');
       b2.classList.remove('compact','compact2','compact3');
       b3.classList.remove('compact','compact2','compact3');
 
-      // 1) Lock to Box 1 height
       const baseline = b1.getBoundingClientRect().height || b1.clientHeight;
       [b1, b2, b3].forEach(b => b.style.height = baseline + 'px');
 
-      // 2) Compact tiers function
       function ensureFits(el){
         const tiers = ['compact','compact2','compact3'];
         for (let i=0;i<tiers.length;i++){
-          if (el.scrollHeight <= el.clientHeight + 1) return; // already fits
+          if (el.scrollHeight <= el.clientHeight + 1) return;
           el.classList.add(tiers[i]);
         }
       }
-      ensureFits(b2); // Box 2 (form)
-      ensureFits(b3); // Box 3 (ISC)
+      ensureFits(b2);
+      ensureFits(b3);
 
-      // If super edge case still a pixel off after class changes, try a second pass
       setTimeout(()=>{
         ensureFits(b2);
         ensureFits(b3);
@@ -459,7 +430,6 @@
         fitStrip1();
       });
 
-      // Refit on any input impacting content height
       ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission','commissionType']
         .forEach(id=>{
           const el=document.getElementById(id);
@@ -511,18 +481,16 @@
       }
       syncAll();
 
-      // ---- Strip 2 tiles + search ----
       buildTilesDataset();
       renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
       wireSearch();
 
-      // Initial fit and on resize
       fitStrip1();
       setTimeout(fitStrip1, 150);
       window.addEventListener('resize', fitStrip1);
     });
 
-    /* Submit — UPGRADED: data-bleed guard + DUPLICATE GUARD + Firestore save */
+    /* Submit — data-bleed guard + duplicate guard + Firestore save */
     async function submitForm(){
       const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
       const requiredIds = ['name','address','agentPhone'];
@@ -543,15 +511,14 @@
         return;
       } else addressEl.classList.remove('border-red-500');
 
-      // 🔹 Data-bleed guard — clear prior listing state BEFORE saving new data
+      // Clear prior local listing state to avoid bleed
       try {
-        ['agentListing','checkoutData','intakeFollowups','lastListingId','lastListingAddress','signature','signedISC'].forEach(k=>localStorage.removeItem(k));
+        ['agentListing','checkoutData','intakeFollowups','lastListingId','lastListingAddress','signature','signedISC']
+          .forEach(k=>localStorage.removeItem(k));
         Object.keys(localStorage).forEach(k=>{
           if (k.startsWith('formData:') || k.startsWith('agentListing:') || k.startsWith('signedISC:')) localStorage.removeItem(k);
         });
-      } catch(e) {
-        console.warn('[bleed-guard] cleanup skipped:', e);
-      }
+      } catch(e) {}
 
       const fsboEmailEl=document.getElementById('fsboEmailInput');
       const formData={
@@ -574,7 +541,11 @@
       const plan=localStorage.getItem('selectedPlan')||'Listed Property Basic';
       localStorage.setItem('postSignatureOptions',plan.includes('FSBO')?'fsbo':'listed');
 
-      // ✅ DUPLICATE GUARD — check for an existing listing at this address before creating a new one
+      // Mark origin so login/verify routes correctly
+      localStorage.setItem('loginOrigin','box2');
+      localStorage.setItem('nextAfterLogin','/verify-code.html');
+
+      // Duplicate guard + save
       try {
         const db = window.gc && window.gc.db;
         if (db) {
@@ -585,14 +556,14 @@
 
           const listingsCol = collection(db, "listings");
 
-          // Pass 1: exact match on address
+          // Pass 1: exact match
           let existingId = "";
           try {
             const exactSnap = await getDocs(query(listingsCol, where("address","==", addrVal), limit(5)));
             exactSnap.forEach(d => { if (!existingId) existingId = d.id; });
           } catch {}
 
-          // Pass 2: if no exact, try newest N and compare lower-case
+          // Pass 2: newest N lower-case compare
           if (!existingId) {
             try {
               const recentSnap = await getDocs(query(listingsCol, orderBy("createdAt","desc"), limit(50)));
@@ -610,7 +581,7 @@
             if (useExisting) {
               localStorage.setItem("lastListingId", existingId);
               localStorage.setItem("lastListingAddress", formData.address);
-              // 🔑 Make sure the user is routed through Verify → Signature (so ownerEmail gets set)
+              // Route through Verify → Signature so ownerEmail is attached
               localStorage.setItem('loginOrigin','box2');
               localStorage.setItem('nextAfterLogin','/verify-code.html');
               window.location.href = "/login.html";
@@ -618,7 +589,7 @@
             }
           }
 
-          // No reuse (or user chose No) → create new doc
+          // Create new doc
           const payload = {
             address: formData.address,
             shortAddress: (formData.address.split(",")[0] || "").trim(),
@@ -642,9 +613,6 @@
           localStorage.setItem("lastListingId", ref.id);
           localStorage.setItem("lastListingAddress", payload.address || "");
           localStorage.setItem(`formData:${ref.id}`, JSON.stringify(formData));
-          // Route through Verify as usual
-          localStorage.setItem('loginOrigin','box2');
-          localStorage.setItem('nextAfterLogin','/verify-code.html');
         } else {
           console.warn("[firestore] db not available — skipped server save");
         }
@@ -784,7 +752,7 @@
   <!-- Firebase init include -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
-  <!-- Firestore tiles repaint (no demo, newest first) -->
+  <!-- Firestore tiles repaint (no demo, newest first) — with local-photo merge -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -800,10 +768,31 @@
         const items = [];
         snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
 
-        // Store into the existing global used by renderStrip2Tiles()
+        // Merge local photo if the server doc has none
+        try {
+          const localForm = JSON.parse(localStorage.getItem('formData') || '{}');
+          const localAgent = JSON.parse(localStorage.getItem('agentListing') || '{}');
+          const localAddr = (localForm.address || '').trim().toLowerCase();
+          const localPhotos = Array.isArray(localAgent.photos) ? localAgent.photos : [];
+          const localPrimary = (typeof localAgent.primaryIndex === 'number') ? localAgent.primaryIndex : 0;
+
+          if (localAddr && localPhotos.length) {
+            items.forEach(it => {
+              const addr = (it.address || '').trim().toLowerCase();
+              if (addr === localAddr) {
+                if (!Array.isArray(it.photos) || it.photos.length === 0) {
+                  it.photos = [ localPhotos[localPrimary] ];
+                  it.primaryIndex = 0;
+                }
+              }
+            });
+          }
+        } catch {}
+
+        // Make items available to renderer
         window._tilesData = items;
 
-        // Paint tiles using your existing renderer
+        // Paint tiles
         renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
       } catch (e) {
         console.warn("[index] Firestore tiles load failed:", e);
