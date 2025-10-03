@@ -18,14 +18,15 @@
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
     .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
-    /* Map should fill its card completely */
     .mapboxgl-canvas { display:block !important; }
 
-    /* ISC column: full area clickable with no extra border inside */
+    /* Right ISC: borderless, full-bleed like map */
     .click-wrap { position: relative; width:100%; height:100%; }
     .click-wrap a.overlay { position:absolute; inset:0; z-index:10; text-indent:-9999px; }
-    .isc-iframe { width:100%; height:100%; border:0; margin:0; display:block; background:#fff; }
+    .isc-iframe { width:100%; border:0; margin:0; display:block; background:transparent; }
     .card { background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); overflow:hidden; }
+    /* Remove card styling for the ISC column to match map (borderless, no shadow) */
+    .isc-container { background:transparent !important; box-shadow:none !important; border:0 !important; border-radius:0 !important; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -58,7 +59,7 @@
     <!-- Top strip: 40 | 20 | 40 -->
     <section id="topRow" class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start hidden">
 
-      <!-- Left: LISTING TILE (reference height) -->
+      <!-- Left: LISTING TILE -->
       <article id="tileCard" class="lg:col-span-2 card relative">
         <div class="relative">
           <img id="tilePhoto" class="tile-photo" alt="Listing photo"/>
@@ -76,22 +77,22 @@
         </div>
       </article>
 
-      <!-- Middle: MAP -->
-      <aside id="mapCard" class="lg:col-span-1 card overflow-hidden p-0" style="height:auto;">
+      <!-- Middle: MAP (borderless like you wanted) -->
+      <aside id="mapCard" class="lg:col-span-1 overflow-hidden p-0" style="height:auto;">
         <div id="mapCanvas" style="width:100%; height:100%;"></div>
       </aside>
 
-      <!-- Right: ISC (iframe preview, full clickable) -->
-      <aside id="iscCard" class="lg:col-span-2 overflow-hidden p-0 m-0" style="background:transparent; border:0; box-shadow:none; border-radius:0; height:auto;">
+      <!-- Right: ISC (iframe preview, full clickable, borderless) -->
+      <aside id="iscCard" class="lg:col-span-2 isc-container p-0 m-0" style="height:auto;">
         <div class="click-wrap">
           <a id="iscOpenLink" class="overlay" href="/printable-isc.html" target="_blank" aria-label="Open full ISC">Open</a>
-          <iframe id="iscIframe" src="/printable-isc.html" class="isc-iframe"></iframe>
+          <iframe id="iscIframe" src="/printable-isc.html" class="isc-iframe" scrolling="no"></iframe>
         </div>
       </aside>
 
     </section>
 
-    <!-- LOWER SECTION: Photos & Description for Plus/FSBO -->
+    <!-- LOWER SECTION: Photos & Description -->
     <section class="space-y-6">
       <div id="galleryCard" class="card p-5 hidden">
         <h3 class="text-lg font-semibold mb-3">Photos</h3>
@@ -110,7 +111,6 @@
   <script type="module" src="/scripts/firebase-init.js"></script>
 
   <script>
-    // --- Configs and helpers ---
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
     if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -120,49 +120,49 @@
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
     const commissionAmt = (p, c, t)=>{ const P=Number(p||0), C=Number(c||0); if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0); };
 
-    function alignHeights(){
-      const tile = $("tileCard");
+    /* Resize the iframe to its content height and match all 3 columns to that height */
+    function resizeIscToContent() {
+      const iframe = $("iscIframe");
       const mapCard = $("mapCard");
-      const iscCard = $("iscCard");
-      if (!tile || !mapCard || !iscCard) return;
-      mapCard.style.height = iscCard.style.height = '';
-      const h = tile.getBoundingClientRect().height;
-      mapCard.style.height = h + "px";
-      iscCard.style.height = h + "px";
-      const iscIframe = $("iscIframe");
-      if (iscIframe) iscIframe.style.height = "100%";
-    }
+      const tileCard = $("tileCard");
+      if (!iframe) return;
 
-    let _mapInstance;
-    async function bootMapFor(fullAddress){
       try {
-        const center = await geocode(fullAddress);
-        _mapInstance = new mapboxgl.Map({
-          container:'mapCanvas',
-          style:'mapbox://styles/mapbox/streets-v12',
-          center: center || [-117.7854,33.5427],
-          zoom: center ? 14 : 12
-        });
-        _mapInstance.addControl(new mapboxgl.NavigationControl());
-        if (center) new mapboxgl.Marker().setLngLat(center).addTo(_mapInstance);
-        requestAnimationFrame(()=>_mapInstance.resize());
-        setTimeout(()=>_mapInstance.resize(), 250);
-      } catch {
-        $("mapCanvas").innerHTML = '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (!doc) return;
+        const body = doc.body;
+        const html = doc.documentElement;
+        const h = Math.max(
+          body?.scrollHeight || 0,
+          html?.scrollHeight || 0
+        );
+
+        if (h > 0) {
+          iframe.style.height = h + "px";      // show full letter, no scroll
+          mapCard.style.height = h + "px";     // map matches height
+          tileCard.style.height = h + "px";    // tile matches height
+        }
+      } catch (e) {
+        // If cross-origin ever blocks, we silently ignore.
       }
     }
-    async function geocode(q) {
-      if (!MAPBOX_TOKEN || !q) return null;
-      try {
-        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
-        const data = await resp.json();
-        const f = data?.features?.[0];
-        return f ? f.center : null; // [lng, lat]
-      } catch { return null; }
-    }
+
+    // Listen for postMessage from printable-isc (embed mode)
+    window.addEventListener("message", (ev) => {
+      if (!ev || !ev.data) return;
+      if (ev.data.type === "gc-isc-embed-size" && typeof ev.data.height === "number") {
+        const h = Math.max(0, ev.data.height);
+        const iframe = $("iscIframe");
+        const mapCard = $("mapCard");
+        const tileCard = $("tileCard");
+        iframe.style.height = h + "px";
+        mapCard.style.height = h + "px";
+        tileCard.style.height = h + "px";
+      }
+    });
   </script>
 
-  <!-- Robust loader: ID → Address → Local fallback -->
+  <!-- Robust loader: ID → Address → Local fallback; plus embed=1 -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import {
@@ -176,15 +176,10 @@
       let idParam   = (url.searchParams.get('id')   || '').trim();
       let addrParam = (url.searchParams.get('addr') || '').trim();
 
-      // Prefer id from local storage if not present in URL
-      if (!idParam) {
-        idParam = (localStorage.getItem('lastListingId') || '').trim();
-      }
-      if (!addrParam) {
-        addrParam = (localStorage.getItem('lastListingAddress') || '').trim();
-      }
+      if (!idParam)  idParam  = (localStorage.getItem('lastListingId') || '').trim();
+      if (!addrParam) addrParam = (localStorage.getItem('lastListingAddress') || '').trim();
 
-      // Wire ISC links with whatever we know
+      // Wire ISC links (with embed=1 for borderless, no extra margins; plus id or addr)
       const openA = $("iscOpenLink");
       const iscIframe = $("iscIframe");
       if (openA && (idParam || addrParam)) {
@@ -192,10 +187,11 @@
           ? `/printable-isc.html?id=${encodeURIComponent(idParam)}`
           : `/printable-isc.html?addr=${encodeURIComponent(addrParam)}`;
       }
-      if (iscIframe && (idParam || addrParam)) {
+      if (iscIframe) {
+        const base = "/printable-isc.html?embed=1";
         iscIframe.src = idParam
-          ? `/printable-isc.html?id=${encodeURIComponent(idParam)}`
-          : `/printable-isc.html?addr=${encodeURIComponent(addrParam)}`;
+          ? `${base}&id=${encodeURIComponent(idParam)}`
+          : `${base}&addr=${encodeURIComponent(addrParam)}`;
       }
 
       let d = null;
@@ -217,19 +213,14 @@
           if (!snap.empty) {
             const first = snap.docs[0];
             d = first.data();
-            // Normalize: remember id so future links use id
-            try {
-              localStorage.setItem('lastListingId', first.id);
-            } catch {}
+            try { localStorage.setItem('lastListingId', first.id); } catch {}
           }
         } catch (e) {
           console.warn("[listing] load by address failed:", e);
         }
       }
 
-      // 3) Local browser fallback (so page never blanks)
       if (!d) {
-        // Show local notice and render from localStorage (preview mode)
         const fd  = (function(){ try { return JSON.parse(localStorage.getItem('formData') || '{}'); } catch { return {}; } })();
         const ag  = (function(){ try { return JSON.parse(localStorage.getItem('agentListing') || '{}'); } catch { return {}; } })();
 
@@ -237,19 +228,26 @@
           $("localNotice")?.classList.remove("hidden");
           renderFromDocLocal(fd, ag);
           $("topRow")?.classList.remove("hidden");
-          setTimeout(()=>{ alignHeights(); }, 60);
+          // After iframe loads its embed content, it will send height; but try a late measure too:
+          setTimeout(()=>{ resizeIscToContent(); }, 600);
           return;
         }
 
-        // If we truly have nothing, show invalidBox
         $("invalidBox")?.classList.remove("hidden");
         return;
       }
 
-      // If we got here, we have server data
       renderFromDocServer(d);
       $("topRow")?.classList.remove("hidden");
-      setTimeout(()=>{ alignHeights(); }, 60);
+
+      // Once the iframe loads, resize to its content
+      const iframe = $("iscIframe");
+      iframe.addEventListener("load", () => {
+        resizeIscToContent();
+        // safety re-measure
+        setTimeout(resizeIscToContent, 400);
+        setTimeout(resizeIscToContent, 1200);
+      });
     })();
 
     function renderFromDocServer(d) {
@@ -258,12 +256,10 @@
       const price = (d.price ?? "");
       const cRaw = d.commission ?? "";
       const cType= d.commissionType || "%";
-
       const cAmt = (function(p, c, t){
         const P=Number(p||0), C=Number(c||0);
         if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0);
       })(price, cRaw, cType);
-
       const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
       const banner = (d.bannerText || "").trim();
       const pType = d.propertyType || "";
@@ -297,17 +293,14 @@
       $("tileAddress").textContent = address;
       $("tileContact").textContent = `${(d.plan && d.plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
 
-      // Disable tile navigation (we are already on the page)
       document.getElementById("tileCard").onclick = (e) => { e.preventDefault(); };
 
-      // Description
       const desc = (d.description || "").trim();
       if (desc) {
         document.getElementById("dDescription").textContent = desc;
         document.getElementById("descCard").classList.remove("hidden");
       }
 
-      // Gallery
       const others = photos.filter((_, i) => i !== primaryIndex);
       if (others.length > 0) {
         const grid = document.getElementById("galleryGrid");
@@ -321,7 +314,6 @@
         document.getElementById("galleryCard").classList.remove("hidden");
       }
 
-      // Map
       bootMapFor(address);
     }
 
@@ -345,12 +337,9 @@
       const agentName = fd.agent || "[listing agent]";
       const agentPhone = fd.agentPhone || "[agent phone]";
 
-      // Photo (local only)
       const photos = Array.isArray(ag.photos) ? ag.photos : [];
       const primaryIndex = (typeof ag.primaryIndex === "number" ? ag.primaryIndex : 0);
       const primaryPhoto = photos[primaryIndex] || "";
-
-      document.getElementById("topRow").classList.remove("hidden");
 
       $("tilePhoto").src = primaryPhoto || "";
       $("tilePrice").textContent = money(price);
@@ -359,7 +348,6 @@
       $("tileAddress").textContent = address;
       $("tileContact").textContent = `${(fd.plan && fd.plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
 
-      // Map
       bootMapFor(address);
     }
   </script>
