@@ -25,8 +25,10 @@
     .click-wrap a.overlay { position:absolute; inset:0; z-index:10; text-indent:-9999px; }
     .isc-iframe { width:100%; border:0; margin:0; display:block; background:transparent; }
     .card { background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); overflow:hidden; }
-    /* Remove card styling for the ISC column to match map (borderless, no shadow) */
     .isc-container { background:transparent !important; box-shadow:none !important; border:0 !important; border-radius:0 !important; }
+
+    /* Error banner */
+    .err { background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -43,18 +45,7 @@
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
     <!-- Friendly messages -->
-    <section id="invalidBox" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-5 text-yellow-900">
-      <h2 class="text-lg font-semibold">Listing not available</h2>
-      <p class="text-sm mt-1">We tried by ID and address, but couldn’t load this listing from the server.</p>
-      <p class="text-sm mt-1">If you just created this, try refreshing in a few seconds.</p>
-      <div class="mt-3">
-        <a href="/index.html" class="inline-block px-4 py-2 rounded bg-blue-600 text-white">Go back to Home</a>
-      </div>
-    </section>
-
-    <section id="localNotice" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-5 text-yellow-900">
-      <p class="text-sm">Showing a local preview from your browser. This will update once it’s saved to the server.</p>
-    </section>
+    <section id="msgBox" class="hidden err rounded-lg p-4 text-sm"></section>
 
     <!-- Top strip: 40 | 20 | 40 -->
     <section id="topRow" class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start hidden">
@@ -77,12 +68,12 @@
         </div>
       </article>
 
-      <!-- Middle: MAP (borderless like you wanted) -->
+      <!-- Middle: MAP -->
       <aside id="mapCard" class="lg:col-span-1 overflow-hidden p-0" style="height:auto;">
         <div id="mapCanvas" style="width:100%; height:100%;"></div>
       </aside>
 
-      <!-- Right: ISC (iframe preview, full clickable, borderless) -->
+      <!-- Right: ISC (iframe preview, borderless, auto-size) -->
       <aside id="iscCard" class="lg:col-span-2 isc-container p-0 m-0" style="height:auto;">
         <div class="click-wrap">
           <a id="iscOpenLink" class="overlay" href="/printable-isc.html" target="_blank" aria-label="Open full ISC">Open</a>
@@ -92,7 +83,7 @@
 
     </section>
 
-    <!-- LOWER SECTION: Photos & Description -->
+    <!-- LOWER SECTION -->
     <section class="space-y-6">
       <div id="galleryCard" class="card p-5 hidden">
         <h3 class="text-lg font-semibold mb-3">Photos</h3>
@@ -120,34 +111,31 @@
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
     const commissionAmt = (p, c, t)=>{ const P=Number(p||0), C=Number(c||0); if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0); };
 
-    /* Resize the iframe to its content height and match all 3 columns to that height */
+    function showMsg(txt) {
+      const box = $("msgBox");
+      box.textContent = txt;
+      box.classList.remove("hidden");
+    }
+
     function resizeIscToContent() {
       const iframe = $("iscIframe");
       const mapCard = $("mapCard");
       const tileCard = $("tileCard");
       if (!iframe) return;
-
       try {
         const doc = iframe.contentDocument || iframe.contentWindow.document;
         if (!doc) return;
         const body = doc.body;
         const html = doc.documentElement;
-        const h = Math.max(
-          body?.scrollHeight || 0,
-          html?.scrollHeight || 0
-        );
-
+        const h = Math.max(body?.scrollHeight || 0, html?.scrollHeight || 0);
         if (h > 0) {
-          iframe.style.height = h + "px";      // show full letter, no scroll
-          mapCard.style.height = h + "px";     // map matches height
-          tileCard.style.height = h + "px";    // tile matches height
+          iframe.style.height = h + "px";
+          mapCard.style.height = h + "px";
+          tileCard.style.height = h + "px";
         }
-      } catch (e) {
-        // If cross-origin ever blocks, we silently ignore.
-      }
+      } catch {}
     }
 
-    // Listen for postMessage from printable-isc (embed mode)
     window.addEventListener("message", (ev) => {
       if (!ev || !ev.data) return;
       if (ev.data.type === "gc-isc-embed-size" && typeof ev.data.height === "number") {
@@ -162,7 +150,7 @@
     });
   </script>
 
-  <!-- Robust loader: ID → Address → Local fallback; plus embed=1 -->
+  <!-- Robust loader with defensive fallbacks -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import {
@@ -172,82 +160,82 @@
     const $ = (id)=>document.getElementById(id);
 
     (async function boot(){
-      const url = new URL(window.location.href);
-      let idParam   = (url.searchParams.get('id')   || '').trim();
-      let addrParam = (url.searchParams.get('addr') || '').trim();
+      try {
+        const url = new URL(window.location.href);
+        let idParam   = (url.searchParams.get('id')   || '').trim();
+        let addrParam = (url.searchParams.get('addr') || '').trim();
 
-      if (!idParam)  idParam  = (localStorage.getItem('lastListingId') || '').trim();
-      if (!addrParam) addrParam = (localStorage.getItem('lastListingAddress') || '').trim();
+        if (!idParam)  idParam  = (localStorage.getItem('lastListingId') || '').trim();
+        if (!addrParam) addrParam = (localStorage.getItem('lastListingAddress') || '').trim();
 
-      // Wire ISC links (with embed=1 for borderless, no extra margins; plus id or addr)
-      const openA = $("iscOpenLink");
-      const iscIframe = $("iscIframe");
-      if (openA && (idParam || addrParam)) {
-        openA.href = idParam
+        // Wire ISC links (embed=1)
+        const openA = $("iscOpenLink");
+        const iscIframe = $("iscIframe");
+        const base = "/printable-isc.html?embed=1";
+        if (openA) openA.href = idParam
           ? `/printable-isc.html?id=${encodeURIComponent(idParam)}`
           : `/printable-isc.html?addr=${encodeURIComponent(addrParam)}`;
-      }
-      if (iscIframe) {
-        const base = "/printable-isc.html?embed=1";
-        iscIframe.src = idParam
+        if (iscIframe) iscIframe.src = idParam
           ? `${base}&id=${encodeURIComponent(idParam)}`
           : `${base}&addr=${encodeURIComponent(addrParam)}`;
-      }
 
-      let d = null;
+        let d = null;
 
-      // 1) Try by id
-      if (idParam && db) {
-        try {
-          const snap = await getDoc(doc(db, "listings", idParam));
-          if (snap.exists()) d = snap.data();
-        } catch (e) {
-          console.warn("[listing] load by id failed:", e);
+        // 1) by id
+        if (idParam && db) {
+          try {
+            const snap = await getDoc(doc(db, "listings", idParam));
+            if (snap.exists()) d = snap.data();
+          } catch (e) { showMsg("Note: could not load by id. Trying by address…"); }
         }
-      }
 
-      // 2) Try by exact address
-      if (!d && addrParam && db) {
-        try {
-          const snap = await getDocs(query(collection(db,"listings"), where("address","==", addrParam), limit(1)));
-          if (!snap.empty) {
-            const first = snap.docs[0];
-            d = first.data();
-            try { localStorage.setItem('lastListingId', first.id); } catch {}
-          }
-        } catch (e) {
-          console.warn("[listing] load by address failed:", e);
+        // 2) by address
+        if (!d && addrParam && db) {
+          try {
+            const snap = await getDocs(query(collection(db,"listings"), where("address","==", addrParam), limit(1)));
+            if (!snap.empty) {
+              const first = snap.docs[0];
+              d = first.data();
+              try { localStorage.setItem('lastListingId', first.id); } catch {}
+            }
+          } catch (e) { showMsg("Note: could not load by address. Showing local preview if available…"); }
         }
-      }
 
-      if (!d) {
+        if (d) {
+          renderFromDocServer(d);
+          $("topRow")?.classList.remove("hidden");
+
+          const iframe = $("iscIframe");
+          iframe.addEventListener("load", () => {
+            resizeIscToContent();
+            setTimeout(resizeIscToContent, 400);
+            setTimeout(resizeIscToContent, 1200);
+          });
+          return;
+        }
+
+        // 3) Local preview fallback (never blank)
         const fd  = (function(){ try { return JSON.parse(localStorage.getItem('formData') || '{}'); } catch { return {}; } })();
         const ag  = (function(){ try { return JSON.parse(localStorage.getItem('agentListing') || '{}'); } catch { return {}; } })();
 
         if (fd && fd.address) {
-          $("localNotice")?.classList.remove("hidden");
+          showMsg("Showing a local preview while the server listing is loading.");
           renderFromDocLocal(fd, ag);
           $("topRow")?.classList.remove("hidden");
-          // After iframe loads its embed content, it will send height; but try a late measure too:
-          setTimeout(()=>{ resizeIscToContent(); }, 600);
+
+          const iframe = $("iscIframe");
+          iframe.addEventListener("load", () => {
+            resizeIscToContent();
+            setTimeout(resizeIscToContent, 400);
+            setTimeout(resizeIscToContent, 1200);
+          });
           return;
         }
 
-        $("invalidBox")?.classList.remove("hidden");
-        return;
+        showMsg("We couldn't load this listing. If you just created it, try again in a moment.");
+      } catch (e) {
+        showMsg("Unexpected error loading this listing. Please refresh.");
       }
-
-      renderFromDocServer(d);
-      $("topRow")?.classList.remove("hidden");
-
-      // Once the iframe loads, resize to its content
-      const iframe = $("iscIframe");
-      iframe.addEventListener("load", () => {
-        resizeIscToContent();
-        // safety re-measure
-        setTimeout(resizeIscToContent, 400);
-        setTimeout(resizeIscToContent, 1200);
-      });
     })();
 
     function renderFromDocServer(d) {
@@ -271,7 +259,7 @@
       const agentName = d.agentName || "[listing agent]";
       const agentPhone = d.agentPhone || "[agent phone]";
 
-      // Photos (server first, fallback to local one if empty)
+      // Photos with fallback to local
       let photos = Array.isArray(d.photos) ? d.photos.slice() : [];
       let primaryIndex = (typeof d.primaryIndex === "number" ? d.primaryIndex : 0);
       if (!photos.length) {
@@ -293,27 +281,7 @@
       $("tileAddress").textContent = address;
       $("tileContact").textContent = `${(d.plan && d.plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
 
-      document.getElementById("tileCard").onclick = (e) => { e.preventDefault(); };
-
-      const desc = (d.description || "").trim();
-      if (desc) {
-        document.getElementById("dDescription").textContent = desc;
-        document.getElementById("descCard").classList.remove("hidden");
-      }
-
-      const others = photos.filter((_, i) => i !== primaryIndex);
-      if (others.length > 0) {
-        const grid = document.getElementById("galleryGrid");
-        grid.innerHTML = "";
-        others.forEach(src => {
-          const img = document.createElement("img");
-          img.src = src; img.alt = "Listing photo";
-          img.className = "w-full h-32 object-cover rounded bg-gray-100";
-          grid.appendChild(img);
-        });
-        document.getElementById("galleryCard").classList.remove("hidden");
-      }
-
+      // Map
       bootMapFor(address);
     }
 
