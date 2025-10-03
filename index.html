@@ -574,10 +574,6 @@
       const plan=localStorage.getItem('selectedPlan')||'Listed Property Basic';
       localStorage.setItem('postSignatureOptions',plan.includes('FSBO')?'fsbo':'listed');
 
-      // Mark origin → Verify
-      localStorage.setItem('loginOrigin','box2');
-      localStorage.setItem('nextAfterLogin','/verify-code.html');
-
       // ✅ DUPLICATE GUARD — check for an existing listing at this address before creating a new one
       try {
         const db = window.gc && window.gc.db;
@@ -614,7 +610,9 @@
             if (useExisting) {
               localStorage.setItem("lastListingId", existingId);
               localStorage.setItem("lastListingAddress", formData.address);
-              // Keep your Box 2 data locally; proceed to login/verify
+              // 🔑 Make sure the user is routed through Verify → Signature (so ownerEmail gets set)
+              localStorage.setItem('loginOrigin','box2');
+              localStorage.setItem('nextAfterLogin','/verify-code.html');
               window.location.href = "/login.html";
               return;
             }
@@ -644,13 +642,14 @@
           localStorage.setItem("lastListingId", ref.id);
           localStorage.setItem("lastListingAddress", payload.address || "");
           localStorage.setItem(`formData:${ref.id}`, JSON.stringify(formData));
-          console.log("[firestore] listing created:", ref.id);
+          // Route through Verify as usual
+          localStorage.setItem('loginOrigin','box2');
+          localStorage.setItem('nextAfterLogin','/verify-code.html');
         } else {
           console.warn("[firestore] db not available — skipped server save");
         }
       } catch (err) {
         console.warn("[firestore] duplicate guard/save failed; continuing local-only:", err);
-        // continue anyway to login
       }
 
       window.location.href="/login.html";
