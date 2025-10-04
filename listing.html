@@ -20,15 +20,18 @@
 
     .mapboxgl-canvas { display:block !important; }
 
-    /* Right ISC: borderless, full-bleed like map */
+    /* Right ISC: borderless like map; full-height via postMessage */
     .click-wrap { position: relative; width:100%; height:100%; }
     .click-wrap a.overlay { position:absolute; inset:0; z-index:10; text-indent:-9999px; }
     .isc-iframe { width:100%; border:0; margin:0; display:block; background:transparent; }
     .card { background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); overflow:hidden; }
     .isc-container { background:transparent !important; box-shadow:none !important; border:0 !important; border-radius:0 !important; }
 
-    /* Error banner */
-    .err { background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; }
+    /* Message boxes */
+    .info { background:#EFF6FF; color:#1E3A8A; border:1px solid #BFDBFE; }
+    .warn { background:#FEF3C7; color:#92400E; border:1px solid #FDE68A; }
+
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -42,10 +45,13 @@
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-4">
 
-    <!-- Friendly messages -->
-    <section id="msgBox" class="hidden err rounded-lg p-4 text-sm"></section>
+    <!-- Visible diagnostics so we're never guessing -->
+    <section id="debugBox" class="hidden info rounded-lg p-4 text-sm mono"></section>
+
+    <!-- Friendly messages instead of blank page -->
+    <section id="msgBox" class="hidden warn rounded-lg p-4 text-sm"></section>
 
     <!-- Top strip: 40 | 20 | 40 -->
     <section id="topRow" class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start hidden">
@@ -80,7 +86,6 @@
           <iframe id="iscIframe" src="/printable-isc.html" class="isc-iframe" scrolling="no"></iframe>
         </div>
       </aside>
-
     </section>
 
     <!-- LOWER SECTION -->
@@ -106,33 +111,28 @@
     if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
     const $ = (id) => document.getElementById(id);
-    const getJSON = (k, fb={}) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
-
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
-    const commissionAmt = (p, c, t)=>{ const P=Number(p||0), C=Number(c||0); if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0); };
 
     function showMsg(txt) {
       const box = $("msgBox");
-      box.textContent = txt;
+      box.innerHTML = txt;
+      box.classList.remove("hidden");
+    }
+    function showDbg(lines) {
+      const box = $("debugBox");
+      box.innerHTML = Array.isArray(lines) ? lines.join("<br>") : String(lines || "");
       box.classList.remove("hidden");
     }
 
-    function resizeIscToContent() {
-      const iframe = $("iscIframe");
-      const mapCard = $("mapCard");
-      const tileCard = $("tileCard");
-      if (!iframe) return;
+    function resizeIscToContent(h) {
       try {
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        if (!doc) return;
-        const body = doc.body;
-        const html = doc.documentElement;
-        const h = Math.max(body?.scrollHeight || 0, html?.scrollHeight || 0);
-        if (h > 0) {
-          iframe.style.height = h + "px";
-          mapCard.style.height = h + "px";
-          tileCard.style.height = h + "px";
-        }
+        const iframe = $("iscIframe");
+        const mapCard = $("mapCard");
+        const tileCard = $("tileCard");
+        if (!iframe || !mapCard || !tileCard) return;
+        iframe.style.height = h + "px";
+        mapCard.style.height = h + "px";
+        tileCard.style.height = h + "px";
       } catch {}
     }
 
@@ -140,17 +140,40 @@
       if (!ev || !ev.data) return;
       if (ev.data.type === "gc-isc-embed-size" && typeof ev.data.height === "number") {
         const h = Math.max(0, ev.data.height);
-        const iframe = $("iscIframe");
-        const mapCard = $("mapCard");
-        const tileCard = $("tileCard");
-        iframe.style.height = h + "px";
-        mapCard.style.height = h + "px";
-        tileCard.style.height = h + "px";
+        resizeIscToContent(h);
       }
     });
+
+    // simple map boot
+    async function bootMapFor(fullAddress){
+      try {
+        const c = await geocode(fullAddress);
+        const m = new mapboxgl.Map({
+          container:'mapCanvas',
+          style:'mapbox://styles/mapbox/streets-v12',
+          center: c || [-117.7854,33.5427],
+          zoom: c ? 14 : 12
+        });
+        m.addControl(new mapboxgl.NavigationControl());
+        if (c) new mapboxgl.Marker().setLngLat(c).addTo(m);
+        requestAnimationFrame(()=>m.resize());
+        setTimeout(()=>m.resize(), 250);
+      } catch {
+        $("mapCanvas").innerHTML = '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
+      }
+    }
+    async function geocode(q) {
+      if (!MAPBOX_TOKEN || !q) return null;
+      try {
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const data = await resp.json();
+        const f = data?.features?.[0];
+        return f ? f.center : null; // [lng, lat]
+      } catch { return null; }
+    }
   </script>
 
-  <!-- Robust loader with defensive fallbacks -->
+  <!-- Robust loader with defensive fallbacks and clear diagnostics -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import {
@@ -158,6 +181,13 @@
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id)=>document.getElementById(id);
+
+    function dflt(v, dv) { return (v===undefined || v===null) ? dv : v; }
+    function asNumOrEmpty(v) {
+      if (typeof v === "number") return v;
+      if (typeof v === "string" && v.trim() !== "" && !isNaN(Number(v))) return Number(v);
+      return "";
+    }
 
     (async function boot(){
       try {
@@ -168,155 +198,156 @@
         if (!idParam)  idParam  = (localStorage.getItem('lastListingId') || '').trim();
         if (!addrParam) addrParam = (localStorage.getItem('lastListingAddress') || '').trim();
 
-        // Wire ISC links (embed=1)
+        showDbg([
+          `id: ${idParam || "(none)"}`,
+          `addr: ${addrParam || "(none)"}`
+        ]);
+
+        // Wire ISC (embed=1 for borderless)
         const openA = $("iscOpenLink");
         const iscIframe = $("iscIframe");
         const base = "/printable-isc.html?embed=1";
         if (openA) openA.href = idParam
           ? `/printable-isc.html?id=${encodeURIComponent(idParam)}`
-          : `/printable-isc.html?addr=${encodeURIComponent(addrParam)}`;
+          : (addrParam ? `/printable-isc.html?addr=${encodeURIComponent(addrParam)}` : `/printable-isc.html`);
         if (iscIframe) iscIframe.src = idParam
           ? `${base}&id=${encodeURIComponent(idParam)}`
-          : `${base}&addr=${encodeURIComponent(addrParam)}`;
+          : (addrParam ? `${base}&addr=${encodeURIComponent(addrParam)}` : `/printable-isc.html`);
 
-        let d = null;
+        let d = null, from = "";
 
         // 1) by id
         if (idParam && db) {
           try {
             const snap = await getDoc(doc(db, "listings", idParam));
-            if (snap.exists()) d = snap.data();
-          } catch (e) { showMsg("Note: could not load by id. Trying by address…"); }
+            if (snap.exists()) { d = snap.data(); from = "id"; }
+          } catch (e) { showDbg([`load by id failed: ${String(e)}`]); }
         }
 
-        // 2) by address
+        // 2) by exact address
         if (!d && addrParam && db) {
           try {
             const snap = await getDocs(query(collection(db,"listings"), where("address","==", addrParam), limit(1)));
-            if (!snap.empty) {
-              const first = snap.docs[0];
-              d = first.data();
-              try { localStorage.setItem('lastListingId', first.id); } catch {}
+            if (!snap.empty) { d = snap.docs[0].data(); from = "addr=="; }
+          } catch (e) { showDbg([`load by addr failed: ${String(e)}`]); }
+        }
+
+        // 3) Local preview fallback
+        if (!d) {
+          const fd  = (function(){ try { return JSON.parse(localStorage.getItem('formData') || '{}'); } catch { return {}; } })();
+          const ag  = (function(){ try { return JSON.parse(localStorage.getItem('agentListing') || '{}'); } catch { return {}; } })();
+          if (fd && fd.address) {
+            showDbg([`rendering local preview (no server match)`]);
+            renderLocal(fd, ag);
+            document.getElementById("topRow")?.classList.remove("hidden");
+            return;
+          }
+          showMsg("We couldn't load this listing. If you just created it, try again in a moment.");
+          return;
+        }
+
+        // Normalize safely
+        const address = String(d.address || "").trim();
+        const plan = String(d.plan || "Listed Property Basic");
+        const status = String(d.status || "Active");
+        const price = asNumOrEmpty(d.price);
+        const cRaw  = dflt(d.commission, "");
+        const cType = (d.commissionType === "%" || d.commissionType === "$") ? d.commissionType : "%";
+        const pType = String(d.propertyType || "");
+        const bds = dflt(d.bedrooms, "");
+        const ba  = dflt(d.bathrooms, "");
+        const sqft= dflt(d.sqft, "");
+        const brokerage = String(d.brokerage || (plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]"));
+        const agentName = String(d.agentName || "");
+        const agentPhone= String(d.agentPhone || "");
+        const banner    = String(d.bannerText || "");
+        const photos = Array.isArray(d.photos) ? d.photos.filter(u=>typeof u==="string") : [];
+        let primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
+        if (primaryIndex < 0 || primaryIndex >= photos.length) primaryIndex = 0;
+
+        // If no server photo yet, try local one
+        let primaryPhoto = photos[primaryIndex] || "";
+        if (!primaryPhoto) {
+          try {
+            const ag = JSON.parse(localStorage.getItem("agentListing") || "{}");
+            if (Array.isArray(ag.photos) && ag.photos.length) {
+              primaryPhoto = ag.photos[(typeof ag.primaryIndex==="number")?ag.primaryIndex:0] || "";
             }
-          } catch (e) { showMsg("Note: could not load by address. Showing local preview if available…"); }
+          } catch {}
         }
 
-        if (d) {
-          renderFromDocServer(d);
-          $("topRow")?.classList.remove("hidden");
+        // Paint
+        $("tilePhoto").src = primaryPhoto || "";
+        const bEl = $("tileBanner"); 
+        if (banner) { bEl.textContent = banner; bEl.classList.remove('hidden'); } else { bEl.classList.add('hidden'); }
 
-          const iframe = $("iscIframe");
-          iframe.addEventListener("load", () => {
-            resizeIscToContent();
-            setTimeout(resizeIscToContent, 400);
-            setTimeout(resizeIscToContent, 1200);
-          });
-          return;
-        }
+        const cAmt = (function(p, c, t){
+          const P=Number(p||0), C=Number(c||0);
+          if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0);
+        })(price, cRaw, cType);
+        const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
 
-        // 3) Local preview fallback (never blank)
-        const fd  = (function(){ try { return JSON.parse(localStorage.getItem('formData') || '{}'); } catch { return {}; } })();
-        const ag  = (function(){ try { return JSON.parse(localStorage.getItem('agentListing') || '{}'); } catch { return {}; } })();
+        $("tilePrice").textContent = money(price);
+        $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
+        $("tileFacts").textContent = `${bds || "—"} bds | ${ba || "—"} ba | ${sqft || "—"} sqft${pType ? " | "+pType : ""} | ${status}`;
+        $("tileAddress").textContent = address || "[full address]";
+        $("tileContact").textContent = `${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : brokerage).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
 
-        if (fd && fd.address) {
-          showMsg("Showing a local preview while the server listing is loading.");
-          renderFromDocLocal(fd, ag);
-          $("topRow")?.classList.remove("hidden");
+        document.getElementById("topRow")?.classList.remove("hidden");
 
-          const iframe = $("iscIframe");
-          iframe.addEventListener("load", () => {
-            resizeIscToContent();
-            setTimeout(resizeIscToContent, 400);
-            setTimeout(resizeIscToContent, 1200);
-          });
-          return;
-        }
+        // Map
+        if (address) bootMapFor(address);
 
-        showMsg("We couldn't load this listing. If you just created it, try again in a moment.");
+        // Note where it came from
+        showDbg([`loaded from: ${from}`, `rendered address: ${address || "(none)"}`]);
+
       } catch (e) {
+        console.warn(e);
         showMsg("Unexpected error loading this listing. Please refresh.");
       }
     })();
 
-    function renderFromDocServer(d) {
-      const $ = (id)=>document.getElementById(id);
-      const address = d.address || "[full address]";
-      const price = (d.price ?? "");
-      const cRaw = d.commission ?? "";
-      const cType= d.commissionType || "%";
-      const cAmt = (function(p, c, t){
-        const P=Number(p||0), C=Number(c||0);
-        if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0);
-      })(price, cRaw, cType);
-      const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
-      const banner = (d.bannerText || "").trim();
-      const pType = d.propertyType || "";
-      const bds = d.bedrooms ?? "—";
-      const ba  = d.bathrooms ?? "—";
-      const sqft= d.sqft ? Number(d.sqft).toLocaleString() : "—";
-      const status = d.status || "Draft";
-      const brokerage = d.brokerage || (d.plan && d.plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
-      const agentName = d.agentName || "[listing agent]";
-      const agentPhone = d.agentPhone || "[agent phone]";
-
-      // Photos with fallback to local
-      let photos = Array.isArray(d.photos) ? d.photos.slice() : [];
-      let primaryIndex = (typeof d.primaryIndex === "number" ? d.primaryIndex : 0);
-      if (!photos.length) {
-        try {
-          const local = JSON.parse(localStorage.getItem("agentListing") || "{}");
-          if (Array.isArray(local.photos) && local.photos.length) {
-            photos = local.photos.slice(0, 1);
-            primaryIndex = 0;
-          }
-        } catch {}
-      }
-      const primaryPhoto = photos[primaryIndex] || "";
-
-      $("tilePhoto").src = primaryPhoto || "";
-      const bEl = $("tileBanner"); if (banner) { bEl.textContent = banner; bEl.classList.remove('hidden'); } else { bEl.classList.add('hidden'); }
-      $("tilePrice").textContent = money(price);
-      $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
-      $("tileFacts").textContent = `${bds} bds | ${ba} ba | ${sqft} sqft${pType ? " | "+pType : ""} | ${status}`;
-      $("tileAddress").textContent = address;
-      $("tileContact").textContent = `${(d.plan && d.plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
-
-      // Map
-      bootMapFor(address);
-    }
-
-    function renderFromDocLocal(fd, ag) {
+    function renderLocal(fd, ag) {
       const $ = (id)=>document.getElementById(id);
       const address = fd.address || "[full address]";
-      const cType= fd.commissionType || "%";
-      const cRaw = fd.commission || "";
       const price = ag.price ?? "";
-      const cAmt = (function(p, c, t){
-        const P=Number(p||0), C=Number(c||0);
-        if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0);
-      })(price, cRaw, cType);
-      const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
+      const cRaw = ag.commission ?? fd.commission ?? "";
+      const cType= ag.commissionType ?? fd.commissionType ?? "%";
       const pType = ag.propertyType || "";
       const bds = ag.bedrooms ?? "—";
       const ba  = ag.bathrooms ?? "—";
-      const sqft= ag.sqft ? Number(ag.sqft).toLocaleString() : "—";
+      const sqft= ag.sqft ? Number(ag.sqft).toLocaleString() : (fd.sqft || "—");
       const status = ag.status || "Draft";
       const brokerage = fd.brokerage || (fd.plan && fd.plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
       const agentName = fd.agent || "[listing agent]";
       const agentPhone = fd.agentPhone || "[agent phone]";
 
+      // Photo local
       const photos = Array.isArray(ag.photos) ? ag.photos : [];
       const primaryIndex = (typeof ag.primaryIndex === "number" ? ag.primaryIndex : 0);
       const primaryPhoto = photos[primaryIndex] || "";
 
       $("tilePhoto").src = primaryPhoto || "";
+      const cAmt = (function(p, c, t){
+        const P=Number(p||0), C=Number(c||0);
+        if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0);
+      })(price, cRaw, cType);
+      const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
+
       $("tilePrice").textContent = money(price);
       $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
       $("tileFacts").textContent = `${bds} bds | ${ba} ba | ${sqft} sqft${pType ? " | "+pType : ""} | ${status}`;
       $("tileAddress").textContent = address;
       $("tileContact").textContent = `${(fd.plan && fd.plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
 
+      // Map
       bootMapFor(address);
+
+      // Let the ISC iframe size the row after it loads
+      const ifr = $("iscIframe");
+      ifr.addEventListener("load", () => {
+        // the embedded page will post its height
+      });
     }
   </script>
 </body>
