@@ -6,19 +6,16 @@
   <title>Irrevocable Seller Communication</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Match listing tile padding: 1rem all sides */
-    :root { --tile-pad: 1rem; }
+    :root { --tile-pad: 1rem; } /* match listing tile padding */
 
-    html, body {
-      background: transparent;
-    }
+    html, body { background: transparent; }
     body {
-      color: #111827; /* gray-900 */
+      color: #111827;         /* gray-900 */
       line-height: 1.5;
       padding: var(--tile-pad);
     }
 
-    /* Card that holds the ISC letter; soft border for standalone, none in embed */
+    /* Single outer card when standalone; no inner border in embed */
     .isc-card {
       background: #ffffff;
       border-radius: 0.75rem;
@@ -27,37 +24,27 @@
       padding: var(--tile-pad);
     }
 
-    /* When embedded in listing.html, keep it borderless-looking but maintain inner padding */
+    /* When embedded in listing.html, the parent already draws the card.
+       Remove this card’s border/shadow so there is NO inner border.
+       Keep equal padding so content lines up with tile/map. */
     .embed .isc-card {
       box-shadow: none;
       border: 0;
       border-radius: 0;
-      padding: 0;            /* parent provides equal padding already; we’ll wrap inner content */
+      padding: 0;         /* parent column already provides the outer padding */
     }
-    .embed .isc-inner {
-      padding: var(--tile-pad);
-      background: #fff;
-      border-radius: 0.75rem; /* to visually match card shapes */
-      box-shadow: 0 1px 6px rgba(0,0,0,.08);
+    .embed .isc-wrap {
+      padding: var(--tile-pad); /* equal margins to match tile */
     }
 
     .h1 {
       font-size: 1.125rem;   /* text-lg */
       font-weight: 700;      /* font-bold */
-      text-align: center;
-      margin-bottom: 0.75rem; /* match tile spacing rhythm */
-    }
-    .sub {
-      font-size: 0.875rem;   /* text-sm */
-      color: #6b7280;        /* gray-500 */
-      text-align: center;
+      text-align: left;      /* left align for letter feel */
       margin-bottom: 0.5rem;
     }
 
-    .p {
-      font-size: 0.95rem;
-      margin-top: 0.5rem;
-    }
+    .p { font-size: 0.95rem; margin-top: 0.5rem; }
 
     .sig-row {
       margin-top: 1.25rem;
@@ -68,18 +55,17 @@
       font-size: 0.95rem;
     }
     .sig-name { font-family: "Brush Script MT", cursive; font-size: 1.1rem; }
-    .fine { font-size: 0.75rem; color: #6b7280; }
+    .fine { font-size: 0.75rem; color: #6b7280; }   /* gray-500 */
 
-    /* Hide any print controls entirely (you asked to remove Print button) */
+    /* No print button (per your request) */
     .no-print { display: none !important; }
   </style>
 </head>
 <body>
   <div id="root" class="max-w-3xl mx-auto">
     <div id="card" class="isc-card">
-      <div id="inner" class="">
+      <div id="wrap" class="">
         <h1 class="h1">Irrevocable Seller Communication</h1>
-        <div class="sub">For escrow/closing agent use</div>
 
         <p class="p">To the escrow holder/closing agent,</p>
         <p id="p1" class="p">Loading…</p>
@@ -93,12 +79,13 @@
           <div id="sigDate">[date]</div>
         </div>
 
-        <div class="fine mt-6 text-center">GuaranteedCommission.com · Document for escrow/closing agent</div>
+        <!-- View counter (restored) -->
+        <div id="counter" class="fine mt-4 text-center"></div>
       </div>
     </div>
   </div>
 
-  <!-- Firebase (module) so we can read Firestore when id= is provided -->
+  <!-- Firebase (module) for Firestore reads when id= is provided -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -106,14 +93,13 @@
     const $ = (id)=>document.getElementById(id);
     const getJSON = (k, fb)=>{ try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-    // Detect embed mode to adjust styling and post back size to parent
+    // Detect embed mode
     function isEmbed() {
-      try {
-        const u = new URL(window.location.href);
-        return (u.searchParams.get("embed") || "0") === "1";
-      } catch { return false; }
+      try { return (new URL(location.href)).searchParams.get("embed") === "1"; }
+      catch { return false; }
     }
 
+    // Resize parent iframe to show the whole document (no inner scroll)
     function postHeight() {
       try {
         const h = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
@@ -168,20 +154,26 @@
       $("p2").textContent = p2;
       $("sigName").textContent = sigName;
       $("sigDate").textContent = sigDate;
+
+      // View counter (by id if present; else by address)
+      const key = "iscViews:" + (d.__id || fullAddr.toLowerCase());
+      let n = Number(localStorage.getItem(key) || 0);
+      n += 1;
+      localStorage.setItem(key, String(n));
+      $("counter").textContent = `Viewed ${n} time${n===1 ? "" : "s"}.`;
     }
 
     (async function boot(){
-      // Style as embedded if needed
+      // Embed-class styling: no inner border, keep equal padding
       if (isEmbed()) {
         document.body.classList.add("embed");
-        document.getElementById("card")?.classList.add("isc-card");
-        document.getElementById("inner")?.classList.add("isc-inner");
+        $("wrap")?.classList.add("isc-wrap");
       }
 
       let loaded = false;
 
       try {
-        const u = new URL(window.location.href);
+        const u = new URL(location.href);
         const id   = (u.searchParams.get("id") || "").trim();
         const addr = (u.searchParams.get("addr") || "").trim();
 
@@ -189,18 +181,16 @@
           try {
             const snap = await getDoc(doc(db, "listings", id));
             if (snap.exists()) {
-              buildFromData(snap.data() || {});
+              const data = snap.data() || {};
+              data.__id = id; // annotate for view counter keying
+              buildFromData(data);
               loaded = true;
             }
           } catch {}
         }
 
-        if (!loaded && addr && db) {
-          // Optional: could look up by exact address; keeping fallback local below for speed
-        }
-
         if (!loaded) {
-          // Fallback to localStorage preview (same logic your site has used)
+          // Fallback to local preview (keeps page useful without id)
           const fd = getJSON("formData", {});
           const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
           const d = {
@@ -219,13 +209,13 @@
           buildFromData(d);
         }
       } catch {
-        // Keep defaults if anything goes wrong
+        // Keep defaults on any error
       }
 
-      // After rendering, inform parent of the height (in embed)
+      // After rendering, inform parent of the full height (so it shows all content)
       if (isEmbed()) {
-        requestAnimationFrame(()=>{ postHeight(); });
-        setTimeout(()=>{ postHeight(); }, 150);
+        requestAnimationFrame(postHeight);
+        setTimeout(postHeight, 150);
       }
     })();
   </script>
