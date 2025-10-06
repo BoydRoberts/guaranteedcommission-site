@@ -20,6 +20,13 @@
     #saveBanner { display:none; }
     .banner { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:8px; }
     .banner .btn { border-radius:8px; padding:.5rem .75rem; font-size:.875rem; }
+
+    /* === Unified tile look (matches listing.html) === */
+    .tile-photo { width:100%; height: 16rem; object-fit: cover; background:#e5e7eb; }
+    .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
+    .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    .card { background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); overflow:hidden; }
+    .tile-body { padding:1rem; } /* equal padding on all sides */
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -234,8 +241,8 @@
     }
     async function addMarkers(items){
       if (!map) return;
-      for (const item of items.slice(0, 50)) {
-        const addr = (item?.address || '').trim();
+      for (const it of items.slice(0, 50)) {
+        const addr = (it?.address || '').trim();
         if (!addr) continue;
         try {
           const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
@@ -249,8 +256,8 @@
           el.title = (addr||'');
           new mapboxgl.Marker(el).setLngLat(c).addTo(map);
           el.addEventListener("click", () => {
-            if (item.id) {
-              window.location.href = `/listing.html?id=${encodeURIComponent(item.id)}`;
+            if (it.id) {
+              window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
             } else {
               const slug = encodeURIComponent(addr);
               window.location.href = `/listing.html?addr=${slug}`;
@@ -304,52 +311,78 @@
       }
     }
 
-    // Render a tile
-    function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
-    function commissionDollars(price, val, type){
-      const p=Number(price||0), c=Number(val||0);
-      if(!c) return null;
-      if(type==='$') return Math.round(c);
-      if(p) return Math.round(p*(c/100));
-      return null;
+    // Unified tile renderer (same as listing page)
+    function money(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
+    function commissionAmount(price, commission, type) {
+      const p = Number(price||0), c = Number(commission||0);
+      if (!c) return 0;
+      return type === '$' ? Math.round(c) : (p ? Math.round(p * (c/100)) : 0);
+    }
+    function wireHeart(btn, keyId) {
+      const KEY='gcFavorites';
+      const favs = ()=>{ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch { return []; } };
+      const setF = a=>{ try { localStorage.setItem(KEY, JSON.stringify(a||[])); } catch {} };
+      const isFav = id => favs().includes(id);
+      const tog = id => { const a=favs(); const i=a.indexOf(id); if(i>=0)a.splice(i,1); else a.push(id); setF(a); return a.includes(id); };
+      const svg = a => a
+        ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
+        : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+      btn.innerHTML = svg(isFav(keyId));
+      btn.onclick = (e)=>{ e.preventDefault(); btn.innerHTML = svg(tog(keyId)); };
     }
     function renderTileDoc(doc){
-      const {
-        id, address="", price, commission, commissionType="%", status="Active",
-        bannerText="", photos=[], primaryIndex=0, brokerage="", agentName="", agentPhone="", plan="Listed Property Basic",
-        bedrooms, bathrooms, sqft, propertyType=""
-      } = doc || {};
-      const calc = commissionDollars(price, commission, commissionType);
-      const left  = fmtUSD(price);
-      const mid   = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
-      const right = (calc!=null) ? `$${calc.toLocaleString()}` : '$—';
-      const img = (Array.isArray(photos) && photos.length) ? photos[primaryIndex||0] : '';
+      const id = doc.id;
+      const address = String(doc.address || "").trim();
+      const banner  = String(doc.bannerText || "");
+      const plan    = String(doc.plan || "Listed Property Basic");
+      const status  = String(doc.status || "Active");
+      const pType   = String(doc.propertyType || "");
+      const bds     = doc.bedrooms ?? "—";
+      const ba      = doc.bathrooms ?? "—";
+      const sqft    = doc.sqft ? Number(doc.sqft).toLocaleString() : "—";
+      const price   = (typeof doc.price === "number") ? doc.price : (Number(doc.price)||0);
+      const cType   = (doc.commissionType === "%" || doc.commissionType === "$") ? doc.commissionType : "%";
+      const cRaw    = doc.commission ?? "";
+      const cAmt    = commissionAmount(price, cRaw, cType);
+      const cPctLbl = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
+      const brokerage = doc.brokerage || (plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
+      const agentName = doc.agentName || "";
+      const agentPhone= doc.agentPhone || "";
 
-      const card = document.createElement('article');
-      card.className = "gc-tile cursor-pointer";
-      card.onclick = () => {
-        if (id) window.location.href = `/listing.html?id=${encodeURIComponent(id)}`;
-        else window.location.href = `/listing.html?addr=${encodeURIComponent(address)}`;
-      };
+      const photos = Array.isArray(doc.photos) ? doc.photos.filter(u=>typeof u==="string"&&u) : [];
+      let pIdx = (typeof doc.primaryIndex === "number") ? doc.primaryIndex : 0;
+      if (pIdx<0 || pIdx>=photos.length) pIdx = 0;
+      const primaryPhoto = photos[pIdx] || "";
+
+      const card = document.createElement("article");
+      card.className = "card relative cursor-pointer";
+      card.onclick = () => { window.location.href = `/listing.html?id=${encodeURIComponent(id)}`; };
+
       card.innerHTML = `
         <div class="relative">
-          <img class="gc-photo" src="${img || ''}" alt="Listing photo">
-          ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ``}
+          <img class="tile-photo" alt="Listing photo" src="${primaryPhoto}">
+          ${banner ? `<div class="tile-banner">${banner}</div>` : ``}
+          <button type="button" class="heart-btn" aria-label="Like"></button>
         </div>
-        <div class="p-3 space-y-1">
-          <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
-            <div class="truncate">${left}</div>
-            <div class="truncate text-red-600">Commission ${mid} | ${right}</div>
+        <div class="tile-body space-y-1">
+          <div class="flex items-center justify-between text-[16px] sm:text-[18px] font-semibold">
+            <div class="truncate">${price ? money(price) : "$—"}</div>
+            <div class="truncate text-red-600">Commission ${cPctLbl} | ${cAmt ? money(cAmt) : "$—"}</div>
           </div>
           <div class="text-[12px] text-gray-700">
-            ${(bedrooms ?? '—')} bds | ${(bathrooms ?? '—')} ba | ${(sqft ? Number(sqft).toLocaleString() : '—')} sqft${propertyType ? ' | ' + propertyType : ''} | ${status}
+            ${bds} bds | ${ba} ba | ${sqft} sqft${pType ? " | " + pType : ""} | ${status}
           </div>
-          <div class="text-sm font-medium">${address}</div>
+          <div class="text-sm font-medium">${address || "[full address]"}</div>
           <div class="text-[12px] text-gray-600">
-            ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}
+            ${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}
           </div>
         </div>
       `;
+
+      // Like button
+      const heart = card.querySelector(".heart-btn");
+      if (heart) wireHeart(heart, `fav:${id}`);
+
       return card;
     }
 
@@ -378,19 +411,20 @@
         console.warn("[search] Firestore fetch failed:", e);
       }
 
-      // Apply UI filters and text query
+      // Apply filters + query
       const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
 
-      // Render
+      // Render tiles
       grid.innerHTML = '';
       if (!filtered.length) {
         grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
       } else {
         filtered.forEach(doc => grid.appendChild(renderTileDoc(doc)));
       }
+
       addMarkers(filtered);
 
-      // Show save banner after results
+      // Email banner
       showSaveBanner(true);
 
       // Search button
@@ -428,14 +462,6 @@
         showSaveBanner(true);
       };
 
-      // Save search button (manual, no alerts)
-      $("saveSearchBtn").onclick = () => {
-        const q = $("qBox").value.trim();
-        const f = readFiltersFromUI();
-        saveCurrentSearch('', q, f, { alerts: false });
-        alert('Search saved.');
-      };
-
       // Saved searches dropdown
       const dd = $("savedSearchesDropdown");
       dd.onchange = () => {
@@ -467,7 +493,6 @@
         }
       })();
 
-      // Populate saved dropdown on load
       refreshSavedDropdown();
 
       // Save banner buttons
