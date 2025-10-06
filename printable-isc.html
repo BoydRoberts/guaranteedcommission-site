@@ -6,13 +6,16 @@
   <title>Irrevocable Seller Communication</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root { --tile-pad: 1rem; } /* match listing tile padding */
+    :root {
+      --tile-pad: 1rem;   /* match listing tile side padding */
+      --top-pad: 0.5rem;  /* slightly smaller top margin as requested */
+    }
 
     html, body { background: transparent; }
     body {
-      color: #111827;         /* gray-900 */
+      color: #111827;        /* gray-900 */
       line-height: 1.5;
-      padding: var(--tile-pad);
+      padding: var(--top-pad) var(--tile-pad) var(--tile-pad) var(--tile-pad);
     }
 
     /* Single outer card when standalone; no inner border in embed */
@@ -24,40 +27,43 @@
       padding: var(--tile-pad);
     }
 
-    /* When embedded in listing.html, the parent already draws the card.
-       Remove this card’s border/shadow so there is NO inner border.
-       Keep equal padding so content lines up with tile/map. */
+    /* In embed, parent column already provides a card; remove inner border,
+       keep equal inner padding so content aligns with tile/map. */
     .embed .isc-card {
       box-shadow: none;
       border: 0;
       border-radius: 0;
-      padding: 0;         /* parent column already provides the outer padding */
+      padding: 0;
     }
     .embed .isc-wrap {
-      padding: var(--tile-pad); /* equal margins to match tile */
+      padding: var(--tile-pad);  /* equal side margins like the tile */
     }
 
     .h1 {
       font-size: 1.125rem;   /* text-lg */
       font-weight: 700;      /* font-bold */
-      text-align: left;      /* left align for letter feel */
-      margin-bottom: 0.5rem;
+      text-align: center;    /* centered per request */
+      margin: 0 0 0.5rem 0;  /* reduce top margin */
     }
 
     .p { font-size: 0.95rem; margin-top: 0.5rem; }
 
     .sig-row {
-      margin-top: 1.25rem;
+      margin-top: 1rem;      /* slightly tighter */
       display: flex;
       align-items: baseline;
       justify-content: space-between;
       gap: 1rem;
       font-size: 0.95rem;
     }
+    /* Indent signature ~5 characters from the left */
+    .sig-left { padding-left: 5ch; }
     .sig-name { font-family: "Brush Script MT", cursive; font-size: 1.1rem; }
     .fine { font-size: 0.75rem; color: #6b7280; }   /* gray-500 */
+    /* Indent date ~5 characters in from the right edge */
+    .sig-right { padding-right: 5ch; }
 
-    /* No print button (per your request) */
+    /* No print button per your request */
     .no-print { display: none !important; }
   </style>
 </head>
@@ -72,11 +78,11 @@
         <p id="p2" class="p"></p>
 
         <div class="sig-row">
-          <div>
+          <div class="sig-left">
             <div id="sigName" class="sig-name">[Name]</div>
             <div class="fine">Electronic Signature</div>
           </div>
-          <div id="sigDate">[date]</div>
+          <div id="sigDate" class="sig-right">[date]</div>
         </div>
 
         <!-- View counter (restored) -->
@@ -93,13 +99,12 @@
     const $ = (id)=>document.getElementById(id);
     const getJSON = (k, fb)=>{ try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-    // Detect embed mode
+    // Are we embedded inside listing.html? (We’ll auto-size so the whole doc is visible.)
     function isEmbed() {
       try { return (new URL(location.href)).searchParams.get("embed") === "1"; }
       catch { return false; }
     }
 
-    // Resize parent iframe to show the whole document (no inner scroll)
     function postHeight() {
       try {
         const h = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
@@ -164,7 +169,7 @@
     }
 
     (async function boot(){
-      // Embed-class styling: no inner border, keep equal padding
+      // Embed-class styling: no inner border, equal margins like tile
       if (isEmbed()) {
         document.body.classList.add("embed");
         $("wrap")?.classList.add("isc-wrap");
@@ -175,14 +180,13 @@
       try {
         const u = new URL(location.href);
         const id   = (u.searchParams.get("id") || "").trim();
-        const addr = (u.searchParams.get("addr") || "").trim();
 
         if (id && db) {
           try {
             const snap = await getDoc(doc(db, "listings", id));
             if (snap.exists()) {
               const data = snap.data() || {};
-              data.__id = id; // annotate for view counter keying
+              data.__id = id; // annotate for counter keying
               buildFromData(data);
               loaded = true;
             }
@@ -190,7 +194,7 @@
         }
 
         if (!loaded) {
-          // Fallback to local preview (keeps page useful without id)
+          // Fallback to local preview (useful without id)
           const fd = getJSON("formData", {});
           const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
           const d = {
@@ -212,10 +216,11 @@
         // Keep defaults on any error
       }
 
-      // After rendering, inform parent of the full height (so it shows all content)
+      // Auto-size so the full document is visible without clicks
       if (isEmbed()) {
         requestAnimationFrame(postHeight);
-        setTimeout(postHeight, 150);
+        setTimeout(postHeight, 120);
+        window.addEventListener("load", postHeight);
       }
     })();
   </script>
