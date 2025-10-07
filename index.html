@@ -24,6 +24,7 @@
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
+    .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
     /* --- Strip 1: same-size boxes (Box 1 = baseline), no scrollbars --- */
     #box1, #formBlock, #box3 { overflow: hidden; }
@@ -481,8 +482,7 @@
       }
       syncAll();
 
-      buildTilesDataset();
-      renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
+      // Do NOT build local/demo tiles. Firestore will populate tiles.
       wireSearch();
 
       fitStrip1();
@@ -545,7 +545,7 @@
       localStorage.setItem('loginOrigin','box2');
       localStorage.setItem('nextAfterLogin','/verify-code.html');
 
-      // Duplicate guard + save
+      // Duplicate guard + save (unchanged)
       try {
         const db = window.gc && window.gc.db;
         if (db) {
@@ -581,7 +581,6 @@
             if (useExisting) {
               localStorage.setItem("lastListingId", existingId);
               localStorage.setItem("lastListingAddress", formData.address);
-              // Route through Verify → Signature so ownerEmail is attached
               localStorage.setItem('loginOrigin','box2');
               localStorage.setItem('nextAfterLogin','/verify-code.html');
               window.location.href = "/login.html";
@@ -644,18 +643,18 @@
         primaryIndex=0,
         status="Active",
         brokerage="[listing brokerage]",
-        agent="[listing agent]",
+        agentName="",
+        agentPhone="",
         plan="Listed Property Basic",
         bedrooms, bathrooms, sqft,
-        propertyType,
-        agentPhone
+        propertyType
       } = data || {};
 
       const calc = commissionDollars(price, commission, commissionType);
       const line1Left  = fmtUSD(price);
       const line1Mid   = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
       const line1Right = (calc!=null) ? `$${calc.toLocaleString()}` : '—';
-      const img = (photos && photos.length ? photos[primaryIndex||0] : "");
+      const img = (Array.isArray(photos) && photos.length ? photos[primaryIndex||0] : "");
       const typeSeg = propertyType ? ` | ${propertyType}` : '';
       const card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
@@ -672,6 +671,11 @@
         <div class="relative">
           <img class="gc-photo" src="${img || ''}" alt="Listing photo">
           ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ``}
+          <button type="button" class="gc-heart" aria-label="Like">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
         </div>
         <div class="p-3 space-y-1">
           <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
@@ -683,56 +687,42 @@
           </div>
           <div class="text-sm font-medium">${address}</div>
           <div class="text-[12px] text-gray-600">
-            ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}${agent ? ' — '+agent : ''}${agentPhone ? ' — '+agentPhone : ''}
+            ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}
           </div>
         </div>
       `;
+      // like button behavior
+      const heart = card.querySelector(".gc-heart");
+      if (heart) {
+        const KEY='gcFavorites';
+        const favs = ()=>{ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch { return []; } };
+        const setF = a=>{ try { localStorage.setItem(KEY, JSON.stringify(a||[])); } catch {} };
+        const isFav = id => favs().includes(id);
+        const tog = id => { const a=favs(); const i=a.indexOf(id); if(i>=0)a.splice(i,1); else a.push(id); setF(a); return a.includes(id); };
+        const svg = a => a
+          ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
+          : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+        const favId = `fav:${id || address}`;
+        heart.innerHTML = isFav(favId) ? svg(true) : svg(false);
+        heart.addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); heart.innerHTML = svg(tog(favId)); });
+      }
+
       return card;
     }
 
-    let _tilesData = [];
-    function buildTilesDataset(){
-      _tilesData = [];
-      const formData = JSON.parse(localStorage.getItem('formData') || '{}');
-      const agentListing = JSON.parse(localStorage.getItem('agentListing') || '{}');
-      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-
-      const hasLive = formData && formData.address;
-      if (hasLive) {
-        _tilesData.push({
-          address: formData.address,
-          price: agentListing.price,
-          commission: agentListing.commission ?? formData.commission,
-          commissionType: agentListing.commissionType ?? formData.commissionType ?? '%',
-          bannerText: agentListing.bannerText,
-          photos: Array.isArray(agentListing.photos) ? agentListing.photos : [],
-          primaryIndex: typeof agentListing.primaryIndex==='number' ? agentListing.primaryIndex : 0,
-          status: agentListing.status || 'Active',
-          brokerage: formData.brokerage,
-          agent: formData.agent,
-          agentPhone: document.getElementById('agentPhone')?.value || formData.phone || '',
-          plan,
-          bedrooms: agentListing.bedrooms,
-          bathrooms: agentListing.bathrooms,
-          sqft: agentListing.sqft,
-          propertyType: agentListing.propertyType || ''
-        });
-      }
-
-      /* DEMO LISTINGS REMOVED */
-    }
-
-    function renderStrip2Tiles(filterText=""){
+    // Render Strip-2 tiles from a list source
+    function renderStrip2TilesFrom(list, filterText=""){
       const grid = document.getElementById('tileGrid');
+      const empty = document.getElementById('tilesEmpty');
       grid.innerHTML = '';
       const q = (filterText || '').toLowerCase();
-      const list = q ? _tilesData.filter(d => (d.address||'').toLowerCase().includes(q)) : _tilesData;
-      if (!list.length) {
-        document.getElementById('tilesEmpty').classList.remove('hidden');
+      const arr = q ? list.filter(d => (String(d.address||'').toLowerCase().includes(q))) : list;
+      if (!arr.length) {
+        empty.classList.remove('hidden');
         return;
       }
-      document.getElementById('tilesEmpty').classList.add('hidden');
-      list.forEach(d => grid.appendChild(renderTile(d)));
+      empty.classList.add('hidden');
+      arr.forEach(d => grid.appendChild(renderTile(d)));
     }
 
     function wireSearch(){
@@ -741,7 +731,7 @@
       const go = () => {
         const q = (box.value || '').trim();
         localStorage.setItem('lastSearch', q);
-        if (!q) { renderStrip2Tiles(''); return; }
+        if (!q) { return; }
         window.location.href = `/search.html?q=${encodeURIComponent(q)}`;
       };
       btn.addEventListener('click', go);
@@ -752,7 +742,7 @@
   <!-- Firebase init include -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
-  <!-- Firestore tiles repaint (no demo, newest first) — with local-photo merge -->
+  <!-- Firestore tiles repaint (no demo, newest first) — Firestore ONLY -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -763,37 +753,35 @@
         const empty = document.getElementById('tilesEmpty');
         if (!grid || !db) return;
 
-        // Load newest listings
         const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(100)));
         const items = [];
-        snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+        snap.forEach(doc => {
+          const d = doc.data() || {};
+          if (d.archived === true) return;         // hide archived
+          items.push({
+            id: doc.id,
+            address: d.address || "",
+            price: d.price ?? "",
+            commission: d.commission ?? "",
+            commissionType: d.commissionType || "%",
+            bannerText: d.bannerText || "",
+            photos: Array.isArray(d.photos) ? d.photos : [],
+            primaryIndex: (typeof d.primaryIndex === "number" ? d.primaryIndex : 0),
+            status: d.status || "Active",
+            brokerage: d.brokerage || "",
+            agentName: d.agentName || "",
+            agentPhone: d.agentPhone || "",
+            plan: d.plan || "Listed Property Basic",
+            bedrooms: d.bedrooms ?? "",
+            bathrooms: d.bathrooms ?? "",
+            sqft: d.sqft ?? "",
+            propertyType: d.propertyType || ""
+          });
+        });
 
-        // Merge local photo if the server doc has none
-        try {
-          const localForm = JSON.parse(localStorage.getItem('formData') || '{}');
-          const localAgent = JSON.parse(localStorage.getItem('agentListing') || '{}');
-          const localAddr = (localForm.address || '').trim().toLowerCase();
-          const localPhotos = Array.isArray(localAgent.photos) ? localAgent.photos : [];
-          const localPrimary = (typeof localAgent.primaryIndex === 'number') ? localAgent.primaryIndex : 0;
-
-          if (localAddr && localPhotos.length) {
-            items.forEach(it => {
-              const addr = (it.address || '').trim().toLowerCase();
-              if (addr === localAddr) {
-                if (!Array.isArray(it.photos) || it.photos.length === 0) {
-                  it.photos = [ localPhotos[localPrimary] ];
-                  it.primaryIndex = 0;
-                }
-              }
-            });
-          }
-        } catch {}
-
-        // Make items available to renderer
-        window._tilesData = items;
-
-        // Paint tiles
-        renderStrip2Tiles(localStorage.getItem('lastSearch') || '');
+        // Paint tiles strictly from Firestore
+        const lastQ = localStorage.getItem('lastSearch') || '';
+        renderStrip2TilesFrom(items, lastQ);
       } catch (e) {
         console.warn("[index] Firestore tiles load failed:", e);
         document.getElementById('tilesEmpty')?.classList.remove('hidden');
