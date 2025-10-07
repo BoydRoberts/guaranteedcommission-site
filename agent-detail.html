@@ -201,6 +201,19 @@
           Listing agents can upgrade <strong>Banner</strong>, <strong>Premium</strong>, and <strong>Pin</strong> for <strong>FREE</strong> during October 2025
           (promo also active during September 2025).
         </p>
+
+        <!-- NEW: Free Upgrade to Plus when plan is Basic -->
+        <div id="freePlusRow" class="hidden mt-3 border rounded-lg p-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-semibold">Upgrade to Listed Property Plus</div>
+              <div class="text-sm text-gray-600">FREE in October (also active in September) when agent pays</div>
+            </div>
+            <button id="freePlusBtn" class="px-3 py-2 rounded bg-emerald-600 text-white">Apply Free Upgrade</button>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">Unlocks 20 photos and full description immediately.</p>
+        </div>
+
         <button id="applyPromoBtn" class="mt-3 w-full bg-blue-600 text-white px-3 py-2 rounded disabled:opacity-50">
           Apply October Free Upgrades
         </button>
@@ -258,8 +271,8 @@
     let photos = [];          // array of URLs
     let primaryIndex = 0;
     let plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const isPlus = plan === "Listed Property Plus" || plan === "FSBO Plus";
-    const maxPhotos = isPlus ? 20 : 1;
+    let isPlus = (plan === "Listed Property Plus" || plan === "FSBO Plus");
+    let maxPhotos = isPlus ? 20 : 1; // <— make this mutable so promo can flip it
 
     // ---- UI paint helpers ----
     $("planPill").textContent = plan;
@@ -365,7 +378,6 @@
 
     async function uploadOne(file) {
       const storage = getStorage();
-      // use a simple path: listings/{listingId}/photos/{timestamp}_{basename}
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
@@ -412,8 +424,10 @@
         if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
         const d = snap.data() || {};
         plan = d.plan || plan;
-        $("planPill").textContent = plan;
+        isPlus = (plan === "Listed Property Plus" || plan === "FSBO Plus");
+        maxPhotos = isPlus ? 20 : 1;
 
+        $("planPill").textContent = plan;
         $("fullAddress").value = d.address || "";
         $("status").value = d.status || "";
         $("price").value = d.price ?? "";
@@ -442,11 +456,24 @@
         primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
         renderThumbs();
 
-        // Wire the preview link
+        // Preview links
         const a = $("previewLink");
         const ap = $("goPreviewBtn");
         if (a) a.href = "/listing.html?id=" + encodeURIComponent(listingId);
         if (ap) ap.href = "/listing.html?id=" + encodeURIComponent(listingId);
+
+        // Gate description if not Plus
+        if (!isPlus) {
+          $("description").classList.add("dimmed");
+          $("description").setAttribute("disabled","disabled");
+          $("descGateNote").classList.remove("hidden");
+          $("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+        } else {
+          $("description").classList.remove("dimmed");
+          $("description").removeAttribute("disabled");
+          $("descGateNote").classList.add("hidden");
+          $("photoHelp").textContent = "You can upload up to 20 photos.";
+        }
 
         setStatus("Loaded from server.", true);
       } catch (e) {
@@ -455,7 +482,7 @@
       }
     }
 
-    // ---- Save button (writes fields to Firestore) ----
+    // ---- Save button ----
     $("saveBtn").addEventListener("click", async () => {
       if (!listingId) { alert("No listing ID in this session."); return; }
 
@@ -477,7 +504,6 @@
         agentName: $("agentName").value || "",
         agentEmail: $("agentEmail").value || "",
         agentPhone: $("agentPhone").value || "",
-        // photos & primaryIndex are saved automatically in savePhotosField() after each upload
         updatedAt: serverTimestamp()
       };
 
@@ -500,6 +526,7 @@
       const applyPromoBtn = $("applyPromoBtn");
       const promoNote = $("promoNote");
 
+      // pull or init checkoutData
       const checkoutData = getJSON("checkoutData", null) || {
         plan,
         base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
@@ -519,9 +546,18 @@
         promoNote.textContent = active
           ? "Click to apply free pricing (Banner, Premium, Pin set to $0) for October 2025 (also live in September)."
           : "Promo applies during October 2025 (and in September 2025) when upgrades are paid by the agent.";
+
+        // NEW: show Free Upgrade to Plus button if Basic and promo active
+        const freeRow = $("freePlusRow");
+        if (active && plan === "Listed Property Basic") {
+          freeRow.classList.remove("hidden");
+        } else {
+          freeRow.classList.add("hidden");
+        }
       }
       paintPromoState();
 
+      // Apply free prices to add-ons
       function applyOctoberFree() {
         checkoutData.prices.banner = 0;
         checkoutData.prices.premium = 0;
@@ -533,6 +569,53 @@
         paintUpgrades();
       }
       applyPromoBtn.addEventListener("click", applyOctoberFree);
+
+      // NEW: Upgrade to Plus = FREE for Basic (agent payer) during Sept/Oct
+      async function upgradeToPlusNow() {
+        try {
+          // Flip plan locally
+          plan = "Listed Property Plus";
+          isPlus = true;
+          maxPhotos = 20;
+          $("planPill").textContent = plan;
+
+          // Unlock UI gates
+          $("description").classList.remove("dimmed");
+          $("description").removeAttribute("disabled");
+          $("descGateNote").classList.add("hidden");
+          $("photoHelp").textContent = "You can upload up to 20 photos.";
+
+          // Persist selected plan
+          localStorage.setItem("selectedPlan", "Listed Property Plus");
+
+          // Update checkoutData for free Plus
+          checkoutData.plan = "Listed Property Plus";
+          checkoutData.upgrades.upgradeToPlus = true;
+          checkoutData.prices.plus = 0;
+          checkoutData.base = 0;
+          checkoutData.payer = "agent";
+          checkoutData.meta = checkoutData.meta || {};
+          checkoutData.meta.octoberAgentFree = true;
+          setJSON("checkoutData", checkoutData);
+
+          // Update Firestore plan so all pages reflect Plus
+          if (listingId) {
+            await updateDoc(doc(db, "listings", listingId), {
+              plan: "Listed Property Plus",
+              updatedAt: serverTimestamp()
+            });
+          }
+
+          setStatus("Upgraded to Listed Property Plus (FREE, October).", true);
+          alert("Plan upgraded to Listed Property Plus — FREE for October.\nYou can now add up to 20 photos and full description.");
+          // Hide the free upgrade button after applied
+          $("freePlusRow").classList.add("hidden");
+        } catch (e) {
+          console.warn("[promo] free upgrade failed:", e);
+          setStatus("Could not apply free upgrade.", false);
+        }
+      }
+      $("freePlusBtn").addEventListener("click", upgradeToPlusNow);
 
       function row(label, price, key, note="") {
         const checked = !!checkoutData.upgrades[key];
@@ -584,7 +667,6 @@
 
     // ---- Boot ----
     (async function boot(){
-      // Preview links need the id
       const pl = $("previewLink");
       const pv = $("goPreviewBtn");
       if (listingId) {
@@ -592,25 +674,23 @@
         if (pv) pv.href = "/listing.html?id=" + encodeURIComponent(listingId);
       }
 
-      // Address from local (nice to show quickly)
       const fd = getJSON("formData", {});
       if (fd.address && !$("fullAddress").value) $("fullAddress").value = fd.address;
 
-      // Prefill from server
       await prefillFromServer();
 
-      // Description gate for non-Plus
-      if (!(plan === "Listed Property Plus" || plan === "FSBO Plus")) {
+      // Set initial gates / help based on plan
+      if (!isPlus) {
         $("description").classList.add("dimmed");
         $("description").setAttribute("disabled","disabled");
         $("descGateNote").classList.remove("hidden");
+        $("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+      } else {
+        $("description").classList.remove("dimmed");
+        $("description").removeAttribute("disabled");
+        $("descGateNote").classList.add("hidden");
+        $("photoHelp").textContent = "You can upload up to 20 photos.";
       }
-
-      // Photo help text
-      const isPlus = (plan === "Listed Property Plus" || plan === "FSBO Plus");
-      $("photoHelp").textContent = isPlus
-        ? "You can upload up to 20 photos."
-        : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
     })();
   </script>
 </body>
