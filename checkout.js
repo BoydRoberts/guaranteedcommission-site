@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-10-01b (October promo active in Sept & Oct 2025 for agents; success URL passes ?id=)
+// /checkout.js — build 2025-10-01c (Oct promo; agents; pass id; minimal tweaks only)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-10-01b (Oct promo; agents; pass id)");
+  console.log("[checkout.js] build 2025-10-01c (Oct promo; agents; pass id)");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -102,6 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let base = d.base;
 
     const promo = isAgentSeptOctPromoActive();
+
+    // *** TWEAK #1: ensure Plus shows as $0 in UI when promo + upgrade selected
+    if (promo && d.upgrades.upgradeToPlus) d.prices.plus = 0;
 
     // Basic → Plus upgrade base
     if (plan === "Listed Property Basic" && d.upgrades.upgradeToPlus) {
@@ -265,7 +268,8 @@ document.addEventListener("DOMContentLoaded", () => {
       // Always pass the id to success URL
       const listingId = (localStorage.getItem("lastListingId") || "").trim();
       const successSignature = window.location.origin + "/signature.html" + (listingId ? `?id=${encodeURIComponent(listingId)}` : "");
-      const successAgent     = window.location.origin + "/agent-detail.html";
+      // *** TWEAK #2: include ?id= on agent success as well ***
+      const successAgent     = window.location.origin + "/agent-detail.html" + (listingId ? `?id=${encodeURIComponent(listingId)}` : "");
 
       // Zero total: route now (no Stripe)
       if ((data.total || 0) <= 0) {
@@ -318,8 +322,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Success URL depends on payer — always append ?id= for sellers
       const successUrl = (data.payer === "agent")
-        ? (window.location.origin + "/agent-detail.html")
-        : (window.location.origin + "/signature.html" + ((localStorage.getItem("lastListingId") || "").trim() ? `?id=${encodeURIComponent((localStorage.getItem("lastListingId") || "").trim())}` : ""));
+        ? successAgent
+        : successSignature;
 
       const payload = {
         lineItems: items,
