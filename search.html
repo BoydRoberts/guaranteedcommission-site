@@ -406,7 +406,14 @@
         const { db } = await import("/scripts/firebase-init.js");
         const { collection, query, orderBy, getDocs, limit } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
         const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
-        snap.forEach(d => docs.push({ id: d.id, ...d.data() }));
+        snap.forEach(d => {
+          const data = d.data() || {};
+          // === CHANGE: hide drafts (require signed OR status:Active)
+          const signed = !!(data.signedISC && typeof data.signedISC === 'object' && data.signedISC.date);
+          const isActive = String(data.status || '').toLowerCase() === 'active';
+          if (!signed && !isActive) return;
+          docs.push({ id: d.id, ...data });
+        });
       } catch (e) {
         console.warn("[search] Firestore fetch failed:", e);
       }
