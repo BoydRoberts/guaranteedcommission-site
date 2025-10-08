@@ -198,13 +198,13 @@
           <span id="promoBadge" class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">Inactive</span>
         </div>
 
-        <!-- === CHANGED COPY (exact text) === -->
+        <!-- UPDATED COPY -->
         <p class="text-sm text-gray-600 mt-2">
           Listing agents can upgrade to Listed Property Plus, add a Banner, and Pin Placement for FREE in October.
         </p>
 
-        <!-- === NEW: Checkbox to upgrade to Plus (FREE in October for agents) === -->
-        <div id="freePlusCheckboxRow" class="mt-3 border rounded-lg p-3 hidden">
+        <!-- NEW: Checkbox to upgrade to Plus (FREE in October for agents) -->
+        <div id="freePlusCheckboxRow" class="hidden mt-3 border rounded-lg p-3">
           <label class="flex items-center justify-between">
             <div>
               <div class="font-semibold">Upgrade to Listed Property Plus</div>
@@ -252,12 +252,6 @@
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-    function setStatus(msg, ok=true) {
-      const el = $("statusBar");
-      el.textContent = msg || '';
-      el.className = ok ? "mt-2 text-sm text-gray-600" : "mt-2 text-sm text-red-700";
-    }
-
     // ---- Identify listing id ----
     function getListingId() {
       const u = new URL(location.href);
@@ -268,12 +262,20 @@
     }
     const listingId = getListingId();
 
+    function setStatus(msg, ok=true) {
+      const el = $("statusBar");
+      el.textContent = msg || '';
+      el.className = ok ? "mt-2 text-sm text-gray-600" : "mt-2 text-sm text-red-700";
+    }
+
     // ---- Working state ----
     let photos = [];          // array of URLs
     let primaryIndex = 0;
     let plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
     let isPlus = (plan === "Listed Property Plus" || plan === "FSBO Plus");
     let maxPhotos = isPlus ? 20 : 1; // mutable for upgrade
+
+    // ---- UI paint helpers ----
     $("planPill").textContent = plan;
     $("payerBadge").textContent = "";
 
@@ -361,6 +363,7 @@
       });
     }
 
+    // ---- Firestore save helpers ----
     async function savePhotosField() {
       if (!listingId) return;
       try {
@@ -384,8 +387,10 @@
       return url;
     }
 
+    // ---- Wire file input for NEW uploads ----
     $("photoInput").addEventListener("change", async (e) => {
       const files = Array.from(e.target.files || []); if (!files.length) return;
+
       try {
         let slots = maxPhotos - photos.length;
         if (slots <= 0) { alert(`You have reached the photo limit for your plan (${maxPhotos}).`); e.target.value = ""; return; }
@@ -408,6 +413,7 @@
       }
     });
 
+    // ---- Prefill from Firestore on load ----
     async function prefillFromServer() {
       if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
 
@@ -448,11 +454,13 @@
         primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
         renderThumbs();
 
+        // Preview links
         const a = $("previewLink");
         const ap = $("goPreviewBtn");
         if (a) a.href = "/listing.html?id=" + encodeURIComponent(listingId);
         if (ap) ap.href = "/listing.html?id=" + encodeURIComponent(listingId);
 
+        // Gate description if not Plus
         if (!isPlus) {
           $("description").classList.add("dimmed");
           $("description").setAttribute("disabled","disabled");
@@ -472,8 +480,10 @@
       }
     }
 
+    // ---- Save button ----
     $("saveBtn").addEventListener("click", async () => {
       if (!listingId) { alert("No listing ID in this session."); return; }
+
       const payload = {
         status: $("status").value || "",
         price: Number($("price").value || 0) || "",
@@ -494,6 +504,7 @@
         agentPhone: $("agentPhone").value || "",
         updatedAt: serverTimestamp()
       };
+
       try {
         await updateDoc(doc(db, "listings", listingId), payload);
         setStatus("Saved to server.", true);
@@ -505,18 +516,16 @@
       }
     });
 
-    // ---- October promo (AGENTS ONLY, October 2025) ----
-    function isAgentOctoberPromoActive() {
-      try {
-        const role = (localStorage.getItem("userRole") || "").trim();
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = now.getMonth(); // 0=Jan … 9=Oct
-        return role === "listing_agent" && y === 2025 && m === 9;
-      } catch { return false; }
-    }
-
+    // ---- October promo (Agents; October 2025 only) ----
     (function promoInit(){
+      function isAgentOctoberPromoActive() {
+        try {
+          const role = (localStorage.getItem("userRole") || "").trim();
+          const now = new Date();
+          return role === "listing_agent" && now.getFullYear() === 2025 && now.getMonth() === 9; // Oct=9
+        } catch { return false; }
+      }
+
       const promoBadge = $("promoBadge");
       const applyPromoBtn = $("applyPromoBtn");
       const promoNote = $("promoNote");
@@ -532,7 +541,6 @@
         meta: {},
         payer: "agent"
       };
-      // Force payer agent on this page
       checkoutData.payer = "agent";
       setJSON("checkoutData", checkoutData);
 
@@ -544,9 +552,10 @@
           : "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700";
         applyPromoBtn.disabled = !active;
         promoNote.textContent = active
-          ? "Click to apply free pricing (Banner and Pin are $0) for October (agent-paid)."
+          ? "Click to apply free pricing (Banner, Premium, and Pin set to $0) for October (agent-paid)."
           : "Promo applies during October 2025 when upgrades are paid by the agent.";
-        // Show Plus checkbox only if currently Basic and promo active
+
+        // Show Plus checkbox only if Basic and promo active
         if (active && plan === "Listed Property Basic") {
           freePlusRow.classList.remove("hidden");
           chkFreePlus.checked = !!checkoutData.upgrades.upgradeToPlus || plan === "Listed Property Plus";
@@ -557,21 +566,29 @@
       }
       paintPromoState();
 
-      // Apply free prices to Banner + Pin (October agent promo)
+      // Make Banner, Premium, Pin FREE in October for agents (UI reflects active state)
+      function pricesForUI() {
+        const active = isAgentOctoberPromoActive();
+        return {
+          banner: active ? 0 : (checkoutData.prices.banner  ?? 10),
+          premium: active ? 0 : (checkoutData.prices.premium ?? 10),
+          pin: active ? 0 : (checkoutData.prices.pin     ?? 50)
+        };
+      }
+
       function applyOctoberFree() {
-        if (!isAgentOctoberPromoActive()) return;
-        checkoutData.prices.banner = 0;
-        checkoutData.prices.pin = 0;
-        // Premium stays priced, but Pin includes Premium automatically when selected.
+        // Persist a flag (optional), UI is already free via pricesForUI
+        const active = isAgentOctoberPromoActive();
+        if (!active) return;
         checkoutData.meta = checkoutData.meta || {};
         checkoutData.meta.octoberAgentFree = true;
         setJSON("checkoutData", checkoutData);
-        alert("October Free applied. Banner and Pin are now $0 for agent-paid upgrades this month.");
+        alert("October Free applied. Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.");
         paintUpgrades();
       }
       applyPromoBtn.addEventListener("click", applyOctoberFree);
 
-      // === NEW: Checkbox behavior to upgrade to Plus (FREE in October)
+      // Checkbox behavior to upgrade to Plus (FREE in October)
       async function handleFreePlusToggle(e) {
         const checked = !!e.target.checked;
         const active = isAgentOctoberPromoActive();
@@ -590,6 +607,7 @@
           $("photoHelp").textContent = "You can upload up to 20 photos.";
 
           localStorage.setItem("selectedPlan", "Listed Property Plus");
+
           checkoutData.plan = "Listed Property Plus";
           checkoutData.upgrades.upgradeToPlus = true;
           checkoutData.prices.plus = 0;
@@ -611,7 +629,7 @@
           }
           setStatus("Upgraded to Listed Property Plus (FREE, October).", true);
         } else {
-          // Optional revert if they uncheck and they started as Basic
+          // Optional revert if they started as Basic
           const original = (localStorage.getItem("originalPlan") || "Listed Property Basic").trim();
           if (original === "Listed Property Basic") {
             plan = "Listed Property Basic";
@@ -664,18 +682,11 @@
 
       function paintUpgrades() {
         const box = $("upgradesBox");
-        const promo = isAgentOctoberPromoActive();
-        const p = checkoutData.prices || {};
-
-        // Prices (Banner & Pin become 0 during October for agents)
-        const bannerPrice  = promo ? 0 : (p.banner  ?? 10);
-        const premiumPrice = (p.premium ?? 10); // stays priced; Pin auto-includes it
-        const pinPrice     = promo ? 0 : (p.pin     ?? 50);
-
+        const p = pricesForUI(); // Banner, Premium, Pin reflect October free when active
         const html = [
-          row("Banner", bannerPrice, "banner"),
-          row("Premium Placement", premiumPrice, "premium"),
-          row("Pin Placement", pinPrice, "pin", "Includes Premium")
+          row("Banner", p.banner, "banner"),
+          row("Premium Placement", p.premium, "premium"),
+          row("Pin Placement", p.pin, "pin", "Includes Premium")
         ].join("");
         box.innerHTML = html;
 
@@ -704,7 +715,6 @@
 
     // ---- Boot ----
     (async function boot(){
-      // Remember original plan so we can revert if needed
       if (!localStorage.getItem("originalPlan")) {
         localStorage.setItem("originalPlan", plan);
       }
