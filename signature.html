@@ -20,10 +20,20 @@
       </div>
     </div>
 
-    <!-- Agent blocked -->
-    <div id="agentBlocked" class="hidden bg-red-50 border border-red-200 rounded-lg p-4 text-red-800 mb-4">
-      <p class="font-semibold">Agents cannot sign</p>
-      <p class="text-sm mt-1">Only the seller may sign the Irrevocable Seller Communication.</p>
+    <!-- Agent (or non-seller) blocked -->
+    <div id="roleBlocked" class="hidden bg-red-50 border border-red-200 rounded-lg p-4 text-red-800 mb-4">
+      <p class="font-semibold">Only the seller may sign</p>
+      <p class="text-sm mt-1">Please have the seller log in to sign the Irrevocable Seller Communication.</p>
+      <div class="mt-3 flex gap-2">
+        <a id="goAgentDetail" href="#" class="px-4 py-2 rounded bg-gray-700 text-white">Go to Agent Page</a>
+        <a href="/login.html?tab=signin" class="px-4 py-2 rounded border">Seller Sign In</a>
+      </div>
+    </div>
+
+    <!-- Already signed -->
+    <div id="alreadySigned" class="hidden bg-green-50 border border-green-200 rounded-lg p-4 text-green-800 mb-4">
+      <p class="font-semibold">This listing has already been signed.</p>
+      <p class="text-sm mt-1">You can view/print the signed document below.</p>
     </div>
 
     <!-- Sign UI -->
@@ -33,11 +43,11 @@
       </div>
 
       <div class="mt-6">
-        <label class="block mb-2 text-sm font-semibold">Electronic Signature:</label>
+        <label class="block mb-2 text-sm font-semibold">Electronic Signature (seller):</label>
         <input
           type="text"
           id="signature"
-          placeholder="Type your full name here"
+          placeholder="Type your full legal name here"
           class="font-cursive w-full border p-2 rounded"
           required
           aria-describedby="sigHelp"
@@ -46,13 +56,13 @@
       </div>
 
       <div class="mt-4">
-        <label class="block text-sm font-semibold">Date:</label>
+        <label class="block text-sm font-semibold">Signing Date:</label>
         <p id="date" class="text-sm"></p>
       </div>
 
       <div class="flex justify-between mt-6">
-        <a id="viewPrintable" href="/printable-isc.html" class="bg-gray-600 text-white px-4 py-2 rounded">
-          Sign / View
+        <a id="viewPrintable" href="#" class="bg-gray-600 text-white px-4 py-2 rounded" target="_blank" rel="noopener">
+          View Printable
         </a>
         <button id="btnContinue" class="bg-green-600 text-white px-6 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed" disabled>
           Sign / Continue
@@ -70,15 +80,9 @@
     import { db } from "/scripts/firebase-init.js";
     import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // Hard guard: agents cannot sign for sellers
-    if ((localStorage.getItem('userRole') || '').trim() === 'listing_agent') {
-      location.replace('/agent-detail.html');
-    }
-
     const $ = (id)=>document.getElementById(id);
-    $("date").textContent = new Date().toLocaleDateString();
 
-    // Resolve listing id: prefer ?id=, else localStorage.lastListingId
+    // Resolve listing id
     const params = new URLSearchParams(location.search);
     let listingId = (params.get('id') || localStorage.getItem('lastListingId') || "").trim();
     if (!listingId) {
@@ -86,16 +90,32 @@
       throw new Error("Missing listing id");
     }
 
-    // Always point printable to the same id
-    (function linkPrintable(){
-      const a = $("viewPrintable");
-      if (a) a.href = `/printable-isc.html?id=${encodeURIComponent(listingId)}`;
-    })();
+    // Wire links
+    $("goAgentDetail").href = "/agent-detail.html?id=" + encodeURIComponent(listingId);
+    $("viewPrintable").href = "/printable-isc.html?id=" + encodeURIComponent(listingId);
+
+    // Helpers
+    function todayISO(){ return new Date().toISOString().slice(0,10); }
+    $("date").textContent = todayISO();
+
+    // Only the SELLER can sign:
+    // - Role must be "seller" OR (no role set) BUT loggedInEmail must match ownerEmail once loaded.
+    function canSellerSign(docData) {
+      const role = (localStorage.getItem('userRole') || '').trim();
+      const who  = (localStorage.getItem('loggedInEmail') || '').trim().toLowerCase();
+      const ownerEmail = (docData.ownerEmail || '').trim().toLowerCase();
+      if (role === 'listing_agent' || role === 'buyers_agent') return false;
+      if (!who) return false;
+      // If ownerEmail recorded, it must match current user
+      if (ownerEmail) return who === ownerEmail;
+      // If not recorded yet, allow and we will set it on sign
+      return true;
+    }
 
     function buildIscTextFromDoc(d) {
       const addressFull = (d.address || "").trim();
       const short = addressFull.split(",")[0] || "[short address]";
-      const apn = (d.apn || "[APN]");
+      const apn = (d.apn || "");
       const name = (d.ownerName || "[name]");
       const plan = (d.plan || "");
       const isFSBO = plan.includes("FSBO");
@@ -129,89 +149,87 @@ Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, y
     }
 
     (async function boot(){
-      // Load doc
-      let docData = null;
       try {
         const snap = await getDoc(doc(db, "listings", listingId));
-        if (snap.exists()) docData = snap.data();
-      } catch (e) {
-        console.error("[signature] Firestore fetch failed", e);
-      }
+        if (!snap.exists()) { $("invalidBox").classList.remove("hidden"); return; }
+        const d = snap.data() || {};
 
-      if (!docData) {
-        $("invalidBox").classList.remove("hidden");
-        return;
-      }
-
-      // Paint ISC and reveal signer UI
-      $("iscText").textContent = buildIscTextFromDoc(docData);
-      $("signWrap").classList.remove("hidden");
-
-      // Expected seller name (from Firestore)
-      const expected = (docData.ownerName || "").trim();
-
-      // Pre-fill the signature input with expected name (still enforces exact match)
-      const sigInput = $("signature");
-      const btn = $("btnContinue");
-      const help = $("sigHelp");
-      if (expected) {
-        sigInput.value = expected; // prefill
-      }
-
-      function check() {
-        const typed = (sigInput.value || "").trim();
-        const ok = expected && typed && typed.toLowerCase() === expected.toLowerCase();
-        btn.disabled = !ok;
-
-        if (!expected) {
-          help.textContent = "We couldn't find the seller name on this listing. Please go back and enter your name in the communication form.";
-          help.className = "text-xs mt-2 text-red-600";
-          help.classList.remove('hidden');
+        // If already signed, show the notice + printable link and stop
+        if (d.signedISC && d.signedISC.name && d.signedISC.date) {
+          $("alreadySigned").classList.remove("hidden");
+          $("signWrap").classList.remove("hidden");
+          $("iscText").textContent = buildIscTextFromDoc(d);
+          // Lock inputs
+          $("signature").value = d.signedISC.name;
+          $("signature").setAttribute("disabled","disabled");
+          $("date").textContent = d.signedISC.date;
+          $("btnContinue").classList.add("hidden");
           return;
         }
-        if (!typed) {
-          help.textContent = `Please type your full name exactly as entered: “${expected}”.`;
-          help.className = "text-xs mt-2 text-gray-600";
-        } else if (!ok) {
-          help.textContent = `Signature must match the seller name exactly: “${expected}”.`;
-          help.className = "text-xs mt-2 text-red-600";
-        } else {
-          help.textContent = "Signature looks good.";
-          help.className = "text-xs mt-2 text-green-600";
+
+        // Role check for seller-only signing
+        if (!canSellerSign(d)) {
+          $("roleBlocked").classList.remove("hidden");
+          return;
         }
-        help.classList.remove('hidden');
-      }
-      sigInput.addEventListener('input', check);
-      sigInput.addEventListener('blur', check);
-      check();
 
-      // Save signature to Firestore & ensure ownerEmail for listed flows
-      $("btnContinue").addEventListener("click", async () => {
-        const typed = (sigInput.value || "").trim();
-        if (!typed) return;
+        // Pre-fill seller name
+        const expected = (d.ownerName || "").trim();
+        const sigInput = $("signature");
+        const btn = $("btnContinue");
+        const help = $("sigHelp");
+        if (expected) sigInput.value = expected;
 
-        const isFSBO = (docData.plan || "").includes("FSBO");
-        const loggedIn = (localStorage.getItem("loggedInEmail") || "").trim().toLowerCase();
+        function check() {
+          const typed = (sigInput.value || "").trim();
+          const ok = !!typed;
+          btn.disabled = !ok;
+          help.textContent = ok ? "Signature looks good." : "Please type your full legal name.";
+          help.className = ok ? "text-xs mt-2 text-green-600" : "text-xs mt-2 text-red-600";
+          help.classList.remove('hidden');
+        }
+        sigInput.addEventListener('input', check);
+        sigInput.addEventListener('blur', check);
+        check();
 
-        try {
-          const updates = {
-            signedISC: { name: typed, date: new Date().toISOString().slice(0,10), ts: serverTimestamp() },
-            updatedAt: serverTimestamp()
-          };
-          // For listed flows, tie the listing to the seller email so Welcome can find it
-          if (!isFSBO && loggedIn) {
-            updates.ownerEmail = loggedIn;
+        // Build ISC preview text
+        $("iscText").textContent = buildIscTextFromDoc({ ...d, ownerName: (sigInput.value || d.ownerName || "[name]") });
+
+        // Save signature to Firestore & ensure ownerEmail is set for listed flows
+        $("btnContinue").addEventListener("click", async () => {
+          const typed = (sigInput.value || "").trim();
+          if (!typed) return;
+
+          const isFSBO = (d.plan || "").includes("FSBO");
+          const loggedIn = (localStorage.getItem("loggedInEmail") || "").trim().toLowerCase();
+
+          try {
+            const updates = {
+              ownerName: d.ownerName || typed, // ensure ownerName present
+              signedISC: { name: typed, date: todayISO(), ts: serverTimestamp() },
+              updatedAt: serverTimestamp()
+            };
+            // For listed flows, tie the listing to the seller email so Welcome can find it
+            if (!isFSBO && loggedIn && !d.ownerEmail) {
+              updates.ownerEmail = loggedIn;
+            }
+
+            await updateDoc(doc(db, "listings", listingId), updates);
+            $("sigSaved").classList.remove('hidden');
+          } catch (e) {
+            console.warn("[signature] save failed", e);
+            alert("Could not save signature. Please try again.");
+            return;
           }
 
-          await updateDoc(doc(db, "listings", listingId), updates);
-          $("sigSaved").classList.remove("hidden");
-        } catch (e) {
-          console.warn("[signature] save failed; continuing local-only:", e);
-        }
-
-        // Continue to intake / invite path
-        window.location.href = isFSBO ? "/seller-detail.html" : "/agent-invite.html";
-      });
+          // Continue to intake / invite path
+          window.location.href = isFSBO ? "/seller-detail.html?id="+encodeURIComponent(listingId)
+                                        : "/agent-invite.html?id="+encodeURIComponent(listingId);
+        });
+      } catch (e) {
+        console.warn(e);
+        $("invalidBox").classList.remove("hidden");
+      }
     })();
   </script>
 </body>
