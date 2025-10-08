@@ -73,28 +73,20 @@
       <div id="wrap" class="">
         <h1 class="h1">Irrevocable Seller Communication</h1>
 
-        <!-- UNSIGNED NOTICE (shown if no saved signature) -->
-        <div id="unsignedBox" class="fine mt-2 text-center hidden" style="color:#9a3412;">
-          Not signed yet. This document must be signed by the seller before use.
-        </div>
+        <p class="p">To the escrow holder/closing agent,</p>
+        <p id="p1" class="p">Loading…</p>
+        <p id="p2" class="p"></p>
 
-        <!-- BODY (hidden when not signed) -->
-        <div id="bodyBox">
-          <p class="p">To the escrow holder/closing agent,</p>
-          <p id="p1" class="p">Loading…</p>
-          <p id="p2" class="p"></p>
-
-          <div class="sig-row">
-            <div class="sig-left">
-              <div id="sigName" class="sig-name">[Name]</div>
-              <div class="fine">Electronic Signature</div>
-            </div>
-            <div id="sigDate" class="sig-right">[date]</div>
+        <div class="sig-row">
+          <div class="sig-left">
+            <div id="sigName" class="sig-name">[Name]</div>
+            <div class="fine">Electronic Signature</div>
           </div>
-
-          <!-- View counter (restored) -->
-          <div id="counter" class="fine mt-4 text-center"></div>
+          <div id="sigDate" class="sig-right">[date]</div>
         </div>
+
+        <!-- View counter (restored) -->
+        <div id="counter" class="fine mt-4 text-center"></div>
       </div>
     </div>
   </div>
@@ -130,15 +122,6 @@
       return String(commission) + "%";
     }
 
-    function showUnsigned() {
-      $("unsignedBox")?.classList.remove("hidden");
-      $("bodyBox")?.classList.add("hidden");
-    }
-    function showBody() {
-      $("unsignedBox")?.classList.add("hidden");
-      $("bodyBox")?.classList.remove("hidden");
-    }
-
     function buildFromData(d) {
       const plan = String(d.plan || "");
       const isFSBO = plan.includes("FSBO");
@@ -157,13 +140,6 @@
       const commDisp = fmtCommission(cVal, cType);
       const commSfx  = (cVal && cType === "%") ? " of the total purchase price" : "";
 
-      // Signature block — MUST be present (no "today" fallback)
-      const signed = (d.signedISC && typeof d.signedISC === "object") ? d.signedISC : {};
-      if (!signed.name || !signed.date) {
-        showUnsigned();
-        return;
-      }
-
       let p1 = "", p2 = "";
       if (isFSBO) {
         p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email address is ${email}.`;
@@ -174,14 +150,18 @@
         p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       }
 
+      // Signature block
+      const signed = (d.signedISC && typeof d.signedISC === "object") ? d.signedISC : getJSON("signedISC", {});
+      const sigName = (signed.name || name || "[Name]");
+      /* === CHANGE: remove “today” fallback to stop creeping date === */
+      const sigDate = (signed.date || "[date]");
+
       $("p1").textContent = p1;
       $("p2").textContent = p2;
-      $("sigName").textContent = signed.name;
-      $("sigDate").textContent = signed.date;
+      $("sigName").textContent = sigName;
+      $("sigDate").textContent = sigDate;
 
-      showBody();
-
-      // View counter (by id if present; else by address) — count only when signed is present
+      // View counter (by id if present; else by address)
       const key = "iscViews:" + (d.__id || fullAddr.toLowerCase());
       let n = Number(localStorage.getItem(key) || 0);
       n += 1;
@@ -215,7 +195,7 @@
         }
 
         if (!loaded) {
-          // Fallback to local preview (useful without id) — will show "unsigned" until signedISC exists
+          // Fallback to local preview (useful without id)
           const fd = getJSON("formData", {});
           const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
           const d = {
@@ -235,7 +215,6 @@
         }
       } catch {
         // Keep defaults on any error
-        showUnsigned();
       }
 
       // Auto-size so the full document is visible without clicks
