@@ -757,7 +757,14 @@
         const items = [];
         snap.forEach(doc => {
           const d = doc.data() || {};
-          if (d.archived === true) return;         // hide archived
+          // Hide archived
+          if (d.archived === true) return;
+
+          // === CHANGE: hide drafts (require signed OR status:Active)
+          const signed = !!(d.signedISC && typeof d.signedISC === 'object' && d.signedISC.date);
+          const isActive = String(d.status || '').toLowerCase() === 'active';
+          if (!signed && !isActive) return;
+
           items.push({
             id: doc.id,
             address: d.address || "",
