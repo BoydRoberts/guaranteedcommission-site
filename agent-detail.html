@@ -12,6 +12,7 @@
     .pill { font-size: 11px; padding: 2px 6px; border-radius: 9999px; background:#eef2ff; color:#3730a3; }
     .note { font-size: 12px; }
     .chip { font-size: 11px; padding:2px 6px; border-radius:9999px; background:#f3f4f6; color:#374151; }
+    .badge { font-size: 10px; padding:2px 6px; border-radius: 9999px; background:#ecfccb; color:#166534; border:1px solid #bbf7d0; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -197,15 +198,12 @@
           <h2 class="text-lg font-semibold">October Free Promo</h2>
           <span id="promoBadge" class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">Inactive</span>
         </div>
-
-        <!-- UPDATED COPY -->
         <p class="text-sm text-gray-600 mt-2">
           Listing agents can upgrade to Listed Property Plus, add a Banner, and Pin Placement for FREE in October.
         </p>
 
-        <!-- NEW: Checkbox to upgrade to Plus (FREE in October for agents) -->
-        <div id="freePlusCheckboxRow" class="hidden mt-3 border rounded-lg p-3">
-          <label class="flex items-center justify-between">
+        <div id="freePlusRow" class="hidden mt-3 border rounded-lg p-3">
+          <label class="flex items-center justify-between w-full">
             <div>
               <div class="font-semibold">Upgrade to Listed Property Plus</div>
               <div class="text-sm text-gray-600">FREE in October when paid by the agent</div>
@@ -248,19 +246,11 @@
       getStorage, ref, uploadBytes, getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
+    // ----- helpers -----
     const $ = (id) => document.getElementById(id);
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
-
-    // ---- Identify listing id ----
-    function getListingId() {
-      const u = new URL(location.href);
-      const qid = (u.searchParams.get('id') || '').trim();
-      if (qid) return qid;
-      const ls = (localStorage.getItem('lastListingId') || '').trim();
-      return ls || '';
-    }
-    const listingId = getListingId();
+    const plural = (n, a, b) => (n===1 ? a : b);
 
     function setStatus(msg, ok=true) {
       const el = $("statusBar");
@@ -268,20 +258,50 @@
       el.className = ok ? "mt-2 text-sm text-gray-600" : "mt-2 text-sm text-red-700";
     }
 
-    // ---- Working state ----
-    let photos = [];          // array of URLs
-    let primaryIndex = 0;
+    // Clean the listing id (ID hygiene)
+    function cleanId(raw) {
+      const m = String(raw || '').trim().match(/^[A-Za-z0-9_-]+/);
+      return m ? m[0] : '';
+    }
+    (function ensureCleanId(){
+      const u = new URL(location.href);
+      let raw = u.searchParams.get('id') || localStorage.getItem('lastListingId') || '';
+      const cleaned = cleanId(raw);
+      if (cleaned) {
+        localStorage.setItem('lastListingId', cleaned);
+        if (raw !== cleaned) {
+          // Rewrite URL once without junk
+          u.searchParams.set('id', cleaned);
+          history.replaceState({}, "", u.toString());
+        }
+      }
+    })();
+
+    const listingId = localStorage.getItem('lastListingId') || '';
+    if ($("previewLink") && listingId) $("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
+    if ($("goPreviewBtn") && listingId) $("goPreviewBtn").href = "/listing.html?id=" + encodeURIComponent(listingId);
+
+    // ---- Working state (always refreshed from server) ----
     let plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
     let isPlus = (plan === "Listed Property Plus" || plan === "FSBO Plus");
-    let maxPhotos = isPlus ? 20 : 1; // mutable for upgrade
+    let maxPhotos = isPlus ? 20 : 1;
+    let photos = [];
+    let primaryIndex = 0;
 
-    // ---- UI paint helpers ----
-    $("planPill").textContent = plan;
-    $("payerBadge").textContent = "";
+    function computePhotoHelp() {
+      const remaining = Math.max(0, maxPhotos - (photos?.length || 0));
+      $("photoHelp").textContent = isPlus
+        ? `You can add up to ${remaining} more ${plural(remaining,'photo','photos')}.`
+        : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+    }
 
-    function money(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
+    function clampPrimary() {
+      if (!Array.isArray(photos) || photos.length === 0) { primaryIndex = 0; return; }
+      if (primaryIndex < 0 || primaryIndex >= photos.length) primaryIndex = 0;
+    }
 
     function renderThumbs() {
+      clampPrimary();
       const grid = $("photoGrid");
       grid.innerHTML = "";
 
@@ -293,29 +313,43 @@
         return;
       }
 
-      photos.forEach((url, idx) => {
+      // Primary-first ordering
+      const ordered = photos.map((u, i) => ({u, i}));
+      if (primaryIndex > 0) {
+        const [prim] = ordered.splice(primaryIndex,1);
+        ordered.unshift(prim);
+      }
+
+      ordered.forEach(({u, i}, displayIdx) => {
         const row = document.createElement("div");
         row.className = "flex items-center gap-3";
 
         const img = new Image();
-        img.src = url;
-        img.alt = "Photo " + (idx + 1);
-        img.className = "thumb border " + (idx === primaryIndex ? "border-green-500" : "border-gray-300");
-        img.title = (idx === primaryIndex) ? "Primary photo" : "Click to set as primary";
-        img.addEventListener("click", () => { primaryIndex = idx; renderThumbs(); });
+        img.src = u;
+        img.alt = "Photo " + (displayIdx + 1);
+        img.className = "thumb border " + (i === primaryIndex ? "border-green-500" : "border-gray-300");
+        img.title = (i === primaryIndex) ? "Primary photo" : "Click to set as primary";
+        img.addEventListener("click", async () => {
+          primaryIndex = i;
+          await savePhotosField(true);
+        });
 
         const btns = document.createElement("div");
         btns.className = "flex items-center gap-2 text-xs";
 
-        const bPrimary = document.createElement("button");
-        bPrimary.type = "button";
-        bPrimary.className = "px-2 py-1 border rounded";
-        bPrimary.textContent = "Set Primary";
-        bPrimary.onclick = async () => {
-          primaryIndex = idx;
-          await savePhotosField();
-          renderThumbs();
-        };
+        const bMark = document.createElement("span");
+        if (i === primaryIndex) {
+          bMark.className = "badge";
+          bMark.textContent = "Primary";
+          btns.appendChild(bMark);
+        } else {
+          const bPrimary = document.createElement("button");
+          bPrimary.type = "button";
+          bPrimary.className = "px-2 py-1 border rounded";
+          bPrimary.textContent = "Set Primary";
+          bPrimary.onclick = async () => { primaryIndex = i; await savePhotosField(true); };
+          btns.appendChild(bPrimary);
+        }
 
         const bReplace = document.createElement("button");
         bReplace.type = "button";
@@ -328,11 +362,9 @@
             const file = e.target.files?.[0]; if (!file) return;
             setStatus("Uploading replacement…");
             try {
-              const urlNew = await uploadOne(file);
-              photos[idx] = urlNew;
-              await savePhotosField();
-              renderThumbs();
-              setStatus("Replaced photo.", true);
+              const urlNew = await uploadOne(f);
+              photos[i] = urlNew;
+              await savePhotosField(true);
             } catch (err) {
               setStatus("Could not replace photo.", false);
               console.warn(err);
@@ -347,13 +379,11 @@
         bDelete.textContent = "Delete";
         bDelete.onclick = async () => {
           if (!confirm("Remove this photo from the listing?")) return;
-          photos.splice(idx, 1);
+          photos.splice(i, 1);
           if (primaryIndex >= photos.length) primaryIndex = Math.max(0, photos.length - 1);
-          await savePhotosField();
-          renderThumbs();
+          await savePhotosField(true);
         };
 
-        btns.appendChild(bPrimary);
         btns.appendChild(bReplace);
         btns.appendChild(bDelete);
 
@@ -361,19 +391,80 @@
         row.appendChild(btns);
         grid.appendChild(row);
       });
+
+      computePhotoHelp();
     }
 
-    // ---- Firestore save helpers ----
-    async function savePhotosField() {
+    async function refreshFromServer(note="") {
+      if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
+      try {
+        const snap = await getDoc(doc(db, "listings", listingId));
+        if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
+        const d = snap.data() || {};
+
+        plan = d.plan || plan;
+        isPlus = (plan === "Listed Property Plus" || plan === "FSBO Plus");
+        maxPhotos = isPlus ? 20 : 1;
+
+        $("planPill").textContent = plan;
+        $("fullAddress").value = d.address || "";
+        $("status").value = d.status || "";
+        $("price").value = d.price ?? "";
+        $("commission").value = d.commission ?? "";
+        $("commissionType").value = d.commissionType || "%";
+        $("apn").value = d.apn || "";
+        $("bedrooms").value = d.bedrooms ?? "";
+        $("bathrooms").value = d.bathrooms ?? "";
+        $("sqft").value = d.sqft ?? "";
+        $("yearBuilt").value = d.yearBuilt ?? "";
+        $("lotSize").value = d.lotSize ?? "";
+        $("propertyType").value = d.propertyType ?? "";
+        $("description").value = d.description ?? "";
+        $("bannerText").value = d.bannerText ?? "";
+        $("preferredArea").value = d.preferredArea ?? "";
+        $("pinArea").value = d.pinArea ?? "";
+        $("brokerage").value = d.brokerage || "";
+        $("agentName").value = d.agentName || "";
+        $("agentEmail").value = d.agentEmail || "";
+        $("agentPhone").value = d.agentPhone || "";
+
+        photos = Array.isArray(d.photos) ? d.photos.slice(0, maxPhotos) : [];
+        primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
+
+        // Gates
+        if (!isPlus) {
+          $("description").classList.add("dimmed");
+          $("description").setAttribute("disabled","disabled");
+          $("descGateNote").classList.remove("hidden");
+        } else {
+          $("description").classList.remove("dimmed");
+          $("description").removeAttribute("disabled");
+          $("descGateNote").classList.add("hidden");
+        }
+
+        renderThumbs();
+        setStatus(note || "Loaded from server.", true);
+      } catch (e) {
+        console.warn("[agent-detail] refresh failed:", e);
+        setStatus("Could not load from server.", false);
+      }
+    }
+
+    async function savePhotosField(thenRefresh=false) {
       if (!listingId) return;
       try {
+        clampPrimary();
         await updateDoc(doc(db, "listings", listingId), {
           photos: photos.slice(0, maxPhotos),
           primaryIndex: (typeof primaryIndex === "number" ? primaryIndex : 0),
           updatedAt: serverTimestamp()
         });
+        if (thenRefresh) {
+          await refreshFromServer("Photos saved.");
+        }
       } catch (e) {
         console.warn("[agent-detail] photos update failed", e);
+        setStatus("Photos could not be saved.", false);
       }
     }
 
@@ -387,100 +478,35 @@
       return url;
     }
 
-    // ---- Wire file input for NEW uploads ----
+    // NEW: multi upload (then re-read from server)
     $("photoInput").addEventListener("change", async (e) => {
-      const files = Array.from(e.target.files || []); if (!files.length) return;
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
 
       try {
-        let slots = maxPhotos - photos.length;
-        if (slots <= 0) { alert(`You have reached the photo limit for your plan (${maxPhotos}).`); e.target.value = ""; return; }
-        const toUpload = files.slice(0, slots);
+        const remaining = Math.max(0, maxPhotos - photos.length);
+        if (remaining <= 0) { alert(`You have reached the photo limit for your plan (${maxPhotos}).`); e.target.value = ""; return; }
+        const toUpload = files.slice(0, remaining);
 
         setStatus("Uploading photo(s)…");
         for (const f of toUpload) {
           try {
             const url = await uploadOne(f);
             photos.push(url);
-          } catch (err) { console.warn("Upload failed", err); }
+          } catch (err) {
+            console.warn("Upload failed", err);
+            setStatus("Upload failed for one or more files.", false);
+          }
         }
-        await savePhotosField();
-        renderThumbs();
-        setStatus("Photos uploaded.", true);
+        await savePhotosField(true);
       } catch (err) {
         setStatus("Upload failed.", false);
       } finally {
-        e.target.value = "";
+        e.target.value = ""; // normal: shows "No file chosen" again
       }
     });
 
-    // ---- Prefill from Firestore on load ----
-    async function prefillFromServer() {
-      if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
-
-      try {
-        const snap = await getDoc(doc(db, "listings", listingId));
-        if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
-        const d = snap.data() || {};
-        plan = d.plan || plan;
-        isPlus = (plan === "Listed Property Plus" || plan === "FSBO Plus");
-        maxPhotos = isPlus ? 20 : 1;
-
-        $("planPill").textContent = plan;
-        $("fullAddress").value = d.address || "";
-        $("status").value = d.status || "";
-        $("price").value = d.price ?? "";
-        $("commission").value = d.commission ?? "";
-        $("commissionType").value = d.commissionType || "%";
-        $("apn").value = d.apn || "";
-
-        $("bedrooms").value = d.bedrooms ?? "";
-        $("bathrooms").value = d.bathrooms ?? "";
-        $("sqft").value = d.sqft ?? "";
-        $("yearBuilt").value = d.yearBuilt ?? "";
-        $("lotSize").value = d.lotSize ?? "";
-        $("propertyType").value = d.propertyType ?? "";
-
-        $("description").value = d.description ?? "";
-        $("bannerText").value = d.bannerText ?? "";
-        $("preferredArea").value = d.preferredArea ?? "";
-        $("pinArea").value = d.pinArea ?? "";
-
-        $("brokerage").value = d.brokerage || "";
-        $("agentName").value = d.agentName || "";
-        $("agentEmail").value = d.agentEmail || "";
-        $("agentPhone").value = d.agentPhone || "";
-
-        photos = Array.isArray(d.photos) ? d.photos.slice(0, maxPhotos) : [];
-        primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
-        renderThumbs();
-
-        // Preview links
-        const a = $("previewLink");
-        const ap = $("goPreviewBtn");
-        if (a) a.href = "/listing.html?id=" + encodeURIComponent(listingId);
-        if (ap) ap.href = "/listing.html?id=" + encodeURIComponent(listingId);
-
-        // Gate description if not Plus
-        if (!isPlus) {
-          $("description").classList.add("dimmed");
-          $("description").setAttribute("disabled","disabled");
-          $("descGateNote").classList.remove("hidden");
-          $("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
-        } else {
-          $("description").classList.remove("dimmed");
-          $("description").removeAttribute("disabled");
-          $("descGateNote").classList.add("hidden");
-          $("photoHelp").textContent = "You can upload up to 20 photos.";
-        }
-
-        setStatus("Loaded from server.", true);
-      } catch (e) {
-        console.warn("[agent-detail] load failed:", e);
-        setStatus("Could not load from server.", false);
-      }
-    }
-
-    // ---- Save button ----
+    // Save button
     $("saveBtn").addEventListener("click", async () => {
       if (!listingId) { alert("No listing ID in this session."); return; }
 
@@ -507,7 +533,7 @@
 
       try {
         await updateDoc(doc(db, "listings", listingId), payload);
-        setStatus("Saved to server.", true);
+        await refreshFromServer("Saved to server.");
         alert("Saved.");
       } catch (e) {
         console.warn("[agent-detail] save failed", e);
@@ -529,10 +555,9 @@
       const promoBadge = $("promoBadge");
       const applyPromoBtn = $("applyPromoBtn");
       const promoNote = $("promoNote");
-      const freePlusRow = $("freePlusCheckboxRow");
+      const freePlusRow = $("freePlusRow");
       const chkFreePlus = $("chkFreePlus");
 
-      // pull or init checkoutData
       const checkoutData = getJSON("checkoutData", null) || {
         plan,
         base: plan === "FSBO Plus" ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
@@ -555,7 +580,6 @@
           ? "Click to apply free pricing (Banner, Premium, and Pin set to $0) for October (agent-paid)."
           : "Promo applies during October 2025 when upgrades are paid by the agent.";
 
-        // Show Plus checkbox only if Basic and promo active
         if (active && plan === "Listed Property Basic") {
           freePlusRow.classList.remove("hidden");
           chkFreePlus.checked = !!checkoutData.upgrades.upgradeToPlus || plan === "Listed Property Plus";
@@ -566,7 +590,6 @@
       }
       paintPromoState();
 
-      // Make Banner, Premium, Pin FREE in October for agents (UI reflects active state)
       function pricesForUI() {
         const active = isAgentOctoberPromoActive();
         return {
@@ -577,9 +600,7 @@
       }
 
       function applyOctoberFree() {
-        // Persist a flag (optional), UI is already free via pricesForUI
-        const active = isAgentOctoberPromoActive();
-        if (!active) return;
+        if (!isAgentOctoberPromoActive()) return;
         checkoutData.meta = checkoutData.meta || {};
         checkoutData.meta.octoberAgentFree = true;
         setJSON("checkoutData", checkoutData);
@@ -588,82 +609,45 @@
       }
       applyPromoBtn.addEventListener("click", applyOctoberFree);
 
-      // Checkbox behavior to upgrade to Plus (FREE in October)
-      async function handleFreePlusToggle(e) {
-        const checked = !!e.target.checked;
-        const active = isAgentOctoberPromoActive();
-        if (!active) { e.target.checked = false; return; }
+      async function flipPlanPlus() {
+        plan = "Listed Property Plus"; isPlus = true; maxPhotos = 20;
+        $("planPill").textContent = plan;
+        $("description").classList.remove("dimmed");
+        $("description").removeAttribute("disabled");
+        $("descGateNote").classList.add("hidden");
 
-        if (checked) {
-          // Flip plan to Plus everywhere, free
-          plan = "Listed Property Plus";
-          isPlus = true;
-          maxPhotos = 20;
-          $("planPill").textContent = plan;
+        localStorage.setItem("selectedPlan", "Listed Property Plus");
 
-          $("description").classList.remove("dimmed");
-          $("description").removeAttribute("disabled");
-          $("descGateNote").classList.add("hidden");
-          $("photoHelp").textContent = "You can upload up to 20 photos.";
+        checkoutData.plan = "Listed Property Plus";
+        checkoutData.upgrades.upgradeToPlus = true;
+        checkoutData.prices.plus = 0;
+        checkoutData.base = 0;
+        checkoutData.payer = "agent";
+        checkoutData.meta = checkoutData.meta || {};
+        checkoutData.meta.octoberAgentFree = true;
+        setJSON("checkoutData", checkoutData);
 
-          localStorage.setItem("selectedPlan", "Listed Property Plus");
-
-          checkoutData.plan = "Listed Property Plus";
-          checkoutData.upgrades.upgradeToPlus = true;
-          checkoutData.prices.plus = 0;
-          checkoutData.base = 0;
-          checkoutData.payer = "agent";
-          checkoutData.meta = checkoutData.meta || {};
-          checkoutData.meta.octoberAgentFree = true;
-          setJSON("checkoutData", checkoutData);
-
-          if (listingId) {
-            try {
-              await updateDoc(doc(db, "listings", listingId), {
-                plan: "Listed Property Plus",
-                updatedAt: serverTimestamp()
-              });
-            } catch (e) {
-              console.warn("[promo] Firestore plan update failed", e);
-            }
-          }
-          setStatus("Upgraded to Listed Property Plus (FREE, October).", true);
-        } else {
-          // Optional revert if they started as Basic
-          const original = (localStorage.getItem("originalPlan") || "Listed Property Basic").trim();
-          if (original === "Listed Property Basic") {
-            plan = "Listed Property Basic";
-            isPlus = false;
-            maxPhotos = 1;
-            $("planPill").textContent = plan;
-
-            $("description").classList.add("dimmed");
-            $("description").setAttribute("disabled","disabled");
-            $("descGateNote").classList.remove("hidden");
-            $("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
-
-            localStorage.setItem("selectedPlan", "Listed Property Basic");
-            checkoutData.plan = "Listed Property Basic";
-            checkoutData.upgrades.upgradeToPlus = false;
-            checkoutData.base = 0;
-            setJSON("checkoutData", checkoutData);
-
-            if (listingId) {
-              try {
-                await updateDoc(doc(db, "listings", listingId), {
-                  plan: "Listed Property Basic",
-                  updatedAt: serverTimestamp()
-                });
-              } catch (e) {
-                console.warn("[promo] Firestore plan revert failed", e);
-              }
-            }
-            setStatus("Reverted to Listed Property Basic.", true);
+        if (listingId) {
+          try {
+            await updateDoc(doc(db, "listings", listingId), {
+              plan: "Listed Property Plus",
+              updatedAt: serverTimestamp()
+            });
+            await refreshFromServer("Plan upgraded to Plus.");
+          } catch (e) {
+            console.warn("[promo] Firestore plan update failed", e);
+            setStatus("Could not apply free upgrade.", false);
           }
         }
-        paintUpgrades();
       }
-      chkFreePlus.addEventListener("change", handleFreePlusToggle);
+
+      $("chkFreePlus")?.addEventListener("change", (e)=>{
+        if (e.target.checked) flipPlanPlus();
+        else {
+          // ignore unchecking (we don't auto-downgrade here)
+          e.target.checked = true;
+        }
+      });
 
       function row(label, price, key, note="") {
         const checked = !!checkoutData.upgrades[key];
@@ -682,7 +666,7 @@
 
       function paintUpgrades() {
         const box = $("upgradesBox");
-        const p = pricesForUI(); // Banner, Premium, Pin reflect October free when active
+        const p = pricesForUI();
         const html = [
           row("Banner", p.banner, "banner"),
           row("Premium Placement", p.premium, "premium"),
@@ -694,9 +678,9 @@
           cb.addEventListener("change", (e)=>{
             const k = e.target.getAttribute("data-key");
             const checked = e.target.checked;
-            if (k === "banner")      checkoutData.upgrades.banner  = checked;
-            if (k === "premium")     checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
-            if (k === "pin")        {checkoutData.upgrades.pin     = checked; if (checked) checkoutData.upgrades.premium = true;}
+            if (k === "banner") checkoutData.upgrades.banner  = checked;
+            if (k === "premium") checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
+            if (k === "pin") { checkoutData.upgrades.pin = checked; if (checked) checkoutData.upgrades.premium = true; }
             setJSON("checkoutData", checkoutData);
           });
         });
@@ -715,33 +699,13 @@
 
     // ---- Boot ----
     (async function boot(){
-      if (!localStorage.getItem("originalPlan")) {
-        localStorage.setItem("originalPlan", plan);
-      }
-
-      const pl = $("previewLink");
-      const pv = $("goPreviewBtn");
-      if (listingId) {
-        if (pl) pl.href = "/listing.html?id=" + encodeURIComponent(listingId);
-        if (pv) pv.href = "/listing.html?id=" + encodeURIComponent(listingId);
-      }
-
       const fd = getJSON("formData", {});
       if (fd.address && !$("fullAddress").value) $("fullAddress").value = fd.address;
 
-      await prefillFromServer();
+      await refreshFromServer();
 
-      if (!isPlus) {
-        $("description").classList.add("dimmed");
-        $("description").setAttribute("disabled","disabled");
-        $("descGateNote").classList.remove("hidden");
-        $("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
-      } else {
-        $("description").classList.remove("dimmed");
-        $("description").removeAttribute("disabled");
-        $("descGateNote").classList.add("hidden");
-        $("photoHelp").textContent = "You can upload up to 20 photos.";
-      }
+      // initial helper
+      computePhotoHelp();
     })();
   </script>
 </body>
