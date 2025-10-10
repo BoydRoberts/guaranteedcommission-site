@@ -270,7 +270,6 @@
       if (cleaned) {
         localStorage.setItem('lastListingId', cleaned);
         if (raw !== cleaned) {
-          // Rewrite URL once without junk
           u.searchParams.set('id', cleaned);
           history.replaceState({}, "", u.toString());
         }
@@ -362,7 +361,7 @@
             const file = e.target.files?.[0]; if (!file) return;
             setStatus("Uploading replacement…");
             try {
-              const urlNew = await uploadOne(f);
+              const urlNew = await uploadOne(file);  /* <-- FIXED: use 'file', not undefined var */
               photos[i] = urlNew;
               await savePhotosField(true);
             } catch (err) {
@@ -478,7 +477,7 @@
       return url;
     }
 
-    // NEW: multi upload (then re-read from server)
+    // Multi upload (then re-read from server)
     $("photoInput").addEventListener("change", async (e) => {
       const files = Array.from(e.target.files || []);
       if (!files.length) return;
@@ -703,8 +702,6 @@
       if (fd.address && !$("fullAddress").value) $("fullAddress").value = fd.address;
 
       await refreshFromServer();
-
-      // initial helper
       computePhotoHelp();
     })();
   </script>
