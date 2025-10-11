@@ -23,7 +23,7 @@
       <h2 class="text-xl font-bold mb-1">Hi <span id="who">there</span></h2>
       <p class="text-sm text-gray-600 mb-4">What would you like to do next?</p>
 
-      <!-- Seller Prompt (auto-inserted here if exactly one match or resume is available) -->
+      <!-- Seller Prompt (auto-inserted if one match or resume) -->
       <div id="sellerPromptHost" class="mb-4"></div>
 
       <div id="roleBoxes" class="space-y-4">
@@ -142,7 +142,7 @@
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import {
-      collection, getDocs, query, where, orderBy, limit, doc, updateDoc, serverTimestamp
+      collection, getDocs, query, where, orderBy, limit, doc, getDoc, updateDoc, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id)=>document.getElementById(id);
@@ -187,18 +187,48 @@
     $("bAgentProApply")?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
     $("agentProApply")?.addEventListener('click',  ()=> location.href='/local-professionals.html?mode=apply');
 
+    // === Auto-link for sellers: claim lastListingId if needed ===
+    async function claimListingForSellerIfNeeded() {
+      if (role !== 'seller') return;
+      const lastId = (localStorage.getItem('lastListingId') || '').trim();
+      if (!lastId || !db || !email) return;
+
+      try {
+        const ref = doc(db, "listings", lastId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) return;
+
+        const d = snap.data() || {};
+        const currentOwner = String(d.ownerEmail || '').toLowerCase();
+
+        // Only claim if ISC is signed (your product invariant) and ownerEmail is missing/different
+        const hasSigned = !!(d.signedISC && d.signedISC.name);
+        if (hasSigned && currentOwner !== email) {
+          await updateDoc(ref, {
+            ownerEmail: email,
+            updatedAt: serverTimestamp()
+          });
+          // keep local so downstream pages work
+          localStorage.setItem('lastListingId', lastId);
+        }
+      } catch (e) {
+        // silent fail; we'll still list by queries below
+        console.warn('[welcome] claim skipped:', e);
+      }
+    }
+
     // Fetch listings for this user (owner OR agent) with dedupe
     async function fetchMyListings() {
       if (!email || !db) return [];
 
       const items = [];
       try {
-        // Query ownerEmail == login lower
+        // ownerEmail == login lower
         const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), limit(75));
         const s1 = await getDocs(q1);
         s1.forEach(d => items.push({ id: d.id, ...d.data() }));
 
-        // Query agentEmail == login lower (in case the agent also logs in here)
+        // agentEmail == login lower (in case agent logs in here)
         const q2 = query(collection(db, "listings"), where("agentEmail", "==", email), limit(75));
         const s2 = await getDocs(q2);
         s2.forEach(d => items.push({ id: d.id, ...d.data() }));
@@ -303,7 +333,7 @@
       }
     }
 
-    // === Seller Prompt helpers ===
+    // Seller prompt card
     function renderSellerPromptCard(it, reason) {
       const host = $("sellerPromptHost");
       if (!host) return;
@@ -327,24 +357,23 @@
     }
 
     (async function boot(){
+      // 1) Try to auto-link the last listing to this seller (no manual Firebase work)
+      await claimListingForSellerIfNeeded();
+
+      // 2) Fetch and paint
       const list = await fetchMyListings();
 
-      // If seller role, show prompt when exactly one owner match, or resume by lastListingId
+      // Seller prompt (owner match or resume)
       if (role === 'seller') {
         const ownerMatches = list.filter(it => (String(it.ownerEmail || '').toLowerCase() === email));
         if (ownerMatches.length === 1) {
-          // Auto-prompt to edit that listing
           renderSellerPromptCard(ownerMatches[0], "We found this listing on your account.");
-          // Also set lastListingId so downstream pages have it
           localStorage.setItem('lastListingId', ownerMatches[0].id);
         } else if (ownerMatches.length === 0) {
-          // Try resume from lastListingId if present
           const lastId = (localStorage.getItem('lastListingId') || '').trim();
           if (lastId) {
             const resume = list.find(it => it.id === lastId);
-            if (resume) {
-              renderSellerPromptCard(resume, "Resume where you left off.");
-            }
+            if (resume) renderSellerPromptCard(resume, "Resume where you left off.");
           }
         }
       }
@@ -356,7 +385,7 @@
       if (sellerSel) {
         if (list.length) {
           $("sellerNoListings")?.classList.add('hidden');
-          // Prefer seller-owned listings in the dropdown first
+          // Prefer seller-owned first in dropdown
           const ownerFirst = [...list].sort((a,b) => {
             const ao = String(a.ownerEmail||'').toLowerCase() === email ? -1 : 0;
             const bo = String(b.ownerEmail||'').toLowerCase() === email ? -1 : 0;
@@ -402,8 +431,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y">
-                  ${
-                    list.map(it=>{
+                  ${list.map(it=>{
                       const upd = it.updatedAt?.toDate ? it.updatedAt.toDate() : null;
                       const upds = upd ? upd.toLocaleDateString() : '';
                       const href = safePreviewHref(it);
@@ -420,14 +448,12 @@
                           </td>
                         </tr>
                       `;
-                    }).join('')
-                  }
+                    }).join('')}
                 </tbody>
               </table>
             </div>
           `;
 
-          // Wire archive buttons
           host.querySelectorAll('[data-archive]').forEach(btn=>{
             btn.addEventListener('click', (e)=>{
               const id = e.currentTarget.getAttribute('data-archive');
