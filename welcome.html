@@ -23,6 +23,9 @@
       <h2 class="text-xl font-bold mb-1">Hi <span id="who">there</span></h2>
       <p class="text-sm text-gray-600 mb-4">What would you like to do next?</p>
 
+      <!-- Seller Prompt (auto-inserted here if exactly one match or resume is available) -->
+      <div id="sellerPromptHost" class="mb-4"></div>
+
       <div id="roleBoxes" class="space-y-4">
 
         <!-- Seller -->
@@ -195,7 +198,7 @@
         const s1 = await getDocs(q1);
         s1.forEach(d => items.push({ id: d.id, ...d.data() }));
 
-        // Query agentEmail == login lower
+        // Query agentEmail == login lower (in case the agent also logs in here)
         const q2 = query(collection(db, "listings"), where("agentEmail", "==", email), limit(75));
         const s2 = await getDocs(q2);
         s2.forEach(d => items.push({ id: d.id, ...d.data() }));
@@ -300,8 +303,51 @@
       }
     }
 
+    // === Seller Prompt helpers ===
+    function renderSellerPromptCard(it, reason) {
+      const host = $("sellerPromptHost");
+      if (!host) return;
+      const addr = it.address || 'Your listing';
+      const id = it.id;
+      host.innerHTML = `
+        <div class="border rounded-xl p-4 mb-4 bg-indigo-50 border-indigo-200">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="font-semibold">Continue your listing</div>
+              <div class="text-sm text-gray-700 mt-0.5">${addr}</div>
+              ${reason ? `<div class="text-xs text-gray-500 mt-1">${reason}</div>` : ``}
+            </div>
+            <div class="flex gap-2">
+              <a href="/seller-detail.html?id=${encodeURIComponent(id)}" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</a>
+              <a href="/listing.html?id=${encodeURIComponent(id)}" target="_blank" rel="noopener" class="px-3 py-2 rounded border text-sm">Preview</a>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     (async function boot(){
       const list = await fetchMyListings();
+
+      // If seller role, show prompt when exactly one owner match, or resume by lastListingId
+      if (role === 'seller') {
+        const ownerMatches = list.filter(it => (String(it.ownerEmail || '').toLowerCase() === email));
+        if (ownerMatches.length === 1) {
+          // Auto-prompt to edit that listing
+          renderSellerPromptCard(ownerMatches[0], "We found this listing on your account.");
+          // Also set lastListingId so downstream pages have it
+          localStorage.setItem('lastListingId', ownerMatches[0].id);
+        } else if (ownerMatches.length === 0) {
+          // Try resume from lastListingId if present
+          const lastId = (localStorage.getItem('lastListingId') || '').trim();
+          if (lastId) {
+            const resume = list.find(it => it.id === lastId);
+            if (resume) {
+              renderSellerPromptCard(resume, "Resume where you left off.");
+            }
+          }
+        }
+      }
 
       // Seller box
       const sellerSel  = $("sellerListings");
@@ -310,7 +356,13 @@
       if (sellerSel) {
         if (list.length) {
           $("sellerNoListings")?.classList.add('hidden');
-          fillDropdown(sellerSel, list);
+          // Prefer seller-owned listings in the dropdown first
+          const ownerFirst = [...list].sort((a,b) => {
+            const ao = String(a.ownerEmail||'').toLowerCase() === email ? -1 : 0;
+            const bo = String(b.ownerEmail||'').toLowerCase() === email ? -1 : 0;
+            return ao - bo;
+          });
+          fillDropdown(sellerSel, ownerFirst);
         } else {
           $("sellerNoListings")?.classList.remove('hidden');
         }
