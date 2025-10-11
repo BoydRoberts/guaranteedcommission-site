@@ -361,7 +361,7 @@
             const file = e.target.files?.[0]; if (!file) return;
             setStatus("Uploading replacement…");
             try {
-              const urlNew = await uploadOne(file);  /* <-- FIXED: use 'file', not undefined var */
+              const urlNew = await uploadOne(file);  /* uses 'file' correctly */
               photos[i] = urlNew;
               await savePhotosField(true);
             } catch (err) {
@@ -467,8 +467,11 @@
       }
     }
 
+    // === FORCED BUCKET FIX: always use the bucket where your files live ===
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
+
     async function uploadOne(file) {
-      const storage = getStorage();
+      const storage = getStorage(undefined, BUCKET_URL);  // force correct bucket
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
