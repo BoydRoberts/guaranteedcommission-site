@@ -70,7 +70,7 @@
           <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
           <div id="tileAddress" class="text-sm font-medium">[full address]</div>
           <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] — [listing agent] — [agent phone]</div>
-          <!-- Centered “Viewed N” -->
+          <!-- Centered “Viewed N times” -->
           <div id="tileViews" class="text-[12px] text-gray-500 text-center">Viewed —</div>
         </div>
       </article>
@@ -209,7 +209,7 @@
         const d = snap.data() || {};
         const n = Number(d.views || 0);
         const el = $("tileViews");
-        if (el) el.textContent = `Viewed ${n.toLocaleString()}`;
+        if (el) el.textContent = `Viewed ${n.toLocaleString()} time${n===1 ? '' : 's'}`;
       } catch {
         const el = $("tileViews");
         if (el) el.textContent = `Viewed —`;
