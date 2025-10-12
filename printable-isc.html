@@ -8,7 +8,7 @@
   <style>
     :root {
       --tile-pad: 1rem;   /* match listing tile side padding */
-      --top-pad: 0.5rem;  /* slightly smaller top margin as requested */
+      --top-pad: 0.5rem;  /* slightly smaller top margin */
     }
 
     html, body { background: transparent; }
@@ -25,6 +25,7 @@
       box-shadow: 0 1px 6px rgba(0,0,0,.08);
       border: 1px solid #e5e7eb; /* gray-200 */
       padding: var(--tile-pad);
+      position: relative;
     }
 
     /* In embed, parent column already provides a card; remove inner border,
@@ -42,7 +43,7 @@
     .h1 {
       font-size: 1.125rem;   /* text-lg */
       font-weight: 700;      /* font-bold */
-      text-align: center;    /* centered per request */
+      text-align: center;    /* centered */
       margin: 0 0 0.5rem 0;  /* reduce top margin */
     }
 
@@ -58,18 +59,25 @@
     }
     /* Indent signature ~5 characters from the left */
     .sig-left { padding-left: 5ch; }
-    .sig-name { font-family: "Brush Script MT", cursive; font-size: 1.1rem; }
+    .sig-name { font-family: "Brush Script MT", cursive; font-size: 1.1rem; color:#1d4ed8; } /* blue ink on both views */
     .fine { font-size: 0.75rem; color: #6b7280; }   /* gray-500 */
     /* Indent date ~5 characters in from the right edge */
     .sig-right { padding-right: 5ch; }
 
-    /* No print button per your request */
-    .no-print { display: none !important; }
+    /* Hide elements only when printing hard copy */
+    @media print {
+      .print-hidden { display: none !important; }
+    }
   </style>
 </head>
 <body>
   <div id="root" class="max-w-3xl mx-auto">
     <div id="card" class="isc-card">
+      <!-- Standalone only: Print button (hidden in embed, hidden in print) -->
+      <div id="printRow" class="flex justify-end mb-2">
+        <button id="printBtn" class="print-hidden px-3 py-1 border rounded text-sm bg-gray-50 hover:bg-gray-100">Print</button>
+      </div>
+
       <div id="wrap" class="">
         <h1 class="h1">Irrevocable Seller Communication</h1>
 
@@ -77,16 +85,21 @@
         <p id="p1" class="p">Loading…</p>
         <p id="p2" class="p"></p>
 
+        <!-- Signature row: left = name, center = (embed) counter, right = date -->
         <div class="sig-row">
           <div class="sig-left">
             <div id="sigName" class="sig-name">[Name]</div>
-            <div class="fine">Electronic Signature</div>
+            <div id="sigLabel" class="fine">Electronic Signature</div>
           </div>
+
+          <!-- Center slot for embedded counter -->
+          <div id="sigCounterInline" class="fine text-center" style="flex:1"></div>
+
           <div id="sigDate" class="sig-right">[date]</div>
         </div>
 
-        <!-- View counter (restored) -->
-        <div id="counter" class="fine mt-4 text-center"></div>
+        <!-- Legacy bottom counter (kept but unused now) -->
+        <div id="counter" class="fine mt-4 text-center" style="display:none;"></div>
       </div>
     </div>
   </div>
@@ -150,10 +163,10 @@
         p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       }
 
-      // Signature block
+      // Signature block data
       const signed = (d.signedISC && typeof d.signedISC === "object") ? d.signedISC : getJSON("signedISC", {});
       const sigName = (signed.name || name || "[Name]");
-      /* === CHANGE: remove “today” fallback to stop creeping date === */
+      // Stop creeping date: only show saved date or placeholder
       const sigDate = (signed.date || "[date]");
 
       $("p1").textContent = p1;
@@ -161,17 +174,47 @@
       $("sigName").textContent = sigName;
       $("sigDate").textContent = sigDate;
 
-      // View counter (by id if present; else by address)
-      const key = "iscViews:" + (d.__id || fullAddr.toLowerCase());
-      let n = Number(localStorage.getItem(key) || 0);
-      n += 1;
-      localStorage.setItem(key, String(n));
-      $("counter").textContent = `Viewed ${n} time${n===1 ? "" : "s"}.`;
+      // Embedded vs Standalone behavior
+      const embedded = isEmbed();
+
+      // Hide the "Electronic Signature" label in embed; keep it in standalone
+      const sigLabel = $("sigLabel");
+      if (sigLabel && embedded) sigLabel.style.display = "none";
+
+      // View counter:
+      // - Embedded: show centered on signature row (sigCounterInline)
+      // - Standalone: no counter shown
+      const inlineCounter = $("sigCounterInline");
+      const bottomCounter = $("counter"); // kept for compatibility but unused
+
+      if (embedded) {
+        // Count by id if present; else by address (legacy local-only)
+        const key = "iscViews:" + (d.__id || fullAddr.toLowerCase());
+        let n = Number(localStorage.getItem(key) || 0);
+        n += 1;
+        localStorage.setItem(key, String(n));
+        if (inlineCounter) inlineCounter.textContent = `Viewed ${n} time${n===1 ? "" : "s"}.`;
+        if (bottomCounter) bottomCounter.style.display = "none";
+      } else {
+        // Standalone: hide both counters
+        if (inlineCounter) inlineCounter.style.display = "none";
+        if (bottomCounter) bottomCounter.style.display = "none";
+      }
     }
 
     (async function boot(){
+      // Show/Hide print button by context
+      const embedded = isEmbed();
+      const printRow = document.getElementById('printRow');
+      const printBtn = document.getElementById('printBtn');
+      if (embedded) {
+        if (printRow) printRow.style.display = 'none';
+      } else {
+        if (printBtn) printBtn.addEventListener('click', () => window.print());
+      }
+
       // Embed-class styling: no inner border, equal margins like tile
-      if (isEmbed()) {
+      if (embedded) {
         document.body.classList.add("embed");
         $("wrap")?.classList.add("isc-wrap");
       }
@@ -214,11 +257,11 @@
           buildFromData(d);
         }
       } catch {
-        // Keep defaults on any error
+        // keep defaults on any error
       }
 
-      // Auto-size so the full document is visible without clicks
-      if (isEmbed()) {
+      // Auto-size so the full document is visible without clicks (embed only)
+      if (embedded) {
         requestAnimationFrame(postHeight);
         setTimeout(postHeight, 120);
         window.addEventListener("load", postHeight);
