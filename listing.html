@@ -70,8 +70,8 @@
           <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
           <div id="tileAddress" class="text-sm font-medium">[full address]</div>
           <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] — [listing agent] — [agent phone]</div>
-          <!-- === ADDED: Views line === -->
-          <div id="tileViews" class="text-[12px] text-gray-500">Views: —</div>
+          <!-- Centered Views line -->
+          <div id="tileViews" class="text-[12px] text-gray-500 text-center">Views: —</div>
         </div>
       </article>
 
@@ -116,7 +116,6 @@
     const $ = (id) => document.getElementById(id);
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
 
-    // Align map & ISC to tile height (after paint or resize)
     function alignHeights(){
       const tile = $("tileCard");
       const mapCard = $("mapCard");
@@ -195,12 +194,11 @@
     async function incrementViewsOnce(id) {
       try {
         const key = 'viewedOnce:' + id;
-        if (sessionStorage.getItem(key)) return; // already counted this tab/session
+        if (sessionStorage.getItem(key)) return;
         const ref = doc(db, "listings", id);
         await updateDoc(ref, { views: increment(1), updatedAt: serverTimestamp() });
         sessionStorage.setItem(key, '1');
       } catch (e) {
-        // Non-fatal; we just skip the increment on error
         console.warn('[views] increment failed', e);
       }
     }
@@ -227,7 +225,6 @@
         if (!idParam)  idParam  = (localStorage.getItem('lastListingId') || '').trim();
         if (!addrParam) addrParam = (localStorage.getItem('lastListingAddress') || '').trim();
 
-        // Wire ISC (embed=1 stays for borderless; printable-isc will remove Print button)
         const openA = $("iscOpenLink");
         const iscIframe = $("iscIframe");
         const base = "/printable-isc.html?embed=1";
@@ -253,7 +250,7 @@
           try {
             const snap = await getDocs(query(collection(db,"listings"), where("address","==", addrParam), limit(1)));
             if (!snap.empty) {
-              idParam = snap.docs[0].id; // capture id for views
+              idParam = snap.docs[0].id;
               d = snap.docs[0].data();
             }
           } catch {}
@@ -266,7 +263,6 @@
           if (fd && fd.address) {
             renderLocal(fd, ag);
             document.getElementById("topRow")?.classList.remove("hidden");
-            // local preview: no global view increment
             $("tileViews").textContent = "Views: —";
             return;
           }
@@ -279,7 +275,7 @@
           return;
         }
 
-        // === NEW: increment global views once per session, then paint ===
+        // Increment global views once per session, then paint
         if (idParam) {
           await incrementViewsOnce(idParam);
         }
@@ -303,7 +299,6 @@
         let primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
         if (primaryIndex < 0 || primaryIndex >= photos.length) primaryIndex = 0;
 
-        // If no server photo yet, try local one
         let primaryPhoto = photos[primaryIndex] || "";
         if (!primaryPhoto) {
           try {
@@ -314,7 +309,6 @@
           } catch {}
         }
 
-        // Paint TILE
         $("tilePhoto").src = primaryPhoto || "";
         const bEl = $("tileBanner");
         if (banner) { bEl.textContent = banner; bEl.classList.remove('hidden'); } else { bEl.classList.add('hidden'); }
@@ -333,10 +327,8 @@
 
         document.getElementById("topRow")?.classList.remove("hidden");
 
-        // Map
         if (address) bootMapFor(address);
 
-        // Lower: Description and gallery
         const desc = (d.description || "").trim();
         if (desc) {
           $("dDescription").textContent = desc;
@@ -355,12 +347,10 @@
           $("galleryCard").classList.remove("hidden");
         }
 
-        // Paint current view count
         if (idParam) {
           await paintViews(idParam);
         }
 
-        // Align columns after paint
         setTimeout(alignHeights, 80);
         window.addEventListener('resize', alignHeights);
 
@@ -407,7 +397,6 @@
       $("tileAddress").textContent = address;
       $("tileContact").textContent = `${(fd.plan && fd.plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
 
-      // local preview: no global view increment
       const tv = $("tileViews"); if (tv) tv.textContent = "Views: —";
 
       bootMapFor(address);
