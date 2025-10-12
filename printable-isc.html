@@ -37,69 +37,61 @@
       padding: 0;
     }
     .embed .isc-wrap {
-      padding: var(--tile-pad);  /* equal side margins like the tile */
+      padding: var(--tile-pad);
     }
 
     .h1 {
       font-size: 1.125rem;   /* text-lg */
       font-weight: 700;      /* font-bold */
-      text-align: center;    /* centered */
-      margin: 0 0 0.5rem 0;  /* reduce top margin */
+      text-align: center;
+      margin: 0 0 0.5rem 0;
     }
 
     .p { font-size: 0.95rem; margin-top: 0.5rem; }
 
     .sig-row {
-      margin-top: 1rem;      /* slightly tighter */
+      margin-top: 1rem;
       display: flex;
       align-items: baseline;
       justify-content: space-between;
       gap: 1rem;
       font-size: 0.95rem;
     }
-    /* Indent signature ~5 characters from the left */
     .sig-left { padding-left: 5ch; }
-    .sig-name { font-family: "Brush Script MT", cursive; font-size: 1.1rem; color:#1d4ed8; } /* blue ink on both views */
+    .sig-name { font-family: "Brush Script MT", cursive; font-size: 1.1rem; color:#1d4ed8; } /* blue ink both views */
     .fine { font-size: 0.75rem; color: #6b7280; }   /* gray-500 */
-    /* Indent date ~5 characters in from the right edge */
     .sig-right { padding-right: 5ch; }
 
-    /* Hide elements only when printing hard copy */
-    @media print {
-      .print-hidden { display: none !important; }
-    }
+    @media print { .print-hidden { display: none !important; } }
   </style>
 </head>
 <body>
   <div id="root" class="max-w-3xl mx-auto">
     <div id="card" class="isc-card">
-      <!-- Standalone only: Print button (hidden in embed, hidden in print) -->
+      <!-- Standalone only: Print button -->
       <div id="printRow" class="flex justify-end mb-2">
         <button id="printBtn" class="print-hidden px-3 py-1 border rounded text-sm bg-gray-50 hover:bg-gray-100">Print</button>
       </div>
 
-      <div id="wrap" class="">
+      <div id="wrap">
         <h1 class="h1">Irrevocable Seller Communication</h1>
 
         <p class="p">To the escrow holder/closing agent,</p>
         <p id="p1" class="p">Loading…</p>
         <p id="p2" class="p"></p>
 
-        <!-- Signature row: left = name, center = (embed) counter, right = date -->
+        <!-- Signature row -->
         <div class="sig-row">
           <div class="sig-left">
             <div id="sigName" class="sig-name">[Name]</div>
             <div id="sigLabel" class="fine">Electronic Signature</div>
           </div>
 
-          <!-- Center slot for embedded counter -->
-          <div id="sigCounterInline" class="fine text-center" style="flex:1"></div>
-
           <div id="sigDate" class="sig-right">[date]</div>
         </div>
 
-        <!-- Legacy bottom counter (kept but unused now) -->
-        <div id="counter" class="fine mt-4 text-center" style="display:none;"></div>
+        <!-- Embedded: counter BELOW signature row, centered; Standalone: hidden -->
+        <div id="sigCounterBelow" class="fine text-center mt-1"></div>
       </div>
     </div>
   </div>
@@ -112,7 +104,6 @@
     const $ = (id)=>document.getElementById(id);
     const getJSON = (k, fb)=>{ try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-    // Are we embedded inside listing.html? (We’ll auto-size so the whole doc is visible.)
     function isEmbed() {
       try { return (new URL(location.href)).searchParams.get("embed") === "1"; }
       catch { return false; }
@@ -166,7 +157,6 @@
       // Signature block data
       const signed = (d.signedISC && typeof d.signedISC === "object") ? d.signedISC : getJSON("signedISC", {});
       const sigName = (signed.name || name || "[Name]");
-      // Stop creeping date: only show saved date or placeholder
       const sigDate = (signed.date || "[date]");
 
       $("p1").textContent = p1;
@@ -174,36 +164,26 @@
       $("sigName").textContent = sigName;
       $("sigDate").textContent = sigDate;
 
-      // Embedded vs Standalone behavior
       const embedded = isEmbed();
 
       // Hide the "Electronic Signature" label in embed; keep it in standalone
       const sigLabel = $("sigLabel");
       if (sigLabel && embedded) sigLabel.style.display = "none";
 
-      // View counter:
-      // - Embedded: show centered on signature row (sigCounterInline)
-      // - Standalone: no counter shown
-      const inlineCounter = $("sigCounterInline");
-      const bottomCounter = $("counter"); // kept for compatibility but unused
-
+      // Counter below the signature row (embedded only), text “Viewed N times” (no period)
+      const below = $("sigCounterBelow");
       if (embedded) {
-        // Count by id if present; else by address (legacy local-only)
         const key = "iscViews:" + (d.__id || fullAddr.toLowerCase());
         let n = Number(localStorage.getItem(key) || 0);
         n += 1;
         localStorage.setItem(key, String(n));
-        if (inlineCounter) inlineCounter.textContent = `Viewed ${n} time${n===1 ? "" : "s"}.`;
-        if (bottomCounter) bottomCounter.style.display = "none";
+        if (below) below.textContent = `Viewed ${n} time${n===1 ? "" : "s"}`;
       } else {
-        // Standalone: hide both counters
-        if (inlineCounter) inlineCounter.style.display = "none";
-        if (bottomCounter) bottomCounter.style.display = "none";
+        if (below) below.style.display = "none";
       }
     }
 
     (async function boot(){
-      // Show/Hide print button by context
       const embedded = isEmbed();
       const printRow = document.getElementById('printRow');
       const printBtn = document.getElementById('printBtn');
@@ -213,10 +193,9 @@
         if (printBtn) printBtn.addEventListener('click', () => window.print());
       }
 
-      // Embed-class styling: no inner border, equal margins like tile
       if (embedded) {
         document.body.classList.add("embed");
-        $("wrap")?.classList.add("isc-wrap");
+        document.getElementById("wrap")?.classList.add("isc-wrap");
       }
 
       let loaded = false;
@@ -256,9 +235,7 @@
           };
           buildFromData(d);
         }
-      } catch {
-        // keep defaults on any error
-      }
+      } catch {}
 
       // Auto-size so the full document is visible without clicks (embed only)
       if (embedded) {
