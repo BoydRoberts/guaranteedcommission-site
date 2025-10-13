@@ -66,6 +66,11 @@
   </style>
 </head>
 <body>
+  <!-- Standalone back button (hidden when embedded) -->
+  <div id="backRow" class="max-w-3xl mx-auto mb-2">
+    <button id="backBtn" type="button" class="text-sm text-blue-600 hover:underline print-hidden">&larr; Back</button>
+  </div>
+
   <div id="root" class="max-w-3xl mx-auto">
     <div id="card" class="isc-card">
       <!-- Standalone only: Print button -->
@@ -115,6 +120,29 @@
         window.parent?.postMessage?.({ type:"gc-isc-embed-size", height: h }, "*");
       } catch {}
     }
+
+    // Back wiring (standalone only)
+    (function wireBack(){
+      const backRow = $("backRow");
+      const btn = $("backBtn");
+      const embedded = isEmbed();
+      if (embedded && backRow) backRow.style.display = "none";
+      if (!embedded && btn) {
+        btn.addEventListener("click", () => {
+          try {
+            const ref = document.referrer || "";
+            const sameOrigin = ref.startsWith(location.origin);
+            if (sameOrigin && ref !== location.href && history.length > 1) {
+              history.back();
+            } else {
+              location.href = "/index.html#strip2Search";
+            }
+          } catch {
+            location.href = "/index.html#strip2Search";
+          }
+        });
+      }
+    })();
 
     function fmtCommission(commission, type) {
       const t = type === "$" ? "$" : "%";
