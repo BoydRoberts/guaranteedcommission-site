@@ -66,9 +66,14 @@
   <!-- Header -->
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
-      <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
-        Accredited Investors Only
-      </button>
+      <!-- LEFT CLUSTER: Back + Investor -->
+      <div class="flex items-center gap-3">
+        <button id="backBtnHdr" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
+        <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
+          Accredited Investors Only
+        </button>
+      </div>
+
       <div class="text-center flex-1">
         <div class="flex items-center justify-center gap-1">
           <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-8 w-8 object-contain">
@@ -78,6 +83,7 @@
           Guaranteeing commissions so your home will sell quickly at a higher price.
         </p>
       </div>
+
       <div class="flex items-center gap-2">
         <a href="/local-professionals.html" class="bg-amber-600 text-white text-xs font-semibold px-3 py-1 rounded">Local Professionals</a>
       </div>
@@ -332,6 +338,23 @@
       menu.addEventListener('mouseleave', close);
       document.getElementById('commissionToggle')?.addEventListener('focus', open);
       document.getElementById('commissionToggle')?.addEventListener('blur', close);
+    })();
+
+    // Back button (safe fallback)
+    (function(){
+      const btn = document.getElementById('backBtnHdr');
+      if (!btn) return;
+      btn.addEventListener('click', function(){
+        try {
+          const ref = document.referrer || "";
+          if (history.length > 1 && ref && ref !== location.href) {
+            history.back();
+          } else {
+            // We're already “home”; no-op fallback keeps user here
+            // (or navigate to a known safe page if you prefer)
+          }
+        } catch (_) { /* no-op */ }
+      });
     })();
 
     // Address validator
@@ -605,7 +628,7 @@
             ownerName: formData.name || "",
             ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",
             agentName: plan.includes('FSBO') ? "" : (formData.agent || ""),
-            agentPhone: plan.includes('FSBO') ? "" : (formData.phone || ""),
+            agentPhone: plan includes('FSBO') ? "" : (formData.phone || ""),
             agentEmail: plan.includes('FSBO') ? "" : (formData.agentEmail || ""),
             brokerage: plan.includes('FSBO') ? "" : (formData.brokerage || ""),
             createdAt: serverTimestamp(),
