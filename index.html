@@ -26,6 +26,11 @@
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
     .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
+    /* === ADDED: overlay share buttons on the photo === */
+    .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+    .gc-share-left { left:10px; }
+    .gc-share-right{ right:10px; }
+
     /* --- Strip 1: same-size boxes (Box 1 = baseline), no scrollbars --- */
     #box1, #formBlock, #box3 { overflow: hidden; }
     .gc-title { text-align:center; font-weight:700; font-size:1.125rem; line-height:1.25; margin:0 0 var(--title-bottom-gap); }
@@ -703,6 +708,9 @@
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
           </button>
+          <!-- ADDED: share buttons overlay on the photo -->
+          <button type="button" class="gc-share gc-share-left" data-share="email">Share Email</button>
+          <button type="button" class="gc-share gc-share-right" data-share="text">Share Text</button>
         </div>
         <div class="p-3 space-y-2">
           <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
@@ -718,10 +726,6 @@
           </div>
           <div class="text-[12px] text-gray-500 text-center" data-stats>
             Viewed ${Number(views||0).toLocaleString()} time${Number(views||0)===1?'':'s'} | Liked ${Number(likes||0).toLocaleString()} time${Number(likes||0)===1?'':'s'}
-          </div>
-          <div class="flex items-center justify-center gap-2 pt-1">
-            <button class="share-email px-2 py-1 border rounded text-xs bg-white hover:bg-gray-50">Share Email</button>
-            <button class="share-text px-2 py-1 border rounded text-xs bg-white hover:bg-gray-50">Share Text</button>
           </div>
         </div>
       `;
@@ -752,7 +756,6 @@
               try {
                 await window.gcIncLike(id);
                 localStorage.setItem(onceKey,'1');
-                // bump UI likes by 1
                 const currentLikes = Number(likes||0) + 1;
                 const v = Number(views||0);
                 if (statsEl) {
@@ -764,10 +767,11 @@
         });
       }
 
-      // Share buttons
-      const emailBtn = card.querySelector('.share-email');
-      const textBtn  = card.querySelector('.share-text');
-      const shareUrl = id ? (window.location.origin + '/listing.html?id=' + encodeURIComponent(id)) : (window.location.origin + '/listing.html?addr=' + encodeURIComponent(address));
+      // Share buttons (overlay)
+      const emailBtn = card.querySelector('[data-share="email"]');
+      const textBtn  = card.querySelector('[data-share="text"]');
+      const shareUrl = id ? (window.location.origin + '/listing.html?id=' + encodeURIComponent(id))
+                          : (window.location.origin + '/listing.html?addr=' + encodeURIComponent(address));
 
       if (emailBtn) {
         emailBtn.addEventListener('click', (e)=>{
