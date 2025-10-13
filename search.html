@@ -21,12 +21,17 @@
     .banner { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:8px; }
     .banner .btn { border-radius:8px; padding:.5rem .75rem; font-size:.875rem; }
 
-    /* === Unified tile look (matches listing.html) === */
+    /* Tile look (align with listing page) */
     .tile-photo { width:100%; height: 16rem; object-fit: cover; background:#e5e7eb; }
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
     .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
     .card { background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); overflow:hidden; }
-    .tile-body { padding:1rem; } /* equal padding on all sides */
+    .tile-body { padding:1rem; }
+
+    /* Share buttons overlay (bottom left/right on photo) */
+    .share-btn { position:absolute; bottom:12px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+    .share-left { left:12px; }
+    .share-right{ right:12px; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -172,19 +177,16 @@
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-    // -------- Share helpers (soft daily limit: 5/device/day) --------
+    // Share helpers (silent 5/day/device limit)
     function shareLimitOk() {
       try {
         const day = new Date().toISOString().slice(0,10);
         const key = 'shareCount:' + day;
         const n = Number(localStorage.getItem(key) || 0);
-        if (n >= 5) return false;
+        if (n >= 5) { alert("Please log in to continue sharing."); return false; }
         localStorage.setItem(key, String(n + 1));
         return true;
       } catch { return true; }
-    }
-    function buildListingUrlById(id) {
-      return window.location.origin + '/listing.html?id=' + encodeURIComponent(id);
     }
     function openEmail(address, url) {
       const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
@@ -341,7 +343,7 @@
       }
     }
 
-    // Unified tile renderer (with stats + share buttons)
+    // Unified tile renderer with viewed/liked + share overlay
     function money(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
     function commissionAmount(price, commission, type) {
       const p = Number(price||0), c = Number(commission||0);
@@ -359,15 +361,12 @@
         : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
       btn.innerHTML = svg(isFav(keyId));
       btn.onclick = async (e)=> {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
         const nowLiked = tog(keyId);
         btn.innerHTML = svg(nowLiked);
-        if (nowLiked && typeof onFirstLike === 'function') {
-          onFirstLike();
-        }
+        if (nowLiked && typeof onFirstLike === 'function') onFirstLike();
       };
     }
-
     function renderTileDoc(doc){
       const id = doc.id;
       const address = String(doc.address || "").trim();
@@ -396,17 +395,18 @@
       const likes = Number(doc.likes || 0);
 
       const card = document.createElement("article");
-      card.className = "card relative";
-      // Card click navigates, but we'll stopPropagation on share/heart buttons
-      card.addEventListener('click', () => { window.location.href = `/listing.html?id=${encodeURIComponent(id)}`; });
+      card.className = "card relative cursor-pointer";
+      card.onclick = () => { window.location.href = `/listing.html?id=${encodeURIComponent(id)}`; };
 
       card.innerHTML = `
         <div class="relative">
           <img class="tile-photo" alt="Listing photo" src="${primaryPhoto}">
           ${banner ? `<div class="tile-banner">${banner}</div>` : ``}
           <button type="button" class="heart-btn" aria-label="Like"></button>
+          <button type="button" class="share-btn share-left"  data-share="email">Share Email</button>
+          <button type="button" class="share-btn share-right" data-share="text">Share Text</button>
         </div>
-        <div class="tile-body space-y-2">
+        <div class="tile-body space-y-1">
           <div class="flex items-center justify-between text-[16px] sm:text-[18px] font-semibold">
             <div class="truncate">${price ? money(price) : "$—"}</div>
             <div class="truncate text-red-600">Commission ${cPctLbl} | ${cAmt ? money(cAmt) : "$—"}</div>
@@ -421,47 +421,33 @@
           <div class="text-[12px] text-gray-500 text-center tile-stats">
             Viewed ${views.toLocaleString()} time${views===1?'':'s'} | Liked ${likes.toLocaleString()} time${likes===1?'':'s'}
           </div>
-          <div class="flex items-center justify-center gap-2 pt-1">
-            <button class="share-email px-2 py-1 border rounded text-xs bg-white hover:bg-gray-50">Share Email</button>
-            <button class="share-text px-2 py-1 border rounded text-xs bg-white hover:bg-gray-50">Share Text</button>
-          </div>
         </div>
       `;
 
-      // Like button with server increment-once
+      // Like button with server increment once
       const heart = card.querySelector(".heart-btn");
       const statsEl = card.querySelector(".tile-stats");
       if (heart) {
         wireHeart(heart, `fav:${id}`, async () => {
-          const didInc = await incrementLikeOnce(id);
-          if (didInc && statsEl) {
+          const did = await incrementLikeOnce(id);
+          if (did && statsEl) {
             const newLikes = likes + 1;
             statsEl.textContent = `Viewed ${views.toLocaleString()} time${views===1?'':'s'} | Liked ${newLikes.toLocaleString()} time${newLikes===1?'':'s'}`;
           }
         });
-        // prevent card click when pressing heart
-        heart.addEventListener('click', e=>{ e.stopPropagation(); });
       }
 
-      // Share buttons (per-tile)
-      const emailBtn = card.querySelector('.share-email');
-      const textBtn  = card.querySelector('.share-text');
-      const shareUrl = buildListingUrlById(id);
-
-      if (emailBtn) {
-        emailBtn.addEventListener('click', (e)=>{
+      // Share buttons (overlay)
+      const shareUrl = window.location.origin + '/listing.html?id=' + encodeURIComponent(id);
+      card.querySelectorAll("[data-share]").forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
           e.preventDefault(); e.stopPropagation();
-          if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
-          openEmail(address, shareUrl);
+          if (!shareLimitOk()) return;
+          const kind = btn.getAttribute("data-share");
+          if (kind === "email") openEmail(address, shareUrl);
+          else openText(address, shareUrl);
         });
-      }
-      if (textBtn) {
-        textBtn.addEventListener('click', (e)=>{
-          e.preventDefault(); e.stopPropagation();
-          if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
-          openText(address, shareUrl);
-        });
-      }
+      });
 
       return card;
     }
