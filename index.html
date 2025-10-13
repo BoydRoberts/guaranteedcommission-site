@@ -624,6 +624,31 @@
 
     // ---------- Strip 2 helpers ----------
     function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
+
+    // === Share helpers (soft daily limit: 5/device/day) ===
+    function shareLimitOk() {
+      try {
+        const day = new Date().toISOString().slice(0,10);
+        const key = 'shareCount:' + day;
+        const n = Number(localStorage.getItem(key) || 0);
+        if (n >= 5) return false;
+        localStorage.setItem(key, String(n + 1));
+        return true;
+      } catch { return true; }
+    }
+    function buildListingUrlById(id) {
+      return window.location.origin + '/listing.html?id=' + encodeURIComponent(id);
+    }
+    function openEmail(address, url) {
+      const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
+      const body = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    }
+    function openText(address, url) {
+      const msg = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
+      window.location.href = `sms:&body=${msg}`;
+    }
+
     function commissionDollars(price, val, type){
       const p=Number(price||0), c=Number(val||0);
       if(!c) return null;
@@ -679,7 +704,7 @@
             </svg>
           </button>
         </div>
-        <div class="p-3 space-y-1">
+        <div class="p-3 space-y-2">
           <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
             <div class="truncate">${line1Left}</div>
             <div class="truncate text-red-600">Commission ${line1Mid} | ${line1Right}</div>
@@ -691,21 +716,25 @@
           <div class="text-[12px] text-gray-600">
             ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}
           </div>
-          <!-- NEW: Stats line -->
           <div class="text-[12px] text-gray-500 text-center" data-stats>
             Viewed ${Number(views||0).toLocaleString()} time${Number(views||0)===1?'':'s'} | Liked ${Number(likes||0).toLocaleString()} time${Number(likes||0)===1?'':'s'}
           </div>
+          <div class="flex items-center justify-center gap-2 pt-1">
+            <button class="share-email px-2 py-1 border rounded text-xs bg-white hover:bg-gray-50">Share Email</button>
+            <button class="share-text px-2 py-1 border rounded text-xs bg-white hover:bg-gray-50">Share Text</button>
+          </div>
         </div>
       `;
-      // like button behavior with one-time server increment
+
+      // like button behavior with one-time server increment (requires helper further below)
       const heart = card.querySelector(".gc-heart");
       const statsEl = card.querySelector("[data-stats]");
       if (heart) {
         const KEY='gcFavorites';
         const favs = ()=>{ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch { return []; } };
         const setF = a=>{ try { localStorage.setItem(KEY, JSON.stringify(a||[])); } catch {} };
-        const isFav = id => favs().includes(id);
-        const tog = id => { const a=favs(); const i=a.indexOf(id); if(i>=0)a.splice(i,1); else a.push(id); setF(a); return a.includes(id); };
+        const isFav = id2 => favs().includes(id2);
+        const tog = id2 => { const a=favs(); const i=a.indexOf(id2); if(i>=0)a.splice(i,1); else a.push(id2); setF(a); return a.includes(id2); };
         const svg = a => a
           ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
           : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
@@ -732,6 +761,26 @@
               } catch {}
             }
           }
+        });
+      }
+
+      // Share buttons
+      const emailBtn = card.querySelector('.share-email');
+      const textBtn  = card.querySelector('.share-text');
+      const shareUrl = id ? (window.location.origin + '/listing.html?id=' + encodeURIComponent(id)) : (window.location.origin + '/listing.html?addr=' + encodeURIComponent(address));
+
+      if (emailBtn) {
+        emailBtn.addEventListener('click', (e)=>{
+          e.preventDefault(); e.stopPropagation();
+          if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
+          openEmail(address, shareUrl);
+        });
+      }
+      if (textBtn) {
+        textBtn.addEventListener('click', (e)=>{
+          e.preventDefault(); e.stopPropagation();
+          if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
+          openText(address, shareUrl);
         });
       }
 
@@ -822,7 +871,7 @@
             bathrooms: d.bathrooms ?? "",
             sqft: d.sqft ?? "",
             propertyType: d.propertyType || "",
-            // NEW: pass counters (default to 0)
+            // NEW: counters
             views: Number(d.views || 0),
             likes: Number(d.likes || 0)
           });
