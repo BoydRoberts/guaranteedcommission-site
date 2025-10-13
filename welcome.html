@@ -7,6 +7,15 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-900">
+
+  <!-- Sticky Back (consistent site-wide) -->
+  <button id="gcBackBtn"
+          class="fixed top-3 left-3 z-50 px-3 py-1 rounded border bg-white/90 text-sm shadow hover:bg-white"
+          aria-label="Go back"
+          title="Back">
+    ← Back
+  </button>
+
   <header class="bg-white shadow">
     <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
       <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
@@ -147,6 +156,19 @@
 
     const $ = (id)=>document.getElementById(id);
 
+    // Back button wiring (same behavior everywhere)
+    (function wireSoftBack(){
+      const btn = document.getElementById('gcBackBtn');
+      if (!btn) return;
+      const ref = document.referrer || '';
+      const sameOrigin = ref.startsWith(location.origin);
+      btn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        if (sameOrigin && window.history.length > 1) history.back();
+        else location.href = '/index.html#strip2Search';
+      });
+    })();
+
     // Who + role (use lower-case for matching)
     const emailRaw = (localStorage.getItem('loggedInEmail') || '').trim();
     const email = emailRaw.toLowerCase();
@@ -208,11 +230,9 @@
             ownerEmail: email,
             updatedAt: serverTimestamp()
           });
-          // keep local so downstream pages work
           localStorage.setItem('lastListingId', lastId);
         }
       } catch (e) {
-        // silent fail; we'll still list by queries below
         console.warn('[welcome] claim skipped:', e);
       }
     }
@@ -228,7 +248,7 @@
         const s1 = await getDocs(q1);
         s1.forEach(d => items.push({ id: d.id, ...d.data() }));
 
-        // agentEmail == login lower (in case agent logs in here)
+        // agentEmail == login lower
         const q2 = query(collection(db, "listings"), where("agentEmail", "==", email), limit(75));
         const s2 = await getDocs(q2);
         s2.forEach(d => items.push({ id: d.id, ...d.data() }));
