@@ -74,7 +74,7 @@
         </div>
 
         <div class="tile-body space-y-1">
-          <div class="flex items-center justify-between text-[16px] sm:text[18px] font-semibold">
+          <div class="flex items-center justify-between text-[16px] sm:text-[18px] font-semibold">
             <div id="tilePrice" class="truncate">$—</div>
             <div id="tileCommission" class="truncate text-red-600">Commission — | $—</div>
           </div>
@@ -91,7 +91,7 @@
         <div id="mapCanvas" style="width:100%; height:100%;"></div>
       </aside>
 
-      <!-- Right: ISC (iframe preview—auto fits content height) -->
+      <!-- Right: ISC (iframe preview—auto fits content height, but clamped to tile) -->
       <aside id="iscCard" class="lg:col-span-2 card p-0 m-0" style="height:auto;">
         <div class="isc-body">
           <div class="click-wrap">
@@ -127,14 +127,32 @@
     const $ = (id) => document.getElementById(id);
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
 
-    // Make map match tile height; let ISC auto-size to its content
+    // Clamp ISC iframe to tile height (avoid “lip”); match map to tile
     function alignHeights(){
       const tile = $("tileCard");
       const mapCard = $("mapCard");
-      if (!tile || !mapCard) return;
-      mapCard.style.height = '';
-      const h = tile.getBoundingClientRect().height;
+      const iscCard = $("iscCard");
+      const iscIframe = $("iscIframe");
+      if (!tile || !mapCard || !iscCard) return;
+
+      // Reset
+      mapCard.style.height = iscCard.style.height = '';
+      if (iscIframe) iscIframe.style.height = '';
+
+      const h = Math.max(0, tile.getBoundingClientRect().height);
+
+      // Map always matches tile
       mapCard.style.height = h + "px";
+
+      // ISC card also matches tile; iframe is clamped slightly smaller for padding
+      iscCard.style.height = h + "px";
+      const PAD_FUDGE = 24; // tile/isc inner padding guard
+      if (iscIframe) {
+        const inner = Math.max(0, h - PAD_FUDGE);
+        iscIframe.style.height = inner + "px";
+      }
+
+      iscCard.style.overflow = "hidden";
     }
 
     // Heart wiring after we know the listing id
@@ -164,7 +182,6 @@
             const { updateDoc, doc, serverTimestamp, increment } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
             await updateDoc(doc(gc.db, "listings", listingId), { likes: increment(1), updatedAt: serverTimestamp() });
             localStorage.setItem(onceKey, '1');
-            // repaint stats
             await paintStats(listingId);
           }
         } catch (err) {
@@ -257,24 +274,37 @@
         return true;
       } catch { return true; }
     }
+    // More reliable mailto
     function openEmail(address, url) {
       const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
       const body = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
-      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+      const a = document.createElement('a');
+      a.href = `mailto:?subject=${subject}&body=${body}`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { try { document.body.removeChild(a); } catch {} }, 0);
     }
     function openText(address, url) {
       const msg = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
       window.location.href = `sms:&body=${msg}`;
     }
 
-    // --- ISC auto-fit from printable-isc postMessage ---
+    // --- ISC auto-fit from printable-isc postMessage (clamped to tile height) ---
     window.addEventListener('message', (ev) => {
       try {
         const data = ev.data || {};
         if (data.type === 'gc-isc-embed-size') {
           const f = $("iscIframe");
-          if (f && typeof data.height === 'number' && data.height > 0) {
-            f.style.height = data.height + 'px';
+          const tile = $("tileCard");
+          if (f && tile) {
+            const tileH = Math.max(0, tile.getBoundingClientRect().height);
+            const PAD_FUDGE = 24;
+            const desired = Math.max(0, Number(data.height || 0));
+            const clamped = Math.max(0, Math.min(desired, tileH - PAD_FUDGE));
+            f.style.height = clamped + 'px';
+            // keep map in sync with tile
+            alignHeights();
           }
         }
       } catch {}
@@ -318,7 +348,7 @@
           } catch {}
         }
 
-        // If still no doc, stop (friendly message already in page earlier—deleted now to avoid flashing)
+        // If still no doc, paint shell and stop
         if (!d) {
           document.getElementById("topRow")?.classList.remove("hidden");
           $("tileStats").textContent = "Viewed — | Liked —";
@@ -426,13 +456,13 @@
           });
         }
 
-        // Resize map after paint
+        // Final height sync
         setTimeout(alignHeights, 80);
         window.addEventListener('resize', alignHeights);
 
       } catch (e) {
         console.warn(e);
-        // Minimal friendly banner (kept silent to avoid blocking; the tile still paints if local fallback exists)
+        // Minimal friendly banner
         document.body.insertAdjacentHTML("afterbegin",
           `<div class="max-w-7xl mx-auto px-4">
             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-900">
