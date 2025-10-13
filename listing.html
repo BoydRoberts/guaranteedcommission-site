@@ -44,7 +44,8 @@
   <!-- Top bar -->
   <header class="bg-white border-b">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-      <a href="/index.html#strip2Search" class="text-sm text-blue-600 hover:underline">&larr; Back to Search</a>
+      <!-- CHANGED: real Back button with safe fallback -->
+      <button id="backBtnHdr" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
       <h1 class="text-lg font-semibold">GuaranteedCommission.com</h1>
       <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
     </div>
@@ -362,7 +363,7 @@
         // Normalize and paint main tile
         const address = String(d.address || "").trim();
         const plan = String(d.plan || "Listed Property Basic");
-        const status = String(d.status || "Active");
+               const status = String(d.status || "Active");
         const price = asNumOrEmpty(d.price);
         const cRaw  = dflt(d.commission, "");
         const cType = (d.commissionType === "%" || d.commissionType === "$") ? d.commissionType : "%";
@@ -470,6 +471,27 @@
             </div>
           </div>`);
       }
+    })();
+  </script>
+
+  <!-- NEW: Tiny back-button wiring (safe fallback to Strip-2) -->
+  <script>
+    (function(){
+      const btn = document.getElementById('backBtnHdr');
+      if (!btn) return;
+      btn.addEventListener('click', function(){
+        try {
+          const hasHistory = (history.length > 1);
+          const ref = document.referrer || "";
+          if (hasHistory && ref && ref !== location.href) {
+            history.back();
+          } else {
+            location.href = "/index.html#strip2Search";
+          }
+        } catch (_) {
+          location.href = "/index.html#strip2Search";
+        }
+      });
     })();
   </script>
 </body>
