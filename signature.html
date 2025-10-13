@@ -8,7 +8,12 @@
   <style>.font-cursive{font-family:'Brush Script MT',cursive}</style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-  <div class="max-w-3xl mx-auto mt-10 bg-white p-6 rounded shadow">
+  <!-- Back row (sitewide pattern) -->
+  <div class="max-w-3xl mx-auto mt-4 px-4">
+    <button id="backBtn" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
+  </div>
+
+  <div class="max-w-3xl mx-auto mt-4 bg-white p-6 rounded shadow">
     <h1 class="text-2xl font-bold text-center mb-6">Irrevocable Seller Communication</h1>
 
     <!-- Friendly invalid message -->
@@ -16,7 +21,7 @@
       <p class="font-semibold">Listing not available</p>
       <p class="text-sm mt-1">This page requires a valid listing (id not found).</p>
       <div class="mt-3">
-        <a href="/index.html" class="inline-block px-4 py-2 rounded bg-blue-600 text-white">Go back to Home</a>
+        <a href="/index.html#strip2Search" class="inline-block px-4 py-2 rounded bg-blue-600 text-white">Go back to Home</a>
       </div>
     </div>
 
@@ -66,6 +71,24 @@
 
     const $ = (id)=>document.getElementById(id);
     const todayISO = () => new Date().toISOString().slice(0,10);
+
+    // ----- Back behavior (sitewide) -----
+    (function wireBack(){
+      function goBack() {
+        try {
+          const ref = document.referrer || '';
+          const sameOrigin = ref.startsWith(location.origin);
+          if (sameOrigin && ref !== location.href && history.length > 1) {
+            history.back();
+          } else {
+            location.href = '/index.html#strip2Search';
+          }
+        } catch (_) {
+          location.href = '/index.html#strip2Search';
+        }
+      }
+      document.getElementById('backBtn')?.addEventListener('click', goBack);
+    })();
 
     // Resolve listing id: prefer ?id=, else localStorage.lastListingId
     const params = new URLSearchParams(location.search);
@@ -194,10 +217,9 @@ Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, y
         try {
           const updates = {
             signedISC: { name: typed, date: todayISO(), ts: serverTimestamp() },
-            status: "Active",                 // === ADDED: activate on sign ===
+            status: "Active",
             updatedAt: serverTimestamp()
           };
-          // For listed flows, tie the listing to the seller email so Welcome can find it
           if (!isFSBO && loggedIn) {
             updates.ownerEmail = loggedIn;
           }
