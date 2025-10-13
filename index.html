@@ -350,8 +350,7 @@
           if (history.length > 1 && ref && ref !== location.href) {
             history.back();
           } else {
-            // We're already “home”; no-op fallback keeps user here
-            // (or navigate to a known safe page if you prefer)
+            // no-op fallback (already home)
           }
         } catch (_) { /* no-op */ }
       });
@@ -407,23 +406,30 @@
       }
     }
 
-    // Fit Strip 1 (boxes equal height, compact tiers)
+    /* === NEW: Fit Strip 1 using the tallest box, keep in sync as content changes === */
     function fitStrip1(){
       const b1 = document.getElementById('box1');
       const b2 = document.getElementById('formBlock');
       const b3 = document.getElementById('box3');
       if (!b1 || !b2 || !b3) return;
 
-      [b1, b2, b3].forEach(b => b.style.height='auto');
-      b2.classList.remove('compact','compact2','compact3');
-      b3.classList.remove('compact','compact2','compact3');
+      // Reset to measure natural sizes
+      [b1, b2, b3].forEach(b => {
+        b.style.height = 'auto';
+        b.classList.remove('compact','compact2','compact3');
+      });
 
-      const baseline = b1.getBoundingClientRect().height || b1.clientHeight;
-      [b1, b2, b3].forEach(b => b.style.height = baseline + 'px');
+      const h1 = Math.max(b1.scrollHeight, b1.getBoundingClientRect().height);
+      const h2 = Math.max(b2.scrollHeight, b2.getBoundingClientRect().height);
+      const h3 = Math.max(b3.scrollHeight, b3.getBoundingClientRect().height);
+      let target = Math.max(h1, h2, h3);
 
+      [b1, b2, b3].forEach(b => b.style.height = target + 'px');
+
+      // If any still overflows, compact that box progressively
       function ensureFits(el){
         const tiers = ['compact','compact2','compact3'];
-        for (let i=0;i<tiers.length;i++){
+        for (let i=0; i<tiers.length; i++){
           if (el.scrollHeight <= el.clientHeight + 1) return;
           el.classList.add(tiers[i]);
         }
@@ -431,11 +437,23 @@
       ensureFits(b2);
       ensureFits(b3);
 
-      setTimeout(()=>{
-        ensureFits(b2);
-        ensureFits(b3);
-      },0);
+      // Re-equalize in case compaction changed layout
+      const t2 = Math.max(
+        b1.scrollHeight, b1.getBoundingClientRect().height,
+        b2.scrollHeight, b2.getBoundingClientRect().height,
+        b3.scrollHeight, b3.getBoundingClientRect().height
+      );
+      [b1, b2, b3].forEach(b => b.style.height = t2 + 'px');
     }
+
+    // Observe content changes in the three boxes and refit
+    (function observeStrip1(){
+      const ids = ['box1','formBlock','box3'];
+      const els = ids.map(id => document.getElementById(id)).filter(Boolean);
+      if (!els.length) return;
+      const mo = new MutationObserver(() => fitStrip1());
+      els.forEach(el => mo.observe(el, { childList:true, subtree:true, characterData:true }));
+    })();
 
     /* On load */
     window.addEventListener('DOMContentLoaded', () => {
@@ -616,7 +634,7 @@
             }
           }
 
-          // Create new doc
+          // Create new doc  (fixed: plan.includes)
           const payload = {
             address: formData.address,
             shortAddress: (formData.address.split(",")[0] || "").trim(),
@@ -627,10 +645,10 @@
             commissionType: formData.commissionType || "%",
             ownerName: formData.name || "",
             ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",
-            agentName: plan.includes('FSBO') ? "" : (formData.agent || ""),
-            agentPhone: plan includes('FSBO') ? "" : (formData.phone || ""),
+            agentName:  plan.includes('FSBO') ? "" : (formData.agent || ""),
+            agentPhone: plan.includes('FSBO') ? "" : (formData.phone || ""),
             agentEmail: plan.includes('FSBO') ? "" : (formData.agentEmail || ""),
-            brokerage: plan.includes('FSBO') ? "" : (formData.brokerage || ""),
+            brokerage:  plan.includes('FSBO') ? "" : (formData.brokerage || ""),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             source: "index.box2"
@@ -910,8 +928,15 @@
         });
 
         // Paint tiles strictly from Firestore
-        const lastQ = localStorage.getItem('lastSearch') || '';
+        const lastQ = (localStorage.getItem('lastSearch') || '').trim();
         renderStrip2TilesFrom(items, lastQ);
+
+        // Fallback: if filter hid everything, show all and clear the stale filter
+        if (grid && grid.children.length === 0) {
+          try { localStorage.removeItem('lastSearch'); } catch {}
+          renderStrip2TilesFrom(items, '');
+          if (empty) empty.classList.add('hidden');
+        }
       } catch (e) {
         console.warn("[index] Firestore tiles load failed:", e);
         document.getElementById('tilesEmpty')?.classList.remove('hidden');
