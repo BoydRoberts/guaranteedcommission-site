@@ -647,7 +647,13 @@
     function openEmail(address, url) {
       const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
       const body = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
-      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+      // more reliable mailto
+      const a = document.createElement('a');
+      a.href = `mailto:?subject=${subject}&body=${body}`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ try { document.body.removeChild(a); } catch {} }, 0);
     }
     function openText(address, url) {
       const msg = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
@@ -729,7 +735,6 @@
           </div>
         </div>
       `;
-
       // like button behavior with one-time server increment (requires helper further below)
       const heart = card.querySelector(".gc-heart");
       const statsEl = card.querySelector("[data-stats]");
@@ -776,14 +781,14 @@
       if (emailBtn) {
         emailBtn.addEventListener('click', (e)=>{
           e.preventDefault(); e.stopPropagation();
-          if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
+          if (!shareLimitOk()) return;
           openEmail(address, shareUrl);
         });
       }
       if (textBtn) {
         textBtn.addEventListener('click', (e)=>{
           e.preventDefault(); e.stopPropagation();
-          if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
+          if (!shareLimitOk()) return;
           openText(address, shareUrl);
         });
       }
