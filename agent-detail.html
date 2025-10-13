@@ -20,7 +20,11 @@
   <!-- Header -->
   <div class="max-w-6xl mx-auto mt-8 px-3">
     <div class="flex items-start justify-between">
-      <h1 class="text-2xl font-bold">Listing Detail Intake (Agent)</h1>
+      <div class="flex items-center gap-3">
+        <!-- NEW Back button -->
+        <button id="backBtnHdr" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
+        <h1 class="text-2xl font-bold">Listing Detail Intake (Agent)</h1>
+      </div>
       <div class="flex items-center gap-2">
         <a href="/welcome.html" class="text-sm text-blue-600 hover:underline">Back to Welcome</a>
         <a id="previewLink" href="/listing.html" target="_blank" class="text-sm text-blue-600 hover:underline">Preview Full Listing</a>
@@ -235,6 +239,26 @@
 
   <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
+
+  <!-- Wire Back button -->
+  <script>
+    (function(){
+      const btn = document.getElementById('backBtnHdr');
+      if (!btn) return;
+      btn.addEventListener('click', function(){
+        try {
+          const ref = document.referrer || "";
+          if (history.length > 1 && ref && ref !== location.href) {
+            history.back();
+          } else {
+            window.location.href = "/welcome.html";
+          }
+        } catch (_) {
+          window.location.href = "/welcome.html";
+        }
+      });
+    })();
+  </script>
 
   <!-- Firestore + Storage logic -->
   <script type="module">
