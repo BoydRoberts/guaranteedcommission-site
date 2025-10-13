@@ -17,7 +17,14 @@
 
   <header class="bg-white shadow">
     <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
+      <div class="flex items-center gap-2">
+        <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
+        <button
+          class="text-sm px-2 py-1 rounded border hover:bg-gray-50"
+          onclick="document.referrer ? history.back() : (window.location.href='/welcome.html')">
+          Back
+        </button>
+      </div>
       <h1 class="text-lg font-semibold">Listing Detail Intake (Seller)</h1>
       <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
     </div>
@@ -507,7 +514,7 @@
         yearBuilt: $("yearBuilt").value || "",
         lotSize: $("lotSize").value || "",
         propertyType: $("propertyType").value || "",
-        description: $("description").disabled ? $("description").value /* still persisted */ : ($("description").value || ""),
+        description: $("description").disabled ? $("description").value : ($("description").value || ""),
         bannerText: $("bannerText").value || "",
         preferredArea: $("preferredArea").value || "",
         pinArea: $("pinArea").value || "",
@@ -542,7 +549,7 @@
       await refreshFromServer();
     })();
 
-    // Upgrades UI wiring stays as-is (already in your original file)
+    // Upgrades UI wiring (unchanged in behavior)
     (function wireUpgrades(){
       const checkoutData = getJSON("checkoutData", null) || {};
       function row(label, price, key) {
