@@ -647,7 +647,9 @@
         agentPhone="",
         plan="Listed Property Basic",
         bedrooms, bathrooms, sqft,
-        propertyType
+        propertyType,
+        views=0,
+        likes=0
       } = data || {};
 
       const calc = commissionDollars(price, commission, commissionType);
@@ -689,10 +691,15 @@
           <div class="text-[12px] text-gray-600">
             ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}
           </div>
+          <!-- NEW: Stats line -->
+          <div class="text-[12px] text-gray-500 text-center" data-stats>
+            Viewed ${Number(views||0).toLocaleString()} time${Number(views||0)===1?'':'s'} | Liked ${Number(likes||0).toLocaleString()} time${Number(likes||0)===1?'':'s'}
+          </div>
         </div>
       `;
-      // like button behavior
+      // like button behavior with one-time server increment
       const heart = card.querySelector(".gc-heart");
+      const statsEl = card.querySelector("[data-stats]");
       if (heart) {
         const KEY='gcFavorites';
         const favs = ()=>{ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch { return []; } };
@@ -703,8 +710,29 @@
           ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
           : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
         const favId = `fav:${id || address}`;
-        heart.innerHTML = isFav(favId) ? svg(true) : svg(false);
-        heart.addEventListener("click", (e)=>{ e.preventDefault(); e.stopPropagation(); heart.innerHTML = svg(tog(favId)); });
+        heart.innerHTML = svg(isFav(favId));
+        heart.addEventListener("click", async (e)=>{
+          e.preventDefault(); e.stopPropagation();
+          const nowLiked = tog(favId);
+          heart.innerHTML = svg(nowLiked);
+
+          // First-like on this device? bump likes in Firestore and UI
+          if (id && nowLiked) {
+            const onceKey = 'likedOnce:' + id;
+            if (!localStorage.getItem(onceKey) && window.gcIncLike) {
+              try {
+                await window.gcIncLike(id);
+                localStorage.setItem(onceKey,'1');
+                // bump UI likes by 1
+                const currentLikes = Number(likes||0) + 1;
+                const v = Number(views||0);
+                if (statsEl) {
+                  statsEl.textContent = `Viewed ${v.toLocaleString()} time${v===1?'':'s'} | Liked ${currentLikes.toLocaleString()} time${currentLikes===1?'':'s'}`;
+                }
+              } catch {}
+            }
+          }
+        });
       }
 
       return card;
@@ -742,6 +770,17 @@
   <!-- Firebase init include -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
+  <!-- Helper (module): expose a global like-incrementer for non-module code -->
+  <script type="module">
+    import { doc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    // Safe global shim — used by the non-module heart handler above
+    window.gcIncLike = async (listingId) => {
+      const db = (window.gc && window.gc.db);
+      if (!db || !listingId) return;
+      await updateDoc(doc(db, "listings", listingId), { likes: increment(1), updatedAt: serverTimestamp() });
+    };
+  </script>
+
   <!-- Firestore tiles repaint (no demo, newest first) — Firestore ONLY -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
@@ -755,18 +794,18 @@
 
         const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(100)));
         const items = [];
-        snap.forEach(doc => {
-          const d = doc.data() || {};
+        snap.forEach(docu => {
+          const d = docu.data() || {};
           // Hide archived
           if (d.archived === true) return;
 
-          // === CHANGE: hide drafts (require signed OR status:Active)
+          // hide drafts (require signed OR status:Active)
           const signed = !!(d.signedISC && typeof d.signedISC === 'object' && d.signedISC.date);
           const isActive = String(d.status || '').toLowerCase() === 'active';
           if (!signed && !isActive) return;
 
           items.push({
-            id: doc.id,
+            id: docu.id,
             address: d.address || "",
             price: d.price ?? "",
             commission: d.commission ?? "",
@@ -782,7 +821,10 @@
             bedrooms: d.bedrooms ?? "",
             bathrooms: d.bathrooms ?? "",
             sqft: d.sqft ?? "",
-            propertyType: d.propertyType || ""
+            propertyType: d.propertyType || "",
+            // NEW: pass counters (default to 0)
+            views: Number(d.views || 0),
+            likes: Number(d.likes || 0)
           });
         });
 
