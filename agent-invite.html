@@ -16,6 +16,11 @@
         <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">agent-invite build 2025-10-01</span>
       </div>
 
+      <!-- Back (consistent site-wide) -->
+      <div class="mb-2">
+        <button id="backBtn" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
+      </div>
+
       <h1 class="text-2xl font-bold text-center">Who Will Complete the Listing?</h1>
       <p id="addrLine" class="text-sm text-gray-600 text-center mt-1"></p>
 
@@ -84,6 +89,22 @@
     const $ = (id) => document.getElementById(id);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+    // --- Back wiring (consistent) ---
+    (function wireBack(){
+      function goBack() {
+        try {
+          if (document.referrer && document.referrer !== location.href && history.length > 1) {
+            history.back();
+          } else {
+            location.href = '/index.html';
+          }
+        } catch (_) {
+          location.href = '/index.html';
+        }
+      }
+      $('backBtn')?.addEventListener('click', goBack);
+    })();
 
     // Read plan + form data
     const plan = (localStorage.getItem('selectedPlan') || '').trim();
