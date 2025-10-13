@@ -99,7 +99,7 @@
   <!-- Firebase (module) for Firestore reads when id= is provided -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { doc, getDoc, updateDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id)=>document.getElementById(id);
     const getJSON = (k, fb)=>{ try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -126,7 +126,7 @@
       return String(commission) + "%";
     }
 
-    function buildFromData(d) {
+    function buildFromData(d, id) {
       const plan = String(d.plan || "");
       const isFSBO = plan.includes("FSBO");
 
@@ -154,7 +154,7 @@
         p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       }
 
-      // Signature block data
+      // Signature block data (no creeping date)
       const signed = (d.signedISC && typeof d.signedISC === "object") ? d.signedISC : getJSON("signedISC", {});
       const sigName = (signed.name || name || "[Name]");
       const sigDate = (signed.date || "[date]");
@@ -173,13 +173,15 @@
       // Counter below the signature row (embedded only), text “Viewed N times” (no period)
       const below = $("sigCounterBelow");
       if (embedded) {
-        const key = "iscViews:" + (d.__id || fullAddr.toLowerCase());
-        let n = Number(localStorage.getItem(key) || 0);
-        n += 1;
-        localStorage.setItem(key, String(n));
+        // Show Firestore counter (iscViews) without increment
+        const n = Number(d.iscViews || 0);
         if (below) below.textContent = `Viewed ${n} time${n===1 ? "" : "s"}`;
       } else {
         if (below) below.style.display = "none";
+        // Increment iscViews once per standalone open (if we have an id)
+        if (id) {
+          updateDoc(doc(db, "listings", id), { iscViews: increment(1), updatedAt: serverTimestamp() }).catch(()=>{});
+        }
       }
     }
 
@@ -202,22 +204,21 @@
 
       try {
         const u = new URL(location.href);
-        const id   = (u.searchParams.get("id") || "").trim();
+        let id   = (u.searchParams.get("id") || "").trim();
 
         if (id && db) {
           try {
             const snap = await getDoc(doc(db, "listings", id));
             if (snap.exists()) {
               const data = snap.data() || {};
-              data.__id = id; // annotate for counter keying
-              buildFromData(data);
+              buildFromData(data, id);
               loaded = true;
             }
           } catch {}
         }
 
         if (!loaded) {
-          // Fallback to local preview (useful without id)
+          // Fallback to local preview (useful without id). No server iscViews here.
           const fd = getJSON("formData", {});
           const plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
           const d = {
@@ -231,9 +232,10 @@
             agentEmail: fd.agentEmail,
             brokerage: fd.brokerage,
             commission: fd.commission,
-            commissionType: fd.commissionType
+            commissionType: fd.commissionType,
+            iscViews: 0
           };
-          buildFromData(d);
+          buildFromData(d, "");
         }
       } catch {}
 
