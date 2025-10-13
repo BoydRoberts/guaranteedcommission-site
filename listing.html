@@ -18,15 +18,20 @@
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
     .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
+    /* Share buttons over the photo */
+    .share-btn { position:absolute; bottom:12px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+    .share-left { left:12px; }
+    .share-right{ right:12px; }
+
     .mapboxgl-canvas { display:block !important; }
 
-    /* Card shells: even padding on all sides, no extra bottom gap in content */
+    /* Card shells */
     .card { background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); overflow:hidden; }
     .tile-body, .isc-body { padding:1rem; }
     .tile-body > *:last-child,
     .isc-body > *:last-child { margin-bottom:0 !important; }
 
-    /* ISC: borderless like map, but with the same padding as tile; no inner scrollbars */
+    /* ISC embed */
     .click-wrap { position: relative; width:100%; height:100%; }
     .click-wrap a.overlay { position:absolute; inset:0; z-index:10; text-indent:-9999px; }
     .isc-iframe { width:100%; border:0; margin:0; display:block; background:transparent; }
@@ -55,35 +60,29 @@
         <div class="relative">
           <img id="tilePhoto" class="tile-photo" alt="Listing photo"/>
           <div id="tileBanner" class="tile-banner hidden"></div>
+
+          <!-- Heart (like) -->
           <button id="tileHeart" type="button" class="heart-btn" aria-label="Like">
-            <!-- Heart icon kept (like button) -->
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2" aria-hidden="true">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
           </button>
+
+          <!-- Share buttons over the photo (bottom left / right) -->
+          <button id="shareEmailBtn" class="share-btn share-left">Share Email</button>
+          <button id="shareTextBtn"  class="share-btn share-right">Share Text</button>
         </div>
-        <div class="tile-body space-y-2">
-          <div class="flex items-center justify-between text-[16px] sm:text-[18px] font-semibold">
+
+        <div class="tile-body space-y-1">
+          <div class="flex items-center justify-between text-[16px] sm:text[18px] font-semibold">
             <div id="tilePrice" class="truncate">$—</div>
             <div id="tileCommission" class="truncate text-red-600">Commission — | $—</div>
           </div>
           <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
           <div id="tileAddress" class="text-sm font-medium">[full address]</div>
           <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] — [listing agent] — [agent phone]</div>
-
           <!-- Centered “Viewed N times | Liked M times” -->
           <div id="tileStats" class="text-[12px] text-gray-500 text-center">Viewed — | Liked —</div>
-
-          <!-- Share row -->
-          <div class="flex items-center justify-center gap-3 pt-1">
-            <button id="shareEmailBtn" class="px-3 py-1 border rounded text-sm bg-white hover:bg-gray-50">
-              Share by Email
-            </button>
-            <button id="shareTextBtn" class="px-3 py-1 border rounded text-sm bg-white hover:bg-gray-50">
-              Share by Text
-            </button>
-          </div>
-          <p id="shareNote" class="text-[11px] text-center text-gray-400">First 5 shares are free. Then we’ll ask you to log in.</p>
         </div>
       </article>
 
@@ -92,7 +91,7 @@
         <div id="mapCanvas" style="width:100%; height:100%;"></div>
       </aside>
 
-      <!-- Right: ISC (iframe preview, no extra borders, same padding as tile) -->
+      <!-- Right: ISC (iframe preview—auto fits content height) -->
       <aside id="iscCard" class="lg:col-span-2 card p-0 m-0" style="height:auto;">
         <div class="isc-body">
           <div class="click-wrap">
@@ -128,20 +127,17 @@
     const $ = (id) => document.getElementById(id);
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
 
+    // Make map match tile height; let ISC auto-size to its content
     function alignHeights(){
       const tile = $("tileCard");
       const mapCard = $("mapCard");
-      const iscCard = $("iscCard");
-      if (!tile || !mapCard || !iscCard) return;
-      mapCard.style.height = iscCard.style.height = '';
+      if (!tile || !mapCard) return;
+      mapCard.style.height = '';
       const h = tile.getBoundingClientRect().height;
       mapCard.style.height = h + "px";
-      iscCard.style.height = h + "px";
-      const iscIframe = $("iscIframe");
-      if (iscIframe) iscIframe.style.height = (h - 16 - 16) + "px";
     }
 
-    // We'll wire the heart after we know the listing id
+    // Heart wiring after we know the listing id
     function setupHeart(listingId, favKeyId) {
       const KEY='gcFavorites';
       const favs = ()=>{ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch { return []; } };
@@ -177,38 +173,37 @@
       };
     }
 
-    // Share helpers
-    function shareLimitOk() {
+    // Map
+    async function bootMapFor(fullAddress){
       try {
-        const day = new Date().toISOString().slice(0,10);
-        const key = 'shareCount:' + day;
-        const n = Number(localStorage.getItem(key) || 0);
-        if (n >= 5) return false;
-        localStorage.setItem(key, String(n + 1));
-        return true;
-      } catch { return true; }
+        const c = await geocode(fullAddress);
+        const m = new mapboxgl.Map({
+          container:'mapCanvas',
+          style:'mapbox://styles/mapbox/streets-v12',
+          center: c || [-117.7854,33.5427],
+          zoom: c ? 14 : 12
+        });
+        m.addControl(new mapboxgl.NavigationControl());
+        if (c) new mapboxgl.Marker().setLngLat(c).addTo(m);
+        requestAnimationFrame(()=>{ m.resize(); alignHeights(); });
+        setTimeout(()=>{ m.resize(); alignHeights(); }, 250);
+        window.addEventListener('resize', alignHeights);
+      } catch {
+        $("mapCanvas").innerHTML = '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
+      }
     }
-    function buildListingUrl(id, addr) {
-      const base = window.location.origin + '/listing.html';
-      return id ? `${base}?id=${encodeURIComponent(id)}` : (addr ? `${base}?addr=${encodeURIComponent(addr)}` : base);
-    }
-    function buildShareText(address, url) {
-      const line1 = address ? `${address} — commission posted with photos.` : `Commission posted with photos.`;
-      return `${line1}\n\n${url}`;
-    }
-    function openEmail(address, url) {
-      const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
-      const body = encodeURIComponent(buildShareText(address, url));
-      window.location.href = `mailto:?subject=${subject}&body=${body}`;
-    }
-    function openText(url, address) {
-      const msg = encodeURIComponent(buildShareText(address, url));
-      // sms: works on phones; harmless elsewhere
-      window.location.href = `sms:&body=${msg}`;
+    async function geocode(q) {
+      if (!MAPBOX_TOKEN || !q) return null;
+      try {
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const data = await resp.json();
+        const f = data?.features?.[0];
+        return f ? f.center : null; // [lng, lat]
+      } catch { return null; }
     }
   </script>
 
-  <!-- Loader + View/Like/Share -->
+  <!-- Loader + counters + share -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import {
@@ -224,6 +219,7 @@
       return "";
     }
 
+    // --- view/like counters ---
     async function incrementViewsOnce(id) {
       try {
         const key = 'viewedOnce:' + id;
@@ -250,6 +246,40 @@
       }
     }
 
+    // --- share helpers (silent soft limit: 5/device/day) ---
+    function shareLimitOk() {
+      try {
+        const day = new Date().toISOString().slice(0,10);
+        const key = 'shareCount:' + day;
+        const n = Number(localStorage.getItem(key) || 0);
+        if (n >= 5) { alert("Please log in to continue sharing."); return false; }
+        localStorage.setItem(key, String(n + 1));
+        return true;
+      } catch { return true; }
+    }
+    function openEmail(address, url) {
+      const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
+      const body = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    }
+    function openText(address, url) {
+      const msg = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
+      window.location.href = `sms:&body=${msg}`;
+    }
+
+    // --- ISC auto-fit from printable-isc postMessage ---
+    window.addEventListener('message', (ev) => {
+      try {
+        const data = ev.data || {};
+        if (data.type === 'gc-isc-embed-size') {
+          const f = $("iscIframe");
+          if (f && typeof data.height === 'number' && data.height > 0) {
+            f.style.height = data.height + 'px';
+          }
+        }
+      } catch {}
+    });
+
     (async function boot(){
       try {
         const url = new URL(window.location.href);
@@ -259,6 +289,7 @@
         if (!idParam)  idParam  = (localStorage.getItem('lastListingId') || '').trim();
         if (!addrParam) addrParam = (localStorage.getItem('lastListingAddress') || '').trim();
 
+        // Wire ISC (embed=1 so it posts its height)
         const openA = $("iscOpenLink");
         const iscIframe = $("iscIframe");
         const base = "/printable-isc.html?embed=1";
@@ -283,54 +314,20 @@
         if (!d && addrParam && db) {
           try {
             const snap = await getDocs(query(collection(db,"listings"), where("address","==", addrParam), limit(1)));
-            if (!snap.empty) {
-              idParam = snap.docs[0].id; // capture id for counters + likes + share
-              d = snap.docs[0].data();
-            }
+            if (!snap.empty) { idParam = snap.docs[0].id; d = snap.docs[0].data(); }
           } catch {}
         }
 
-        // else local preview
+        // If still no doc, stop (friendly message already in page earlier—deleted now to avoid flashing)
         if (!d) {
-          const fd  = (function(){ try { return JSON.parse(localStorage.getItem('formData') || '{}'); } catch { return {}; } })();
-          const ag  = (function(){ try { return JSON.parse(localStorage.getItem('agentListing') || '{}'); } catch { return {}; } })();
-          if (fd && fd.address) {
-            renderLocal(fd, ag);
-            document.getElementById("topRow")?.classList.remove("hidden");
-            $("tileStats").textContent = "Viewed — | Liked —";
-
-            // Basic share wiring in preview mode
-            const shareUrl = window.location.origin + '/listing.html';
-            const finalUrl = `${shareUrl}?addr=${encodeURIComponent(fd.address)}`;
-            $("shareEmailBtn")?.addEventListener("click", (e)=>{
-              e.preventDefault();
-              if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
-              const subject = encodeURIComponent(`Listing: ${fd.address}`);
-              const body = encodeURIComponent(`${fd.address} — commission posted with photos.\n\n${finalUrl}`);
-              window.location.href = `mailto:?subject=${subject}&body=${body}`;
-            });
-            $("shareTextBtn")?.addEventListener("click", (e)=>{
-              e.preventDefault();
-              if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
-              const msg = encodeURIComponent(`${fd.address} — commission posted with photos.\n\n${finalUrl}`);
-              window.location.href = `sms:&body=${msg}`;
-            });
-
-            return;
-          }
-          document.body.insertAdjacentHTML("afterbegin",
-            `<div class="max-w-7xl mx-auto px-4">
-              <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-900">
-                We couldn't load this listing. If you just created it, try again in a moment.
-              </div>
-            </div>`);
+          document.getElementById("topRow")?.classList.remove("hidden");
+          $("tileStats").textContent = "Viewed — | Liked —";
+          $("tileAddress").textContent = "[full address]";
           return;
         }
 
-        // Increment global views once per session, then paint
-        if (idParam) {
-          await incrementViewsOnce(idParam);
-        }
+        // Increment views once, then paint stats
+        if (idParam) await incrementViewsOnce(idParam);
 
         // Normalize and paint main tile
         const address = String(d.address || "").trim();
@@ -379,8 +376,10 @@
 
         document.getElementById("topRow")?.classList.remove("hidden");
 
+        // Map matches tile height
         if (address) bootMapFor(address);
 
+        // Description & gallery
         const desc = (d.description || "").trim();
         if (desc) {
           $("dDescription").textContent = desc;
@@ -399,40 +398,41 @@
           $("galleryCard").classList.remove("hidden");
         }
 
-        // Paint combined stats (views + likes)
-        if (idParam) {
-          await paintStats(idParam);
-        }
+        // Paint stats (views + likes)
+        if (idParam) await paintStats(idParam);
 
-        // Wire heart with like-increment-once
+        // Heart
         const favKeyId = idParam ? ('fav:'+idParam) : ('fav:'+address);
         setupHeart(idParam || address, favKeyId);
 
-        // Wire Share buttons (Email/Text) with soft daily limit
-        const shareUrl = (function(){
-          const base = window.location.origin + '/listing.html';
-          return idParam ? `${base}?id=${encodeURIComponent(idParam)}` :
-                           (address ? `${base}?addr=${encodeURIComponent(address)}` : base);
-        })();
-        $("shareEmailBtn")?.addEventListener("click", (e)=>{
-          e.preventDefault();
-          if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
-          const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
-          const body = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${shareUrl}`);
-          window.location.href = `mailto:?subject=${subject}&body=${body}`;
-        });
-        $("shareTextBtn")?.addEventListener("click", (e)=>{
-          e.preventDefault();
-          if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
-          const msg = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${shareUrl}`);
-          window.location.href = `sms:&body=${msg}`;
-        });
+        // Share buttons
+        const shareUrl = idParam
+          ? (window.location.origin + '/listing.html?id=' + encodeURIComponent(idParam))
+          : (window.location.origin + '/listing.html?addr=' + encodeURIComponent(address));
+        const emailBtn = $("shareEmailBtn");
+        const textBtn  = $("shareTextBtn");
+        if (emailBtn) {
+          emailBtn.addEventListener('click', (e)=> {
+            e.preventDefault();
+            if (!shareLimitOk()) return;
+            openEmail(address, shareUrl);
+          });
+        }
+        if (textBtn) {
+          textBtn.addEventListener('click', (e)=> {
+            e.preventDefault();
+            if (!shareLimitOk()) return;
+            openText(address, shareUrl);
+          });
+        }
 
+        // Resize map after paint
         setTimeout(alignHeights, 80);
         window.addEventListener('resize', alignHeights);
 
       } catch (e) {
         console.warn(e);
+        // Minimal friendly banner (kept silent to avoid blocking; the tile still paints if local fallback exists)
         document.body.insertAdjacentHTML("afterbegin",
           `<div class="max-w-7xl mx-auto px-4">
             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-900">
@@ -441,60 +441,6 @@
           </div>`);
       }
     })();
-
-    function renderLocal(fd, ag) {
-      const $ = (id)=>document.getElementById(id);
-      const address = fd.address || "[full address]";
-      const price = ag.price ?? "";
-      const cRaw = ag.commission ?? fd.commission ?? "";
-      const cType= ag.commissionType ?? fd.commissionType ?? "%";
-      const pType = ag.propertyType || "";
-      const bds = ag.bedrooms ?? "—";
-      const ba  = ag.bathrooms ?? "—";
-      const sqft= ag.sqft ? Number(ag.sqft).toLocaleString() : (fd.sqft || "—");
-      const status = ag.status || "Draft";
-      const brokerage = fd.brokerage || (fd.plan && fd.plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
-      const agentName = fd.agent || "[listing agent]";
-      const agentPhone = fd.agentPhone || "[agent phone]";
-
-      const photos = Array.isArray(ag.photos) ? ag.photos : [];
-      const primaryIndex = (typeof ag.primaryIndex === "number" ? ag.primaryIndex : 0);
-      const primaryPhoto = photos[primaryIndex] || "";
-
-      $("tilePhoto").src = primaryPhoto || "";
-      const cAmt = (function(p, c, t){
-        const P=Number(p||0), C=Number(c||0);
-        if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0);
-      })(price, cRaw, cType);
-      const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
-
-      $("tilePrice").textContent = money(price);
-      $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
-      $("tileFacts").textContent = `${bds} bds | ${ba} ba | ${sqft} sqft${pType ? " | "+pType : ""} | ${status}`;
-      $("tileAddress").textContent = address;
-      $("tileContact").textContent = `${(fd.plan && fd.plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
-
-      const ts = $("tileStats"); if (ts) ts.textContent = "Viewed — | Liked —";
-
-      // Preview-mode Share wiring
-      const finalUrl = window.location.origin + '/listing.html?addr=' + encodeURIComponent(address);
-      $("shareEmailBtn")?.addEventListener("click", (e)=>{
-        e.preventDefault();
-        if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
-        const subject = encodeURIComponent(`Listing: ${address}`);
-        const body = encodeURIComponent(`${address} — commission posted with photos.\n\n${finalUrl}`);
-        window.location.href = `mailto:?subject=${subject}&body=${body}`;
-      });
-      $("shareTextBtn")?.addEventListener("click", (e)=>{
-        e.preventDefault();
-        if (!shareLimitOk()) { alert("Please log in to continue sharing."); return; }
-        const msg = encodeURIComponent(`${address} — commission posted with photos.\n\n${finalUrl}`);
-        window.location.href = `sms:&body=${msg}`;
-      });
-
-      bootMapFor(address);
-      setTimeout(alignHeights, 80);
-    }
   </script>
 </body>
 </html>
