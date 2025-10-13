@@ -7,6 +7,12 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-900">
+
+  <!-- Back control (matches site pattern) -->
+  <div class="max-w-md mx-auto px-4 pt-4">
+    <button id="backBtn" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
+  </div>
+
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
@@ -61,6 +67,22 @@
 
   <script>
     console.log('[verify] build 2025-08-14d');
+
+    // ---------- Back wiring ----------
+    (function wireBack(){
+      function goBack() {
+        try {
+          if (document.referrer && document.referrer !== location.href && history.length > 1) {
+            history.back();
+          } else {
+            location.href = '/index.html';
+          }
+        } catch (_) {
+          location.href = '/index.html';
+        }
+      }
+      document.getElementById('backBtn')?.addEventListener('click', goBack);
+    })();
 
     // ---------- tiny helpers ----------
     const $ = (id) => document.getElementById(id);
