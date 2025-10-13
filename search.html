@@ -39,7 +39,8 @@
   <!-- Header -->
   <header class="bg-white shadow">
     <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
+      <!-- CHANGED: Back button with safe fallback -->
+      <button id="backBtnHdr" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
       <div class="text-center">
         <h1 class="text-xl font-bold">Search Results</h1>
         <p id="qLabel" class="text-xs text-gray-600"></p>
@@ -176,6 +177,25 @@
     const getParam = (k) => new URL(location.href).searchParams.get(k);
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+
+    // Back button wiring (safe fallback to home)
+    (function(){
+      const btn = document.getElementById('backBtnHdr');
+      if (!btn) return;
+      btn.addEventListener('click', function(){
+        try {
+          const hasHistory = (history.length > 1);
+          const ref = document.referrer || "";
+          if (hasHistory && ref && ref !== location.href) {
+            history.back();
+          } else {
+            location.href = "/index.html";
+          }
+        } catch (_) {
+          location.href = "/index.html";
+        }
+      });
+    })();
 
     // Share helpers (silent 5/day/device limit)
     function shareLimitOk() {
