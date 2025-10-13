@@ -311,6 +311,21 @@
       }
     }
 
+    /* -------- Likes helper (increment once on first device-like) -------- */
+    async function incrementLikeOnce(listingId) {
+      try {
+        const onceKey = 'likedOnce:' + listingId;
+        if (localStorage.getItem(onceKey)) return false;
+        const { updateDoc, doc, serverTimestamp, increment } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+        await updateDoc(doc(gc.db, "listings", listingId), { likes: increment(1), updatedAt: serverTimestamp() });
+        localStorage.setItem(onceKey, '1');
+        return true;
+      } catch (e) {
+        console.warn('[likes] increment failed', e);
+        return false;
+      }
+    }
+
     // Unified tile renderer (same as listing page)
     function money(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
     function commissionAmount(price, commission, type) {
@@ -318,7 +333,7 @@
       if (!c) return 0;
       return type === '$' ? Math.round(c) : (p ? Math.round(p * (c/100)) : 0);
     }
-    function wireHeart(btn, keyId) {
+    function wireHeart(btn, keyId, onFirstLike) {
       const KEY='gcFavorites';
       const favs = ()=>{ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch { return []; } };
       const setF = a=>{ try { localStorage.setItem(KEY, JSON.stringify(a||[])); } catch {} };
@@ -328,7 +343,14 @@
         ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
         : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
       btn.innerHTML = svg(isFav(keyId));
-      btn.onclick = (e)=>{ e.preventDefault(); btn.innerHTML = svg(tog(keyId)); };
+      btn.onclick = async (e)=> {
+        e.preventDefault();
+        const nowLiked = tog(keyId);
+        btn.innerHTML = svg(nowLiked);
+        if (nowLiked && typeof onFirstLike === 'function') {
+          onFirstLike(); // fire-and-forget; handler decides whether to increment in db
+        }
+      };
     }
     function renderTileDoc(doc){
       const id = doc.id;
@@ -354,6 +376,9 @@
       if (pIdx<0 || pIdx>=photos.length) pIdx = 0;
       const primaryPhoto = photos[pIdx] || "";
 
+      const views = Number(doc.views || 0);
+      const likes = Number(doc.likes || 0);
+
       const card = document.createElement("article");
       card.className = "card relative cursor-pointer";
       card.onclick = () => { window.location.href = `/listing.html?id=${encodeURIComponent(id)}`; };
@@ -376,12 +401,25 @@
           <div class="text-[12px] text-gray-600">
             ${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}
           </div>
+          <div class="text-[12px] text-gray-500 text-center tile-stats">
+            Viewed ${views.toLocaleString()} time${views===1?'':'s'} | Liked ${likes.toLocaleString()} time${likes===1?'':'s'}
+          </div>
         </div>
       `;
 
-      // Like button
+      // Like button with server increment once
       const heart = card.querySelector(".heart-btn");
-      if (heart) wireHeart(heart, `fav:${id}`);
+      const statsEl = card.querySelector(".tile-stats");
+      if (heart) {
+        wireHeart(heart, `fav:${id}`, async () => {
+          const didInc = await incrementLikeOnce(id);
+          if (didInc && statsEl) {
+            // naive repaint: bump likes by 1 in UI
+            const newLikes = likes + 1;
+            statsEl.textContent = `Viewed ${views.toLocaleString()} time${views===1?'':'s'} | Liked ${newLikes.toLocaleString()} time${newLikes===1?'':'s'}`;
+          }
+        });
+      }
 
       return card;
     }
@@ -408,7 +446,7 @@
         const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
         snap.forEach(d => {
           const data = d.data() || {};
-          // === CHANGE: hide drafts (require signed OR status:Active)
+          // hide drafts unless signed or active
           const signed = !!(data.signedISC && typeof data.signedISC === 'object' && data.signedISC.date);
           const isActive = String(data.status || '').toLowerCase() === 'active';
           if (!signed && !isActive) return;
