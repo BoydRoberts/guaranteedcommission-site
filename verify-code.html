@@ -16,7 +16,7 @@
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">verify build 2025-08-14d</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">verify build 2025-10-10a</span>
       </div>
 
       <h1 class="text-2xl font-bold text-center">Enter Verification Code</h1>
@@ -66,7 +66,7 @@
   </div>
 
   <script>
-    console.log('[verify] build 2025-08-14d');
+    console.log('[verify] build 2025-10-10a');
 
     // ---------- Back wiring ----------
     (function wireBack(){
@@ -84,11 +84,12 @@
       document.getElementById('backBtn')?.addEventListener('click', goBack);
     })();
 
-    // ---------- tiny helpers ----------
+    // ---------- helpers ----------
     const $ = (id) => document.getElementById(id);
     const statusBox = $('status');
     const safeGet = (k, fb='') => { try { const v = localStorage.getItem(k); return v ?? fb; } catch { return fb; } };
     const safeSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+    const safeDel = (k) => { try { localStorage.removeItem(k); } catch {} };
 
     function setStatus(msg, ok=false) {
       statusBox.classList.remove('hidden');
@@ -97,11 +98,9 @@
         ? 'mb-4 text-sm rounded-lg p-3 mt-4 bg-green-50 text-green-700'
         : 'mb-4 text-sm rounded-lg p-3 mt-4 bg-red-50 text-red-700';
     }
-
     function generateCode() {
       return Math.floor(100000 + Math.random() * 900000).toString();
     }
-
     function maskEmail(e) {
       if (!e || !e.includes('@')) return e || '';
       const [u, d] = e.split('@');
@@ -122,31 +121,36 @@
     })();
 
     // ---------- bootstrap target + code ----------
-    let target = safeGet('verifyTarget') || safeGet('loggedInEmail') || '';
-    let code   = safeGet('verificationCode');
+    let target = (safeGet('verifyTarget') || safeGet('loggedInEmail') || '').trim();
+    // Lock the expected code ONCE at load; do not re-read automatically to avoid first-try mismatches
+    let expectedCode = (safeGet('verificationCode') || '').trim();
 
-    // If nothing present (e.g., hard refresh), create and persist a new code so page always works
-    if (!code || code.length !== 6) {
-      code = generateCode();
-      safeSet('verificationCode', code);
+    // If missing (hard refresh), generate and persist
+    if (!/^\d{6}$/.test(expectedCode)) {
+      expectedCode = generateCode();
+      safeSet('verificationCode', expectedCode);
     }
 
     // Paint who-line and badge
     $('who').textContent = target
       ? `We sent a 6-digit code to ${maskEmail(target)}.`
       : `We sent a 6-digit code.`;
-    $('codeBadge').textContent = code;
+    $('codeBadge').textContent = expectedCode;
 
     // ---------- input behavior ----------
     const codeInput = $('code');
+
+    // Debounce to prevent double-submit races
+    let submitting = false;
 
     // Sanitize: keep only digits; auto-submit on 6
     codeInput.addEventListener('input', (e) => {
       const digits = (e.target.value || '').replace(/\D/g, '').slice(0, 6);
       if (e.target.value !== digits) e.target.value = digits;
       e.target.setCustomValidity('');
-      if (digits.length === 6) {
-        setTimeout(() => $('verifyForm').requestSubmit(), 10);
+      if (digits.length === 6 && !submitting) {
+        // Small timeout ensures the field visually shows 6 chars before submit
+        setTimeout(() => $('verifyForm').requestSubmit(), 25);
       }
     });
 
@@ -154,16 +158,16 @@
     codeInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        $('verifyForm').requestSubmit();
+        if (!submitting) $('verifyForm').requestSubmit();
       }
     });
 
     // ---------- buttons ----------
     $('resend').addEventListener('click', (e) => {
       e.preventDefault();
-      code = generateCode();
-      safeSet('verificationCode', code);
-      $('codeBadge').textContent = code;
+      expectedCode = generateCode();           // update the locked expected code
+      safeSet('verificationCode', expectedCode);
+      $('codeBadge').textContent = expectedCode;
       setStatus('A new code has been generated.', true);
       codeInput.value = '';
       codeInput.focus();
@@ -172,7 +176,7 @@
     $('copy').addEventListener('click', async (e) => {
       e.preventDefault();
       try {
-        await navigator.clipboard.writeText(code);
+        await navigator.clipboard.writeText(expectedCode);
         setStatus('Code copied to clipboard.', true);
       } catch {
         setStatus('Could not copy. Please type it in.', false);
@@ -182,26 +186,27 @@
     // Fill & verify (one-click for testing)
     $('fill').addEventListener('click', (e) => {
       e.preventDefault();
-      codeInput.value = code;
-      $('verifyForm').requestSubmit();
+      codeInput.value = expectedCode;
+      if (!submitting) $('verifyForm').requestSubmit();
     });
 
     // ---------- verify submit ----------
     $('verifyForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const entered = (codeInput.value || '').trim();
+      if (submitting) return;
+      submitting = true;
+
+      const entered = (codeInput.value || '').replace(/\D/g,'').slice(0,6);
+
       if (!/^\d{6}$/.test(entered)) {
+        submitting = false;
         codeInput.setCustomValidity('Enter 6 digits');
         codeInput.reportValidity();
         return;
       }
 
-      const saved = safeGet('verificationCode');
-      if (!saved) {
-        setStatus('No code found. Click “Resend code” and try again.', false);
-        return;
-      }
-      if (entered !== saved) {
+      if (entered !== expectedCode) {
+        submitting = false;
         setStatus('Incorrect code. Please try again or click “Resend code”.', false);
         return;
       }
@@ -211,24 +216,26 @@
       setStatus('Verified! Redirecting…', true);
 
       // Routing rule:
-      // If they came from Box 2, keep fast path (upsell/sign).
-      // Otherwise (header login), land on Welcome with the new dropdown.
+      // Box 2 origin → upsell/sign; Header login → Welcome
       const origin = (safeGet('loginOrigin') || '').trim().toLowerCase();
 
-      let next;
+      // Respect an explicit nextAfterVerify if present; else force upsell for box2
+      let next = '';
+      const explicitNext = (safeGet('nextAfterVerify') || '').trim() || (safeGet('nextAfterLogin') || '').trim();
+
       if (origin === 'box2') {
-        next =
-          safeGet('nextAfterVerify') ||
-          safeGet('nextAfterLogin')  ||
-          '/upsell.html';
+        next = explicitNext || '/upsell.html';
       } else {
-        next = '/welcome.html';
+        next = explicitNext || '/welcome.html';
       }
 
-      // Optional: clear origin to avoid stale routing on later sessions
-      try { localStorage.removeItem('loginOrigin'); } catch {}
+      // Cleanup one-time flags so later sessions don't misroute
+      safeDel('nextAfterVerify');
+      safeDel('nextAfterLogin');
+      // (Optionally keep loginOrigin if you want; clearing reduces surprises)
+      safeDel('loginOrigin');
 
-      setTimeout(() => { window.location.href = next; }, 400);
+      setTimeout(() => { window.location.href = next; }, 250);
     });
   </script>
 </body>
