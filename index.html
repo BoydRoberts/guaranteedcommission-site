@@ -272,7 +272,7 @@
           </p>
           <p class="mt-2">
             Let it be known: if a buyer’s agent/broker facilitates the sale of
-            <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent) are irrevocably
+            <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent) are irrevocely
             instructed to credit/compensate the buyer’s broker a commission not to exceed
             <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
           </p>
@@ -491,7 +491,7 @@
         const brokerageVal = document.getElementById('brokerage').value || '';
         const agentVal = document.getElementById('agent').value || '';
         const agentEmailVal = document.getElementById('agentEmail').value || '';
-        const fsboEmailInput = document.getElementById('fsboEmailRow')?.querySelector('input');
+        const fsboEmailInput = document.getElementById('fsboEmailInput');
         const amount = (document.getElementById('commission').value || '').trim();
         const type = document.getElementById('commissionType').value;
         const suffix = type === '%' ? 'of the total purchase price' : '';
@@ -633,7 +633,7 @@
             agentName:  plan.includes('FSBO') ? "" : (formData.agent || ""),
             agentPhone: plan.includes('FSBO') ? "" : (formData.phone || ""),
             agentEmail: plan.includes('FSBO') ? "" : (formData.agentEmail || ""),
-            brokerage:  plan includes('FSBO') ? "" : (formData.brokerage || ""), /* (kept your structure; note: if copied from earlier, ensure 'includes' typo is corrected in your repo) */
+            brokerage:  plan.includes('FSBO') ? "" : (formData.brokerage || ""),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             source: "index.box2"
