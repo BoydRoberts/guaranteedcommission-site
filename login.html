@@ -31,7 +31,7 @@
   <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-3">
-        <span class="badge">secure access build 2025-10-10a</span>
+        <span class="badge">secure access build 2025-08-14b</span>
       </div>
 
       <!-- Tabs -->
@@ -190,7 +190,7 @@
   </main>
 
   <script>
-    console.log('[login] secure access build 2025-10-10a');
+    console.log('[login] secure access build 2025-08-14b');
 
     // ---------- Back wiring ----------
     (function wireBack(){
@@ -283,7 +283,7 @@
         $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
 
-      // Default to Create tab when arriving from Box 2 or ?tab=create
+      // *** Force default to Create tab when arriving from Box 2 or ?tab=create ***
       const url = new URL(location.href);
       const tabParam = (url.searchParams.get('tab') || '').toLowerCase();
       if (localStorage.getItem('nextAfterLogin') || tabParam === 'create') {
@@ -350,16 +350,8 @@
       const password = $('password').value;
       const accounts = getAccounts();
       const acct = accounts[email];
-      if (!acct) {
-        setStatus(`No account found for ${email}. Please create an account first.`);
-        showCreate();
-        // Pre-fill create email with attempted sign-in email
-        const ce = $('c_email'); if (ce) ce.value = email;
-        return;
-      }
+      if (!acct) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); return; }
       if (acct.password !== password) { setStatus('Invalid email or password.'); return; }
-
-      // Mark logged in
       localStorage.setItem('isLoggedIn','true');
       localStorage.setItem('loggedInEmail', email);
       if (acct.role) localStorage.setItem('userRole', acct.role);
@@ -369,10 +361,11 @@
         localStorage.setItem('loginOrigin','header');
       }
 
-      // ALWAYS create a fresh 6-digit verification code to avoid stale-code mismatches
-      const code = String(Math.floor(100000 + Math.random()*900000));
-      localStorage.setItem('verificationCode', code);
-      localStorage.setItem('verifyTarget', email);
+      if (!localStorage.getItem('verificationCode')) {
+        const code = String(Math.floor(100000 + Math.random()*900000));
+        localStorage.setItem('verificationCode', code);
+        localStorage.setItem('verifyTarget', email);
+      }
 
       const next = localStorage.getItem('nextAfterLogin');
       if (next) { window.location.href = next; return; }
@@ -396,14 +389,6 @@
       if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
 
       const accounts = getAccounts();
-      if (accounts[email]) {
-        setStatus('An account with this email already exists. Please sign in.', false);
-        showSignin();
-        // prefill sign-in email
-        const se = $('email'); if (se) se.value = email;
-        return;
-      }
-
       accounts[email] = { name, email, password: p1, phone, role };
       saveAccounts(accounts);
 
@@ -416,7 +401,7 @@
         localStorage.setItem('loginOrigin','header');
       }
 
-      // ALWAYS create a fresh 6-digit verification code and handoff to verify
+      // Send code (simulated) + verify handoff
       const code = String(Math.floor(100000 + Math.random()*900000));
       localStorage.setItem('verificationCode', code);
       localStorage.setItem('verifyTarget', email);
