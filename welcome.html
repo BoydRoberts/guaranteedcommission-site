@@ -32,8 +32,8 @@
       <h2 class="text-xl font-bold mb-1">Hi <span id="who">there</span></h2>
       <p class="text-sm text-gray-600 mb-4">What would you like to do next?</p>
 
-      <!-- Seller Prompt (auto-inserted if one match or resume) -->
-      <div id="sellerPromptHost" class="mb-4"></div>
+      <!-- Seller/Agent prompt (we’ll show exactly one when it’s obvious) -->
+      <div id="promptHost" class="mb-4"></div>
 
       <div id="roleBoxes" class="space-y-4">
 
@@ -172,7 +172,7 @@
     // Who + role (use lower-case for matching)
     const emailRaw = (localStorage.getItem('loggedInEmail') || '').trim();
     const email = emailRaw.toLowerCase();
-    const role  = (localStorage.getItem('userRole') || '').trim();
+    let role  = (localStorage.getItem('userRole') || '').trim(); // will update below if needed
     $("who").textContent = emailRaw || 'there';
 
     // Logout
@@ -184,15 +184,10 @@
       location.href = '/index.html';
     });
 
-    // Show role box
+    // Show role box helper
     const show = (id)=>$(id).classList.remove('hidden');
-    if (role === 'seller') show('boxSeller');
-    else if (role === 'listing_agent') show('boxAgent');
-    else if (role === 'buyers_agent') show('boxBuyersAgent');
-    else if (role === 'buyer') show('boxBuyer');
-    else show('boxOther');
 
-    // New Listing plan
+    // New Listing plan (seller)
     $("sellerNewGo")?.addEventListener('click', ()=>{
       const plan = $("sellerNewPlan").value;
       localStorage.setItem('selectedPlan', plan);
@@ -209,76 +204,41 @@
     $("bAgentProApply")?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
     $("agentProApply")?.addEventListener('click',  ()=> location.href='/local-professionals.html?mode=apply');
 
-    // === Auto-link for sellers: claim lastListingId if needed ===
-    async function claimListingForSellerIfNeeded() {
-      if (role !== 'seller') return;
-      const lastId = (localStorage.getItem('lastListingId') || '').trim();
-      if (!lastId || !db || !email) return;
+    // === Fetch listings robustly (handles case differences and mixed results) ===
+    async function fetchMyListingsCI() {
+      if (!email || !db) return { owner: [], agent: [], all: [] };
+
+      const owner = [], agent = [];
 
       try {
-        const ref = doc(db, "listings", lastId);
-        const snap = await getDoc(ref);
-        if (!snap.exists()) return;
+        // Exact-match owner
+        const s1 = await getDocs(query(collection(db, "listings"), where("ownerEmail", "==", email), limit(100)));
+        s1.forEach(d => owner.push({ id: d.id, ...d.data() }));
 
-        const d = snap.data() || {};
-        const currentOwner = String(d.ownerEmail || '').toLowerCase();
+        // Exact-match agent
+        const s2 = await getDocs(query(collection(db, "listings"), where("agentEmail", "==", email), limit(100)));
+        s2.forEach(d => agent.push({ id: d.id, ...d.data() }));
 
-        // Only claim if ISC is signed (your product invariant) and ownerEmail is missing/different
-        const hasSigned = !!(d.signedISC && d.signedISC.name);
-        if (hasSigned && currentOwner !== email) {
-          await updateDoc(ref, {
-            ownerEmail: email,
-            updatedAt: serverTimestamp()
-          });
-          localStorage.setItem('lastListingId', lastId);
-        }
-      } catch (e) {
-        console.warn('[welcome] claim skipped:', e);
-      }
-    }
-
-    // Fetch listings for this user (owner OR agent) with dedupe
-    async function fetchMyListings() {
-      if (!email || !db) return [];
-
-      const items = [];
-      try {
-        // ownerEmail == login lower
-        const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), limit(75));
-        const s1 = await getDocs(q1);
-        s1.forEach(d => items.push({ id: d.id, ...d.data() }));
-
-        // agentEmail == login lower
-        const q2 = query(collection(db, "listings"), where("agentEmail", "==", email), limit(75));
-        const s2 = await getDocs(q2);
-        s2.forEach(d => items.push({ id: d.id, ...d.data() }));
-
-        // Fallback (older mixed-case emails)
-        if (items.length === 0) {
-          const q3 = query(collection(db, "listings"), orderBy("createdAt","desc"), limit(75));
-          const s3 = await getDocs(q3);
-          s3.forEach(d => {
-            const data = d.data() || {};
-            const oe = (data.ownerEmail || '').toLowerCase();
-            const ae = (data.agentEmail || '').toLowerCase();
-            if (oe === email || ae === email) items.push({ id: d.id, ...data });
-          });
-        }
+        // Case-insensitive sweep for safety (even when we already found some)
+        const s3 = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
+        s3.forEach(d => {
+          const data = d.data() || {};
+          const oe = String(data.ownerEmail || '').toLowerCase();
+          const ae = String(data.agentEmail || '').toLowerCase();
+          if (oe === email && !owner.some(x => x.id === d.id)) owner.push({ id: d.id, ...data });
+          if (ae === email && !agent.some(x => x.id === d.id)) agent.push({ id: d.id, ...data });
+        });
       } catch (e) {
         console.warn("[welcome] fetch error:", e);
       }
 
-      // De-dupe by id + address (defensive)
-      const byKey = {};
-      for (const it of items) {
-        const addrKey = (it.address || '').trim().toLowerCase();
-        const key = it.id + '|' + addrKey;
-        byKey[key] = it;
-      }
-      const list = Object.keys(byKey).map(k => byKey[k]);
+      // Dedup all items
+      const byId = {};
+      [...owner, ...agent].forEach(it => byId[it.id] = it);
+      const all = Object.values(byId);
 
       // Sort by updatedAt then createdAt (desc)
-      list.sort((a,b) => {
+      all.sort((a,b) => {
         const au = a.updatedAt?.toMillis?.() ? a.updatedAt.toMillis() : 0;
         const bu = b.updatedAt?.toMillis?.() ? b.updatedAt.toMillis() : 0;
         const ac = a.createdAt?.toMillis?.() ? a.createdAt.toMillis() : 0;
@@ -286,13 +246,19 @@
         return (bu - au) || (bc - ac);
       });
 
-      return list;
+      return { owner, agent, all };
     }
 
     function optionLabel(it) {
       const addr = it.address || '[address]';
       const status = it.status || 'Draft';
       return `${addr} — ${status}`;
+    }
+
+    function safePreviewHref(it) {
+      if (it && it.id) return '/listing.html?id=' + encodeURIComponent(it.id);
+      const addr = (it.address || '').trim();
+      return addr ? '/listing.html?addr=' + encodeURIComponent(addr) : '#';
     }
 
     function fillDropdown(selectEl, list) {
@@ -307,16 +273,9 @@
       // Auto-select the newest one and pre-wire Preview
       if (list.length) {
         selectEl.value = list[0].id;
-        const prev = selectEl.id === 'sellerListings' ? $('sellerPreview') : $('agentPreview');
-        if (prev) prev.href = '/listing.html?id=' + encodeURIComponent(list[0].id);
+        const prev = (selectEl.id === 'sellerListings') ? $('sellerPreview') : $('agentPreview');
+        if (prev) prev.href = safePreviewHref(list[0]);
       }
-    }
-
-    // Ensure links always have id (fallback to addr)
-    function safePreviewHref(it) {
-      if (it && it.id) return '/listing.html?id=' + encodeURIComponent(it.id);
-      const addr = (it.address || '').trim();
-      return addr ? '/listing.html?addr=' + encodeURIComponent(addr) : '#';
     }
 
     function wireEditor(selectEl, editBtn, previewA, list) {
@@ -331,44 +290,42 @@
         const it = list.find(x => x.id === selectEl.value);
         if (!it) { alert('Pick a listing first.'); return; }
         localStorage.setItem('lastListingId', it.id);
-        // Route to correct editor by role
-        if (role === 'seller') {
+        // Route by role
+        const r = (localStorage.getItem('userRole') || '').trim();
+        if (r === 'seller') {
           location.href = '/seller-detail.html?id=' + encodeURIComponent(it.id);
-        } else if (role === 'listing_agent') {
+        } else if (r === 'listing_agent') {
           location.href = '/agent-detail.html?id=' + encodeURIComponent(it.id);
         } else {
-          location.href = '/agent-detail.html?id=' + encodeURIComponent(it.id);
+          // Default to agent editor if role is unclear but user matched on agent side
+          const matchedAsAgent = !!list.find(x => x.id === it.id);
+          location.href = matchedAsAgent
+            ? '/agent-detail.html?id=' + encodeURIComponent(it.id)
+            : '/seller-detail.html?id=' + encodeURIComponent(it.id);
         }
       });
     }
 
-    async function archiveListing(id) {
-      try {
-        await updateDoc(doc(db, "listings", id), { status: "Archived", updatedAt: serverTimestamp() });
-        alert("Listing archived.");
-        location.reload();
-      } catch (e) {
-        console.warn("[welcome] archive failed:", e);
-        alert("Could not archive. Try again.");
-      }
-    }
-
-    // Seller prompt card
-    function renderSellerPromptCard(it, reason) {
-      const host = $("sellerPromptHost");
-      if (!host) return;
+    function renderPromptCard(it, mode /* 'seller' | 'agent' */) {
+      const host = $("promptHost");
+      if (!host || !it) return;
       const addr = it.address || 'Your listing';
       const id = it.id;
+
+      const editHref = (mode === 'agent')
+        ? `/agent-detail.html?id=${encodeURIComponent(id)}`
+        : `/seller-detail.html?id=${encodeURIComponent(id)}`;
+
       host.innerHTML = `
-        <div class="border rounded-xl p-4 mb-4 bg-indigo-50 border-indigo-200">
+        <div class="border rounded-xl p-4 mb-4 ${mode === 'agent' ? 'bg-indigo-50 border-indigo-200' : 'bg-emerald-50 border-emerald-200'}">
           <div class="flex items-start justify-between">
             <div>
               <div class="font-semibold">Continue your listing</div>
               <div class="text-sm text-gray-700 mt-0.5">${addr}</div>
-              ${reason ? `<div class="text-xs text-gray-500 mt-1">${reason}</div>` : ``}
+              <div class="text-xs text-gray-500 mt-1">${mode === 'agent' ? 'You are the listing agent on this property.' : 'You are the seller on this property.'}</div>
             </div>
             <div class="flex gap-2">
-              <a href="/seller-detail.html?id=${encodeURIComponent(id)}" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</a>
+              <a href="${editHref}" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</a>
               <a href="/listing.html?id=${encodeURIComponent(id)}" target="_blank" rel="noopener" class="px-3 py-2 rounded border text-sm">Preview</a>
             </div>
           </div>
@@ -376,46 +333,86 @@
       `;
     }
 
-    (async function boot(){
-      // 1) Try to auto-link the last listing to this seller (no manual Firebase work)
-      await claimListingForSellerIfNeeded();
+    // Auto-link last listing to owner (unchanged)
+    async function claimListingForSellerIfNeeded(emailLower) {
+      if (role !== 'seller') return;
+      const lastId = (localStorage.getItem('lastListingId') || '').trim();
+      if (!lastId || !db || !emailLower) return;
 
-      // 2) Fetch and paint
-      const list = await fetchMyListings();
+      try {
+        const ref = doc(db, "listings", lastId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) return;
 
-      // Seller prompt (owner match or resume)
-      if (role === 'seller') {
-        const ownerMatches = list.filter(it => (String(it.ownerEmail || '').toLowerCase() === email));
-        if (ownerMatches.length === 1) {
-          renderSellerPromptCard(ownerMatches[0], "We found this listing on your account.");
-          localStorage.setItem('lastListingId', ownerMatches[0].id);
-        } else if (ownerMatches.length === 0) {
-          const lastId = (localStorage.getItem('lastListingId') || '').trim();
-          if (lastId) {
-            const resume = list.find(it => it.id === lastId);
-            if (resume) renderSellerPromptCard(resume, "Resume where you left off.");
-          }
+        const d = snap.data() || {};
+        const currentOwner = String(d.ownerEmail || '').toLowerCase();
+
+        const hasSigned = !!(d.signedISC && d.signedISC.name);
+        if (hasSigned && currentOwner !== emailLower) {
+          await updateDoc(ref, {
+            ownerEmail: emailLower,
+            updatedAt: serverTimestamp()
+          });
+          localStorage.setItem('lastListingId', lastId);
         }
+      } catch (e) {
+        console.warn('[welcome] claim skipped:', e);
+      }
+    }
+
+    (async function boot(){
+      // 1) Claim (seller-only safeguard)
+      await claimListingForSellerIfNeeded(email);
+
+      // 2) Fetch robustly
+      const { owner, agent, all } = await fetchMyListingsCI();
+
+      // 3) If role looks wrong but we clearly matched only as agent, auto-correct.
+      if (role !== 'listing_agent' && agent.length > 0 && owner.length === 0) {
+        try {
+          localStorage.setItem('userRole', 'listing_agent');
+          role = 'listing_agent';
+        } catch {}
+      }
+      // If clearly only owner, prefer seller
+      if (role !== 'seller' && owner.length > 0 && agent.length === 0) {
+        try {
+          localStorage.setItem('userRole', 'seller');
+          role = 'seller';
+        } catch {}
       }
 
+      // 4) Show correct box
+      if (role === 'seller') show('boxSeller');
+      else if (role === 'listing_agent') show('boxAgent');
+      else if (role === 'buyers_agent') show('boxBuyersAgent');
+      else if (role === 'buyer') show('boxBuyer');
+      else show('boxOther');
+
+      // 5) Prompt card (only when it’s obvious which one to continue)
+      if (role === 'seller' && owner.length === 1) {
+        renderPromptCard(owner[0], 'seller');
+        localStorage.setItem('lastListingId', owner[0].id);
+      }
+      if (role === 'listing_agent' && agent.length === 1) {
+        renderPromptCard(agent[0], 'agent');
+        localStorage.setItem('lastListingId', agent[0].id);
+      }
+
+      // 6) Fill dropdowns + wire editors
       // Seller box
       const sellerSel  = $("sellerListings");
       const sellerGo   = $("sellerEditGo");
       const sellerPrev = $("sellerPreview");
       if (sellerSel) {
-        if (list.length) {
+        if (owner.length) {
           $("sellerNoListings")?.classList.add('hidden');
-          // Prefer seller-owned first in dropdown
-          const ownerFirst = [...list].sort((a,b) => {
-            const ao = String(a.ownerEmail||'').toLowerCase() === email ? -1 : 0;
-            const bo = String(b.ownerEmail||'').toLowerCase() === email ? -1 : 0;
-            return ao - bo;
-          });
-          fillDropdown(sellerSel, ownerFirst);
+          // Owner-first (already only owner here)
+          fillDropdown(sellerSel, owner);
         } else {
           $("sellerNoListings")?.classList.remove('hidden');
         }
-        wireEditor(sellerSel, sellerGo, sellerPrev, list);
+        wireEditor(sellerSel, sellerGo, sellerPrev, owner);
       }
 
       // Agent box
@@ -423,17 +420,17 @@
       const agentGo   = $("agentEditGo");
       const agentPrev = $("agentPreview");
       if (agentSel) {
-        if (list.length) {
+        if (agent.length) {
           $("agentNoListings")?.classList.add('hidden');
-          fillDropdown(agentSel, list);
+          fillDropdown(agentSel, agent);
         } else {
           $("agentNoListings")?.classList.remove('hidden');
         }
-        wireEditor(agentSel, agentGo, agentPrev, list);
+        wireEditor(agentSel, agentGo, agentPrev, agent);
       }
 
-      // Table (with Archive helper)
-      if (list.length) {
+      // 7) Table of all (optional, same as before)
+      if (all.length) {
         const host = $("listingsTable");
         const sec  = $("listSection");
         if (host && sec) {
@@ -451,11 +448,10 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y">
-                  ${list.map(it=>{
+                  ${all.map(it=>{
                       const upd = it.updatedAt?.toDate ? it.updatedAt.toDate() : null;
                       const upds = upd ? upd.toLocaleDateString() : '';
                       const href = safePreviewHref(it);
-                      const isDup = list.filter(x => (x.address||'').trim().toLowerCase() === (it.address||'').trim().toLowerCase()).length > 1;
                       return `
                         <tr>
                           <td class="px-3 py-2">${it.address || ''}</td>
@@ -464,7 +460,6 @@
                           <td class="px-3 py-2">${upds}</td>
                           <td class="px-3 py-2 flex gap-3">
                             <a class="text-blue-600 underline" href="${href}" target="_blank" rel="noopener">Preview</a>
-                            ${isDup ? `<button class="underline text-red-600" data-archive="${it.id}">Archive duplicate</button>` : ``}
                           </td>
                         </tr>
                       `;
@@ -473,13 +468,6 @@
               </table>
             </div>
           `;
-
-          host.querySelectorAll('[data-archive]').forEach(btn=>{
-            btn.addEventListener('click', (e)=>{
-              const id = e.currentTarget.getAttribute('data-archive');
-              if (confirm("Archive this duplicate listing?")) archiveListing(id);
-            });
-          });
         }
       }
     })();
