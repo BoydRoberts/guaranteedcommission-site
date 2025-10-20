@@ -1,81 +1,15 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login/Create New Account</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 text-gray-800">
-
-  <div class="max-w-md mx-auto mt-10 bg-white p-6 rounded shadow">
-    <h1 class="text-2xl font-bold text-center mb-6">Login/Create New Account</h1>
-
-    <form id="verifyForm" class="space-y-3" autocomplete="off">
-      <input type="text" id="name" placeholder="Owner/Seller Name" class="w-full border p-2 rounded" required />
-      <input type="tel" id="phone" placeholder="Owner/Seller Phone" class="w-full border p-2 rounded" required />
-      <input type="email" id="email" placeholder="Owner/Seller Email" class="w-full border p-2 rounded" required />
-      <input type="password" id="password" placeholder="Create Password" class="w-full border p-2 rounded" required />
-
-      <div class="text-sm text-gray-600 mt-2">
-        <label class="block mb-2 font-semibold">Preferred verification method:</label>
-        <label><input type="radio" name="verifyMethod" value="phone" checked> Phone</label><br>
-        <label><input type="radio" name="verifyMethod" value="email"> Email</label>
-      </div>
-
-      <p class="text-xs text-gray-500 mt-4">
-        GuaranteedCommission.com only uses your information for escrow and identification only.
-        Your information will not be sold to third parties or used for solicitation purposes.
-      </p>
-
-      <button type="button" onclick="submitVerification()" class="w-full bg-blue-600 text-white py-2 rounded mt-4">
-        Submit
-      </button>
-    </form>
-  </div>
-
+  <meta charset="utf-8" />
+  <title>Redirecting…</title>
+  <meta http-equiv="refresh" content="0; url=/verify-code.html" />
   <script>
-    window.addEventListener("DOMContentLoaded", () => {
-      const fd = JSON.parse(localStorage.getItem("formData") || "{}");
-      const plan = (localStorage.getItem("selectedPlan") || "").trim();
-
-      // --- Clear agentEmail in Listed flows (safety) ---
-      if (!plan.includes("FSBO") && fd.agentEmail) {
-        fd.agentEmail = "";
-        localStorage.setItem("formData", JSON.stringify(fd));
-      }
-
-      if (fd.name) document.getElementById("name").value = fd.name;
-
-      // FSBO-only auto-fill
-      if (plan.includes("FSBO")) {
-        if (fd.phone) document.getElementById("phone").value = fd.phone;
-        if (fd.fsboEmail) document.getElementById("email").value = fd.fsboEmail;
-      }
-    });
-
-    function submitVerification() {
-      const name = document.getElementById('name').value.trim();
-      const phone = document.getElementById('phone').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value.trim();
-      const verifyMethod = document.querySelector('input[name="verifyMethod"]:checked').value;
-
-      if (!name || !phone || !email || !password) {
-        alert("Please complete all fields.");
-        return;
-      }
-
-      const verifyData = { name, phone, email, password, verifyMethod };
-      localStorage.setItem("verifyData", JSON.stringify(verifyData));
-
-      const code = Math.floor(100000 + Math.random() * 900000);
-      localStorage.setItem("verificationCode", code);
-
-      alert(`Verification code sent to your ${verifyMethod}: ${code}`);
-      window.location.href = "/verify-code.html";
-    }
+    // Safety: never alter codes here. Just redirect.
+    location.replace('/verify-code.html');
   </script>
-
+</head>
+<body>
+  <p>Redirecting to verification… <a href="/verify-code.html">Click here if not redirected</a>.</p>
 </body>
 </html>
