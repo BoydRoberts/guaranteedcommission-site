@@ -169,10 +169,10 @@
       });
     })();
 
-    // Who + role (use lower-case for matching)
+    // Who + role
     const emailRaw = (localStorage.getItem('loggedInEmail') || '').trim();
     const email = emailRaw.toLowerCase();
-    let role  = (localStorage.getItem('userRole') || '').trim(); // will update below if needed
+    let role  = (localStorage.getItem('userRole') || '').trim();
     $("who").textContent = emailRaw || 'there';
 
     // Logout
@@ -184,10 +184,8 @@
       location.href = '/index.html';
     });
 
-    // Show role box helper
     const show = (id)=>$(id).classList.remove('hidden');
 
-    // New Listing plan (seller)
     $("sellerNewGo")?.addEventListener('click', ()=>{
       const plan = $("sellerNewPlan").value;
       localStorage.setItem('selectedPlan', plan);
@@ -195,7 +193,7 @@
       window.scrollTo(0,0);
     });
 
-    // Shared search buttons
+    // Shared buttons
     $("sellerSearchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
     $("agentSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
     $("bAgentSearchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
@@ -204,35 +202,53 @@
     $("bAgentProApply")?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
     $("agentProApply")?.addEventListener('click',  ()=> location.href='/local-professionals.html?mode=apply');
 
-    // === Fetch listings robustly (handles case differences and mixed results) ===
+    // Helpers
+    const norm = (s)=>String(s||'').trim().toLowerCase();
+
     async function fetchMyListingsCI() {
       if (!email || !db) return { owner: [], agent: [], all: [] };
 
       const owner = [], agent = [];
 
       try {
-        // Exact-match owner
+        // Exact matches
         const s1 = await getDocs(query(collection(db, "listings"), where("ownerEmail", "==", email), limit(100)));
         s1.forEach(d => owner.push({ id: d.id, ...d.data() }));
 
-        // Exact-match agent
         const s2 = await getDocs(query(collection(db, "listings"), where("agentEmail", "==", email), limit(100)));
         s2.forEach(d => agent.push({ id: d.id, ...d.data() }));
 
-        // Case-insensitive sweep for safety (even when we already found some)
+        // Case-insensitive sweep
         const s3 = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
         s3.forEach(d => {
           const data = d.data() || {};
-          const oe = String(data.ownerEmail || '').toLowerCase();
-          const ae = String(data.agentEmail || '').toLowerCase();
-          if (oe === email && !owner.some(x => x.id === d.id)) owner.push({ id: d.id, ...data });
-          if (ae === email && !agent.some(x => x.id === d.id)) agent.push({ id: d.id, ...data });
+          const oe = norm(data.ownerEmail);
+          const ae = norm(data.agentEmail);
+          if (oe && oe === email && !owner.some(x => x.id === d.id)) owner.push({ id: d.id, ...data });
+          if (ae && ae === email && !agent.some(x => x.id === d.id)) agent.push({ id: d.id, ...data });
         });
+
+        // Safety net: include lastListingId in agent list if missing
+        const lastId = (localStorage.getItem('lastListingId') || '').trim();
+        if (lastId && !agent.some(x => x.id === lastId)) {
+          try {
+            const snap = await getDoc(doc(db, "listings", lastId));
+            if (snap.exists()) {
+              const data = snap.data() || {};
+              // only add if you are agent OR role is listing_agent
+              const ae = norm(data.agentEmail);
+              if ((ae && ae === email) || role === 'listing_agent') {
+                agent.unshift({ id: snap.id, ...data });
+              }
+            }
+          } catch {}
+        }
+
       } catch (e) {
         console.warn("[welcome] fetch error:", e);
       }
 
-      // Dedup all items
+      // Dedup all
       const byId = {};
       [...owner, ...agent].forEach(it => byId[it.id] = it);
       const all = Object.values(byId);
@@ -270,7 +286,6 @@
         selectEl.appendChild(opt);
       });
 
-      // Auto-select the newest one and pre-wire Preview
       if (list.length) {
         selectEl.value = list[0].id;
         const prev = (selectEl.id === 'sellerListings') ? $('sellerPreview') : $('agentPreview');
@@ -290,14 +305,13 @@
         const it = list.find(x => x.id === selectEl.value);
         if (!it) { alert('Pick a listing first.'); return; }
         localStorage.setItem('lastListingId', it.id);
-        // Route by role
         const r = (localStorage.getItem('userRole') || '').trim();
         if (r === 'seller') {
           location.href = '/seller-detail.html?id=' + encodeURIComponent(it.id);
         } else if (r === 'listing_agent') {
           location.href = '/agent-detail.html?id=' + encodeURIComponent(it.id);
         } else {
-          // Default to agent editor if role is unclear but user matched on agent side
+          // Default to agent editor if your email matched as agent
           const matchedAsAgent = !!list.find(x => x.id === it.id);
           location.href = matchedAsAgent
             ? '/agent-detail.html?id=' + encodeURIComponent(it.id)
@@ -333,7 +347,6 @@
       `;
     }
 
-    // Auto-link last listing to owner (unchanged)
     async function claimListingForSellerIfNeeded(emailLower) {
       if (role !== 'seller') return;
       const lastId = (localStorage.getItem('lastListingId') || '').trim();
@@ -345,7 +358,7 @@
         if (!snap.exists()) return;
 
         const d = snap.data() || {};
-        const currentOwner = String(d.ownerEmail || '').toLowerCase();
+        const currentOwner = (d.ownerEmail || '').trim().toLowerCase();
 
         const hasSigned = !!(d.signedISC && d.signedISC.name);
         if (hasSigned && currentOwner !== emailLower) {
@@ -361,35 +374,26 @@
     }
 
     (async function boot(){
-      // 1) Claim (seller-only safeguard)
       await claimListingForSellerIfNeeded(email);
 
-      // 2) Fetch robustly
       const { owner, agent, all } = await fetchMyListingsCI();
 
-      // 3) If role looks wrong but we clearly matched only as agent, auto-correct.
+      // If role looks wrong but we clearly matched only as agent, auto-correct.
       if (role !== 'listing_agent' && agent.length > 0 && owner.length === 0) {
-        try {
-          localStorage.setItem('userRole', 'listing_agent');
-          role = 'listing_agent';
-        } catch {}
+        try { localStorage.setItem('userRole', 'listing_agent'); role = 'listing_agent'; } catch {}
       }
-      // If clearly only owner, prefer seller
       if (role !== 'seller' && owner.length > 0 && agent.length === 0) {
-        try {
-          localStorage.setItem('userRole', 'seller');
-          role = 'seller';
-        } catch {}
+        try { localStorage.setItem('userRole', 'seller'); role = 'seller'; } catch {}
       }
 
-      // 4) Show correct box
+      // Show correct box
       if (role === 'seller') show('boxSeller');
       else if (role === 'listing_agent') show('boxAgent');
       else if (role === 'buyers_agent') show('boxBuyersAgent');
       else if (role === 'buyer') show('boxBuyer');
       else show('boxOther');
 
-      // 5) Prompt card (only when it’s obvious which one to continue)
+      // Prompt card (only when it’s obvious)
       if (role === 'seller' && owner.length === 1) {
         renderPromptCard(owner[0], 'seller');
         localStorage.setItem('lastListingId', owner[0].id);
@@ -399,37 +403,26 @@
         localStorage.setItem('lastListingId', agent[0].id);
       }
 
-      // 6) Fill dropdowns + wire editors
-      // Seller box
+      // Fill dropdowns + wire editors
       const sellerSel  = $("sellerListings");
       const sellerGo   = $("sellerEditGo");
       const sellerPrev = $("sellerPreview");
       if (sellerSel) {
-        if (owner.length) {
-          $("sellerNoListings")?.classList.add('hidden');
-          // Owner-first (already only owner here)
-          fillDropdown(sellerSel, owner);
-        } else {
-          $("sellerNoListings")?.classList.remove('hidden');
-        }
+        if (owner.length) { $("sellerNoListings")?.classList.add('hidden'); fillDropdown(sellerSel, owner); }
+        else { $("sellerNoListings")?.classList.remove('hidden'); }
         wireEditor(sellerSel, sellerGo, sellerPrev, owner);
       }
 
-      // Agent box
       const agentSel  = $("agentListings");
       const agentGo   = $("agentEditGo");
       const agentPrev = $("agentPreview");
       if (agentSel) {
-        if (agent.length) {
-          $("agentNoListings")?.classList.add('hidden');
-          fillDropdown(agentSel, agent);
-        } else {
-          $("agentNoListings")?.classList.remove('hidden');
-        }
+        if (agent.length) { $("agentNoListings")?.classList.add('hidden'); fillDropdown(agentSel, agent); }
+        else { $("agentNoListings")?.classList.remove('hidden'); }
         wireEditor(agentSel, agentGo, agentPrev, agent);
       }
 
-      // 7) Table of all (optional, same as before)
+      // Table of all
       if (all.length) {
         const host = $("listingsTable");
         const sec  = $("listSection");
