@@ -358,6 +358,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // --- FIX: After Stripe redirects back with success, ensure Firestore plan is Plus when upgrades were purchased ---
+  (async function ensurePlanUpdatedAfterStripeSuccess(){
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("success") !== "true") return;
+
+      // Only proceed if we have a listing id
+      const listingId = (localStorage.getItem("lastListingId") || "").trim();
+      if (!listingId) return;
+
+      // Determine if this checkout represented an upgrade to Plus or any paid upgrade
+      const d = data || getJSON("checkoutData", {});
+      const upgraded =
+        (d?.plan || "").includes("Listed Property Plus") ||
+        (d?.upgrades?.upgradeToPlus) ||
+        (d?.upgrades?.banner) ||
+        (d?.upgrades?.premium) ||
+        (d?.upgrades?.pin);
+
+      if (!upgraded) return;
+
+      // Dynamic import Firestore + app db (works in non-module scripts)
+      const { db } = await import("/scripts/firebase-init.js");
+      if (!db) return;
+      const { doc, updateDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+
+      await updateDoc(doc(db, "listings", listingId), {
+        plan: "Listed Property Plus",
+        updatedAt: serverTimestamp()
+      });
+      console.log("[checkout] Plan set to Listed Property Plus for", listingId);
+    } catch (e) {
+      console.warn("[checkout] post-success plan update skipped:", e);
+    }
+  })();
+
   // Render
   if (!localStorage.getItem("originalPlan")) {
     localStorage.setItem("originalPlan", planLS);
