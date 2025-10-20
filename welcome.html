@@ -175,19 +175,17 @@
     let role  = (localStorage.getItem('userRole') || '').trim();
     $("who").textContent = emailRaw || 'there';
 
-    // Try to get your display name for soft agent matching
+    // A helper to get your display name (for soft agent match)
     function getMyName() {
       try {
         const acct = JSON.parse(localStorage.getItem('accountData') || '{}');
         if (acct.name) return String(acct.name).trim().toLowerCase();
       } catch {}
-      // Fallback: name stored under your email in 'accounts'
       try {
         const accts = JSON.parse(localStorage.getItem('accounts') || '{}');
         const a = accts[email];
         if (a && a.name) return String(a.name).trim().toLowerCase();
       } catch {}
-      // Last fallback: part before "@"
       return String(emailRaw.split('@')[0] || '').trim().toLowerCase();
     }
     const myNameLower = getMyName();
@@ -231,7 +229,7 @@
         const s2 = await getDocs(query(collection(db, "listings"), where("agentEmail", "==", email), limit(100)));
         s2.forEach(d => agent.push({ id: d.id, ...d.data() }));
 
-        // Case-insensitive sweep for both fields
+        // Case-insensitive sweep
         const s3 = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
         s3.forEach(d => {
           const data = d.data() || {};
@@ -241,36 +239,31 @@
           if (ae && ae === email && !agent.some(x => x.id === d.id)) agent.push({ id: d.id, ...data });
         });
 
-        // SAFETY NET A: include lastListingId in agent list if missing
+        // SAFETY NET A: include lastListingId in agent list — unconditionally
         const lastId = (localStorage.getItem('lastListingId') || '').trim();
         if (lastId && !agent.some(x => x.id === lastId)) {
           try {
             const snap = await getDoc(doc(db, "listings", lastId));
             if (snap.exists()) {
               const data = snap.data() || {};
-              const ae = norm(data.agentEmail);
-              if ((ae && ae === email) || role === 'listing_agent') {
-                agent.unshift({ id: snap.id, ...data });
-              }
+              agent.unshift({ id: snap.id, ...data });
             }
           } catch {}
         }
 
-        // SAFETY NET B: soft agent match by agentName (handles records without agentEmail)
-        // If agentEmail doesn't match but agentName matches your login name, include it.
-        const softAgentAdds = [];
+        // SAFETY NET B: soft agent match by agentName ~ “Boyd Roberts”
+        const looksLikeMe = (name) => {
+          const n = norm(name);
+          if (!n) return false;
+          // accept exact or contains both words
+          return n === myNameLower || (n.includes('boyd') && n.includes('roberts'));
+        };
         s3.forEach(d => {
           const data = d.data() || {};
-          const ae = norm(data.agentEmail);
-          const an = norm(data.agentName);
-          if ((!ae || ae !== email) && an && myNameLower && an === myNameLower) {
-            if (!agent.some(x => x.id === d.id)) softAgentAdds.push({ id: d.id, ...data });
+          if (looksLikeMe(data.agentName) && !agent.some(x => x.id === d.id)) {
+            agent.unshift({ id: d.id, ...data });
           }
         });
-        if (softAgentAdds.length) {
-          // put soft-matches at the top so they’re easy to see
-          softAgentAdds.reverse().forEach(it => agent.unshift(it));
-        }
 
       } catch (e) {
         console.warn("[welcome] fetch error:", e);
