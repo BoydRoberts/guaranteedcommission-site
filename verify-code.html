@@ -16,7 +16,7 @@
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">verify build 2025-08-14d</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">verify build 2025-10-17a</span>
       </div>
 
       <h1 class="text-2xl font-bold text-center">Enter Verification Code</h1>
@@ -66,7 +66,7 @@
   </div>
 
   <script>
-    console.log('[verify] build 2025-08-14d');
+    console.log('[verify] build 2025-10-17a');
 
     // ---------- Back wiring ----------
     (function wireBack(){
@@ -89,6 +89,7 @@
     const statusBox = $('status');
     const safeGet = (k, fb='') => { try { const v = localStorage.getItem(k); return v ?? fb; } catch { return fb; } };
     const safeSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+    const safeDel = (k) => { try { localStorage.removeItem(k); } catch {} };
 
     function setStatus(msg, ok=false) {
       statusBox.classList.remove('hidden');
@@ -109,29 +110,16 @@
       return um + '@' + d;
     }
 
-    // --- Authorized safeguard: Clear agentEmail in Listed flows ---
-    (function clearAgentEmailIfListed() {
-      try {
-        const fd = JSON.parse(localStorage.getItem('formData')||'{}');
-        const plan = (localStorage.getItem('selectedPlan')||'').trim();
-        if (!plan.includes('FSBO') && fd.agentEmail) {
-          fd.agentEmail = "";
-          localStorage.setItem('formData', JSON.stringify(fd));
-        }
-      } catch {}
-    })();
-
     // ---------- bootstrap target + code ----------
     let target = safeGet('verifyTarget') || safeGet('loggedInEmail') || '';
-    let code   = safeGet('verificationCode');
 
-    // If nothing present (e.g., hard refresh), create and persist a new code so page always works
-    if (!code || code.length !== 6) {
+    // IMPORTANT: Do NOT overwrite an existing valid 6-digit code.
+    let code = safeGet('verificationCode', '');
+    if (!/^\d{6}$/.test(code)) {
       code = generateCode();
       safeSet('verificationCode', code);
     }
 
-    // Paint who-line and badge
     $('who').textContent = target
       ? `We sent a 6-digit code to ${maskEmail(target)}.`
       : `We sent a 6-digit code.`;
@@ -150,7 +138,6 @@
       }
     });
 
-    // Also catch Enter on the field (desktop)
     codeInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -179,7 +166,6 @@
       }
     });
 
-    // Fill & verify (one-click for testing)
     $('fill').addEventListener('click', (e) => {
       e.preventDefault();
       codeInput.value = code;
@@ -196,8 +182,8 @@
         return;
       }
 
-      const saved = safeGet('verificationCode');
-      if (!saved) {
+      const saved = safeGet('verificationCode', '');
+      if (!/^\d{6}$/.test(saved)) {
         setStatus('No code found. Click “Resend code” and try again.', false);
         return;
       }
@@ -206,29 +192,22 @@
         return;
       }
 
-      // Mark verified and continue
+      // Mark verified
       safeSet('isVerified', 'true');
       setStatus('Verified! Redirecting…', true);
 
-      // Routing rule:
-      // If they came from Box 2, keep fast path (upsell/sign).
-      // Otherwise (header login), land on Welcome with the new dropdown.
+      // ROUTING: If they came from Box 2, ALWAYS go to upsell.
       const origin = (safeGet('loginOrigin') || '').trim().toLowerCase();
-
-      let next;
+      let next = '/welcome.html';
       if (origin === 'box2') {
-        next =
-          safeGet('nextAfterVerify') ||
-          safeGet('nextAfterLogin')  ||
-          '/upsell.html';
-      } else {
-        next = '/welcome.html';
+        next = '/upsell.html';
       }
 
-      // Optional: clear origin to avoid stale routing on later sessions
-      try { localStorage.removeItem('loginOrigin'); } catch {}
-
-      setTimeout(() => { window.location.href = next; }, 400);
+      // Clear only after deciding (avoid premature loss)
+      setTimeout(() => {
+        safeDel('loginOrigin');
+        window.location.href = next;
+      }, 350);
     });
   </script>
 </body>
