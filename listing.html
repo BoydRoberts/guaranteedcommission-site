@@ -44,7 +44,7 @@
   <!-- Top bar -->
   <header class="bg-white border-b">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-      <!-- CHANGED: real Back button with safe fallback -->
+      <!-- Back button with safe, context-aware fallback -->
       <button id="backBtnHdr" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
       <h1 class="text-lg font-semibold">GuaranteedCommission.com</h1>
       <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
@@ -363,7 +363,7 @@
         // Normalize and paint main tile
         const address = String(d.address || "").trim();
         const plan = String(d.plan || "Listed Property Basic");
-               const status = String(d.status || "Active");
+        const status = String(d.status || "Active");
         const price = asNumOrEmpty(d.price);
         const cRaw  = dflt(d.commission, "");
         const cType = (d.commissionType === "%" || d.commissionType === "$") ? d.commissionType : "%";
@@ -474,22 +474,30 @@
     })();
   </script>
 
-  <!-- NEW: Tiny back-button wiring (safe fallback to Strip-2) -->
+  <!-- Context-aware Back button wiring -->
   <script>
     (function(){
       const btn = document.getElementById('backBtnHdr');
       if (!btn) return;
       btn.addEventListener('click', function(){
         try {
-          const hasHistory = (history.length > 1);
           const ref = document.referrer || "";
+          const hasHistory = (history.length > 1);
+          const cameFromWelcome = /\/welcome\.html/i.test(ref);
+          const loggedIn = String(localStorage.getItem('isLoggedIn') || '').toLowerCase() === 'true';
+
           if (hasHistory && ref && ref !== location.href) {
             history.back();
+          } else if (cameFromWelcome || loggedIn) {
+            // Prefer Welcome when the user is logged in or referrer was Welcome
+            location.href = "/welcome.html";
           } else {
+            // Public fallback (same as before)
             location.href = "/index.html#strip2Search";
           }
         } catch (_) {
-          location.href = "/index.html#strip2Search";
+          const loggedIn = String(localStorage.getItem('isLoggedIn') || '').toLowerCase() === 'true';
+          location.href = loggedIn ? "/welcome.html" : "/index.html#strip2Search";
         }
       });
     })();
