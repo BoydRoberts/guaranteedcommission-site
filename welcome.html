@@ -79,7 +79,7 @@
           <div class="border rounded-lg p-4">
             <h3 class="font-semibold mb-2">Edit a current listing</h3>
             <div id="agentEditRow" class="flex flex-col gap-2 md:flex-row md:items-center">
-              <select id="agentListings" class="border rounded px-2 py-2 text-sm grow">
+              <select id="agentListings" class="border rounded px-2 py-2 text-sm grow" title="Listings you can edit">
                 <option value="">Select your listing…</option>
               </select>
               <div class="flex gap-2">
@@ -175,20 +175,6 @@
     let role  = (localStorage.getItem('userRole') || '').trim();
     $("who").textContent = emailRaw || 'there';
 
-    // A helper to get your display name (for soft agent match)
-    function getMyName() {
-      try {
-        const acct = JSON.parse(localStorage.getItem('accountData') || '{}');
-        if (acct.name) return String(acct.name).trim().toLowerCase();
-      } catch {}
-      try {
-        const accts = JSON.parse(localStorage.getItem('accounts') || '{}');
-        const a = accts[email];
-        if (a && a.name) return String(a.name).trim().toLowerCase();
-      } catch {}
-      return String(emailRaw.split('@')[0] || '').trim().toLowerCase();
-    }
-    const myNameLower = getMyName();
     const norm = (s)=>String(s||'').trim().toLowerCase();
 
     // Logout
@@ -216,21 +202,22 @@
     $("bAgentProApply")?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
     $("agentProApply")?.addEventListener('click',  ()=> location.href='/local-professionals.html?mode=apply');
 
-    async function fetchMyListingsCI() {
+    // Fetch owner/agent lists + all (case-insensitive), then build Agent source from agent OR all
+    async function fetchMyLists() {
       if (!email || !db) return { owner: [], agent: [], all: [] };
 
       const owner = [], agent = [];
 
       try {
-        // Exact matches
-        const s1 = await getDocs(query(collection(db, "listings"), where("ownerEmail", "==", email), limit(100)));
+        // Exact matches first
+        const s1 = await getDocs(query(collection(db, "listings"), where("ownerEmail", "==", email), limit(150)));
         s1.forEach(d => owner.push({ id: d.id, ...d.data() }));
 
-        const s2 = await getDocs(query(collection(db, "listings"), where("agentEmail", "==", email), limit(100)));
+        const s2 = await getDocs(query(collection(db, "listings"), where("agentEmail", "==", email), limit(150)));
         s2.forEach(d => agent.push({ id: d.id, ...d.data() }));
 
-        // Case-insensitive sweep
-        const s3 = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
+        // CI sweep
+        const s3 = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(300)));
         s3.forEach(d => {
           const data = d.data() || {};
           const oe = norm(data.ownerEmail);
@@ -238,33 +225,6 @@
           if (oe && oe === email && !owner.some(x => x.id === d.id)) owner.push({ id: d.id, ...data });
           if (ae && ae === email && !agent.some(x => x.id === d.id)) agent.push({ id: d.id, ...data });
         });
-
-        // SAFETY NET A: include lastListingId in agent list — unconditionally
-        const lastId = (localStorage.getItem('lastListingId') || '').trim();
-        if (lastId && !agent.some(x => x.id === lastId)) {
-          try {
-            const snap = await getDoc(doc(db, "listings", lastId));
-            if (snap.exists()) {
-              const data = snap.data() || {};
-              agent.unshift({ id: snap.id, ...data });
-            }
-          } catch {}
-        }
-
-        // SAFETY NET B: soft agent match by agentName ~ “Boyd Roberts”
-        const looksLikeMe = (name) => {
-          const n = norm(name);
-          if (!n) return false;
-          // accept exact or contains both words
-          return n === myNameLower || (n.includes('boyd') && n.includes('roberts'));
-        };
-        s3.forEach(d => {
-          const data = d.data() || {};
-          if (looksLikeMe(data.agentName) && !agent.some(x => x.id === d.id)) {
-            agent.unshift({ id: d.id, ...data });
-          }
-        });
-
       } catch (e) {
         console.warn("[welcome] fetch error:", e);
       }
@@ -274,7 +234,7 @@
       [...owner, ...agent].forEach(it => byId[it.id] = it);
       const all = Object.values(byId);
 
-      // Sort by updatedAt then createdAt (desc)
+      // Sort desc by updated/created
       all.sort((a,b) => {
         const au = a.updatedAt?.toMillis?.() ? a.updatedAt.toMillis() : 0;
         const bu = b.updatedAt?.toMillis?.() ? b.updatedAt.toMillis() : 0;
@@ -332,10 +292,8 @@
         } else if (r === 'listing_agent') {
           location.href = '/agent-detail.html?id=' + encodeURIComponent(it.id);
         } else {
-          const matchedAsAgent = !!list.find(x => x.id === it.id);
-          location.href = matchedAsAgent
-            ? '/agent-detail.html?id=' + encodeURIComponent(it.id)
-            : '/seller-detail.html?id=' + encodeURIComponent(it.id);
+          // default to agent editor for mixed roles
+          location.href = '/agent-detail.html?id=' + encodeURIComponent(it.id);
         }
       });
     }
@@ -367,60 +325,35 @@
       `;
     }
 
-    async function claimListingForSellerIfNeeded(emailLower) {
-      if (role !== 'seller') return;
-      const lastId = (localStorage.getItem('lastListingId') || '').trim();
-      if (!lastId || !db || !emailLower) return;
-
-      try {
-        const ref = doc(db, "listings", lastId);
-        const snap = await getDoc(ref);
-        if (!snap.exists()) return;
-
-        const d = snap.data() || {};
-        const currentOwner = (d.ownerEmail || '').trim().toLowerCase();
-
-        const hasSigned = !!(d.signedISC && d.signedISC.name);
-        if (hasSigned && currentOwner !== emailLower) {
-          await updateDoc(ref, {
-            ownerEmail: emailLower,
-            updatedAt: serverTimestamp()
-          });
-          localStorage.setItem('lastListingId', lastId);
-        }
-      } catch (e) {
-        console.warn('[welcome] claim skipped:', e);
-      }
-    }
-
     (async function boot(){
-      await claimListingForSellerIfNeeded(email);
+      const { owner, agent, all } = await fetchMyLists();
 
-      const { owner, agent, all } = await fetchMyListingsCI();
-
-      // Auto-correct role when obvious
-      if (role !== 'listing_agent' && agent.length > 0 && owner.length === 0) {
+      // Prefer agent role if any agent matches exist
+      if (role !== 'listing_agent' && agent.length > 0) {
         try { localStorage.setItem('userRole', 'listing_agent'); role = 'listing_agent'; } catch {}
-      }
-      if (role !== 'seller' && owner.length > 0 && agent.length === 0) {
-        try { localStorage.setItem('userRole', 'seller'); role = 'seller'; } catch {}
+      } else if (!role) {
+        // Fallback role selection
+        role = owner.length ? 'seller' : 'listing_agent';
+        try { localStorage.setItem('userRole', role); } catch {}
       }
 
       // Show correct box
       if (role === 'seller') $('boxSeller').classList.remove('hidden');
       else if (role === 'listing_agent') $('boxAgent').classList.remove('hidden');
-      else if (role === 'buyers_agent') $('boxBuyersAgent').classList.remove('hidden');
-      else if (role === 'buyer') $('boxBuyer').classList.remove('hidden');
       else $('boxOther').classList.remove('hidden');
 
-      // Prompt card
-      if (role === 'seller' && owner.length === 1) {
+      // Build Agent dropdown source:
+      // If we have at least 1 strict agent match, use those.
+      // Otherwise, fall back to ALL your listings (so nothing “disappears”).
+      const agentSource = agent.length ? agent.slice() : all.slice();
+
+      // Prompt card: show seller prompt if exactly one owner listing; otherwise if one agentSource.
+      if (owner.length === 1 && role === 'seller') {
         renderPromptCard(owner[0], 'seller');
         localStorage.setItem('lastListingId', owner[0].id);
-      }
-      if (role === 'listing_agent' && agent.length === 1) {
-        renderPromptCard(agent[0], 'agent');
-        localStorage.setItem('lastListingId', agent[0].id);
+      } else if (agentSource.length === 1 && role === 'listing_agent') {
+        renderPromptCard(agentSource[0], 'agent');
+        localStorage.setItem('lastListingId', agentSource[0].id);
       }
 
       // Fill dropdowns + wire editors
@@ -437,9 +370,9 @@
       const agentGo   = $("agentEditGo");
       const agentPrev = $("agentPreview");
       if (agentSel) {
-        if (agent.length) { $("agentNoListings")?.classList.add('hidden'); fillDropdown(agentSel, agent); }
+        if (agentSource.length) { $("agentNoListings")?.classList.add('hidden'); fillDropdown(agentSel, agentSource); }
         else { $("agentNoListings")?.classList.remove('hidden'); }
-        wireEditor(agentSel, agentGo, agentPrev, agent);
+        wireEditor(agentSel, agentGo, agentPrev, agentSource);
       }
 
       // Table of all
@@ -464,7 +397,7 @@
                   ${all.map(it=>{
                       const upd = it.updatedAt?.toDate ? it.updatedAt.toDate() : null;
                       const upds = upd ? upd.toLocaleDateString() : '';
-                      const href = safePreviewHref(it);
+                      const href = it.id ? ('/listing.html?id=' + encodeURIComponent(it.id)) : '#';
                       return `
                         <tr>
                           <td class="px-3 py-2">${it.address || ''}</td>
