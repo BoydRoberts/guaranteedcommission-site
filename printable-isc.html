@@ -164,7 +164,11 @@
       const name     = (d.ownerName || d.name || "[name]");
       const brokerage= d.brokerage || "[listing brokerage]";
       const agent    = d.agentName || d.agent || "[listing agent]";
-      const phone    = d.agentPhone || d.phone || (isFSBO ? "[owner/seller phone]" : "[agent phone]");
+      // START FIX: prefer owner/seller phone for FSBO
+      const phone    = isFSBO
+        ? (d.ownerPhone || d.phone || d.agentPhone || "[owner/seller phone]")
+        : (d.agentPhone || d.phone || "[agent phone]");
+      // END FIX
       const email    = isFSBO ? (d.ownerEmail || "[owner/seller email]") : (d.agentEmail || "[agent email]");
 
       const cType    = (d.commissionType === "$" || d.commissionType === "%") ? d.commissionType : "%";
