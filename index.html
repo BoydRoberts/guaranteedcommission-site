@@ -630,6 +630,9 @@
             commissionType: formData.commissionType || "%",
             ownerName: formData.name || "",
             ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",
+            // START FIX: store FSBO owner phone so printable ISC can display it
+            ownerPhone: plan.includes('FSBO') ? (formData.phone || "") : "",
+            // END FIX
             agentName:  plan.includes('FSBO') ? "" : (formData.agent || ""),
             agentPhone: plan.includes('FSBO') ? "" : (formData.phone || ""),
             agentEmail: plan.includes('FSBO') ? "" : (formData.agentEmail || ""),
