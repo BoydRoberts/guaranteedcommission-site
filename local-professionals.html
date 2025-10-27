@@ -207,6 +207,28 @@
         const app = { role, name, email, phone, license, zips, createdAt: Date.now() };
         localStorage.setItem('localProApplication', JSON.stringify(app));
 
+        // START local-pros (draft save): write a pending localPros doc before redirect
+        try {
+          const { db } = await import("/scripts/firebase-init.js");
+          const { addDoc, collection, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+          const draft = {
+            role,
+            name,
+            email: String(email || "").toLowerCase(),
+            phone,
+            license,
+            zips,
+            status: "pending",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          };
+          const ref = await addDoc(collection(db, "localPros"), draft);
+          localStorage.setItem("localProDraftId", ref.id);
+        } catch (e) {
+          console.warn("[local-pros] draft save failed; proceeding to checkout anyway:", e);
+        }
+        // END local-pros (draft save)
+
         // Build params for Checkout Link
         const params = new URLSearchParams({
           prefilled_email: email,
@@ -226,10 +248,26 @@
     document.addEventListener('DOMContentLoaded', compute);
 
     // success banner (if you configured redirect back in Stripe)
-    (function(){
+    (async function(){
       const u=new URL(location.href);
       if (u.searchParams.get('status')==='success'){
         $('thanks').classList.remove('hidden');
+
+        // START local-pros (finalize after success): mark pending doc active
+        try {
+          const draftId = localStorage.getItem("localProDraftId");
+          if (draftId) {
+            const { db } = await import("/scripts/firebase-init.js");
+            const { doc, updateDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+            await updateDoc(doc(db, "localPros", draftId), {
+              status: "active",
+              updatedAt: serverTimestamp()
+            });
+          }
+        } catch (e) {
+          console.warn("[local-pros] finalize failed:", e);
+        }
+        // END local-pros (finalize after success)
       }
     })();
 
