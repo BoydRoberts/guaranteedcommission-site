@@ -557,6 +557,21 @@
         updatedAt: serverTimestamp()
       };
 
+      // START local-pros (zip backfill): set ZIP once if missing on the document
+      try {
+        const curSnap = await getDoc(doc(db, "listings", listingId));
+        const cur = curSnap.exists() ? (curSnap.data() || {}) : {};
+        if (!cur.zip) {
+          const addr = $("fullAddress").value || "";
+          const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
+          const zip = m ? m[1] : "";
+          if (zip) payload.zip = zip;
+        }
+      } catch (e) {
+        console.warn("[agent] zip backfill skipped:", e);
+      }
+      // END local-pros (zip backfill)
+
       try {
         await updateDoc(doc(db, "listings", listingId), payload);
         await refreshFromServer("Saved to server.");
