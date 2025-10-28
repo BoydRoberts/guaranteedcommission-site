@@ -145,7 +145,7 @@
 
         <!-- Banner (upsell-driven) -->
         <div>
-          <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
+          <label class="block text sm font-semibold mb-1">Banner (optional)</label>
           <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
           <p id="bannerGateNote" class="lock-note mt-1 hidden">Purchase Banner to enable this field.</p>
         </div>
@@ -179,7 +179,7 @@
               <input id="agentEmail" type="email" class="w-full border p-2 rounded">
             </div>
             <div>
-              <label class="block text-sm font-semibold mb-1">Listing Agent Phone</label>
+              <label class="block text sm font-semibold mb-1">Listing Agent Phone</label>
               <input id="agentPhone" class="w-full border p-2 rounded">
             </div>
           </div>
@@ -524,6 +524,21 @@
         agentEmail: planNow.includes("FSBO") ? "" : ($("agentEmail").value || ""),
         agentPhone: planNow.includes("FSBO") ? "" : ($("agentPhone").value || "")
       };
+
+      // START local-pros (zip backfill): set ZIP once if missing on the document
+      try {
+        const curSnap = await getDoc(doc(db, "listings", listingId));
+        const cur = curSnap.exists() ? (curSnap.data() || {}) : {};
+        if (!cur.zip) {
+          const addr = $("fullAddress").value || "";
+          const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
+          const zip = m ? m[1] : "";
+          if (zip) update.zip = zip;
+        }
+      } catch (e) {
+        console.warn("[seller] zip backfill skipped:", e);
+      }
+      // END local-pros (zip backfill)
 
       try {
         await updateDoc(doc(db, "listings", listingId), update);
