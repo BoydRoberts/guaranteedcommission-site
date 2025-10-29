@@ -325,49 +325,64 @@
       } catch {}
     });
 
-    // START local-pros: fetch & render Local Professionals by ZIP
+    // START local-pros
     function parseZipFromAddress(addr="") {
       const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
       return m ? m[1] : "";
     }
 
-    // ADDED: loader for localPros and optional localProfessionals
+    // ADDED: tiny helper – make a slug from name for local image path
+    function slugName(s="") {
+      return String(s).toLowerCase().trim()
+        .replace(/[^a-z0-9]+/g,'-')
+        .replace(/^-+|-+$/g,'');
+    }
+
+    // ADDED: static fallback – fetch /data/local-pros.json (no Firebase needed)
+    async function loadLocalProsStatic(zip) {
+      try {
+        const res = await fetch('/data/local-pros.json', { cache:'no-store' });
+        if (!res.ok) return { agents:[], lenders:[] };
+        const all = await res.json(); // [{name, role, phone, email, zips:[...]}]
+        const inZip = all.filter(p => Array.isArray(p.zips) && p.zips.includes(zip));
+        const isAgent = (r="") => /agent|broker|real\s*estate/.test(String(r).toLowerCase());
+        const isLender= (r="") => /lender|loan|mortgage/.test(String(r).toLowerCase());
+        const agents = inZip.filter(p => isAgent(p.role)).slice(0,3);
+        const lenders= inZip.filter(p => isLender(p.role)).slice(0,1);
+        return { agents, lenders };
+      } catch { return { agents:[], lenders:[] }; }
+    }
+
+    // Existing Firestore path (will throw permission error if rules block)
     async function loadLocalPros(zip) {
       try {
         const results = [];
 
-        // Primary schema: localPros with zips array + status
-        try {
-          const q1 = query(
-            collection(db, "localPros"),
-            where("zips", "array-contains", zip)
-          );
-          const snap1 = await getDocs(q1);
-          snap1.forEach(d => {
-            const x = d.data() || {};
-            const status = (String(x.status || "active")).toLowerCase();
-            if (status !== "active") return;
-            results.push({
-              id: d.id,
-              name: x.name || "",
-              role: (String(x.role || "")).toLowerCase(),
-              phone: x.phone || "",
-              email: x.email || "",
-              photoUrl: x.photoUrl || x.imageUrl || x.cardUrl || ""
-            });
+        // localPros by zips
+        const q1 = query(collection(db, "localPros"), where("zips", "array-contains", zip));
+        const snap1 = await getDocs(q1);
+        snap1.forEach(d => {
+          const x = d.data() || {};
+          const status = String(x.status || "active").toLowerCase();
+          if (status !== "active") return;
+          results.push({
+            id: d.id,
+            name: x.name || "",
+            role: (String(x.role || "")).toLowerCase(),
+            phone: x.phone || "",
+            email: x.email || "",
+            photoUrl: x.photoUrl || x.imageUrl || x.cardUrl || ""
           });
-        } catch (e) {
-          console.warn("[localPros] read failed (ok to ignore if not used):", e);
-        }
+        });
 
         // Optional secondary schema: localProfessionals (serviceAreas/zips)
         try {
           const q2a = query(collection(db, "localProfessionals"), where("serviceAreas", "array-contains", zip));
           const q2b = query(collection(db, "localProfessionals"), where("zips", "array-contains", zip));
-          const [snap2a, snap2b] = await Promise.all([getDocs(q2a), getDocs(q2b)]);
+          const [a,b] = await Promise.all([getDocs(q2a), getDocs(q2b)]);
           const pushFrom = (snap) => snap.forEach(d => {
             const x = d.data() || {};
-            const status = (String(x.status || "active")).toLowerCase();
+            const status = String(x.status || "active").toLowerCase();
             if (status !== "active") return;
             const roleRaw = (x.category || x.role || "").toString().toLowerCase();
             results.push({
@@ -379,36 +394,29 @@
               photoUrl: x.imageUrl || x.cardUrl || x.photoUrl || ""
             });
           });
-          pushFrom(snap2a); pushFrom(snap2b);
-        } catch (e) {
-          console.warn("[localProfessionals] read failed (ok to ignore if not used):", e);
-        }
+          pushFrom(a); pushFrom(b);
+        } catch {}
 
-        // Dedup by name|email
-        const seen = new Set();
-        const dedup = [];
+        // Dedup
+        const seen = new Set(); const dedup = [];
         for (const r of results) {
-          const key = (r.name || "") + "|" + (r.email || "");
-          if (seen.has(key)) continue;
-          seen.add(key);
-          dedup.push(r);
+          const key = (r.name||"")+"|"+(r.email||"");
+          if (seen.has(key)) continue; seen.add(key); dedup.push(r);
         }
 
-        // Buckets: 3 agents + 1 lender
-        const isAgent = (role="") => /agent|broker|real\s*estate/.test(role);
-        const isLender = (role="") => /lender|loan|mortgage/.test(role);
-
-        const agents = dedup.filter(p => isAgent(p.role)).slice(0,3);
-        const lenders = dedup.filter(p => isLender(p.role)).slice(0,1);
+        const isAgent = (r="") => /agent|broker|real\s*estate/.test(String(r).toLowerCase());
+        const isLender= (r="") => /lender|loan|mortgage/.test(String(r).toLowerCase());
+        const agents = dedup.filter(p=>isAgent(p.role)).slice(0,3);
+        const lenders= dedup.filter(p=>isLender(p.role)).slice(0,1);
 
         return { agents, lenders };
       } catch (e) {
-        console.warn("[local-pros] fetch failed:", e);
-        return { agents: [], lenders: [] };
+        // ADDED: if Firestore blocks, use static fallback
+        console.warn("[localPros] Firestore blocked, falling back to static:", e?.message || e);
+        return await loadLocalProsStatic(zip);
       }
     }
 
-    // ADDED: renderer with graceful "No Image" placeholder
     function renderPros(zip, agents=[], lenders=[]) {
       const card = $("prosCard");
       const grid = $("prosGrid");
@@ -429,19 +437,22 @@
         const div = document.createElement("div");
         div.className = "border rounded-lg p-3 flex items-center gap-3";
 
-        // Placeholder if no photoUrl
+        // ADDED: If no URL, try local image by name
+        let src = p.photoUrl || "";
+        if (!src && p.name) src = `/images/local-pros/${slugName(p.name)}.png`;
+
         let left;
-        if (p.photoUrl) {
+        if (src) {
           const img = document.createElement("img");
-          img.src = p.photoUrl;
+          img.src = src;
           img.alt = p.name || label || "Local Professional";
           img.className = "w-16 h-16 object-cover rounded bg-gray-100";
+          img.onerror = () => { // graceful fallback if file missing
+            img.replaceWith(noImage());
+          };
           left = img;
         } else {
-          const ph = document.createElement("div");
-          ph.className = "w-16 h-16 rounded bg-gray-200 flex items-center justify-center text-[10px] text-gray-600";
-          ph.textContent = "No Image";
-          left = ph;
+          left = noImage();
         }
 
         const info = document.createElement("div");
@@ -483,6 +494,13 @@
         div.appendChild(left);
         div.appendChild(info);
         return div;
+      }
+
+      function noImage(){
+        const ph = document.createElement("div");
+        ph.className = "w-16 h-16 rounded bg-gray-200 flex items-center justify-center text-[10px] text-gray-600";
+        ph.textContent = "No Image";
+        return ph;
       }
 
       agents.forEach(a => tiles.push(makeTile(a, "Agent")));
@@ -617,16 +635,15 @@
           $("galleryCard").classList.remove("hidden");
         }
 
-        // START local-pros: load professionals for the listing ZIP
+        // Local Pros (now with static fallback)
         const zip = (d.zip && String(d.zip)) || parseZipFromAddress(address);
         if (zip) {
           console.log("[Local Pros] listing ZIP =", zip);
           const { agents, lenders } = await loadLocalPros(zip);
           renderPros(zip, agents, lenders);
         }
-        // END local-pros
 
-        // Paint stats (views + likes)
+        // Stats
         if (idParam) await paintStats(idParam);
 
         // Heart
