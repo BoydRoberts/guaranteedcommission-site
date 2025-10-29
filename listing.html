@@ -325,35 +325,13 @@
       } catch {}
     });
 
-    // START local-pros
+    // START local-pros: fetch & render Local Professionals by ZIP
     function parseZipFromAddress(addr="") {
       const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
       return m ? m[1] : "";
     }
 
-    // ADDED: tiny helper – make a slug from name for local image path
-    function slugName(s="") {
-      return String(s).toLowerCase().trim()
-        .replace(/[^a-z0-9]+/g,'-')
-        .replace(/^-+|-+$/g,'');
-    }
-
-    // ADDED: static fallback – fetch /data/local-pros.json (no Firebase needed)
-    async function loadLocalProsStatic(zip) {
-      try {
-        const res = await fetch('/data/local-pros.json', { cache:'no-store' });
-        if (!res.ok) return { agents:[], lenders:[] };
-        const all = await res.json(); // [{name, role, phone, email, zips:[...]}]
-        const inZip = all.filter(p => Array.isArray(p.zips) && p.zips.includes(zip));
-        const isAgent = (r="") => /agent|broker|real\s*estate/.test(String(r).toLowerCase());
-        const isLender= (r="") => /lender|loan|mortgage/.test(String(r).toLowerCase());
-        const agents = inZip.filter(p => isAgent(p.role)).slice(0,3);
-        const lenders= inZip.filter(p => isLender(p.role)).slice(0,1);
-        return { agents, lenders };
-      } catch { return { agents:[], lenders:[] }; }
-    }
-
-    // Existing Firestore path (will throw permission error if rules block)
+    // ADDED: loader (unchanged) + new fallback when roles are missing
     async function loadLocalPros(zip) {
       try {
         const results = [];
@@ -409,11 +387,15 @@
         const agents = dedup.filter(p=>isAgent(p.role)).slice(0,3);
         const lenders= dedup.filter(p=>isLender(p.role)).slice(0,1);
 
+        // ADDED: if nothing classified but we have rows, show generics
+        if (!agents.length && !lenders.length && dedup.length) {
+          return { agents: dedup.slice(0,4), lenders: [] };
+        }
+
         return { agents, lenders };
       } catch (e) {
-        // ADDED: if Firestore blocks, use static fallback
-        console.warn("[localPros] Firestore blocked, falling back to static:", e?.message || e);
-        return await loadLocalProsStatic(zip);
+        console.warn("[local-pros] fetch failed:", e);
+        return { agents: [], lenders: [] };
       }
     }
 
@@ -437,17 +419,14 @@
         const div = document.createElement("div");
         div.className = "border rounded-lg p-3 flex items-center gap-3";
 
-        // ADDED: If no URL, try local image by name
-        let src = p.photoUrl || "";
-        if (!src && p.name) src = `/images/local-pros/${slugName(p.name)}.png`;
-
+        // Placeholder if no photoUrl
         let left;
-        if (src) {
+        if (p.photoUrl) {
           const img = document.createElement("img");
-          img.src = src;
+          img.src = p.photoUrl;
           img.alt = p.name || label || "Local Professional";
           img.className = "w-16 h-16 object-cover rounded bg-gray-100";
-          img.onerror = () => { // graceful fallback if file missing
+          img.onerror = () => {
             img.replaceWith(noImage());
           };
           left = img;
@@ -462,7 +441,9 @@
         name.textContent = p.name || label || "Local Professional";
         const line2 = document.createElement("div");
         line2.className = "text-xs text-gray-600";
-        line2.textContent = (label || (/lender/.test(p.role||"") ? "Lender" : "Real Estate Agent"));
+        // If no role, say Local Professional
+        const roleText = (/lender/.test(p.role||"")) ? "Lender" : ( /agent|broker|real\s*estate/.test(p.role||"") ? "Real Estate Agent" : "Local Professional" );
+        line2.textContent = (label || roleText);
 
         const links = document.createElement("div");
         links.className = "text-xs";
@@ -635,15 +616,16 @@
           $("galleryCard").classList.remove("hidden");
         }
 
-        // Local Pros (now with static fallback)
+        // START local-pros: load professionals for the listing ZIP
         const zip = (d.zip && String(d.zip)) || parseZipFromAddress(address);
         if (zip) {
           console.log("[Local Pros] listing ZIP =", zip);
           const { agents, lenders } = await loadLocalPros(zip);
           renderPros(zip, agents, lenders);
         }
+        // END local-pros
 
-        // Stats
+        // Paint stats (views + likes)
         if (idParam) await paintStats(idParam);
 
         // Heart
