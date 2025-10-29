@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Local Professionals | GuaranteedCommission.com</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Firebase compat (simple to wire with your existing project) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+
+  <style>
+    .container { max-width: 760px; }
+    .hint { font-size: 12px; color: #6b7280; }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <header class="bg-white border-b">
+    <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/index.html" class="text-sm text-blue-600 underline">&larr; Home</a>
+      <h1 class="text-lg font-semibold">Local Professionals</h1>
+      <span></span>
+    </div>
+  </header>
+
+  <main class="container mx-auto p-4">
+    <div class="bg-white rounded-xl shadow p-6">
+      <h2 class="text-xl font-semibold mb-2">Become a Local Professional</h2>
+      <p class="hint mb-6">Sign in, upload your card, choose ZIPs. Your profile appears on listing pages in those ZIP codes when status is <b>active</b>.</p>
+
+      <!-- Auth -->
+      <div id="authBox" class="mb-6">
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input id="email" type="email" class="border rounded px-3 py-2 flex-1" placeholder="Email"/>
+          <input id="password" type="password" class="border rounded px-3 py-2 flex-1" placeholder="Password"/>
+          <button id="loginBtn" class="bg-black text-white rounded px-4 py-2">Sign In</button>
+          <button id="signupBtn" class="border rounded px-4 py-2">Create Account</button>
+        </div>
+        <div id="authMsg" class="hint mt-2"></div>
+      </div>
+
+      <!-- Profile form -->
+      <form id="proForm" class="space-y-4 hidden">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm mb-1">Name</label>
+            <input id="name" class="border rounded w-full px-3 py-2" placeholder="Your public name"/>
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Role</label>
+            <select id="role" class="border rounded w-full px-3 py-2">
+              <option value="real_estate_agent">Real Estate Agent</option>
+              <option value="lender">Lender</option>
+              <option value="inspector">Inspector</option>
+              <option value="appraiser">Appraiser</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm mb-1">Phone</label>
+            <input id="phone" class="border rounded w-full px-3 py-2" placeholder="949-463-9152"/>
+          </div>
+          <div>
+            <label class="block text-sm mb-1">License (optional)</label>
+            <input id="license" class="border rounded w-full px-3 py-2" placeholder="01354788"/>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm mb-1">ZIP Codes (comma separated)</label>
+            <input id="zips" class="border rounded w-full px-3 py-2" placeholder="92660, 92651, 92657"/>
+            <p class="hint mt-1">These control where you appear.</p>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm mb-1">Business Card Image (PNG/JPG/WebP)</label>
+            <input id="photo" type="file" accept=".png,.jpg,.jpeg,.webp" class="block"/>
+            <p class="hint mt-1">Stored at <code>localPros/&lt;uid&gt;/&lt;filename&gt;</code>. Publicly viewable on listing pages.</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
+          <button id="saveBtn" type="button" class="bg-black text-white rounded px-4 py-2">Save Profile</button>
+          <button id="setActiveBtn" type="button" class="border rounded px-4 py-2">Set Status: Active</button>
+          <span id="saveMsg" class="text-sm"></span>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    // Use your existing config if it's already on window.firebaseConfig
+    const cfg = window.firebaseConfig || {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
+      projectId: "guaranteedcommission-d4d91",
+      storageBucket: "guaranteedcommission-d4d91.appspot.com",
+      appId: "YOUR_APP_ID"
+    };
+    if (firebase.apps.length === 0) firebase.initializeApp(cfg);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // UI refs
+    const authBox = document.getElementById('authBox');
+    const authMsg = document.getElementById('authMsg');
+    const emailEl = document.getElementById('email');
+    const passEl = document.getElementById('password');
+    const loginBtn = document.getElementById('loginBtn');
+    const signupBtn = document.getElementById('signupBtn');
+
+    const form = document.getElementById('proForm');
+    const nameEl = document.getElementById('name');
+    const roleEl = document.getElementById('role');
+    const phoneEl = document.getElementById('phone');
+    const licenseEl = document.getElementById('license');
+    const zipsEl = document.getElementById('zips');
+    const photoEl = document.getElementById('photo');
+    const saveBtn = document.getElementById('saveBtn');
+    const setActiveBtn = document.getElementById('setActiveBtn');
+    const saveMsg = document.getElementById('saveMsg');
+
+    function show(msg, ok=true) {
+      saveMsg.textContent = msg;
+      saveMsg.className = "text-sm " + (ok ? "text-green-700" : "text-red-700");
+    }
+
+    // Auth handlers
+    loginBtn.onclick = async () => {
+      authMsg.textContent = "";
+      try {
+        await auth.signInWithEmailAndPassword(emailEl.value.trim(), passEl.value);
+      } catch(e) { authMsg.textContent = e.message; }
+    };
+    signupBtn.onclick = async () => {
+      authMsg.textContent = "";
+      try {
+        await auth.createUserWithEmailAndPassword(emailEl.value.trim(), passEl.value);
+      } catch(e) { authMsg.textContent = e.message; }
+    };
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { form.classList.add('hidden'); authBox.classList.remove('hidden'); return; }
+      authBox.classList.add('hidden'); form.classList.remove('hidden');
+
+      // Load existing doc
+      const ref = db.collection('localPros').doc(user.uid);
+      const snap = await ref.get();
+      const d = snap.exists ? snap.data() : {};
+      nameEl.value = d.name || user.displayName || "";
+      roleEl.value = d.role || "real_estate_agent";
+      phoneEl.value = d.phone || "";
+      licenseEl.value = d.license || "";
+      zipsEl.value = Array.isArray(d.zips) ? d.zips.join(", ") : "";
+
+      setActiveBtn.onclick = async () => {
+        await ref.set({ status: "active", updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        show("Status set to ACTIVE");
+      };
+    });
+
+    // Save profile + upload card
+    saveBtn.onclick = async () => {
+      const user = auth.currentUser;
+      if (!user) return show("Please sign in first.", false);
+
+      const name = nameEl.value.trim();
+      const role = roleEl.value.trim();
+      const phone = phoneEl.value.trim();
+      const email = (auth.currentUser?.email || emailEl.value.trim());
+      const license = licenseEl.value.trim();
+      const zips = zipsEl.value.split(',').map(s => s.trim()).filter(Boolean);
+
+      if (!name || !role || !phone || !email || zips.length === 0) {
+        return show("Name, role, phone, email, and at least one ZIP are required.", false);
+      }
+
+      // Upload image if provided
+      let photoUrl = "";
+      const file = photoEl.files && photoEl.files[0];
+      if (file) {
+        try {
+          const safeName = (file.name || "card").replace(/[^a-zA-Z0-9._-]/g, "_");
+          const ref = storage.ref(`localPros/${user.uid}/${safeName}`);
+          await ref.put(file);
+          photoUrl = await ref.getDownloadURL();
+        } catch(e) { return show("Image upload failed: " + (e.message || e), false); }
+      }
+
+      // Build data
+      const ref = db.collection('localPros').doc(user.uid);
+      const exists = (await ref.get()).exists;
+
+      const base = {
+        name, role, phone, email,
+        license: license || "",
+        zips,
+        status: "active",
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        photoUrl: photoUrl || (exists ? ( (await ref.get()).data()?.photoUrl || "" ) : "")
+      };
+      if (!exists) base.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+
+      try {
+        await ref.set(base, { merge: true });
+        show("Profile saved.");
+      } catch(e) {
+        show("Save failed: " + (e.message || e), false);
+      }
+    };
+  </script>
+</body>
+</html>
