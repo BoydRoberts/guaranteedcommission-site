@@ -331,12 +331,12 @@
       return m ? m[1] : "";
     }
 
-    // *** ONLY CHANGE: broadened loader that supports both collections & field names ***
+    // ADDED: loader for localPros and optional localProfessionals
     async function loadLocalPros(zip) {
       try {
         const results = [];
 
-        // Try schema 1: collection "localPros" with fields: status, zips (array), role, photoUrl
+        // Primary schema: localPros with zips array + status
         try {
           const q1 = query(
             collection(db, "localPros"),
@@ -345,7 +345,6 @@
           const snap1 = await getDocs(q1);
           snap1.forEach(d => {
             const x = d.data() || {};
-            // default active if no status field present
             const status = (String(x.status || "active")).toLowerCase();
             if (status !== "active") return;
             results.push({
@@ -354,50 +353,40 @@
               role: (String(x.role || "")).toLowerCase(),
               phone: x.phone || "",
               email: x.email || "",
-              photoUrl: x.photoUrl || x.imageUrl || x.cardUrl || "",
+              photoUrl: x.photoUrl || x.imageUrl || x.cardUrl || ""
             });
           });
         } catch (e) {
           console.warn("[localPros] read failed (ok to ignore if not used):", e);
         }
 
-        // Try schema 2: collection "localProfessionals" with fields: serviceAreas (array) or zips, imageUrl/cardUrl/photoUrl, category/role
+        // Optional secondary schema: localProfessionals (serviceAreas/zips)
         try {
-          // Firestore doesn't OR; do two queries and merge
-          const q2a = query(
-            collection(db, "localProfessionals"),
-            where("serviceAreas", "array-contains", zip)
-          );
-          const q2b = query(
-            collection(db, "localProfessionals"),
-            where("zips", "array-contains", zip)
-          );
-
+          const q2a = query(collection(db, "localProfessionals"), where("serviceAreas", "array-contains", zip));
+          const q2b = query(collection(db, "localProfessionals"), where("zips", "array-contains", zip));
           const [snap2a, snap2b] = await Promise.all([getDocs(q2a), getDocs(q2b)]);
           const pushFrom = (snap) => snap.forEach(d => {
             const x = d.data() || {};
             const status = (String(x.status || "active")).toLowerCase();
             if (status !== "active") return;
-            // prefer category if present; fall back to role
             const roleRaw = (x.category || x.role || "").toString().toLowerCase();
             results.push({
               id: d.id,
               name: x.name || "",
-              role: roleRaw, // e.g., "lender", "real_estate_agent", "inspector"
+              role: roleRaw,
               phone: x.phone || "",
               email: x.email || "",
-              photoUrl: x.imageUrl || x.cardUrl || x.photoUrl || "",
+              photoUrl: x.imageUrl || x.cardUrl || x.photoUrl || ""
             });
           });
-          pushFrom(snap2a);
-          pushFrom(snap2b);
+          pushFrom(snap2a); pushFrom(snap2b);
         } catch (e) {
           console.warn("[localProfessionals] read failed (ok to ignore if not used):", e);
         }
 
-        // Deduplicate by (name+email) in case entries appear in both collections
-        const dedup = [];
+        // Dedup by name|email
         const seen = new Set();
+        const dedup = [];
         for (const r of results) {
           const key = (r.name || "") + "|" + (r.email || "");
           if (seen.has(key)) continue;
@@ -405,7 +394,7 @@
           dedup.push(r);
         }
 
-        // Heuristic: split into up to 3 agents + 1 lender
+        // Buckets: 3 agents + 1 lender
         const isAgent = (role="") => /agent|broker|real\s*estate/.test(role);
         const isLender = (role="") => /lender|loan|mortgage/.test(role);
 
@@ -419,6 +408,7 @@
       }
     }
 
+    // ADDED: renderer with graceful "No Image" placeholder
     function renderPros(zip, agents=[], lenders=[]) {
       const card = $("prosCard");
       const grid = $("prosGrid");
@@ -438,10 +428,22 @@
       function makeTile(p, label) {
         const div = document.createElement("div");
         div.className = "border rounded-lg p-3 flex items-center gap-3";
-        const img = document.createElement("img");
-        img.src = p.photoUrl || "";
-        img.alt = p.name || label || "Local Professional";
-        img.className = "w-16 h-16 object-cover rounded bg-gray-100";
+
+        // Placeholder if no photoUrl
+        let left;
+        if (p.photoUrl) {
+          const img = document.createElement("img");
+          img.src = p.photoUrl;
+          img.alt = p.name || label || "Local Professional";
+          img.className = "w-16 h-16 object-cover rounded bg-gray-100";
+          left = img;
+        } else {
+          const ph = document.createElement("div");
+          ph.className = "w-16 h-16 rounded bg-gray-200 flex items-center justify-center text-[10px] text-gray-600";
+          ph.textContent = "No Image";
+          left = ph;
+        }
+
         const info = document.createElement("div");
         info.className = "text-sm";
         const name = document.createElement("div");
@@ -450,20 +452,35 @@
         const line2 = document.createElement("div");
         line2.className = "text-xs text-gray-600";
         line2.textContent = (label || (/lender/.test(p.role||"") ? "Lender" : "Real Estate Agent"));
-        const phone = document.createElement("a");
-        phone.className = "text-xs text-blue-600 underline";
-        const tel = String(p.phone||"").replace(/\D/g,"");
-        phone.href = tel ? `tel:${tel}` : "#";
-        phone.textContent = p.phone || "";
-        const email = document.createElement("a");
-        email.className = "text-xs text-blue-600 underline ml-2";
-        email.href = p.email ? `mailto:${p.email}` : "#";
-        email.textContent = p.email || "";
+
+        const links = document.createElement("div");
+        links.className = "text-xs";
+        if (p.phone) {
+          const tel = String(p.phone).replace(/\D/g,"");
+          const a = document.createElement("a");
+          a.href = tel ? `tel:${tel}` : "#";
+          a.className = "text-blue-600 underline";
+          a.textContent = p.phone;
+          links.appendChild(a);
+        }
+        if (p.email) {
+          if (links.childNodes.length) {
+            const sep = document.createElement("span");
+            sep.textContent = " · ";
+            links.appendChild(sep);
+          }
+          const e = document.createElement("a");
+          e.href = `mailto:${p.email}`;
+          e.className = "text-blue-600 underline";
+          e.textContent = p.email;
+          links.appendChild(e);
+        }
+
         info.appendChild(name);
         info.appendChild(line2);
-        if (p.phone) info.appendChild(phone);
-        if (p.email) info.appendChild(email);
-        div.appendChild(img);
+        if (links.childNodes.length) info.appendChild(links);
+
+        div.appendChild(left);
         div.appendChild(info);
         return div;
       }
@@ -603,6 +620,7 @@
         // START local-pros: load professionals for the listing ZIP
         const zip = (d.zip && String(d.zip)) || parseZipFromAddress(address);
         if (zip) {
+          console.log("[Local Pros] listing ZIP =", zip);
           const { agents, lenders } = await loadLocalPros(zip);
           renderPros(zip, agents, lenders);
         }
