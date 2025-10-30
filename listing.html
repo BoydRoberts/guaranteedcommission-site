@@ -331,7 +331,7 @@
       return m ? m[1] : "";
     }
 
-    // ADDED: loader (unchanged) + new fallback when roles are missing, and photo support for `photo`
+    // Loader with broad photo support + generic fallback
     async function loadLocalPros(zip) {
       try {
         const results = [];
@@ -349,7 +349,7 @@
             role: (String(x.role || "")).toLowerCase(),
             phone: x.phone || "",
             email: x.email || "",
-            // SURGICAL: accept multiple possible photo fields, including `photo`
+            // accept multiple possible photo fields
             photoUrl: x.photoUrl || x.imageUrl || x.cardUrl || x.photo || ""
           });
         });
@@ -370,7 +370,6 @@
               role: roleRaw,
               phone: x.phone || "",
               email: x.email || "",
-              // SURGICAL: also accept `photo` here
               photoUrl: x.imageUrl || x.cardUrl || x.photoUrl || x.photo || ""
             });
           });
@@ -380,7 +379,7 @@
         // Dedup
         const seen = new Set(); const dedup = [];
         for (const r of results) {
-          const key = (r.name||"")+"|"+(r.email||"");
+          const key = (r.name||"")+"|"+(r.email||"")+"|"+r.id;
           if (seen.has(key)) continue; seen.add(key); dedup.push(r);
         }
 
@@ -389,7 +388,7 @@
         const agents = dedup.filter(p=>isAgent(p.role)).slice(0,3);
         const lenders= dedup.filter(p=>isLender(p.role)).slice(0,1);
 
-        // ADDED: if nothing classified but we have rows, show generics
+        // If nothing classified but we have rows, show generics
         if (!agents.length && !lenders.length && dedup.length) {
           return { agents: dedup.slice(0,4), lenders: [] };
         }
@@ -421,7 +420,7 @@
         const div = document.createElement("div");
         div.className = "border rounded-lg p-3 flex items-center gap-3";
 
-        // Placeholder if no photoUrl (also support plain `photo` just in case)
+        // Photo (with graceful fallback)
         let left;
         const src = p.photoUrl || p.photo || "";
         if (src) {
@@ -442,7 +441,6 @@
         name.textContent = p.name || label || "Local Professional";
         const line2 = document.createElement("div");
         line2.className = "text-xs text-gray-600";
-        // If no role, say Local Professional
         const roleText = (/lender/.test(p.role||"")) ? "Lender" : ( /agent|broker|real\s*estate/.test(p.role||"") ? "Real Estate Agent" : "Local Professional" );
         line2.textContent = (label || roleText);
 
@@ -622,7 +620,22 @@
         if (zip) {
           console.log("[Local Pros] listing ZIP =", zip);
           const { agents, lenders } = await loadLocalPros(zip);
-          renderPros(zip, agents, lenders);
+          // If nothing came back, do a tiny count query; show 1 generic if there are any matches at all
+          if ((!agents || agents.length === 0) && (!lenders || lenders.length === 0)) {
+            try {
+              const qLite = query(collection(db, "localPros"), where("zips", "array-contains", zip));
+              const sLite = await getDocs(qLite);
+              if (sLite.size > 0) {
+                renderPros(zip, [{ name:"Local Professional", role:"", phone:"", email:"", photoUrl:"" }], []);
+              } else {
+                renderPros(zip, agents, lenders);
+              }
+            } catch {
+              renderPros(zip, agents, lenders);
+            }
+          } else {
+            renderPros(zip, agents, lenders);
+          }
         }
         // END local-pros
 
