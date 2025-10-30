@@ -89,7 +89,7 @@
   </main>
 
   <script>
-    // --- Firebase init ---
+    // Firebase init
     const cfg = window.firebaseConfig || {
       apiKey: "YOUR_API_KEY",
       authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
@@ -102,7 +102,7 @@
     const db = firebase.firestore();
     const storage = firebase.storage();
 
-    // UI references
+    // UI refs
     const authBox = document.getElementById('authBox');
     const authMsg = document.getElementById('authMsg');
     const emailEl = document.getElementById('email');
@@ -126,25 +126,22 @@
       saveMsg.className = "text-sm " + (ok ? "text-green-700" : "text-red-700");
     }
 
-    // --- Auth ---
+    // Auth handlers
     loginBtn.onclick = async () => {
       authMsg.textContent = "";
-      try {
-        await auth.signInWithEmailAndPassword(emailEl.value.trim(), passEl.value);
-      } catch(e) { authMsg.textContent = e.message; }
+      try { await auth.signInWithEmailAndPassword(emailEl.value.trim(), passEl.value); }
+      catch(e) { authMsg.textContent = e.message; }
     };
     signupBtn.onclick = async () => {
       authMsg.textContent = "";
-      try {
-        await auth.createUserWithEmailAndPassword(emailEl.value.trim(), passEl.value);
-      } catch(e) { authMsg.textContent = e.message; }
+      try { await auth.createUserWithEmailAndPassword(emailEl.value.trim(), passEl.value); }
+      catch(e) { authMsg.textContent = e.message; }
     };
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { form.classList.add('hidden'); authBox.classList.remove('hidden'); return; }
       authBox.classList.add('hidden'); form.classList.remove('hidden');
 
-      // Load existing profile
       const ref = db.collection('localPros').doc(user.uid);
       const snap = await ref.get();
       const d = snap.exists ? snap.data() : {};
@@ -160,7 +157,7 @@
       };
     });
 
-    // --- Save profile and upload card ---
+    // Save profile + upload card
     saveBtn.onclick = async () => {
       const user = auth.currentUser;
       if (!user) return show("Please sign in first.", false);
@@ -190,11 +187,14 @@
       }
 
       const ref = db.collection('localPros').doc(user.uid);
-      const exists = (await ref.get()).exists;
+      const snap = await ref.get();
+      const exists = snap.exists;
+
       const payload = {
         name, role, phone, email, license, zips,
         status: "active",
-        photoUrl: photoUrl || (exists ? (await ref.get()).data()?.photoUrl || "" : ""),
+        // support both `photoUrl` (preferred) and `photo` for your existing doc shape
+        photoUrl: photoUrl || (exists ? (snap.data()?.photoUrl || snap.data()?.photo || "") : ""),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
       if (!exists) payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
