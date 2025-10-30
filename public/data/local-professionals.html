@@ -6,7 +6,7 @@
   <title>Local Professionals | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase compat (simple to wire with your existing project) -->
+  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -64,7 +64,7 @@
             <input id="phone" class="border rounded w-full px-3 py-2" placeholder="949-463-9152"/>
           </div>
           <div>
-            <label class="block text-sm mb-1">License (optional)</label>
+            <label class="block text-sm mb-1">License (required)</label>
             <input id="license" class="border rounded w-full px-3 py-2" placeholder="01354788"/>
           </div>
           <div class="sm:col-span-2">
@@ -89,7 +89,7 @@
   </main>
 
   <script>
-    // Use your existing config if it's already on window.firebaseConfig
+    // --- Firebase init ---
     const cfg = window.firebaseConfig || {
       apiKey: "YOUR_API_KEY",
       authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
@@ -102,7 +102,7 @@
     const db = firebase.firestore();
     const storage = firebase.storage();
 
-    // UI refs
+    // UI references
     const authBox = document.getElementById('authBox');
     const authMsg = document.getElementById('authMsg');
     const emailEl = document.getElementById('email');
@@ -126,7 +126,7 @@
       saveMsg.className = "text-sm " + (ok ? "text-green-700" : "text-red-700");
     }
 
-    // Auth handlers
+    // --- Auth ---
     loginBtn.onclick = async () => {
       authMsg.textContent = "";
       try {
@@ -144,7 +144,7 @@
       if (!user) { form.classList.add('hidden'); authBox.classList.remove('hidden'); return; }
       authBox.classList.add('hidden'); form.classList.remove('hidden');
 
-      // Load existing doc
+      // Load existing profile
       const ref = db.collection('localPros').doc(user.uid);
       const snap = await ref.get();
       const d = snap.exists ? snap.data() : {};
@@ -160,7 +160,7 @@
       };
     });
 
-    // Save profile + upload card
+    // --- Save profile and upload card ---
     saveBtn.onclick = async () => {
       const user = auth.currentUser;
       if (!user) return show("Please sign in first.", false);
@@ -168,15 +168,14 @@
       const name = nameEl.value.trim();
       const role = roleEl.value.trim();
       const phone = phoneEl.value.trim();
-      const email = (auth.currentUser?.email || emailEl.value.trim());
+      const email = auth.currentUser?.email || emailEl.value.trim();
       const license = licenseEl.value.trim();
       const zips = zipsEl.value.split(',').map(s => s.trim()).filter(Boolean);
 
-      if (!name || !role || !phone || !email || zips.length === 0) {
-        return show("Name, role, phone, email, and at least one ZIP are required.", false);
+      if (!name || !role || !phone || !email || !license || zips.length === 0) {
+        return show("All fields (including license) and at least one ZIP are required.", false);
       }
 
-      // Upload image if provided
       let photoUrl = "";
       const file = photoEl.files && photoEl.files[0];
       if (file) {
@@ -185,27 +184,25 @@
           const ref = storage.ref(`localPros/${user.uid}/${safeName}`);
           await ref.put(file);
           photoUrl = await ref.getDownloadURL();
-        } catch(e) { return show("Image upload failed: " + (e.message || e), false); }
+        } catch (e) {
+          return show("Image upload failed: " + (e.message || e), false);
+        }
       }
 
-      // Build data
       const ref = db.collection('localPros').doc(user.uid);
       const exists = (await ref.get()).exists;
-
-      const base = {
-        name, role, phone, email,
-        license: license || "",
-        zips,
+      const payload = {
+        name, role, phone, email, license, zips,
         status: "active",
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        photoUrl: photoUrl || (exists ? ( (await ref.get()).data()?.photoUrl || "" ) : "")
+        photoUrl: photoUrl || (exists ? (await ref.get()).data()?.photoUrl || "" : ""),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      if (!exists) base.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      if (!exists) payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
 
       try {
-        await ref.set(base, { merge: true });
-        show("Profile saved.");
-      } catch(e) {
+        await ref.set(payload, { merge: true });
+        show("Profile saved successfully.");
+      } catch (e) {
         show("Save failed: " + (e.message || e), false);
       }
     };
