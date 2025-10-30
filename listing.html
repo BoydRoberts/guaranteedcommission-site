@@ -331,7 +331,7 @@
       return m ? m[1] : "";
     }
 
-    // ADDED: loader (unchanged) + new fallback when roles are missing
+    // ADDED: loader (unchanged) + new fallback when roles are missing, and photo support for `photo`
     async function loadLocalPros(zip) {
       try {
         const results = [];
@@ -349,7 +349,8 @@
             role: (String(x.role || "")).toLowerCase(),
             phone: x.phone || "",
             email: x.email || "",
-            photoUrl: x.photoUrl || x.imageUrl || x.cardUrl || ""
+            // SURGICAL: accept multiple possible photo fields, including `photo`
+            photoUrl: x.photoUrl || x.imageUrl || x.cardUrl || x.photo || ""
           });
         });
 
@@ -369,7 +370,8 @@
               role: roleRaw,
               phone: x.phone || "",
               email: x.email || "",
-              photoUrl: x.imageUrl || x.cardUrl || x.photoUrl || ""
+              // SURGICAL: also accept `photo` here
+              photoUrl: x.imageUrl || x.cardUrl || x.photoUrl || x.photo || ""
             });
           });
           pushFrom(a); pushFrom(b);
@@ -419,16 +421,15 @@
         const div = document.createElement("div");
         div.className = "border rounded-lg p-3 flex items-center gap-3";
 
-        // Placeholder if no photoUrl
+        // Placeholder if no photoUrl (also support plain `photo` just in case)
         let left;
-        if (p.photoUrl) {
+        const src = p.photoUrl || p.photo || "";
+        if (src) {
           const img = document.createElement("img");
-          img.src = p.photoUrl;
+          img.src = src;
           img.alt = p.name || label || "Local Professional";
           img.className = "w-16 h-16 object-cover rounded bg-gray-100";
-          img.onerror = () => {
-            img.replaceWith(noImage());
-          };
+          img.onerror = () => { img.replaceWith(noImage()); };
           left = img;
         } else {
           left = noImage();
