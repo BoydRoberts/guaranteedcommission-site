@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-10-01c (Oct promo; agents; pass id; minimal tweaks only)
+// /checkout.js — build 2025-11-01a (Nov promo; agents; pass id; minimal tweaks only)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-10-01c (Oct promo; agents; pass id)");
+  console.log("[checkout.js] build 2025-11-01a (Nov promo; agents; pass id)");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -86,13 +86,13 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("checkoutData", JSON.stringify(data));
   }
 
-  // ---- October promo helper (active for agents in Sept & Oct 2025) ----
-  function isAgentSeptOctPromoActive() {
+  // ---- November promo helper (active for agents in Nov 2025) ----
+  function isAgentNovemberPromoActive() {
     try {
       const now = new Date();
       const y = now.getFullYear();
-      const m = now.getMonth(); // 0=Jan ... 8=Sep ... 9=Oct
-      return (data.payer === "agent") && (y === 2025) && (m === 8 || m === 9);
+      const m = now.getMonth(); // 0=Jan ... 10=Nov
+      return (data.payer === "agent") && (y === 2025) && (m === 10);
     } catch { return false; }
   }
 
@@ -101,9 +101,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let plan = d.plan;
     let base = d.base;
 
-    const promo = isAgentSeptOctPromoActive();
+    const promo = isAgentNovemberPromoActive();
 
-    // *** TWEAK #1: ensure Plus shows as $0 in UI when promo + upgrade selected
+    // ensure Plus shows as $0 in UI when promo + upgrade selected
     if (promo && d.upgrades.upgradeToPlus) d.prices.plus = 0;
 
     // Basic → Plus upgrade base
@@ -148,10 +148,10 @@ document.addEventListener("DOMContentLoaded", () => {
     $("basePrice").textContent = (data.base || 0);
     $("totalAmount").textContent = (data.total || 0);
 
-    const promo = isAgentSeptOctPromoActive();
+    const promo = isAgentNovemberPromoActive();
     const sel = [];
     if (data.upgrades.upgradeToPlus) {
-      if (promo) sel.push(`Upgrade to Listed Property Plus ($0 — October promo)`);
+      if (promo) sel.push(`Upgrade to Listed Property Plus ($0 — November promo)`);
       else sel.push(`Upgrade to Listed Property Plus ($${data.prices.plus})`);
     }
 
@@ -182,7 +182,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const isBasic = data.plan === "Listed Property Basic";
     const isFSBO  = data.plan === "FSBO Plus";
-    const promo   = isAgentSeptOctPromoActive();
+    const promo   = isSCopedPromoActive(); // will be defined below for clarity
+
+    function isSCopedPromoActive() { return isAgentNovemberPromoActive(); }
 
     const toggles = [];
     if (isBasic) {
@@ -190,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
         key:"upgradeToPlus",
         label:"Upgrade to Listed Property Plus",
         price: promo ? 0 : data.prices.plus,
-        note: promo ? "(October promo — free for agents; also active in September 2025)" : "",
+        note:  promo ? "(November promo — free for agents)" : "",
         checked:data.upgrades.upgradeToPlus
       });
     }
@@ -227,7 +229,7 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem("selectedPlan", "Listed Property Plus");
           } else {
             const originallyBasic = (localStorage.getItem("originalPlan") || "Listed Property Basic");
-            if (originallyBasic === "Listed Property Basic") {
+            if (originally basic === "Listed Property Basic") { // keep original behavior
               data.plan = "Listed Property Basic";
               data.base = 0;
               localStorage.setItem("selectedPlan", "Listed Property Basic");
@@ -268,7 +270,6 @@ document.addEventListener("DOMContentLoaded", () => {
       // Always pass the id to success URL
       const listingId = (localStorage.getItem("lastListingId") || "").trim();
       const successSignature = window.location.origin + "/signature.html" + (listingId ? `?id=${encodeURIComponent(listingId)}` : "");
-      // *** TWEAK #2: include ?id= on agent success as well ***
       const successAgent     = window.location.origin + "/agent-detail.html" + (listingId ? `?id=${encodeURIComponent(listingId)}` : "");
 
       // Zero total: route now (no Stripe)
@@ -291,7 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
         CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm"
       };
 
-      const promo = isAgentSeptOctPromoActive();
+      const promo = isAgentNovemberPromoActive();
 
       const items = [];
       const isFSBO = data.plan === "FSBO Plus";
@@ -358,17 +359,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // --- FIX: After Stripe redirects back with success, ensure Firestore plan is Plus when upgrades were purchased ---
+  // --- After Stripe success, ensure Firestore plan is Plus when needed ---
   (async function ensurePlanUpdatedAfterStripeSuccess(){
     try {
       const url = new URL(window.location.href);
       if (url.searchParams.get("success") !== "true") return;
 
-      // Only proceed if we have a listing id
       const listingId = (localStorage.getItem("lastListingId") || "").trim();
       if (!listingId) return;
 
-      // Determine if this checkout represented an upgrade to Plus or any paid upgrade
       const d = data || getJSON("checkoutData", {});
       const upgraded =
         (d?.plan || "").includes("Listed Property Plus") ||
@@ -379,7 +378,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!upgraded) return;
 
-      // Dynamic import Firestore + app db (works in non-module scripts)
       const { db } = await import("/scripts/firebase-init.js");
       if (!db) return;
       const { doc, updateDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
@@ -394,7 +392,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   })();
 
-  // Render
   if (!localStorage.getItem("originalPlan")) {
     localStorage.setItem("originalPlan", planLS);
   }
