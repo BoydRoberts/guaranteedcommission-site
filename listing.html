@@ -16,7 +16,7 @@
     /* Listing tile */
     .tile-photo { width:100%; height: 20rem; object-fit: cover; background:#e5e7eb; }
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
-    .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(250,250,250,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 6px rgba(0,0,0,.12); }
+    .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
     /* Share buttons over the photo */
     .share-btn { position:absolute; bottom:12px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
@@ -32,9 +32,7 @@
     .isc-body > *:last-child { margin-bottom:0 !important; }
 
     /* ISC embed */
-    private: true;
     .click-wrap { position: relative; width:100%; height:100%; }
-    .click-wrap a { text-decoration:none; }
     .click-wrap a.overlay { position:absolute; inset:0; z-index:10; text-indent:-9999px; }
     .isc-iframe { width:100%; border:0; margin:0; display:block; background:transparent; }
 
@@ -81,10 +79,10 @@
             <div id="tilePrice" class="truncate">$—</div>
             <div id="tileCommission" class="truncate text-red-600">Commission — | $—</div>
           </div>
-          <div id="tileFacts" class="text-[12px] text-shadow text-gray-700">— bds | — ba | — sqft | Draft</div>
-          <div id="title"></div>
+          <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
           <div id="tileAddress" class="text-sm font-medium">[full address]</div>
           <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROAGE] — [listing agent] — [agent phone]</div>
+          <!-- Centered “Viewed N times | Liked M times” -->
           <div id="tileStats" class="text-[12px] text-gray-500 text-center">Viewed — | Liked —</div>
         </div>
       </article>
@@ -108,19 +106,19 @@
     <!-- LOWER SECTION -->
     <section class="space-y-6">
       <div id="galleryCard" class="card p-5 hidden">
-        <h3 class="text-lg font-semibold">Photos</h3>
-        <div id="galleryGrid" class="grid grid-cols-2 md:flex md:flex-wrap gap-3"></div>
+        <h3 class="text-lg font-semibold mb-3">Photos</h3>
+        <div id="galleryGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
       </div>
 
       <div id="descCard" class="card p-5 hidden">
-        <h3 class="text-lg font-semibold">Description</h3>
+        <h3 class="text-lg font-semibold mb-3">Description</h3>
         <p id="dDescription" class="text-sm leading-relaxed whitespace-pre-line"></p>
       </div>
 
       <!-- START local-pros: Horizontal Local Professionals block under Description -->
       <section id="prosCard" class="card p-5 hidden">
-        <div class="flex items-center justify-between mb  -3">
-          <h3 class="text-lg font-semibold">Local Professionals <span class="text-gray-500">in</span> <span id="prosZip">—</span></h3>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-lg font-semibold">Local Professionals in <span id="prosZip">—</span></h3>
           <a id="prosCtaBtn" href="/local-professionals.html" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Local Professionals</a>
         </div>
         <div id="prosGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
@@ -133,13 +131,12 @@
       <!-- ✅ NEW: Horizontal Local Real Estate Brokers strip (below Pros) -->
       <section id="brokersCard" class="card p-5 hidden">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-lg font-semibold">Local Real Estate Brokers <span class="text-gray-500">in</span> <span id="brokersZip">—</span></h3>
+          <h3 class="text-lg font-semibold">Local Real Estate Brokers in <span id="brokersZip">—</span></h3>
           <a id="brokersCtaBtn" href="/local-brokers.html" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Local Brokers</a>
         </div>
         <div id="brokersGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
         <div id="brokersEmpty" class="hidden text-sm text-gray-600 mt-2">
-          No local brokers yet. <span class="mx-1">•</span>
-          <a id="brokersEmptyLink" href="/local-brokers.html" class="underline text-blue-600">Reserve this ZIP</a>.
+          No local brokers yet. <a id="brokersEmptyLink" href="/local-brokers.html" class="underline text-blue-600">Reserve this ZIP</a>.
         </div>
       </section>
       <!-- END brokers -->
@@ -159,7 +156,6 @@
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
 
     // Clamp ISC iframe to tile height (avoid “lip”); match map to tile
-    function alignHeaps(){} /* no-op placeholder to avoid diffs */
     function alignHeights(){
       const tile = $("tileCard");
       const mapCard = $("mapCard");
@@ -174,7 +170,6 @@
       const h = Math.max(0, tile.getBoundingClientRect().height);
 
       // Map always matches tile
-      mapCard stays;
       mapCard.style.height = h + "px";
 
       // ISC card also matches tile; iframe is clamped slightly smaller for padding
@@ -208,14 +203,12 @@
         const nowLiked = tog(favKeyId);
         btn.innerHTML = svg(nowLiked);
 
+        // First-like increment (device-scoped)
         try {
           const { updateDoc, doc, serverTimestamp, increment } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
           const onceKey = 'likedOnce:' + listingId;
           if (nowLiked && !localStorage.getItem(onceKey)) {
-            await updateDoc(doc(gc.db, "listings", listingId), { 
-              likes: increment(1), 
-              updatedAt: serverTimestamp() 
-            });
+            await updateDoc(doc(gc.db, "listings", listingId), { likes: increment(1), updatedAt: serverTimestamp() });
             localStorage.setItem(onceKey, '1');
             await paintStats(listingId);
           }
@@ -229,20 +222,18 @@
     async function bootMapFor(fullAddress){
       try {
         const c = await geocode(fullAddress);
-        const m = new MapboxGlConstructor || mapboxgl; // unchanged behavior; keep symbol
-        const map = new m.Map({
+        const m = new mapboxgl.Map({
           container:'mapCanvas',
           style:'mapbox://styles/mapbox/streets-v12',
           center: c || [-117.7854,33.5427],
           zoom: c ? 14 : 12
         });
-        map.addControl(new m.NavigationControl());
-        if (c) new m.Marker().setLngLat(c).addTo(map);
-        requestAnimationFrame(()=>{ map.resize(); alignHeights(); });
-        setTimeout(()=>{ map.resize(); alignHeights(); }, 250);
+        m.addControl(new mapboxgl.NavigationControl());
+        if (c) new mapboxgl.Marker().setLngLat(c).addTo(m);
+        requestAnimationFrame(()=>{ m.resize(); alignHeights(); });
+        setTimeout(()=>{ m.resize(); alignHeights(); }, 250);
         window.addEventListener('resize', alignHeights);
       } catch {
-        $("dDescription"); // no-op to avoid diff
         $("mapCanvas").innerHTML = '<div class="h-full w-full flex items-center justify-center text-gray-500 text-sm">Map unavailable</div>';
       }
     }
@@ -251,8 +242,8 @@
       try {
         const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
         const data = await resp.json();
-        const f = data?.brz || data?.features?.[0];
-        return f ? (f.center || null) : null;
+        const f = data?.features?.[0];
+        return f ? f.center : null; // [lng, lat]
       } catch { return null; }
     }
   </script>
@@ -281,7 +272,9 @@
         const ref = doc(db, "listings", id);
         await updateDoc(ref, { views: increment(1), updatedAt: serverTimestamp() });
         sessionStorage.setItem(key, '1');
-      } catch (e) { console.warn('[views] increment failed', e); }
+      } catch (e) {
+        console.warn('[views] increment failed', e);
+      }
     }
 
     async function paintStats(id) {
@@ -291,20 +284,25 @@
         const views = Number(d.views || 0);
         const likes = Number(d.likes || 0);
         const el = $("tileStats");
-        if (el) el.textContent = `Viewed ${views.toLocaleString()} time${views===1?'':'s'} • Liked ${likes.toLocaleString()} time${likes===1?'':'s'}`;
-      } catch { const el = $("tileStats"); if (el) el.textContent = `Viewed — | Liked —`; }
+        if (el) el.textContent = `Viewed ${views.toLocaleString()} time${views===1?'':'s'} | Liked ${likes.toLocaleString()} time${likes===1?'':'s'}`;
+      } catch {
+        const el = $("tileStats");
+        if (el) el.textContent = `Viewed — | Liked —`;
+      }
     }
 
+    // --- share helpers (silent soft limit: 5/device/day) ---
     function shareLimitOk() {
       try {
         const day = new Date().toISOString().slice(0,10);
         const key = 'shareCount:' + day;
         const n = Number(localStorage.getItem(key) || 0);
         if (n >= 5) { alert("Please log in to continue sharing."); return false; }
-        localStorage.setItem('shareCount:' + day, String(n + 1));
+        localStorage.setItem(key, String(n + 1));
         return true;
       } catch { return true; }
     }
+    // More reliable mailto
     function openEmail(address, url) {
       const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
       const body = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
@@ -320,7 +318,7 @@
       window.location.href = `sms:&body=${msg}`;
     }
 
-    // --- ISC auto-fit
+    // --- ISC auto-fit from printable-isc postMessage (clamped to tile height) ---
     window.addEventListener('message', (ev) => {
       try {
         const data = ev.data || {};
@@ -334,24 +332,24 @@
             const clamped = Math.max(0, Math.min(desired, tileH - PAD_FUDGE));
             f.style.height = clamped + 'px';
             // keep map in sync with tile
-            const noop = 0; // keep diff minimal
+            alignHeights();
           }
         }
       } catch {}
     });
 
-    // ==========================
-    //  Local Professionals (as-is)
-    // ==========================
+    // START local-pros: fetch & render Local Professionals by ZIP
     function parseZipFromAddress(addr="") {
       const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
       return m ? m[1] : "";
     }
 
+    // Loader with broad photo support + generic fallback
     async function loadLocalPros(zip) {
       try {
         const results = [];
 
+        // localPros by zips
         const q1 = query(collection(db, "localPros"), where("zips", "array-contains", zip));
         const snap1 = await getDocs(q1);
         snap1.forEach(d => {
@@ -364,19 +362,21 @@
             role: (String(x.role || "")).toLowerCase(),
             phone: x.phone || "",
             email: x.email || "",
+            // accept multiple possible photo fields
             photoUrl: x.photoUrl || x.imageUrl || x.cardUrl || x.photo || ""
           });
         });
 
+        // Optional secondary schema: localProfessionals (serviceAreas/zips)
         try {
           const q2a = query(collection(db, "localProfessionals"), where("serviceAreas", "array-contains", zip));
           const q2b = query(collection(db, "localProfessionals"), where("zips", "array-contains", zip));
           const [a,b] = await Promise.all([getDocs(q2a), getDocs(q2b)]);
           const pushFrom = (snap) => snap.forEach(d => {
             const x = d.data() || {};
-            const status = String(x.status || "active")).toLowerCase?.() || "active";
+            const status = String(x.status || "active").toLowerCase();
             if (status !== "active") return;
-            const roleRaw = (x.category || x.role || "").toLowerCase?.() || "";
+            const roleRaw = (x.category || x.role || "").toString().toLowerCase();
             results.push({
               id: d.id,
               name: x.name || "",
@@ -389,20 +389,19 @@
           pushFrom(a); pushFrom(b);
         } catch {}
 
-        const seen = new Set(); 
-        const dedup = [];
+        // Dedup
+        const seen = new Set(); const dedup = [];
         for (const r of results) {
           const key = (r.name||"")+"|"+(r.email||"")+"|"+r.id;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          dedup.push(r);
+          if (seen.has(key)) continue; seen.add(key); dedup.push(r);
         }
 
         const isAgent = (r="") => /agent|broker|real\s*estate/.test(String(r).toLowerCase());
-        const isLender= (r="") => /lender|loan|mortgage/.test(String r??"");
+        const isLender= (r="") => /lender|loan|mortgage/.test(String(r).toLowerCase());
         const agents = dedup.filter(p=>isAgent(p.role)).slice(0,3);
         const lenders= dedup.filter(p=>isLender(p.role)).slice(0,1);
 
+        // If nothing classified but we have rows, show generics
         if (!agents.length && !lenders.length && dedup.length) {
           return { agents: dedup.slice(0,4), lenders: [] };
         }
@@ -433,8 +432,10 @@
       function makeTile(p, label) {
         const div = document.createElement("div");
         div.className = "border rounded-lg p-3 flex items-center gap-3";
-        const src = p.photoUrl || p.photo || "";
+
+        // Photo (with graceful fallback)
         let left;
+        const src = p.photoUrl || p.photo || "";
         if (src) {
           const img = document.createElement("img");
           img.src = src;
@@ -448,22 +449,39 @@
 
         const info = document.createElement("div");
         info.className = "text-sm";
-        const name = document.createElement("div"); name.className = "font-semibold"; name.textContent = p.name || label || "Local Professional";
-        const line2 = document.createElement("div"); line2.className = "text-xs text-gray-600";
+        const name = document.createElement("div");
+        name.className = "font-semibold";
+        name.textContent = p.name || label || "Local Professional";
+        const line2 = document.createElement("div");
+        line2.className = "text-xs text-gray-600";
         const roleText = (/lender/.test(p.role||"")) ? "Lender" : ( /agent|broker|real\s*estate/.test(p.role||"") ? "Real Estate Agent" : "Local Professional" );
         line2.textContent = (label || roleText);
 
-        const links = document.createElement("div"); links.className="text-xs";
+        const links = document.createElement("div");
+        links.className = "text-xs";
         if (p.phone) {
           const tel = String(p.phone).replace(/\D/g,"");
-          const a = document.createElement("a"); a.href = tel ? `tel:${tel}` : "#"; a.className="text-blue-600 underline"; a.textContent=p.phone; links.appendChild(a);
+          const a = document.createElement("a");
+          a.href = tel ? `tel:${tel}` : "#";
+          a.className = "text-blue-600 underline";
+          a.textContent = p.phone;
+          links.appendChild(a);
         }
         if (p.email) {
-          if (links.childNodes.length) { const sep=document.createElement("span"); sep.textContent=" • "; links.appendChild(sep); }
-          const e = document.createElement("a"); e.href=`mailto:${p.email}`; e.className="text-blue-600 underline"; e.textContent=p.email; links.appendChild(e);
+          if (links.childNodes.length) {
+            const sep = document.createElement("span");
+            sep.textContent = " · ";
+            links.appendChild(sep);
+          }
+          const e = document.createElement("a");
+          e.href = `mailto:${p.email}`;
+          e.className = "text-blue-600 underline";
+          e.textContent = p.email;
+          links.appendChild(e);
         }
 
-        div.appendChild(left); div.appendChild(info);
+        div.appendChild(left);
+        div.appendChild(info);
         return div;
       }
 
@@ -474,26 +492,43 @@
         return ph;
       }
 
-      agents.forEach(a => tiles.push(make_unique(make_unique? a : a, "Agent"))); // keep as-is
-      tiles.length = tiles.length; // no-op to avoid removing anything
-      agents.forEach(a => { if(!tiles.includes(a)) tiles.push(makeTile(a,"Agent")); });
+      agents.forEach(a => tiles.push(makeTile(a, "Agent")));
       lenders.forEach(l => tiles.push(makeTile(l, "Lender")));
 
-      if (tiles.length) { tiles.forEach(t => grid.appendChild(t)); empty.classList.add("hidden"); }
-      else { empty.classList.remove("hidden"); }
+      if (tiles.length) {
+        tiles.forEach(t => grid.appendChild(t));
+        empty.classList.add("hidden");
+      } else {
+        empty.classList.remove("hidden");
+      }
 
       card.classList.remove("hidden");
     }
+    // END local-pros
 
-    // ==========================
-    //  ✅ NEW: Local Brokers strip
-    // ==========================
+    /* =========================
+       NEW: Local Brokers strip
+       ========================= */
     async function loadLocalBrokers(zip) {
       try {
         const results = [];
-        const qA = query(collection(db, "localBrokers"), where("status","==","active"), where("zip","==", zip));
-        const qB = query(collection(db, "localBrokers"), where("status","==","active"), where("zips","array-contains", zip));
+
+        // Active + zip equals
+        const qA = query(
+          collection(db, "localBrokers"),
+          where("status","==","active"),
+          where("zip","==", zip)
+        );
+
+        // Active + zips array-contains
+        const qB = query(
+          collection(db, "localBrokers"),
+          where("status","==","active"),
+          where("zips","array-contains", zip)
+        );
+
         const [sA, sB] = await Promise.all([getDocs(qA), getDocs(qB)]);
+
         sA.forEach(d => {
           const x = d.data() || {};
           results.push({
@@ -503,10 +538,10 @@
             photoUrl: x.photoUrl || x.logoUrl || ""
           });
         });
+
         sB.forEach(d => {
           const x = d.data() || {};
-          const key = (x.name||"")+"|"+(x.phone||"")+"|"+d.id;
-          if (!results.find(r => (r.id===d.id))) {
+          if (!results.find(r => r.id === d.id)) {
             results.push({
               id: d.id,
               name: x.name || "",
@@ -515,10 +550,10 @@
             });
           }
         });
-        // Limit to 4 for a clean row
+
         return results.slice(0,4);
       } catch (e) {
-        console.warn("[brokers] fetch failed:", e);
+        console.warn("[local-brokers] fetch failed:", e);
         return [];
       }
     }
@@ -537,47 +572,52 @@
       emptyLink.href = `/local-brokers.html?zip=${encodeURIComponent(zip)}&mode=apply`;
 
       grid.innerHTML = "";
-      const tiles = [];
 
-      function makeLogo(p){
-        const wrap = document.createElement("div");
-        wrap.className = "border rounded-lg p-3 flex items-center gap-3";
-        const img = document.createElement("img");
-        if (p.photoUrl) {
-          img.src = p.photoUrl; img.alt = p.name || "Local Brokerage"; img.className="w-16 h-16 object-contain bg-white border rounded";
-          img.onerror = ()=>{ img.replaceWith(noLogo()); };
-          wrap.appendChild(img);
-        } else {
-            wrap.appendChild(noLogo());
-        }
-        const info = document.createElement("div");
-        info.className="text-sm";
-        const name = document.createElement("div"); name.className="font-semibold"; name.textContent = p.name || "Local Brokerage";
-        info.appendChild(name);
-        if (p.phone) {
-          const tel = String(p.phone).replace(/\d(?=\d{4})/g,"•");
-          const a = document.createElement("a"); a.href = `tel:${p.phone.replace(/\D/g,"")}`; a.className="text-xs text-blue-600 underline"; a.textContent = p.phone || tel;
-          info.appendChild(a);
-        }
-        wrap.appendChild(info);
-        return wrap;
+      if (!items.length) {
+        // keep card hidden if there are no brokers
+        card.classList.add("hidden");
+        return;
       }
+
       function noLogo(){
         const ph = document.createElement("div");
         ph.className="w-16 h-16 rounded bg-gray-200 flex items-center justify-center text-[10px] text-gray-600";
         ph.textContent="No Logo";
         return ph;
       }
+      function makeLogo(p){
+        const wrap = document.createElement("div");
+        wrap.className = "border rounded-lg p-3 flex items-center gap-3";
+        let left;
+        if (p.photoUrl) {
+          const img = document.createElement("img");
+          img.src = p.photoUrl; img.alt = p.name || "Local Brokerage";
+          img.className="w-16 h-16 object-contain bg-white border rounded";
+          img.onerror = ()=>{ img.replaceWith(noLogo()); };
+          left = img;
+        } else { left = noLogo(); }
 
-      items.forEach(it => tiles.push(makeLogo(it)));
-
-      if (tiles.length) { tiles.forEach(t => grid.appendChild(t)); empty.classList.add("hidden"); card.classList.remove("hidden"); }
-      else { 
-        empty.classList.remove("hidden");
-        card.classList.remove("hidden"); // show card with empty message if no brokers
+        const info = document.createElement("div"); info.className="text-sm";
+        const name = document.createElement("div"); name.className="font-semibold"; name.textContent = p.name || "Local Brokerage";
+        info.appendChild(name);
+        if (p.phone) {
+          const tel = p.phone.replace(/\D/g,"");
+          const a = document.createElement("a"); a.href = tel ? `tel:${tel}` : "#";
+          a.className="text-xs text-blue-600 underline"; a.textContent = p.phone;
+          info.appendChild(a);
+        }
+        wrap.appendChild(left); wrap.appendChild(info);
+        return wrap;
       }
+
+      items.forEach(it => grid.appendChild(makeLogo(it)));
+
+      empty.classList.add("hidden");
+      card.classList.remove("hidden");
     }
-    // END local-brokers
+    /* =========================
+       /Local Brokers strip
+       ========================= */
 
     (async function boot(){
       try {
@@ -612,11 +652,12 @@
         // else by exact address
         if (!d && addrParam && db) {
           try {
-            const snap = await getDoc(query(collection(db,"listings"), where("address","==", addrParam), limit(1)));
-            if (snap.exists && snap.data) { d = snap.data(); idParam = snap.id; }
+            const snap = await getDocs(query(collection(db,"listings"), where("address","==", addrParam), limit(1)));
+            if (!snap.empty) { idParam = snap.docs[0].id; d = snap.docs[0].data(); }
           } catch {}
         }
 
+        // If still no doc, paint shell and stop
         if (!d) {
           document.getElementById("topRow")?.classList.remove("hidden");
           $("tileStats").textContent = "Viewed — | Liked —";
@@ -624,8 +665,10 @@
           return;
         }
 
+        // Increment views once, then paint stats
         if (idParam) await incrementViewsOnce(idParam);
 
+        // Normalize and paint main tile
         const address = String(d.address || "").trim();
         const plan = String(d.plan || "Listed Property Basic");
         const status = String(d.status || "Active");
@@ -644,7 +687,7 @@
         let primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
         if (primaryIndex < 0 || primaryIndex >= photos.length) primaryIndex = 0;
 
-        let primaryPhoto = photos[hexd]? photos[primaryIndex] : photos[primaryIndex] || "";
+        let primaryPhoto = photos[primaryIndex] || "";
         if (!primaryPhoto) {
           try {
             const ag = JSON.parse(localStorage.getItem("agentListing") || "{}");
@@ -655,7 +698,7 @@
         }
 
         $("tilePhoto").src = primaryPhoto || "";
-        const bEl = $("tileBanner");
+        const bEl = $("tileBanner"); 
         if (banner) { bEl.textContent = banner; bEl.classList.remove('hidden'); } else { bEl.classList.add('hidden'); }
 
         const cAmt = (function(p, c, t){
@@ -665,26 +708,26 @@
         const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
 
         $("tilePrice").textContent = money(price);
-        $("tileCommission").textContent = `Commission ${cPctLabel} • ${cAmt ? money(cAmt) : "$—"}`;
-        $("tileFacts").textContent = `${bds || "—"} bds • ${ba || "—"} ba • ${sqft || "—"} sqft${pType ? " • "+pType : ""} • ${status}`;
+        $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
+        $("tileFacts").textContent = `${bds || "—"} bds | ${ba || "—"} ba | ${sqft || "—"} sqft${pType ? " | "+pType : ""} | ${status}`;
         $("tileAddress").textContent = address || "[full address]";
-        $("tileContact").textContent = `${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : 
-          brokerage).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
+        $("tileContact").textContent = `${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : brokerage).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
 
         document.getElementById("topRow")?.classList.remove("hidden");
 
-        if (address) {
-          try { await (async()=>{ await (await import('')).default; })() } catch {}
-          // map
-          bootMapFor(address);
-        }
+        // Map matches tile height
+        if (address) bootMapFor(address);
 
         // Description & gallery
         const desc = (d.description || "").trim();
-        if (desc) { $("dDescription").textContent = desc; $("descCard").classList.remove("hidden"); }
+        if (desc) {
+          $("dDescription").textContent = desc;
+          $("descCard").classList.remove("hidden");
+        }
         const others = photos.filter((_, i) => i !== primaryIndex);
         if (others.length > 0) {
-          const grid = $("galleryGrid"); grid.innerHTML = "";
+          const grid = $("galleryGrid");
+          grid.innerHTML = "";
           others.forEach(src => {
             const img = document.createElement("img");
             img.src = src; img.alt = "Listing photo";
@@ -694,10 +737,10 @@
           $("galleryCard").classList.remove("hidden");
         }
 
-        // Pros (as-is, with fallback)
+        // START local-pros & brokers
         const zip = (d.zip && String(d.zip)) || parseZipFromAddress(address);
         if (zip) {
-          console.log("[Local Pros] listing ZIP =", zip);
+          // Pros
           const { agents, lenders } = await loadLocalPros(zip);
           if ((!agents || agents.length === 0) && (!lenders || lenders.length === 0)) {
             try {
@@ -708,33 +751,23 @@
               } else {
                 renderPros(zip, agents, lenders);
               }
-            } catch { renderPros(zip, agents, lenders); }
+            } catch {
+              renderPros(zip, agents, lenders);
+            }
           } else {
             renderPros(zip, agents, lenders);
           }
 
-          // ✅ Brokers (new)
+          // Brokers
           const brokers = await loadLocalBrokers(zip);
-          if (brokers.length === 0) {
-            // lightweight check: any active broker in this zip?
-            try {
-              const qa = query(collection(db,"localBrokers"), where("status","==","active"), where("zip","==", zip));
-              const qb = query(collection(db,"localBrokers"), where("status","==","active"), where("zips","array-contains", zip));
-              const [sa,sb] = await Promise.all([getDocs(qa), getDocs(qb)]);
-              if ((sa.size + sb.size) > 0) {
-                renderBrokers(zip, [{ name:"Local Brokerage", phone:"", photoUrl:"" }]);
-              } else {
-                // keep brokers card hidden by not calling renderBrokers
-              }
-            } catch { /* ignore */ }
-          } else {
+          if (brokers.length > 0) {
             renderBrokers(zip, brokers);
-          }
+          } // else keep brokers card hidden
         }
+        // END local-pros & brokers
 
-        // Stats
-        if (idParam) await paintViews?.(idParam) // kept as-is
-        await paintStats(idParam);
+        // Paint stats (views + likes)
+        if (idParam) await paintStats(idParam);
 
         // Heart
         const favKeyId = idParam ? ('fav:'+idParam) : ('fav:'+address);
@@ -761,11 +794,13 @@
           });
         }
 
-        setTimeout(()=>{ try{ alignHeights(); }catch{} }, 80);
-        window.addEventListener('resize', ()=>{ try{ alignHeights(); }catch{} });
+        // Final height sync
+        setTimeout(alignHeights, 80);
+        window.addEventListener('resize', alignHeights);
 
       } catch (e) {
         console.warn(e);
+        // Minimal friendly banner
         document.body.insertAdjacentHTML("afterbegin",
           `<div class="max-w-7xl mx-auto px-4">
             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-900">
@@ -791,8 +826,10 @@
           if (hasHistory && ref && ref !== location.href) {
             history.back();
           } else if (cameFromWelcome || loggedIn) {
+            // Prefer Welcome when the user is logged in or referrer was Welcome
             location.href = "/welcome.html";
           } else {
+            // Public fallback (same as before)
             location.href = "/index.html#strip2Search";
           }
         } catch (_) {
