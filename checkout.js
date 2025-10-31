@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-11-01g (Seller Box2 Basic: no upsells => Basic $0 + signature)
+// /checkout.js — build 2025-11-01h (Seller Box2 Basic: no upsells => Basic $0 + signature)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-11-01g");
+  console.log("[checkout.js] build 2025-11-01h");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     !!(formData && (formData.fsboEmail || formData.ownerEmail || formData.sellerEmail)) ||
     planLS === "Listed Property Basic" || isFSBOPlan(planLS);
 
-  // Who row
+  // Who row (pure display)
   (function renderWhoRow(){
     if (!$("whoLine")) return;
     const addr = formData.address || "[Full Address]";
@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
     $("whoRow")?.classList.remove("hidden");
   })();
 
-  // checkoutData normalize
+  // ---- checkoutData normalize
   let data = getJSON("checkoutData", null);
   if (!data) {
     const plan = planLS;
@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
       payer: "seller"
     };
   } else {
-    // upgrades -> object
+    // upgrades -> canonical object
     if (Array.isArray(data.upgrades)) {
       const arr = data.upgrades.map(s => (s||"").toLowerCase());
       data.upgrades = {
@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
         data.upgrades || {}
       );
     }
-    // prices
+    // price table
     data.prices = Object.assign(
       { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
       data.prices || {}
@@ -81,21 +81,33 @@ document.addEventListener("DOMContentLoaded", () => {
     // base
     if (typeof data.base !== "number") {
       data.base = isFSBOPlan(data.plan) ? data.prices.fsbo
-               : (data.plan === "Listed Property Plus") ? (data.prices.plus ?? 20) : 0;
+           : (data.plan === "Listed Property Plus") ? (data.prices.plus ?? 20)
+           : 0;
     }
-    // payer default
     if (!data.payer) data.payer = "seller";
   }
 
-  // Determine payer from flow (so seller BASIC $0 routes to signature)
+  // Decide payer (so seller BASIC $0 routes to signature)
   if (likelySellerFlow) {
     data.payer = "seller";
   } else if (!data.payer && role === "listing_agent") {
     data.payer = "agent";
   }
-  localStorage.setItem("checkoutData", JSON.stringify(data));
 
-  // Agent-only November promo (free for agents in Nov)
+  // ---- STRONG NORMALIZATION (permanent Basic $0 for Box2/no-upsells)
+  (function enforceSellerBasicIfNoUpsells(){
+    const noUpsells =
+      !data.upgrades.upgradeToPlus && !data.upgrades.banner && !data.upgrades.premium && !data.upgrades.pin && !data.upgrades.confidential;
+
+    if (likelySellerFlow && !isFSBOPlan(planLS) && noUpsells) {
+      data.plan = "Listed Property Basic";
+      data.base = 0;
+      localStorage.setItem("selectedPlan", "Listed Property Basic");
+    }
+    localStorage.setItem("checkoutData", JSON.stringify(data));
+  })();
+
+  // Agent-only November promo (agent = free in November)
   function isAgentNovemberPromoActive() {
     try {
       const now = new Date();
@@ -103,7 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch { return false; }
   }
 
-  // Core pricing rules
+  // Pricing + totals
   function recompute(d) {
     let plan = d.plan || planLS;
     let base = (typeof d.base === "number") ? d.base
@@ -112,31 +124,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const promo = isAgentNovemberPromoActive();
 
-    // *** FIX #1: Seller Box2 BASIC with NO upsells must be Basic $0 ***
-    const noUpsells =
-      !d.upgrades?.upgradeToPlus && !d.upgrades?.banner && !d.upgrades?.premium && !d.upgrades?.pin && !d.upgrades?.confidential;
-
-    if (likelySellerFlow && !isFSBOPlan(plan) && noUpsells) {
-      // Force Basic + $0 (even if something earlier flipped to Plus)
-      plan = "Listed Property Basic";
-      base = 0;
-      localStorage.setItem("selectedPlan", "Listed Property Basic");
-    }
-
-    // If Basic but user chooses upgradeToPlus at checkout
+    // If Basic and user chooses upgradeToPlus at checkout
     if (!isFSBOPlan(plan) && plan === "Listed Property Basic" && d.upgrades.upgradeToPlus) {
       plan = "Listed Property Plus";
       base = promo ? 0 : (d.prices.plus ?? 20);
       localStorage.setItem("selectedPlan", "Listed Property Plus");
     }
 
-    // If already Plus (earlier page) and not agent promo: seller pays $20 unless explicit free meta
+    // If already Plus, ensure seller pays base unless agent-promo or explicit free meta
     if (!isFSBOPlan(plan) && plan === "Listed Property Plus") {
-      const hasExplicitFree = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
-      if ((base == null || base === 0) && !promo && d.payer !== "agent" && !hasExplicitFree) {
+      const freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
+      if ((base == null || base === 0) && !promo && d.payer !== "agent" && !freeFlag) {
         base = d.prices.plus ?? 20;
       }
-      if (promo) base = 0; // agent promo
+      if (promo) base = 0;
     }
 
     let total = base || 0;
