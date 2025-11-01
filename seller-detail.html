@@ -542,7 +542,7 @@
     }
 
     // === FORCED BUCKET (same as Agent) ===
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com";
 
     async function uploadOne(file){
       const storage = getStorage(undefined, BUCKET_URL);
@@ -748,7 +748,7 @@
         alert("Upgraded to Listed Property Plus. You can now add a full description and up to 20 photos.");
         await refreshFromServer();
       } catch (e) {
-        console.warn("[seller] upgrade to plus failed:", e);
+        console.warn("[seller] upgrade to plus failed", e);
         alert("Could not upgrade right now. Please try again.");
       }
     });
