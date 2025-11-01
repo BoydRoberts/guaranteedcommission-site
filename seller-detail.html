@@ -545,7 +545,8 @@
     const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com";
 
     async function uploadOne(file){
-      const storage = getStorage(undefined, BUCKET_URL);
+      // new
+const storage = getStorage();  // uses your app’s default appspot bucket
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
