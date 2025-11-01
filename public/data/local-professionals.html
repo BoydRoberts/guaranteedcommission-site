@@ -73,8 +73,9 @@
             <p class="hint mt-1">These control where you appear.</p>
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-sm mb-1">Business Card Image (PNG/JPG/WebP)</label>
-            <input id="photo" type="file" accept=".png,.jpg,.jpeg,.webp" class="block"/>
+            <label class="block text-sm mb-1">Business Card Image (PNG/JPG)</label>
+            <!-- CHANGED: accept only PNG/JPG/JPEG to match Storage Rules -->
+            <input id="photo" type="file" accept=".png,.jpg,.jpeg" class="block"/>
             <p class="hint mt-1">Stored at <code>localPros/&lt;uid&gt;/&lt;filename&gt;</code>. Publicly viewable on listing pages.</p>
           </div>
         </div>
@@ -94,7 +95,8 @@
       apiKey: "YOUR_API_KEY",
       authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
       projectId: "guaranteedcommission-d4d91",
-      storageBucket: "guaranteedcommission-d4d91.appspot.com",
+      // CHANGED: use your actual bucket name so uploads land in the right place
+      storageBucket: "guaranteedcommission-d4d91.firebasestorage.app",
       appId: "YOUR_APP_ID"
     };
     if (firebase.apps.length === 0) firebase.initializeApp(cfg);
@@ -193,7 +195,7 @@
       const payload = {
         name, role, phone, email, license, zips,
         status: "active",
-        // support both `photoUrl` (preferred) and `photo` for your existing doc shape
+        // keep both for backward compatibility
         photoUrl: photoUrl || (exists ? (snap.data()?.photoUrl || snap.data()?.photo || "") : ""),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
