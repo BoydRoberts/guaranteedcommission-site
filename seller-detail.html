@@ -131,7 +131,8 @@
         <div>
           <label class="block text-sm font-semibold mb-1">Photos</label>
           <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
-          <input id="photoInput" type="file" accept="image/*" multiple class="block">
+          <!-- ONLY CHANGE #1: accept file types -->
+          <input id="photoInput" type="file" accept=".png,.jpg,.jpeg" multiple class="block">
           <div id="photoGrid" class="flex flex-col gap-2 mt-3"></div>
           <p class="text-xs text-gray-500 mt-2">Click a thumbnail or use the buttons to set primary, replace, or delete.</p>
         </div>
@@ -171,7 +172,7 @@
               <input id="brokerage" class="w-full border p-2 rounded">
             </div>
             <div>
-              <label class="block text-sm font-semibold mb-1">Listing Agent Name</label>
+              <label class="block text sm font-semibold mb-1">Listing Agent Name</label>
               <input id="agentName" class="w-full border p-2 rounded">
             </div>
             <div>
@@ -722,16 +723,15 @@
       try {
         // Local state + UI gates
         localStorage.setItem("selectedPlan", "Listed Property Plus");
-        plan = "Listed Property Plus";
-        isPlus = true;
-        maxPhotos = 20;
+        let plan = "Listed Property Plus";
+        let isPlus = true;
+        let maxPhotos = 20;
         $("planPill").textContent = "Listed Property Plus";
         // unlock description immediately
         const desc = document.getElementById("description");
         const note = document.getElementById("descGateNote");
         if (desc) { desc.disabled = false; desc.classList.remove("dimmed"); }
         if (note) { note.classList.add("hidden"); }
-        computePhotoHelp();
 
         // Persist to Firestore
         await updateDoc(doc(db, "listings", listingId), {
@@ -739,10 +739,10 @@
           updatedAt: serverTimestamp()
         });
 
-        // Also nudge checkoutData so Checkout knows it's Plus
+        // Also nudge checkoutData
         const cd = getJSON("checkoutData", null) || {};
         cd.plan = "Listed Property Plus";
-        cd.base = cd.base ?? 0; // leave pricing to checkout logic
+        cd.base = cd.base ?? 0;
         setJSON("checkoutData", cd);
 
         alert("Upgraded to Listed Property Plus. You can now add a full description and up to 20 photos.");
