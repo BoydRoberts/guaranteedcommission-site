@@ -1,4 +1,4 @@
-// /scripts/firebase-init.js
+// /scripts/firebase-init.js 
 // Loads Firebase SDKs (web, no build tools) and initializes your app once.
 // You can import { app, auth, db } anywhere via:  import { app, auth, db } from '/scripts/firebase-init.js';
 
@@ -10,7 +10,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyB2ajOd_C8rfjOogqnGo-bZrD8kvjQ8XT4",
   authDomain: "guaranteedcommission-d4d91.firebaseapp.com",
   projectId: "guaranteedcommission-d4d91",
-storageBucket: "guaranteedcommission-d4d91.appspot.com",
+  storageBucket: "guaranteedcommission-d4d91.appspot.com",  // ✅ fixed line
   messagingSenderId: "900066461936",
   appId: "1:900066461936:web:31c07e0bc2fd47414b9a35"
 };
