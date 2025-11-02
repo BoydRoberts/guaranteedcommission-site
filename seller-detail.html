@@ -168,7 +168,7 @@
         <div id="listedBlock">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-semibold mb-1">Listing Brokerage</label>
+              <label class="block text sm font-semibold mb-1">Listing Brokerage</label>
               <input id="brokerage" class="w-full border p-2 rounded">
             </div>
             <div>
@@ -545,7 +545,7 @@
    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
     async function uploadOne(file){
       // new
-const storage = getStorage();  // uses your app’s default appspot bucket
+const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
@@ -630,7 +630,7 @@ const storage = getStorage();  // uses your app’s default appspot bucket
         $("pinArea").value = d.pinArea ?? "";
 
         // FSBO/listed contact fields
-        if (plan.includes("FSBO")) {
+        if (plan includes("FSBO")) {
           document.getElementById("listedBlock").style.display = "none";
         } else {
           $("brokerage").value  = d.brokerage || "";
