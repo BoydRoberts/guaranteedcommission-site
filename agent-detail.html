@@ -152,19 +152,19 @@
 
         <!-- Banner / Preferred Area / Pin Area -->
         <div>
-          <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
+          <label class="block text sm font-semibold mb-1">Banner (optional)</label>
           <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
           <p id="bannerGateNote" class="lock-note mt-1 hidden">Purchase Banner to enable this field.</p>
         </div>
 
         <div>
-          <label class="block text-sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
+          <label class="block text sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
           <input id="preferredArea" placeholder="e.g., Newport Beach, Harbor View" class="w-full border p-2 rounded">
           <p id="premiumGateNote" class="lock-note mt-1 hidden">Purchase Premium Placement to enable this field.</p>
         </div>
 
         <div>
-          <label class="block text-sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
+          <label class="block text sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
           <input id="pinArea" placeholder="e.g., Newport Beach, Eastbluff" class="w-full border p-2 rounded">
           <p id="pinGateNote" class="lock-note mt-1 hidden">Purchase Pin Placement to enable this field.</p>
         </div>
@@ -172,7 +172,7 @@
         <!-- Agent confirms -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-semibold mb-1">Listing Brokerage</label>
+            <label class="block text sm font-semibold mb-1">Listing Brokerage</label>
             <input id="brokerage" class="w-full border p-2 rounded">
           </div>
           <div>
@@ -206,34 +206,6 @@
         <p class="text-sm text-gray-600 mt-2">
           Listing agents can upgrade to Listed Property Plus, add a Banner, and Pin Placement for FREE in November.
         </p>
-
-        <div id="freePlusRow" class="hidden mt-3 border rounded-lg p-3">
-          <label class="flex items-center justify-between w-full">
-            <div>
-              <div class="font-semibold">Upgrade to Listed Property Plus</div>
-              <div class="text-sm text-gray-600">FREE in November when paid by the agent</div>
-            </div>
-            <input id="chkFreePlus" type="checkbox" class="h-4 w-4"/>
-          </label>
-          <p class="text-xs text-gray-500 mt-2">Unlocks 20 photos and full description immediately.</p>
-        </div>
-
-        <button id="applyPromoBtn" class="mt-3 w-full bg-blue-600 text-white px-3 py-2 rounded disabled:opacity-50">
-          Apply November Free Pricing
-        </button>
-        <p id="promoNote" class="text-xs text-gray-500 mt-2"></p>
-      </section>
-
-      <section class="bg-white rounded shadow p-5">
-        <h2 class="text-lg font-semibold">Upgrades</h2>
-        <p class="text-sm text-gray-600">Free pricing applies if November Promo is active (agent payer).</p>
-        <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
-
-        <div class="mt-4 flex items-center gap-2">
-          <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
-          <button id="goCheckoutBtn2" class="px-3 py-2 rounded border">Go to Checkout</button>
-        </div>
-        <p class="text-xs text-gray-500 mt-2">Purchases are final. Paid items show “paid by agent.”</p>
       </section>
     </aside>
   </div>
@@ -413,7 +385,7 @@
 
         row.appendChild(img);
         row.appendChild(btns);
-        grid.appendChild(row);
+        document.getElementById("photoGrid").appendChild(row);
       });
 
       computePhotoHelp();
@@ -497,7 +469,7 @@ const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
 
     async function uploadOne(file) {
       // new
-const storage = getStorage();  // uses your app’s default appspot bucket
+const storage = getStorage(undefined, BUCKET_URL);  // <<< ONLY CHANGE APPLIED HERE
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
