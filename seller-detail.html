@@ -3,254 +3,256 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Listing Detail Intake (Seller)</title>
+  <title>Listing Detail | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; }
+    ..thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; }
     .dimmed { opacity: 0.5; pointer-events: none; }
     .lock-note { font-size: 12px; color:#6b7280; }
-    .pill { font-size: 11px; padding: 2px 8px; border-radius: 9999px; background:#eef2ff; color:#3730a3; }
+    .pill { font-size: 11px; padding: 2px 6px; border-radius: 9999px; background:#eef2ff; color:#3730a3; }
+    .note { font-size: 12px; }
+    .chip { font-size: 11px; padding:2px 6px; border-radius:9999px; background:#f3f4f6; color:#374151; }
     .badge { font-size: 10px; padding:2px 6px; border-radius: 9999px; background:#ecfccb; color:#166534; border:1px solid #bbf7d0; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <header class="bg-white shadow">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
-        <button
-          class="text-sm px-2 py-1 rounded border hover:bg-gray-50"
-          onclick="document.referrer ? history.back() : (window.location.href='/welcome.html')">
-          Back
-        </button>
-      </div>
-      <h1 class="text-lg font-semibold">Listing Detail Intake (Seller)</h1>
+  <!-- Header -->
+  <header class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+      <!-- Back button -->
+      <button id="backBtnHdr" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
+      <h1 class="text-lg font-semibold">GuaranteedCommission.com</h1>
       <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6 px-3">
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- LEFT: Intake form -->
-    <section class="lg:col-span-2 bg-white rounded shadow p-5">
-      <div class="flex items-center justify-between">
-        <p class="text-sm">
-          Plan: <span id="planPill" class="pill">—</span>
-        </p>
-        <p id="whoLine" class="text-xs text-gray-600"></p>
-      </div>
+    <!-- Top row: 40 | 20 | 40 (we're using 2/3 + 1/3 here for seller flow) -->
+    <section id="topRow" class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
-      <hr class="my-4"/>
-
-      <form id="sellerForm" class="space-y-5" autocomplete="off">
-        <!-- Address (read-only from Box 2) -->
-        <div>
-          <label class="block text-sm font-semibold mb-1">Full Property Address</label>
-          <input id="fullAddress" class="w-full border p-2 rounded bg-gray-50" type="text" readonly>
-        </div>
-
-        <!-- Status (required) -->
-        <div>
-          <label class="block text-sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
-          <select id="status" class="w-full border p-2 rounded" required>
-            <option value="">Select…</option>
-            <option>Active</option>
-            <option>In Contract</option>
-            <option>Sold</option>
-          </select>
-        </div>
-
-        <!-- Price & Commission (commission locked: change requires new listing) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
-            <input id="price" type="number" min="0" step="1000" placeholder="e.g., 850000" class="w-full border p-2 rounded">
+      <!-- Left: LISTING DETAILS -->
+      <article id="tileCard" class="lg:col-span-3 card relative">
+        <div class="tile-body space-y-1">
+          <div class="flex items-center justify-between text-[16px] sm:text-[18px] font-semibold">
+            <div id="tilePrice" class="truncate">$—</div>
+            <div id="tileCommission" class="truncate text-red-600">Commission — | $—</div>
           </div>
+          <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
+          <div id="tileAddress" class="text-sm font-medium">[full address]</div>
+          <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] — [listing agent] — [agent phone]</div>
 
-        <div>
-            <label class="block text-sm font-semibold mb-1">Commission (locked)</label>
-            <div class="flex gap-2">
-              <input id="commission" class="w-full border p-2 rounded bg-gray-50" readonly>
-              <input id="commissionType" class="w-20 border p-2 rounded bg-gray-50 text-center" readonly>
-            </div>
-            <p class="text-xs text-gray-500 mt-1">To change commission, cancel this listing and create a new Plus listing.</p>
+          <div class="mt-4 border-t pt-4">
+            <form id="sellerForm" class="space-y-5" autocomplete="off">
+
+              <!-- Read-only address -->
+              <div>
+                <label class="block text-sm font-semibold mb-1">Full Property Address</label>
+                <input id="fullAddress" class="w-full border p-2 rounded bg-gray-50" type="text" readonly>
+              </div>
+
+              <!-- Status -->
+              <div>
+                <label class="block text-sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
+                <select id="status" class="w-full border p-2 rounded" required>
+                  <option value="">Select…</option>
+                  <option>Active</option>
+                  <option>In Contract</option>
+                  <option>Sold</option>
+                </select>
+              </div>
+
+              <!-- Price & Commission -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
+                  <input id="price" type="number" min="0" step="1000" placeholder="e.g., 2000000" class="w-full b}order p-2 rounded">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-semibold mb-1">Commission (locked)</label>
+                  <div class="flex gap-2">
+                    <input id="commission" class="w-full border p-2 rounded bg-gray-50" readonly>
+                    <input id="commissionType" class="w-20 border p-2 rounded bg-gray-50" readonly>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">To change commission, cancel this listing and create a new Plus listing.</p>
+                </div>
+              </div>
+
+              <!-- Property Details -->
+              <div>
+                <label class="block text-sm font-semibold mb-1">Property Facts</label>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <span class="block text-xs text-gray-600 mb-1">Bedrooms</span>
+                    <input id="breakfast" class="hidden" />
+                    <input id="bedrooms" type="number" min="0" step="1" placeholder="e.g., 3" class="w-full b}order p-2 rounded">
+                  </div>
+                  <div>
+                    <span class="block text-xs text-gray-600 mb-1">Bathrooms</span>
+                    <input id="bathrooms" type="number" min="0" step="0.5" placeholder="e.g., 2.5" class="w-full b}order p-2 rounded">
+                  </div>
+                  <div>
+                    <span class="block text-xs text-gray-600 mb-1">Square Footage</span>
+                    <input id="sqft" type="number" min="0" step="1" placeholder="e.g., 1860" class="w-full b}order p-2 rounded">
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div>
+                  <span class="block text-xs text-gray-600 mb-1">Year Built</span>
+                  <input id="yearBuilt" type="number" min="1800" step="1" placeholder="e.g., 1976" class="w-full b}order p-2 rounded">
+                </div>
+                <div>
+                  <span class="block text-xs text-gray-600 mb-1">Lot Size (sqft)</span>
+                  <input id="lotSize" type="number" min="0" step="1" placeholder="e.g., 5000" class="w-full b}order p-2 rounded">
+                </div>
+                <div>
+                  <span class="block text-xs text-gray-600 mb-1">Property Type</span>
+                  <input id="propertyType" class="w-full b}order p-2 rounded" placeholder="e.g., Single Family">
+                </div>
+              </div>
+
+              <!-- APN -->
+              <div>
+                <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
+                <input id="apn" class="w-full b}order p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
+              </div>
+
+              <!-- Photos -->
+              <div>
+                <label class="block text-sm font-semibold mb-1">Photos</label>
+                <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
+                <input id="photoInput" type="file" accept=".png,.jpg,.jpeg" multiple class="block">
+                <div id="photoGrid" class="flex flex-col gap-2 mt-3"></div>
+                <p class="text-xs text-gray-500 mt-2">Click a thumbnail or use the buttons to set primary, replace, or delete.</p>
+              </div>
+
+              <!-- Description -->
+              <div>
+                <label class="block text-sm font-semibold mb-1">Full Property Description</label>
+                <textarea id="description" rows="6" placeholder="Enter full property description" class="w-full b}order p-2 rounded"></textarea>
+                <p id="descGateNote" class="lock-note mt-1 hidden">Purchase Banner to enable this field.</p>
+              </div>
+
+              <!-- Banner / Placement -->
+              <div>
+                <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
+                <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full b}order p-2 rounded">
+                <p id="premiumGateNote" class="lock-note mt-1 hidden">Purchase Premium Placement to enable this field.</p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
+                <input id="preferredArea" placeholder="e.g., Newport Beach, Harbor View" class="w-full b}order p-2 rounded">
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
+                <input id="pinArea" placeholder="e.g., Newport Beach, Eastbluff" class="w-full b}order p-2 rounded">
+              </div>
+
+              <!-- Seller/Agent info -->
+              <div id="listedBlock" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-semibold mb-1">Listing Brokerage</label>
+                  <input id="brokerage" class="w-full b}order p-2 rounded">
+                </div>
+                <div>
+                  <label class="block text-sm font-semibold mb-1">Listing Agent Name</label>
+                  <input id="agentName" class="w-full b}order p-2 rounded">
+                </div>
+                <div>
+                  <label class="block text-sm font-semibold mb-1">Listing Agent Email</label>
+                  <input id="agentEmail" type="email" class="w-full b}order p-2 rounded">
+                </div>
+                <div>
+                  <label class="block text-sm font-semibold mb-1">Listing Agent Phone</label>
+                  <input id="agentPhone" class="w-full b}order p-2 rounded">
+                </div>
+              </div>
+
+              <div class="pt-2 grid grid-cols-2 gap-2">
+                <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
+                <a id="previewLink" href="/listing.html" class="text-center px-4 py-2 rounded bg-green-600 text-white">Preview Full Listing Detail</a>
+              </div>
+            </form>
           </div>
         </div>
+      </article>
 
-        <!-- Property Facts -->
-        <div>
-          <label class="block text-sm font-semibold mb-1">Property Facts</label>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <span class="block text-xs text-gray-600 mb-1">Bedrooms</span>
-              <input id="bedrooms" type="number" min="0" step="1" placeholder="e.g., 3" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <span class="block text-xs text-gray-600 mb-1">Bathrooms</span>
-              <input id="bathrooms" type="number" min="0" step="0.5" placeholder="e.g., 2.5" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <span class="block text-xs text-gray-600 mb-1">Square Footage</span>
-              <input id="sqft" type="number" min="0" step="1" placeholder="e.g., 1860" class="w-full border p-2 rounded">
-            </div>
+      <!-- Right: PROMO / UPGRADES -->
+      <aside class="lg:col-span-2">
+        <!-- Promo -->
+        <section class="bg-white rounded shadow p-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold">November Free Promo</h2>
+            <span id="promoBadge" class="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">Inactive</span>
           </div>
+          <p class="text-sm text-gray-600 mt-2">
+            Listing agents can upgrade to Listed Property Plus, add a Banner, and Pin Placement for FREE in November.
+          </p>
+          <button id="upgradeToPlusBtn" class="mt-3 w-full bg-indigo-600 text-white px-3 py-2 rounded">
+            Upgrade to Plus Now
+          </button>
+          <p class="text-xs text-gray-500 mt-2">This will update your plan immediately; charges (if any) are handled at Checkout.</p>
+        </section>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <div>
-              <span class="block text-xs text-gray-600 mb-1">Year Built</span>
-              <input id="yearBuilt" type="number" min="1800" step="1" placeholder="e.g., 1972" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <span class="block text-xs text-gray-600 mb-1">Lot Size (sqft)</span>
-              <input id="lotSize" type="number" min="0" step="1" placeholder="e.g., 6000" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <span class="block text-xs text-gray-600 mb-1">Property Type</span>
-              <select id="propertyType" class="w-full border p-2 rounded">
-                <option value="">Select…</option>
-                <option>Single Family</option>
-                <option>Condo</option>
-                <option>Townhouse</option>
-                <option>Multi-Family</option>
-                <option>Land</option>
-                <option>Other</option>
-              </select>
-            </div>
+        <!-- Upgrades -->
+        <section class="bg-white rounded shadow p-5">
+          <h2 class="text-lg font-semibold">Upgrades</h2>
+          <p class="text-sm text-gray-600">Free pricing applies if November Promo is active (agent payer).</p>
+          <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
+          <div class="mt-4 flex items-center gap-2">
+            <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
+            <button id="goVoteConf" class="hidden"></button>
+            <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
           </div>
-        </div>
-
-        <!-- APN / Parcel (optional here; required earlier for FSBO) -->
-        <div>
-          <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
-          <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
-          <p id="apnReqMsg" class="text-xs text-gray-500 mt-1 hidden">FSBO requires an APN/Parcel value.</p>
-        </div>
-
-        <!-- Photos -->
-        <div>
-          <label class="block text-sm font-semibold mb-1">Photos</label>
-          <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
-          <input id="photoInput" type="file" accept=".png,.jpg,.jpeg" multiple class="block">
-          <div id="photoGrid" class="flex flex-col gap-2 mt-3"></div>
-          <p class="text-xs text-gray-500 mt-2">Click a thumbnail or use the buttons to set primary, replace, or delete.</p>
-        </div>
-
-        <!-- Description (Plus/FSBO only; disabled for Listed Basic) -->
-        <div>
-          <label class="block text-sm font-semibold mb-1">Full Property Description</label>
-          <textarea id="description" rows="6" placeholder="Enter full property description" class="w-full border p-2 rounded"></textarea>
-          <p id="descGateNote" class="lock-note mt-1 hidden">Upgrade to Listed Property Plus to enable Description.</p>
-        </div>
-
-        <!-- Banner (upsell-driven) -->
-        <div>
-          <label class="block text sm font-semibold mb-1">Banner (optional)</label>
-          <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
-          <p id="bannerGateNote" class="lock-note mt-1 hidden">Purchase Banner to enable this field.</p>
-        </div>
-
-        <!-- Preferred / Pin -->
-        <div>
-          <label class="block text-sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
-          <input id="preferredArea" placeholder="e.g., Newport Beach, Harbor View Homes" class="w-full border p-2 rounded">
-          <p id="premiumGateNote" class="lock-note mt-1 hidden">Purchase Premium Placement to enable this field.</p>
-        </div>
-
-        <div>
-          <label class="block text-sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
-          <input id="pinArea" placeholder="e.g., Newport Beach, Eastbluff" class="w-full border p-2 rounded">
-          <p id="pinGateNote" class="lock-note mt-1 hidden">Purchase Pin Placement to enable this field.</p>
-        </div>
-
-        <!-- Listed-only: Brokerage/Agent confirms -->
-        <div id="listedBlock">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text sm font-semibold mb-1">Listing Brokerage</label>
-              <input id="brokerage" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label class="block text sm font-semibold mb-1">Listing Agent Name</label>
-              <input id="agentName" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label class="block text sm font-semibold mb-1">Listing Agent Email</label>
-              <input id="agentEmail" type="email" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label class="block text sm font-semibold mb-1">Listing Agent Phone</label>
-              <input id="agentPhone" class="w-full border p-2 rounded">
-            </div>
-          </div>
-        </div>
-
-        <div class="pt-2 grid grid-cols-2 gap-2">
-          <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
-          <a id="previewLink" href="/listing.html" class="text-center px-4 py-2 rounded bg-green-600 text-white">Preview Full Listing Detail</a>
-        </div>
-      </form>
+          <p class="text-xs text-gray-500 mt-2">Purchases are final. Paid items show “paid by agent.”</p>
+        </section>
+      </aside>
     </section>
 
-    <!-- RIGHT: Upgrades -->
-    <aside class="space-y-4">
-
-      <!-- NEW: Upgrade to Plus block (Seller) -->
-      <section class="bg-white rounded shadow p-5">
-        <h2 class="text-lg font-semibold">Upgrade to Listed Property Plus</h2>
-        <p class="text-sm text-gray-600 mt-2">
-          Unlock full description and up to 20 photos. You can still choose optional placements on Checkout.
-        </p>
-        <button id="upgradeToPlusBtn" class="mt-3 w-full bg-indigo-600 text-white px-3 py-2 rounded">
-          Upgrade to Plus Now
-        </button>
-        <p class="text-xs text-gray-500 mt-2">This will update your plan immediately; charges (if any) are handled at Checkout.</p>
-      </section>
-
-      <section class="bg-white rounded shadow p-5">
-        <h2 class="text-lg font-semibold">Upgrade your listing</h2>
-        <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
-        <div class="mt-4 flex items-center gap-2">
-          <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
-          <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
-        </div>
-        <p class="text-xs text-gray-500 mt-2">Purchases are final.</p>
-      </section>
-
-      <!-- START fsbo-pros-sidebar: Vertical Local Professionals (sticky) -->
-      <section id="prosSidebar" class="bg-white rounded shadow p-5 hidden lg:sticky lg:top-4">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="font-semibold">Local Professionals in <span id="prosZip">—</span></h3>
-          <a id="prosCtaBtn" href="/local-professionals.html" class="text-xs px-2 py-1 rounded border hover:bg-gray-50">Local Professionals</a>
-        </div>
-        <div id="prosList" class="space-y-3"></div>
-        <div id="prosEmpty" class="hidden text-sm text-gray-600 mt-2">
-          Your business card here. <a id="prosEmptyLink" href="/local-professionals.html" class="underline text-blue-600">Become a Local Professional</a>.
-        </div>
-      </section>
-      <!-- END fsbo-pros-sidebar -->
-
-    </aside>
-
-    <!-- START broker-strip: Bottom Local Broker ad (double height), spans left area -->
-    <section id="brokerStrip" class="lg:col-span-2 bg-white rounded shadow p-5 hidden">
+    <!-- LOWER SECTION: Local Pros -->
+    <section class="card p-5 hidden" id="prosCard">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold">Local Real Estate Brokerage in <span id="brokerZip">—</span></h3>
-        <a id="brokerCtaBtn" href="/local-brokers.html" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Local Brokers</a>
+        <h3 class="text-lg font-semibold">Local Professionals in <span id="prosZip">—</span></h3>
+        <a id="prosCtaBtn" href="/local-professionals.html" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Local Professionals</a>
       </div>
-      <div id="brokerAd" class="min-h-[140px] flex items-center justify-center bg-gray-50 rounded border border-gray-200"></div>
-      <div id="brokerEmpty" class="hidden text-sm text-gray-600 mt-2">
-        Your brokerage here. <a id="brokerEmptyLink" href="/local-brokers.html" class="underline text-blue-600">Reserve this ZIP</a>.
+      <div id="prosList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
+      <div id="prosEmpty" class="hidden text-sm text-gray-600 mt-2">
+        No local professionals yet. <a id="prosEmptyLink" class="underline text-blue-600" href="/local-professionals.html">Become a Local Professional</a>.
       </div>
     </section>
-    <!-- END broker-strip -->
 
   </main>
 
   <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
-  <!-- SELLER PAGE LOGIC (Firestore + Storage; same reliability as Agent) -->
+  <!-- Back button wiring -->
+  <script>
+    (function(){
+      const btn = document.getElementById('backBtnHdr');
+      if (!btn) return;
+      btn.addEventListener('click', function(){
+        try {
+          const ref = document.referrer || "";
+          if (history.length > 1 && ref && ref !== location.href) {
+            history.back();
+          } else {
+            window.location.href = "/index.html#strip2Search";
+          }
+        } catch (_) {
+          window.location.href = "/index.html#strip2Search";
+        }
+      });
+    })();
+  </script>
+
+  <!-- Seller page logic -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import {
@@ -260,26 +262,19 @@
       getStorage, ref, uploadBytes, getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    // ===== helpers =====
+    // ---------- helpers ----------
     const $ = (id) => document.getElementById(id);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-    const plural = (n, a, b) => (n===1 ? a : b);
+    const plural = (n,a,b)=> n===1 ? a : b;
 
     function setStatus(msg, ok=true) {
-      let el = document.getElementById("statusBar");
-      if (!el) {
-        const hdr = document.querySelector("header") || document.body;
-        el = document.createElement("p");
-        el.id = "statusBar";
-        el.className = "mt-2 text-sm";
-        hdr.appendChild(el);
-      }
-      el.textContent = msg || "";
+      const el = $("statusBar");
+      if (!el) return;
+      el.textContent = msg || '';
       el.className = ok ? "mt-2 text-sm text-gray-600" : "mt-2 text-sm text-red-700";
     }
 
-    // START local-pros: helpers to parse ZIP and load pros/broker
     function parseZipFromAddress(addr="") {
       const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
       return m ? m[1] : "";
@@ -305,149 +300,87 @@
     }
 
     function renderProsSidebar(zip, agents=[], lenders=[]) {
-      const card = $("prosSidebar");
-      if (!card) return;
-      $("prosZip").textContent = zip || "—";
-      $("prosCtaBtn").href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
-      $("prosEmptyLink").href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=apply`;
-
-      const list = $("prosList");
+      const card = $("prosList"); // using prosList as container for tiles
       const empty = $("prosEmpty");
-      list.innerHTML = "";
+      const zipSpan = $("prosZip");
+      const ctaBtn = $("prosCtaBtn");
 
-      function tile(p, label){
-        const div = document.createElement("div");
-        div.className = "border rounded-lg p-3 flex items-center gap-3";
-        const img = document.createElement("img");
-        img.src = p.photoUrl || "";
-        img.alt = p.name || label || "Local Professional";
-        img.className = "w-14 h-14 object-cover rounded bg-gray-100";
-        const info = document.createElement("div");
-        info.className = "text-sm";
-        const name = document.createElement("div");
-        name.className = "font-semibold";
-        name.textContent = p.name || label || "Local Professional";
-        const line2 = document.createElement("div");
-        line2.className = "text-xs text-gray-600";
-        line2.textContent = label || (p.role==="lender"?"Lender":"Real Estate Agent");
-        const tel = String(p.phone||"").replace(/\D/g,"");
-        const phone = document.createElement("a");
-        phone.className = "text-xs text-blue-600 underline";
-        if (tel) { phone.href = `tel:${tel}`; phone.textContent = p.phone || tel; }
-        info.appendChild(name); info.appendChild(line2); if (tel) info.appendChild(phone);
-        div.appendChild(img); div.appendChild(info);
-        return div;
-      }
-
-      const tiles = [];
-      agents.forEach(a => tiles.push(tile(a, "Agent")));
-      lenders.forEach(l => tiles.push(tile(l, "Lender")));
-
-      if (tiles.length) {
-        tiles.forEach(t => list.appendChild(t));
-        empty.classList.add("hidden");
-      } else {
-        empty.classList.remove("hidden");
-      }
-      card.classList.remove("hidden");
+      if (zipSpan) zipSpan.textContent = zip || "—";
+      if (ctažil) {}
     }
+  </script>
 
-    async function loadLocalBroker(zip) {
-      try {
-        const q1 = query(
-          collection(db, "localBrokers"),
-          where("status", "==", "active"),
-          where("zip", "==", zip)
-        );
-        const snap = await getDocs(q1);
-        if (snap.empty) return null;
-        // Take the first active broker for this ZIP
-        const d = snap.docs[0].data() || {};
-        return { id: snap.docs[0].id, ...d };
-      } catch (e) {
-        console.warn("[broker] fetch failed:", e);
-        return null;
-      }
-    }
+  <!-- Seller logic continued -->
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import {
+      doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      getStorage, ref, uploadBytes, getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.122.0/firebase-storage.js";
 
-    function renderBrokerStrip(zip, broker) {
-      const strip = $("brokerStrip");
-      if (!strip) return;
-      $("brokerZip").textContent = zip || "—";
-      $("brokerCtaBtn").href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
-      $("brokerEmptyLink").href = `/local-brokers.html?zip=${encodeURIComponent(zip)}&mode=apply`;
+    // NOTE: This script extends the page logic for seller edit only (FSBO/Plus)
 
-      const ad = $("brokerAd");
-      const empty = $("brokerEmpty");
-      ad.innerHTML = "";
+    const $s = (id) => document.getElementById(id);
 
-      if (broker && (broker.photoUrl || broker.name)) {
-        const wrap = document.createElement("div");
-        wrap.className = "w-full flex items-center justify-center";
-        if (broker.photoUrl) {
-          const img = document.createElement("img");
-          img.src = broker.photoUrl;
-          img.alt = broker.name || "Local Brokerage";
-          img.className = "max-h-44 object-contain";
-          wrap.appendChild(img);
-        } else {
-          const h = document.createElement("div");
-          h.className = "text-center text-lg font-semibold";
-          h.textContent = broker.name || "Local Brokerage";
-          wrap.appendChild(h);
-        }
-        ad.appendChild(wrap);
-        empty.classList.add("hidden");
-      } else {
-        empty.classList.remove("hidden");
-      }
-      strip.classList.remove("hidden");
-    }
-    // END local-pros
-
-    // ===== ID hygiene =====
+    // ---------- ID hygiene ----------
     function cleanId(raw) {
-      const m = String(raw || "").trim().match(/^[A-Za-z0-9_-]+/);
-      return m ? m[0] : "";
+      const m = String(raw || '').trim().match(/^[A-Za-z0-9_-]+/);
+      return m ? m[0] : '';
     }
-    (function ensureCleanId(){
-      const u = new URL(location.href);
-      let raw = u.searchParams.get("id") || localStorage.getItem("lastListingId") || "";
-      const cleaned = cleanId(raw);
-      if (cleaned) {
-        localStorage.setItem("lastListingId", cleaned);
-        if (raw !== cleaned) {
-          u.searchParams.set("id", cleaned);
-          history.replaceState({}, "", u.toString());
-        }
-      }
-    })();
+
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
 
     const listingId = localStorage.getItem("lastListingId") || "";
-    if ($("previewLink") && listingId) $("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
+    if ($s("previewLink") && listingId) {
+      $s("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
+    }
 
-    // ===== working state =====
+    // ---------- Working state ----------
     let plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const isFSBO = plan.includes("FSBO");
-    let isPlus = (plan === "Listed Property Plus" || isFSBO);
+    let isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
     let maxPhotos = isPlus ? 20 : 1;
-
-    let photos = [];        // Storage URLs
+    let photos = [];
     let primaryIndex = 0;
+
+    // ---------- Upload helper ----------
+    // Use explicit bucket (matches your CORS setup)
+    import { getStorage as gcsGetStorage } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+    const storage = gcsGetStorage(undefined, BUCKET_URL);
+
+    async function uploadOne(file) {
+      const safeName = String(file.name || "photo"); // keep original filename if present
+      const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
+      const r = ref(storage, path);
+      await uploadBytes(r, file);
+      const url = await getDownloadURL(r);
+      return url;
+    }
 
     function computePhotoHelp() {
       const remaining = Math.max(0, maxPhotos - (photos?.length || 0));
-      $("photoHelp").textContent = isPlus
-        ? `You can add up to ${remaining} more ${plural(remaining,'photo','photos')}.`
-        : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+      const ph = $s("photoHelp");
+      if (ph) {
+        ph.textContent = isPlus
+          ? `You can add up to ${remaining} more ${plural(remaining,"photo","photos")}.`
+          : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+      }
     }
-    function clampPrimary(){
-      if (!Array.isArray(photos) || photos.length === 0) { primaryIndex = 0; return; }
-      if (primaryIndex < 0 || primaryIndex >= photos.length) primaryIndex = 0;
+
+    function clampPrimary() {
+      if (!Array.isArray(photos) || photos.length === 0) {
+        primary = 0;
+        return;
+      }
+      if (primary > photos.length - 1) {
+        primary = Math.max(0, photos.length - 1);
+      }
     }
-    function renderThumbs(){
-      clampPrimary();
-      const grid = $("photoGrid");
+
+    function renderThumbs() {
+      const grid = $s("photoGrid");
+      if (!grid) return;
       grid.innerHTML = "";
 
       if (!photos.length) {
@@ -459,23 +392,22 @@
         return;
       }
 
-      // Primary first
-      const ordered = photos.map((u,i)=>({u,i}));
+      const ordered = photos.map((u, i) => ({ u, i }));
       if (primaryIndex > 0) {
-        const [prim] = ordered.splice(primaryIndex,1);
-        ordered.unshift(prim);
+        const [p0] = ordered.splice(primaryIndex, 1);
+        ordered.unshift(p0);
       }
 
-      ordered.forEach(({u,i}, idxDisplay)=>{
+      ordered.forEach(({ u, i }, idx) => {
         const row = document.createElement("div");
-        row.className = "flex items-center gap-3";
+        row.className = "flex items center gap-3";
 
         const img = new Image();
         img.src = u;
-        img.alt = "Photo " + (idxDisplay+1);
-        img.className = "thumb border " + (i===primaryIndex ? "border-green-500" : "border-gray-300");
-        img.title = (i===primaryIndex) ? "Primary photo" : "Click to set as primary";
-        img.addEventListener("click", async ()=>{
+        img.alt = `Photo ${idx + 1}`;
+        img.className = "thumb border " + (i === primaryIndex ? "border-green-500" : "border-gray-300");
+        img.title = i === primaryIndex ? "Primary photo" : "Click to set as primary";
+        img.addEventListener("click", async () => {
           primaryIndex = i;
           await savePhotosField(true);
         });
@@ -483,358 +415,24 @@
         const btns = document.createElement("div");
         btns.className = "flex items-center gap-2 text-xs";
 
-        if (i===primaryIndex) {
-          const b = document.createElement("span");
-          b.className = "badge";
-          b.textContent = "Primary";
-          btns.appendChild(b);
+        if (i === primaryIndex) {
+          const badge = document.createElement("span");
+          badge.className = "badge";
+          badge.textContent = "Primary";
+          btns.appendChild(badge);
         } else {
           const bPrimary = document.createElement("button");
-          bPrimary.type="button"; bPrimary.className="px-2 py-1 border rounded";
-          bPrimary.textContent="Set Primary";
-          bPrimary.onclick = async ()=>{ primaryIndex = i; await savePhotosField(true); };
+          bPrimary.type = "button";
+          bPrimary.className = "px-2 py-1 border rounded";
+          bPrimary.textContent = "Set Primary";
+          bPrimary.onclick = async () => { primaryIndex = i; await savePhotosField(true); };
           btns.appendChild(bPrimary);
         }
 
         const bReplace = document.createElement("button");
-        bReplace.type="button"; bReplace.className="px-2 py-1 border rounded";
-        bReplace.textContent="Replace";
-        bReplace.onclick = ()=>{
-          const input = document.createElement("input");
-          input.type="file"; input.accept="image/*";
-          input.onchange = async (e)=>{
-            const file = e.target.files?.[0]; if (!file) return;
-            setStatus("Uploading replacement…");
-            try {
-              const urlNew = await uploadOne(file);
-              photos[i] = urlNew;
-              await savePhotosField(true);
-            } catch (err) {
-              console.warn(err);
-              setStatus("Could not replace photo.", false);
-            }
-          };
-          input.click();
-        };
-
-        const bDelete = document.createElement("button");
-        bDelete.type="button"; bDelete.className="px-2 py-1 border rounded";
-        bDelete.textContent="Delete";
-        bDelete.onclick = async ()=>{
-          if (!confirm("Remove this photo from the listing?")) return;
-          photos.splice(i,1);
-          if (primaryIndex >= photos.length) primaryIndex = Math.max(0, photos.length-1);
-          await savePhotosField(true);
-        };
-
-        btns.appendChild(bReplace);
-        btns.appendChild(bDelete);
-
-        row.appendChild(img);
-        row.appendChild(btns);
-        grid.appendChild(row);
+        bප් = document.createElement("button");
       });
-
-      computePhotoHelp();
     }
-
-    <!-- === FORCED BUCKET (same as Agent) === -->
-   const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
-    async function uploadOne(file){
-      const storage = getStorage(undefined, BUCKET_URL);
-      const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
-      const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
-      const r = ref(storage, path);
-      await uploadBytes(r, file);
-      const url = await getDownloadURL(r);
-      return url;
-    }
-
-    async function savePhotosField(thenRefresh=false){
-      if (!listingId) return;
-      try {
-        clampPrimary();
-        await updateDoc(doc(db, "listings", listingId), {
-          photos: photos.slice(0, maxPhotos),
-          primaryIndex: (typeof primaryIndex === "number" ? primaryIndex : 0),
-          updatedAt: serverTimestamp()
-        });
-        if (thenRefresh) await refreshFromServer("Photos saved.");
-      } catch (e) {
-        console.warn("[seller] photos update failed", e);
-        setStatus("Photos could not be saved.", false);
-      }
-    }
-
-    $("photoInput").addEventListener("change", async (e)=>{
-      const files = Array.from(e.target.files || []);
-      if (!files.length) return;
-
-      try {
-        const remaining = Math.max(0, maxPhotos - photos.length);
-        if (remaining <= 0) { alert(`You have reached the photo limit for your plan (${maxPhotos}).`); e.target.value=""; return; }
-        const toUpload = files.slice(0, remaining);
-
-        setStatus("Uploading photo(s)…");
-        for (const f of toUpload) {
-          try {
-            const url = await uploadOne(f);
-            photos.push(url);
-          } catch (err) {
-            console.warn("Upload failed", err);
-            setStatus("Upload failed for one or more files.", false);
-          }
-        }
-        await savePhotosField(true);
-      } catch (err) {
-        setStatus("Upload failed.", false);
-      } finally {
-        e.target.value = "";
-      }
-    });
-
-    // ===== refresh all fields from server =====
-    async function refreshFromServer(note=""){
-      if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
-
-      try {
-        const snap = await getDoc(doc(db, "listings", listingId));
-        if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
-        const d = snap.data() || {};
-
-        // plan & gates
-        plan = d.plan || plan;
-        isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
-        maxPhotos = isPlus ? 20 : 1;
-
-        $("planPill").textContent = plan;
-        $("fullAddress").value = d.address || "";
-        $("status").value = d.status || "";
-        $("price").value = d.price ?? "";
-        $("commission").value = d.commission ?? "";
-        $("commissionType").value = d.commissionType || "%";
-        $("apn").value = d.apn || "";
-        $("bedrooms").value = d.bedrooms ?? "";
-        $("bathrooms").value = d.bathrooms ?? "";
-        $("sqft").value = d.sqft ?? "";
-        $("yearBuilt").value = d.yearBuilt ?? "";
-        $("lotSize").value = d.lotSize ?? "";
-        $("propertyType").value = d.propertyType || "";
-        $("description").value = d.description || "";
-        $("bannerText").value = d.bannerText || "";
-        $("preferredArea").value = d.preferredArea || "";
-        $("pinArea").value = d.pinArea || "";
-
-        // FSBO/listed contact fields
-        if (plan.includes("FSBO")) {
-          document.getElementById("listedBlock").style.display = "none";
-        } else {
-          $("brokerage").value  = d.brokerage || "";
-          $("agentName").value  = d.agentName || "";
-          $("agentEmail").value = d.agentEmail || "";
-          $("agentPhone").value = d.agentPhone || "";
-        }
-
-        // photos
-        photos = Array.isArray(d.photos) ? d.photos.slice(0, maxPhotos) : [];
-        primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
-
-        // gates for description
-        if (!isPlus) {
-          $("description").classList.add("dimmed");
-          $("description").setAttribute("disabled","disabled");
-          $("descGateNote").classList.remove("hidden");
-          $("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
-        } else {
-          $("description").classList.remove("dimmed");
-          $("description").removeAttribute("disabled");
-          $("descGateNote").classList.add("hidden");
-          computePhotoHelp();
-        }
-
-        renderThumbs();
-        setStatus(note || "Loaded from server.", true);
-      } catch (e) {
-        console.warn("[seller] load failed", e);
-        setStatus("Could not load from server.", false);
-      }
-    }
-
-    // ===== Save button: write fields to Firestore =====
-    $("saveBtn").addEventListener("click", async ()=>{
-      if (!listingId) { alert("No listing ID in this session."); return; }
-
-      const planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
-
-      const update = {
-        updatedAt: serverTimestamp(),
-        status: $("status").value || "",
-        price: Number($("price").value || 0) || "",
-        apn: $("apn").value || "",
-        bedrooms: $("bedrooms").value || "",
-        bathrooms: $("bathrooms").value || "",
-        sqft: $("sqft").value || "",
-        yearBuilt: $("yearBuilt").value || "",
-        lotSize: $("lotSize").value || "",
-        propertyType: $("propertyType").value || "",
-        description: $("description").disabled ? $("description").value : ($("description").value || ""),
-        bannerText: $("bannerText").value || "",
-        preferredArea: $("preferredArea").value || "",
-        pinArea: $("pinArea").value || "",
-        // contact (listed)
-        brokerage: planNow.includes("FSBO") ? "" : ($("brokerage").value || ""),
-        agentName: planNow.includes("FSBO") ? "" : ($("agentName").value || ""),
-        agentEmail: planNow.includes("FSBO") ? "" : ($("agentEmail").value || ""),
-        agentPhone: planNow.includes("FSBO") ? "" : ($("agentPhone").value || "")
-      };
-
-      // ZIP backfill once
-      try {
-        const curSnap = await getDoc(doc(db, "listings", listingId));
-        const cur = curSnap.exists() ? (curSnap.data() || {}) : {};
-        if (!cur.zip) {
-          const addr = $("fullAddress").value || "";
-          const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
-          const zip = m ? m[1] : "";
-          if (zip) update.zip = zip;
-        }
-      } catch (e) {
-        console.warn("[seller] zip backfill skipped:", e);
-      }
-
-      try {
-        await updateDoc(doc(db, "listings", listingId), update);
-        await refreshFromServer("Saved to server.");
-        alert("Saved.");
-      } catch (e) {
-        console.warn("[seller] update failed", e);
-        setStatus("Could not save to server.", false);
-        alert("Could not save. Try again.");
-      }
-    });
-
-    // ==== NEW: Upgrade to Plus (Seller) ====
-    $("upgradeToPlusBtn")?.addEventListener("click", async () => {
-      if (!listingId) { alert("No listing ID in this session."); return; }
-      try {
-        // Local state + UI gates
-        localStorage.setItem("selectedPlan", "Listed Property Plus");
-        let plan = "Listed Property Plus";
-        let isPlus = true;
-        let maxPhotos = 20;
-        $("planPill").textContent = "Listed Property Plus";
-        // unlock description immediately
-        const desc = document.getElementById("description");
-        const note = document.getElementById("descGateNote");
-        if (desc) { desc.disabled = false; desc.classList.remove("dimmed"); }
-        if (note) { note.classList.add("hidden"); }
-
-        // Persist to Firestore
-        await updateDoc(doc(db, "listings", listingId), {
-          plan: "Listed Property Plus",
-          updatedAt: serverTimestamp()
-        });
-
-        // Also nudge checkoutData
-        const cd = getJSON("checkoutData", null) || {};
-        cd.plan = "Listed Property Plus";
-        cd.base = cd.base ?? 0;
-        setJSON("checkoutData", cd);
-
-        alert("Upgraded to Listed Property Plus. You can now add a full description and up to 20 photos.");
-        await refreshFromServer();
-      } catch (e) {
-        console.warn("[seller] upgrade to plus failed", e);
-        alert("Could not upgrade right now. Please try again.");
-      }
-    });
-
-    // ===== Boot =====
-    (async function boot(){
-      // who-line
-      const who = (localStorage.getItem("loggedInEmail") || "").trim();
-      $("whoLine").textContent = who ? `Logged in as ${who}` : "";
-
-      // address (from local while we wait)
-      const formData = getJSON("formData", {});
-      if (formData.address && !$("fullAddress").value) $("fullAddress").value = formData.address;
-
-      await refreshFromServer();
-
-      // Local pros & broker
-      try {
-        const addr = $("fullAddress").value || "";
-        const zip = parseZipFromAddress(addr);
-        if (zip) {
-          const { agents, lenders } = await loadLocalPros(zip);
-          renderProsSidebar(zip, agents, lenders);
-
-          const broker = await loadLocalBroker(zip);
-          renderBrokerStrip(zip, broker);
-        }
-      } catch(e) {
-        console.warn("[local-pros] sidebar/strip skipped:", e);
-      }
-    })();
-
-    // Upgrades UI wiring (unchanged in behavior)
-    (function wireUpgrades(){
-      const checkoutData = getJSON("checkoutData", null) || {};
-      function row(label, price, key) {
-        const checked = !!(checkoutData.upgrades && checkoutData.upgrades[key]);
-        return `
-          <label class="flex items-center justify-between border rounded-lg px-3 py-2">
-            <div>
-              <span class="font-medium">${label}</span>
-              <span class="text-gray-500"> — $${price}</span>
-            </div>
-            <input type="checkbox" data-key="${key}" class="h-4 w-4" ${checked?'checked':''}/>
-          </label>
-        `;
-      }
-      const box = $("upgradesBox");
-      if (box && checkoutData.prices) {
-        const html = [
-          row("Banner", checkoutData.prices.banner ?? 10, "banner"),
-          row("Premium Placement", checkoutData.prices.premium ?? 10, "premium"),
-          row("Pin Placement", checkoutData.prices.pin ?? 50, "pin")
-        ].join("");
-        box.innerHTML = html;
-        box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
-          cb.addEventListener("change", (e)=>{
-            const k = e.target.getAttribute("data-key");
-            const checked = e.target.checked;
-            checkoutData.upgrades = checkoutData.upgrades || {};
-            if (k === "banner") checkoutData.upgrades.banner = checked;
-            if (k === "premium") checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
-            if (k === "pin") { checkoutData.upgrades.pin = checked; if (checked) checkoutData.upgrades.premium = true; }
-            setJSON("checkoutData", checkoutData);
-
-            if (k === "banner") {
-              $("bannerText").disabled = !checked && !isPlus;
-              $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
-            }
-            if (k === "premium" || k === "pin") {
-              const premOn = (checkoutData.upgrades.premium || checkoutData.upgrades.pin);
-              $("preferredArea").disabled = !premOn;
-              $("preferredArea").classList.toggle("dimmed", !premOn);
-              $("pinArea").disabled = !checkoutData.upgrades.pin;
-              $("pinArea").classList.toggle("dimmed", !checkoutData.upgrades.pin);
-            }
-          });
-        });
-      }
-      $("updateUpgradesBtn")?.addEventListener("click", ()=>{
-        const data = getJSON("checkoutData", null) || {};
-        data.meta = data.meta || {};
-        data.meta.preferredArea = $("preferredArea").value || data.meta.preferredArea || "";
-        data.meta.pinArea       = $("pinArea").value       || data.meta.pinArea       || "";
-        setJSON("checkoutData", data);
-        alert("Upgrades updated. Go to Checkout to pay (if needed).");
-      });
-      $("goCheckoutBtn")?.addEventListener("click", ()=>{ window.location.href = "/checkout.html"; });
-    })();
   </script>
-
 </body>
 </html>
