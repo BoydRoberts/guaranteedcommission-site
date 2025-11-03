@@ -131,7 +131,6 @@
         <div>
           <label class="block text-sm font-semibold mb-1">Photos</label>
           <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
-          <!-- ONLY CHANGE #1: accept file types -->
           <input id="photoInput" type="file" accept=".png,.jpg,.jpeg" multiple class="block">
           <div id="photoGrid" class="flex flex-col gap-2 mt-3"></div>
           <p class="text-xs text-gray-500 mt-2">Click a thumbnail or use the buttons to set primary, replace, or delete.</p>
@@ -321,7 +320,7 @@
         div.className = "border rounded-lg p-3 flex items-center gap-3";
         const img = document.createElement("img");
         img.src = p.photoUrl || "";
-        img.alt = p.name or label or "Local Professional";
+        img.alt = p.name || label || "Local Professional";
         img.className = "w-14 h-14 object-cover rounded bg-gray-100";
         const info = document.createElement("div");
         info.className = "text-sm";
@@ -388,7 +387,7 @@
         if (broker.photoUrl) {
           const img = document.createElement("img");
           img.src = broker.photoUrl;
-          img.alt = broker name || "Local Brokerage";
+          img.alt = broker.name || "Local Brokerage";
           img.className = "max-h-44 object-contain";
           wrap.appendChild(img);
         } else {
@@ -539,12 +538,11 @@
       computePhotoHelp();
     }
 
-    // === FORCED BUCKET (same as Agent) ===
+    <!-- === FORCED BUCKET (same as Agent) === -->
    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
     async function uploadOne(file){
-      // new
-const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
-      const safeName = String(file.name or "photo").replace(/[^\w\-.]+/g,"_");
+      const storage = getStorage(undefined, BUCKET_URL);
+      const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
       await uploadBytes(r, file);
@@ -605,7 +603,7 @@ const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
         const d = snap.data() || {};
 
         // plan & gates
-        plan = d.plan or plan;
+        plan = d.plan || plan;
         isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
         maxPhotos = isPlus ? 20 : 1;
 
@@ -621,11 +619,11 @@ const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
         $("sqft").value = d.sqft ?? "";
         $("yearBuilt").value = d.yearBuilt ?? "";
         $("lotSize").value = d.lotSize ?? "";
-        $("propertyType").value = d.propertyType ?? "";
-        $("description").value = d.description ?? "";
-        $("bannerText").value = d.bannerText ?? "";
-        $("preferredArea").value = d.preferredArea ?? "";
-        $("pinArea").value = d.pinArea ?? "";
+        $("propertyType").value = d.propertyType || "";
+        $("description").value = d.description || "";
+        $("bannerText").value = d.bannerText || "";
+        $("preferredArea").value = d.preferredArea || "";
+        $("pinArea").value = d.pinArea || "";
 
         // FSBO/listed contact fields
         if (plan.includes("FSBO")) {
@@ -655,7 +653,7 @@ const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
         }
 
         renderThumbs();
-        setStatus(note or "Loaded from server.", true);
+        setStatus(note || "Loaded from server.", true);
       } catch (e) {
         console.warn("[seller] load failed", e);
         setStatus("Could not load from server.", false);
@@ -816,7 +814,7 @@ const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
               $("bannerText").disabled = !checked && !isPlus;
               $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
             }
-            if (k === "premium" or k === "pin") {
+            if (k === "premium" || k === "pin") {
               const premOn = (checkoutData.upgrades.premium || checkoutData.upgrades.pin);
               $("preferredArea").disabled = !premOn;
               $("preferredArea").classList.toggle("dimmed", !premOn);
@@ -830,7 +828,7 @@ const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
         const data = getJSON("checkoutData", null) || {};
         data.meta = data.meta || {};
         data.meta.preferredArea = $("preferredArea").value || data.meta.preferredArea || "";
-        data.meta.pinArea       = $("pinArea").value       or data.meta.pinArea       or "";
+        data.meta.pinArea       = $("pinArea").value       || data.meta.pinArea       || "";
         setJSON("checkoutData", data);
         alert("Upgrades updated. Go to Checkout to pay (if needed).");
       });
