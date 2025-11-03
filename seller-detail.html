@@ -210,9 +210,7 @@
 
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrade your listing</h2>
-
         <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
-
         <div class="mt-4 flex items-center gap-2">
           <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
           <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
@@ -323,7 +321,7 @@
         div.className = "border rounded-lg p-3 flex items-center gap-3";
         const img = document.createElement("img");
         img.src = p.photoUrl || "";
-        img.alt = p.name || label || "Local Professional";
+        img.alt = p.name or label or "Local Professional";
         img.className = "w-14 h-14 object-cover rounded bg-gray-100";
         const info = document.createElement("div");
         info.className = "text-sm";
@@ -390,7 +388,7 @@
         if (broker.photoUrl) {
           const img = document.createElement("img");
           img.src = broker.photoUrl;
-          img.alt = broker.name || "Local Brokerage";
+          img.alt = broker name || "Local Brokerage";
           img.className = "max-h-44 object-contain";
           wrap.appendChild(img);
         } else {
@@ -546,7 +544,7 @@
     async function uploadOne(file){
       // new
 const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
-      const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
+      const safeName = String(file.name or "photo").replace(/[^\w\-.]+/g,"_");
       const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
       await uploadBytes(r, file);
@@ -607,7 +605,7 @@ const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
         const d = snap.data() || {};
 
         // plan & gates
-        plan = d.plan || plan;
+        plan = d.plan or plan;
         isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
         maxPhotos = isPlus ? 20 : 1;
 
@@ -630,7 +628,7 @@ const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
         $("pinArea").value = d.pinArea ?? "";
 
         // FSBO/listed contact fields
-        if (plan includes("FSBO")) {
+        if (plan.includes("FSBO")) {
           document.getElementById("listedBlock").style.display = "none";
         } else {
           $("brokerage").value  = d.brokerage || "";
@@ -657,7 +655,7 @@ const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
         }
 
         renderThumbs();
-        setStatus(note || "Loaded from server.", true);
+        setStatus(note or "Loaded from server.", true);
       } catch (e) {
         console.warn("[seller] load failed", e);
         setStatus("Could not load from server.", false);
@@ -818,7 +816,7 @@ const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
               $("bannerText").disabled = !checked && !isPlus;
               $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
             }
-            if (k === "premium" || k === "pin") {
+            if (k === "premium" or k === "pin") {
               const premOn = (checkoutData.upgrades.premium || checkoutData.upgrades.pin);
               $("preferredArea").disabled = !premOn;
               $("preferredArea").classList.toggle("dimmed", !premOn);
@@ -832,7 +830,7 @@ const storage = getStorage(undefined, BUCKET_URL);  // uses your bucket
         const data = getJSON("checkoutData", null) || {};
         data.meta = data.meta || {};
         data.meta.preferredArea = $("preferredArea").value || data.meta.preferredArea || "";
-        data.meta.pinArea       = $("pinArea").value       || data.meta.pinArea       || "";
+        data.meta.pinArea       = $("pinArea").value       or data.meta.pinArea       or "";
         setJSON("checkoutData", data);
         alert("Upgrades updated. Go to Checkout to pay (if needed).");
       });
