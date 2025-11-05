@@ -109,7 +109,7 @@
               <input id="lotSize" type="number" min="0" step="1" placeholder="e.g., 5000" class="w-full border p-2 rounded">
             </div>
             <div>
-              <span class="block text-xs text-gray-600 mb-1">Property Type</span>
+              <span class="block text sm font-semibold mb-1">Property Type</span>
               <select id="propertyType" class="w-full border p-2 rounded">
                 <option value="">Select…</option>
                 <option>Single Family</option>
@@ -465,7 +465,7 @@
     }
 
        <!-- === FORCED BUCKET FIX: always use the bucket where your files live === -->
-const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
+const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com";
 
     async function uploadOne(file) {
       // new
@@ -700,6 +700,7 @@ const storage = getStorage(undefined, BUCKET_URL);  // <<< ONLY CHANGE APPLIED H
       paintUpgrades();
 
       $("updateUpgradesBtn").addEventListener("click", () => {
+        checkoutData.meta = checkoutData.meta || {};
         checkoutData.meta.preferredArea = $("preferredArea").value || checkoutData.meta.preferredArea || "";
         checkoutData.meta.pinArea       = $("pinArea").value       || checkoutData.meta.pinArea       || "";
         checkoutData.payer = "agent";
