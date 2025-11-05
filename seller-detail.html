@@ -106,7 +106,7 @@
               <input id="lotSize" type="number" min="0" step="1" placeholder="e.g., 6000" class="w-full border p-2 rounded">
             </div>
             <div>
-              <span class="block text-xs text-gray-600 mb-1">Property Type</span>
+              <span class="block text-sm font-semibold mb-1">Property Type</span>
               <select id="propertyType" class="w-full border p-2 rounded">
                 <option value="">Select…</option>
                 <option>Single Family</option>
@@ -158,7 +158,7 @@
         </div>
 
         <div>
-          <label class="block text-sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
+          <label class="block text sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
           <input id="pinArea" placeholder="e.g., Newport Beach, Eastbluff" class="w-full border p-2 rounded">
           <p id="pinGateNote" class="lock-note mt-1 hidden">Purchase Pin Placement to enable this field.</p>
         </div>
@@ -539,7 +539,7 @@
     }
 
     <!-- === FORCED BUCKET (same as Agent) === -->
-   const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
+   const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com";
     async function uploadOne(file){
       const storage = getStorage(undefined, BUCKET_URL);
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
