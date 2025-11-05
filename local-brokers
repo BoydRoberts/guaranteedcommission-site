@@ -132,7 +132,7 @@
     // Stripe Checkout Link (test)
     const CHECKOUT_LINK_BASE_BROKER = "https://buy.stripe.com/test_9B64gy0zL42f3hC8GS0VO00"; // replace with broker plan link when ready
 
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app"; // match your other pages
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com"; // match your other pages
 
     async function maybeUploadPhoto(draftId) {
       try {
