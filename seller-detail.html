@@ -300,7 +300,7 @@
         return { agents, lenders };
       } catch (e) {
         console.warn("[pros] fetch failed:", e);
-        return { agents, lenders: [] };
+        return { agents: [], lenders: [] };
       }
     }
 
@@ -365,45 +365,10 @@
         const d = snap.docs[0].data() || {};
         return { id: snap.docs[0].id, ...d };
       } catch (e) {
-        console.warn("[broker] fetch failed:", e);
+        console.warn("[broker] fetch failed]", e);
         return null;
       }
     }
-
-    function renderBrokerStrip(zip, broker) {
-      const strip = $("brokerStrip");
-      if (!strip) return;
-      $("brokerZip").textContent = zip || "—";
-      $("brokerCtaBtn").href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
-      $("brokerEmptyLink").href = `/local-brokers.html?zip=${encodeURIComponent(zip)}&mode=apply`;
-
-      const ad = $("brokerAd");
-      const empty = $("brokerEmpty");
-      ad.innerHTML = "";
-
-      if (broker && (broker.photoUrl || broker.name)) {
-        const wrap = document.createElement("div");
-        wrap.className = "w-full flex items-center justify-center";
-        if (broker.photoUrl) {
-          const img = document.createElement("img");
-          img.src = broker.photoUrl;
-          img.alt = broker.name || "Local Brokerage";
-          img.className = "max-h-44 object-contain";
-          wrap.appendChild(img);
-        } else {
-          const h = document.createElement("div");
-          h.className = "text-center text-lg font-semibold";
-          h.textContent = broker.name || "Local Brokerage";
-          wrap.appendChild(h);
-        }
-        ad.appendChild(wrap);
-        empty.classList.add("hidden");
-      } else {
-        empty.classList.remove("hidden");
-      }
-      strip.classList.remove("hidden");
-    }
-    // END local-pros
 
     // ===== ID hygiene =====
     function cleanId(raw) {
@@ -580,7 +545,7 @@
           try {
             const url = await uploadOne(f);
             photos.push(url);
-            renderThumbs(); /* <<---- ADDED: show thumbnails immediately after each upload */
+            renderThumbs(); // ADDED: show thumbnails immediately after each upload
           } catch (err) {
             console.warn("Upload failed", err);
             setStatus("Upload failed for one or more files.", false);
@@ -594,13 +559,44 @@
       }
     });
 
+    // ---------- minimal local fallback (only if server fails) ----------
+    function fallbackFromLocal() {
+      try {
+        const fd = getJSON("formData", {});
+        const ag = getJSON("agentListing", {});
+        const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+
+        // paint plan + address
+        plan = planLS;
+        isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
+        maxPhotos = isPlus ? 20 : 1;
+        document.getElementById("planPill").textContent = plan;
+        if (fd.address) document.getElementById("fullAddress").value = fd.address;
+
+        // a few high-value fields
+        document.getElementById("status").value = ag.status || "Draft";
+        document.getElementById("price").value = ag.price ?? "";
+        document.getElementById("commission").value = ag.commission ?? (fd.commission || "");
+        document.getElementById("commissionType").value = ag.commissionType || fd.commissionType || "%";
+        document.getElementById("apn").value = fd.apn || "";
+
+        // photos (local)
+        photos = Array.isArray(ag.photos) ? ag.photos.slice(0, maxPhotos) : [];
+        primaryIndex = (typeof ag.primaryIndex === "number") ? ag.primaryIndex : 0;
+        renderThumbs();
+
+        setStatus("Loaded local preview (server unavailable).", false);
+      } catch {}
+    }
+    // -------------------------------------------------------------------
+
     // ===== refresh all fields from server =====
     async function refreshFromServer(note=""){
-      if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
+      if (!listingId) { setStatus("No listing selected (missing id).", false); fallbackFromLocal(); return; }
 
       try {
         const snap = await getDoc(doc(db, "listings", listingId));
-        if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
+        if (!snap.exists()) { setStatus("Listing not found on server.", false); fallbackFromLocal(); return; }
         const d = snap.data() || {};
 
         // plan & gates
@@ -608,32 +604,31 @@
         isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
         maxPhotos = isPlus ? 20 : 1;
 
-        $("planPill").textContent = plan;
-        $("fullAddress").value = d.address || "";
-        $("status").value = d.status || "";
-        $("price").value = d.price ?? "";
-        $("commission").value = d.commission ?? "";
-        $("commissionType").value = d.commissionType || "%";
-        $("apn").value = d.apn || "";
-        $("bedrooms").value = d.bedrooms ?? "";
-        $("bathrooms").value = d.bathrooms ?? "";
-        $("sqft").value = d.sqft ?? "";
-        $("yearBuilt").value = d.yearBuilt ?? "";
-        $("lotSize").value = d.lotSize ?? "";
-        $("propertyType").value = d.propertyType || "";
-        $("description").value = d.description || "";
-        $("bannerText").value = d.bannerText || "";
-        $("preferredArea").value = d.preferredArea || "";
-        $("pinArea").value = d.pinArea || "";
+        document.getElementById("planPill").textContent = plan;
+        document.getElementById("fullAddress").value = d.address || "";
+        document.getElementById("status").value = d.status || "";
+        document.getElementById("price").value = d.price ?? "";
+        document.getElementById("commission").value = d.commission ?? "";
+        document.getElementById("commissionType").value = d.commissionType || "%";
+        document.getElementById("apn").value = d.apn || "";
+        document.getElementById("bedrooms").value = d.bedrooms ?? "";
+        document.getElementById("bathrooms").value = d.bathrooms ?? "";
+        document.getElementById("sqft").value = d.sqft ?? "";
+        document.getElementById("yearBuilt").value = d.yearBuilt ?? "";
+        document.getElementById("lotSize").value = d.lotSize ?? "";
+        document.getElementById("propertyType").value = d.propertyType || "";
+        document.getElementById("description").value = d.description || "";
+        document.getElementById("bannerText").value = d.bannerText || "";
+        document.getElementById("preferredArea").value = d.preferredArea || "";
+        document.getElementById("pinArea").value = d.pinArea || "";
 
-        // FSBO/listed contact fields
-        if (plan includes("FSBO")) {
+        if (plan.includes("FSBO")) {
           document.getElementById("listedBlock").style.display = "none";
         } else {
-          $("brokerage").value  = d.brokerage || "";
-          $("agentName").value  = d.agentName || "";
-          $("agentEmail").value = d.agentEmail || "";
-          $("agentPhone").value = d.agentPhone || "";
+          document.getElementById("brokerage").value  = d.brokerage || "";
+          document.getElementById("agentName").value  = d.agentName || "";
+          document.getElementById("agentEmail").value = d.agentEmail || "";
+          document.getElementById("agentPhone").value = d.agentPhone || "";
         }
 
         // photos
@@ -642,51 +637,51 @@
 
         // gates for description
         if (!isPlus) {
-          $("description").classList.add("dimmed");
-          $("description").setAttribute("disabled","disabled");
-          $("descGateNote").classList.remove("hidden");
-          $("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+          document.getElementById("description").classList.add("dimmed");
+          document.getElementById("description").setAttribute("disabled","disabled");
+          document.getElementById("descGateNote").classList.remove("hidden");
+          document.getElementById("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
         } else {
-          $("description").classList.remove("dimmed");
-          $("description").removeAttribute("disabled");
-          $("descGateNote").classList.add("hidden");
+          document.getElementById("description").classList.remove("dimmed");
+          document.getElementById("description").removeAttribute("disabled");
+          document.getElementById("descGateNote").classList.add("hidden");
           computePhotoHelp();
         }
 
         renderThumbs();
-        setStatus(note or "Loaded from server.", true);
+        setStatus(note || "Loaded from server.", true);
       } catch (e) {
         console.warn("[seller] load failed", e);
-        setStatus("Could not load from server.", false);
+        fallbackFromLocal();
       }
     }
 
     // ===== Save button: write fields to Firestore =====
-    $("saveBtn").addEventListener("click", async ()=>{
+    document.getElementById("saveBtn").addEventListener("click", async ()=>{
       if (!listingId) { alert("No listing ID in this session."); return; }
 
       const planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
 
       const update = {
         updatedAt: serverTimestamp(),
-        status: $("status").value || "",
-        price: Number($("price").value || 0) || "",
-        apn: $("apn").value or "",
-        bedrooms: $("bedrooms").value or "",
-        bathrooms: $("bathrooms").value or "",
-        sqft: $("sqft").value or "",
-        yearBuilt: $("yearBuilt").value or "",
-        lotSize: $("lotSize").value or "",
-        propertyType: $("propertyType").value or "",
-        description: $("description").disabled ? $("description").value : ($("description").value || ""),
-        bannerText: $("bannerText").value or "",
-        preferredArea: $("preferredArea").value or "",
-        pinArea: $("pinArea").value or "",
+        status: document.getElementById("status").value || "",
+        price: Number(document.getElementById("price").value || 0) || "",
+        apn: document.getElementById("apn").value || "",
+        bedrooms: document.getElementById("bedrooms").value || "",
+        bathrooms: document.getElementById("bathrooms").value || "",
+        sqft: document.getElementById("sqft").value || "",
+        yearBuilt: document.getElementById("yearBuilt").value || "",
+        lotSize: document.getElementById("lotSize").value || "",
+        propertyType: document.getElementById("propertyType").value || "",
+        description: document.getElementById("description").disabled ? document.getElementById("description").value : (document.getElementById("description").value || ""),
+        bannerText: document.getElementById("bannerText").value || "",
+        preferredArea: document.getElementById("preferredArea").value || "",
+        pinArea: document.getElementById("pinArea").value || "",
         // contact (listed)
-        brokerage: planNow.includes("FSBO") ? "" : ($("brokerage").value || ""),
-        agentName: planNow.includes("FSBO") ? "" : ($("agentName").value || ""),
-        agentEmail: planNow.includes("FSBO") ? "" : ($("agentEmail").value || ""),
-        agentPhone: planNow.includes("FSBO") ? "" : ($("agentPhone").value || "")
+        brokerage: planNow.includes("FSBO") ? "" : (document.getElementById("brokerage").value || ""),
+        agentName: planNow.includes("FSBO") ? "" : (document.getElementById("agentName").value || ""),
+        agentEmail: planNow.includes("FSBO") ? "" : (document.getElementById("agentEmail").value || ""),
+        agentPhone: planNow.includes("FSBO") ? "" : (document.getElementById("agentPhone").value || "")
       };
 
       // ZIP backfill once
@@ -694,7 +689,7 @@
         const curSnap = await getDoc(doc(db, "listings", listingId));
         const cur = curSnap.exists() ? (curSnap.data() || {}) : {};
         if (!cur.zip) {
-          const addr = $("fullAddress").value || "";
+          const addr = document.getElementById("fullAddress").value || "";
           const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
           const zip = m ? m[1] : "";
           if (zip) update.zip = zip;
@@ -715,28 +710,24 @@
     });
 
     // ==== NEW: Upgrade to Plus (Seller) ====
-    $("upgradeToPlusBtn")?.addEventListener("click", async () => {
+    document.getElementById("upgradeToPlusBtn")?.addEventListener("click", async () => {
       if (!listingId) { alert("No listing ID in this session."); return; }
       try {
-        // Local state + UI gates
         localStorage.setItem("selectedPlan", "Listed Property Plus");
         let plan = "Listed Property Plus";
         let isPlus = true;
         let maxPhotos = 20;
-        $("planPill").textContent = "Listed Property Plus";
-        // unlock description immediately
+        document.getElementById("planPill").textContent = "Listed Property Plus";
         const desc = document.getElementById("description");
         const note = document.getElementById("descGateNote");
         if (desc) { desc.disabled = false; desc.classList.remove("dimmed"); }
         if (note) { note.classList.add("hidden"); }
 
-        // Persist to Firestore
         await updateDoc(doc(db, "listings", listingId), {
           plan: "Listed Property Plus",
           updatedAt: serverTimestamp()
         });
 
-        // Also nudge checkoutData
         const cd = getJSON("checkoutData", null) || {};
         cd.plan = "Listed Property Plus";
         cd.base = cd.base ?? 0;
@@ -752,30 +743,19 @@
 
     // ===== Boot =====
     (async function boot(){
-      // who-line
       const who = (localStorage.getItem("loggedInEmail") || "").trim();
-      $("whoLine").textContent = who ? `Logged in as ${who}` : "";
+      document.getElementById("whoLine").textContent = who ? `Logged in as ${who}` : "";
 
-      // address (from local while we wait)
       const formData = getJSON("formData", {});
-      if (formData.address && !$("fullAddress").value) $("fullAddress").value = formData.address;
+      if (formData.address && !document.getElementById("fullAddress").value) {
+        document.getElementById("fullAddress").value = formData.address;
+      }
+
+      if (document.getElementById("previewLink") && listingId) {
+        document.getElementById("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
+      }
 
       await refreshFromServer();
-
-      // Local pros & broker
-      try {
-        const addr = $("fullAddress").value || "";
-        const zip = parseZipFromAddress(addr);
-        if (zip) {
-          const { agents, lenders } = await loadLocalPros(zip);
-          renderProsSidebar(zip, agents, lenders);
-
-          const broker = await loadLocalBroker(zip);
-          renderBrokerStrip(zip, broker);
-        }
-      } catch(e) {
-        console.warn("[local-pros] sidebar/strip skipped:", e);
-      }
     })();
 
     // Upgrades UI wiring (unchanged in behavior)
@@ -793,7 +773,7 @@
           </label>
         `;
       }
-      const box = $("upgradesBox");
+      const box = document.getElementById("upgradesBox");
       if (box && checkoutData.prices) {
         const html = [
           row("Banner", checkoutData.prices.banner ?? 10, "banner"),
@@ -812,28 +792,28 @@
             setJSON("checkoutData", checkoutData);
 
             if (k === "banner") {
-              $("bannerText").disabled = !checked && !isPlus;
-              $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
+              document.getElementById("bannerText").disabled = !checked && !isPlus;
+              document.getElementById("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
             }
-            if (k === "premium" or k === "pin") {
+            if (k === "premium" || k === "pin") {
               const premOn = (checkoutData.upgrades.premium || checkoutData.upgrades.pin);
-              $("preferredArea").disabled = !premOn;
-              $("preferredArea").classList.toggle("dimmed", !premOn);
-              $("pinArea").disabled = !checkoutData.upgrades.pin;
-              $("pinArea").classList.toggle("dimmed", !checkoutData.upgrades.pin);
+              document.getElementById("preferredArea").disabled = !premOn;
+              document.getElementById("preferredArea").classList.toggle("dimmed", !premOn);
+              document.getElementById("pinArea").disabled = !checkoutData.upgrades.pin;
+              document.getElementById("pinArea").classList.toggle("dimmed", !checkoutData.upgrades.pin);
             }
           });
         });
       }
-      $("updateUpgradesBtn")?.addEventListener("click", ()=>{
+      document.getElementById("updateUpgradesBtn")?.addEventListener("click", ()=>{
         const data = getJSON("checkoutData", null) || {};
         data.meta = data.meta || {};
-        data.meta.preferredArea = $("preferredArea").value || data.meta.preferredArea || "";
-        data.meta.pinArea       = $("pinArea").value       || data.meta.pinArea       || "";
+        data.meta.preferredArea = document.getElementById("preferredArea").value || data.meta.preferredArea || "";
+        data.meta.pinArea       = document.getElementById("pinArea").value       || data.meta.pinArea       || "";
         setJSON("checkoutData", data);
         alert("Upgrades updated. Go to Checkout to pay (if needed).");
       });
-      $("goCheckoutBtn")?.addEventListener("click", ()=>{ window.location.href = "/checkout.html"; });
+      document.getElementById("goCheckoutBtn")?.addEventListener("click", ()=>{ window.location.href = "/checkout.html"; });
     })();
   </script>
 
