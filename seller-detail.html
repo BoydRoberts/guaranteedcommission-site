@@ -52,7 +52,7 @@
 
         <!-- Status (required) -->
         <div>
-          <label class="block text-sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
+          <label class="block text sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
           <select id="status" class="w-full border p-2 rounded" required>
             <option value="">Select…</option>
             <option>Active</option>
@@ -64,12 +64,12 @@
         <!-- Price & Commission (commission locked: change requires new listing) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
+            <label class="block text sm font-semibold mb-1">Listing Price ($)</label>
             <input id="price" type="number" min="0" step="1000" placeholder="e.g., 850000" class="w-full border p-2 rounded">
           </div>
 
         <div>
-            <label class="block text-sm font-semibold mb-1">Commission (locked)</label>
+            <label class="block text sm font-semibold mb-1">Commission (locked)</label>
             <div class="flex gap-2">
               <input id="commission" class="w-full border p-2 rounded bg-gray-50" readonly>
               <input id="commissionType" class="w-20 border p-2 rounded bg-gray-50 text-center" readonly>
@@ -80,29 +80,29 @@
 
         <!-- Property Facts -->
         <div>
-          <label class="block text-sm font-semibold mb-1">Property Facts</label>
+          <label class="block text sm font-semibold mb-1">Property Facts</label>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <span class="block text-xs text-gray-600 mb-1">Bedrooms</span>
               <input id="bedrooms" type="number" min="0" step="1" placeholder="e.g., 3" class="w-full border p-2 rounded">
             </div>
             <div>
-              <span class="block text-xs text-gray-600 mb-1">Bathrooms</span>
+              <span class="block text xs text-gray-600 mb-1">Bathrooms</span>
               <input id="bathrooms" type="number" min="0" step="0.5" placeholder="e.g., 2.5" class="w-full border p-2 rounded">
             </div>
             <div>
-              <span class="block text-xs text-gray-600 mb-1">Square Footage</span>
+              <span class="block text xs text-gray-600 mb-1">Square Footage</span>
               <input id="sqft" type="number" min="0" step="1" placeholder="e.g., 1860" class="w-full border p-2 rounded">
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
-              <span class="block text-xs text-gray-600 mb-1">Year Built</span>
+              <span class="block text xs text-gray-600 mb-1">Year Built</span>
               <input id="yearBuilt" type="number" min="1800" step="1" placeholder="e.g., 1972" class="w-full border p-2 rounded">
             </div>
             <div>
-              <span class="block text-xs text-gray-600 mb-1">Lot Size (sqft)</span>
+              <span class="block text xs text-gray-600 mb-1">Lot Size (sqft)</span>
               <input id="lotSize" type="number" min="0" step="1" placeholder="e.g., 6000" class="w-full border p-2 rounded">
             </div>
             <div>
@@ -365,10 +365,11 @@
         const d = snap.docs[0].data() || {};
         return { id: snap.docs[0].id, ...d };
       } catch (e) {
-        console.warn("[broker] fetch failed]", e);
+        console.warn("[broker] fetch failed:", e);
         return null;
       }
     }
+    // END local-pros
 
     // ===== ID hygiene =====
     function cleanId(raw) {
@@ -504,7 +505,7 @@
     }
 
     // === FORCED BUCKET (same as Agent) ===  (converted to JS comment)
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com";
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";  <!-- CHANGED ONLY THIS VALUE -->
     async function uploadOne(file){
       const storage = getStorage(undefined, BUCKET_URL);
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
@@ -545,7 +546,7 @@
           try {
             const url = await uploadOne(f);
             photos.push(url);
-            renderThumbs(); // ADDED: show thumbnails immediately after each upload
+            renderThumbs(); // ADDED earlier by you to show immediately
           } catch (err) {
             console.warn("Upload failed", err);
             setStatus("Upload failed for one or more files.", false);
@@ -559,44 +560,13 @@
       }
     });
 
-    // ---------- minimal local fallback (only if server fails) ----------
-    function fallbackFromLocal() {
-      try {
-        const fd = getJSON("formData", {});
-        const ag = getJSON("agentListing", {});
-        const planLS = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-
-        // paint plan + address
-        plan = planLS;
-        isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
-        maxPhotos = isPlus ? 20 : 1;
-        document.getElementById("planPill").textContent = plan;
-        if (fd.address) document.getElementById("fullAddress").value = fd.address;
-
-        // a few high-value fields
-        document.getElementById("status").value = ag.status || "Draft";
-        document.getElementById("price").value = ag.price ?? "";
-        document.getElementById("commission").value = ag.commission ?? (fd.commission || "");
-        document.getElementById("commissionType").value = ag.commissionType || fd.commissionType || "%";
-        document.getElementById("apn").value = fd.apn || "";
-
-        // photos (local)
-        photos = Array.isArray(ag.photos) ? ag.photos.slice(0, maxPhotos) : [];
-        primaryIndex = (typeof ag.primaryIndex === "number") ? ag.primaryIndex : 0;
-        renderThumbs();
-
-        setStatus("Loaded local preview (server unavailable).", false);
-      } catch {}
-    }
-    // -------------------------------------------------------------------
-
     // ===== refresh all fields from server =====
     async function refreshFromServer(note=""){
-      if (!listingId) { setStatus("No listing selected (missing id).", false); fallbackFromLocal(); return; }
+      if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
 
       try {
         const snap = await getDoc(doc(db, "listings", listingId));
-        if (!snap.exists()) { setStatus("Listing not found on server.", false); fallbackFromLocal(); return; }
+        if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
         const d = snap.data() || {};
 
         // plan & gates
@@ -604,31 +574,32 @@
         isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
         maxPhotos = isPlus ? 20 : 1;
 
-        document.getElementById("planPill").textContent = plan;
-        document.getElementById("fullAddress").value = d.address || "";
-        document.getElementById("status").value = d.status || "";
-        document.getElementById("price").value = d.price ?? "";
-        document.getElementById("commission").value = d.commission ?? "";
-        document.getElementById("commissionType").value = d.commissionType || "%";
-        document.getElementById("apn").value = d.apn || "";
-        document.getElementById("bedrooms").value = d.bedrooms ?? "";
-        document.getElementById("bathrooms").value = d.bathrooms ?? "";
-        document.getElementById("sqft").value = d.sqft ?? "";
-        document.getElementById("yearBuilt").value = d.yearBuilt ?? "";
-        document.getElementById("lotSize").value = d.lotSize ?? "";
-        document.getElementById("propertyType").value = d.propertyType || "";
-        document.getElementById("description").value = d.description || "";
-        document.getElementById("bannerText").value = d.bannerText || "";
-        document.getElementById("preferredArea").value = d.preferredArea || "";
-        document.getElementById("pinArea").value = d.pinArea || "";
+        $("planPill").textContent = plan;
+        $("fullAddress").value = d.address || "";
+        $("status").value = d.status || "";
+        $("price").value = d.price ?? "";
+        $("commission").value = d.commission ?? "";
+        $("commissionType").value = d.commissionType || "%";
+        $("apn").value = d.apn || "";
+        $("bedrooms").value = d.bedrooms ?? "";
+        $("bathrooms").value = d.bathrooms ?? "";
+        $("sqft").value = d.sqft ?? "";
+        $("yearBuilt").value = d.yearBuilt ?? "";
+        $("lotSize").value = d.lotSize ?? "";
+        $("propertyType").value = d.propertyType || "";
+        $("description").value = d.description || "";
+        $("bannerText").value = d.bannerText || "";
+        $("preferredArea").value = d.preferredArea || "";
+        $("pinArea").value = d.pinArea || "";
 
+        // FSBO/listed contact fields
         if (plan.includes("FSBO")) {
           document.getElementById("listedBlock").style.display = "none";
         } else {
-          document.getElementById("brokerage").value  = d.brokerage || "";
-          document.getElementById("agentName").value  = d.agentName || "";
-          document.getElementById("agentEmail").value = d.agentEmail || "";
-          document.getElementById("agentPhone").value = d.agentPhone || "";
+          $("brokerage").value  = d.brokerage || "";
+          $("agentName").value  = d.agentName || "";
+          $("agentEmail").value = d.agentEmail || "";
+          $("agentPhone").value = d.agentPhone || "";
         }
 
         // photos
@@ -637,14 +608,14 @@
 
         // gates for description
         if (!isPlus) {
-          document.getElementById("description").classList.add("dimmed");
-          document.getElementById("description").setAttribute("disabled","disabled");
-          document.getElementById("descGateNote").classList.remove("hidden");
-          document.getElementById("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+          $("description").classList.add("dimmed");
+          $("description").setAttribute("disabled","disabled");
+          $("descGateNote").classList.remove("hidden");
+          $("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
         } else {
-          document.getElementById("description").classList.remove("dimmed");
-          document.getElementById("description").removeAttribute("disabled");
-          document.getElementById("descGateNote").classList.add("hidden");
+          $("description").classList.remove("dimmed");
+          $("description").removeAttribute("disabled");
+          $("descGateNote").classList.add("hidden");
           computePhotoHelp();
         }
 
@@ -652,36 +623,36 @@
         setStatus(note || "Loaded from server.", true);
       } catch (e) {
         console.warn("[seller] load failed", e);
-        fallbackFromLocal();
+        setStatus("Could not load from server.", false);
       }
     }
 
     // ===== Save button: write fields to Firestore =====
-    document.getElementById("saveBtn").addEventListener("click", async ()=>{
+    $("saveBtn").addEventListener("click", async ()=>{
       if (!listingId) { alert("No listing ID in this session."); return; }
 
       const planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
 
       const update = {
         updatedAt: serverTimestamp(),
-        status: document.getElementById("status").value || "",
-        price: Number(document.getElementById("price").value || 0) || "",
-        apn: document.getElementById("apn").value || "",
-        bedrooms: document.getElementById("bedrooms").value || "",
-        bathrooms: document.getElementById("bathrooms").value || "",
-        sqft: document.getElementById("sqft").value || "",
-        yearBuilt: document.getElementById("yearBuilt").value || "",
-        lotSize: document.getElementById("lotSize").value || "",
-        propertyType: document.getElementById("propertyType").value || "",
-        description: document.getElementById("description").disabled ? document.getElementById("description").value : (document.getElementById("description").value || ""),
-        bannerText: document.getElementById("bannerText").value || "",
-        preferredArea: document.getElementById("preferredArea").value || "",
-        pinArea: document.getElementById("pinArea").value || "",
+        status: $("status").value || "",
+        price: Number($("price").value || 0) || "",
+        apn: $("apn").value || "",
+        bedrooms: $("bedrooms").value || "",
+        bathrooms: $("bathrooms").value || "",
+        sqft: $("sqft").value || "",
+        yearBuilt: $("yearBuilt").value || "",
+        lotSize: $("lotSize").value || "",
+        propertyType: $("propertyType").value || "",
+        description: $("description").disabled ? $("description").value : ($("description").value || ""),
+        bannerText: $("bannerText").value || "",
+        preferredArea: $("preferredArea").value || "",
+        pinArea: $("pinArea").value || "",
         // contact (listed)
-        brokerage: planNow.includes("FSBO") ? "" : (document.getElementById("brokerage").value || ""),
-        agentName: planNow.includes("FSBO") ? "" : (document.getElementById("agentName").value || ""),
-        agentEmail: planNow.includes("FSBO") ? "" : (document.getElementById("agentEmail").value || ""),
-        agentPhone: planNow.includes("FSBO") ? "" : (document.getElementById("agentPhone").value || "")
+        brokerage: planNow.includes("FSBO") ? "" : ($("brokerage").value || ""),
+        agentName: planNow.includes("FSBO") ? "" : ($("agentName").value || ""),
+        agentEmail: planNow.includes("FSBO") ? "" : ($("agentEmail").value || ""),
+        agentPhone: planNow.includes("FSBO") ? "" : ($("agentPhone").value || "")
       };
 
       // ZIP backfill once
@@ -689,7 +660,7 @@
         const curSnap = await getDoc(doc(db, "listings", listingId));
         const cur = curSnap.exists() ? (curSnap.data() || {}) : {};
         if (!cur.zip) {
-          const addr = document.getElementById("fullAddress").value || "";
+          const addr = $("fullAddress").value || "";
           const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
           const zip = m ? m[1] : "";
           if (zip) update.zip = zip;
@@ -710,14 +681,14 @@
     });
 
     // ==== NEW: Upgrade to Plus (Seller) ====
-    document.getElementById("upgradeToPlusBtn")?.addEventListener("click", async () => {
+    $("upgradeToPlusBtn")?.addEventListener("click", async () => {
       if (!listingId) { alert("No listing ID in this session."); return; }
       try {
         localStorage.setItem("selectedPlan", "Listed Property Plus");
         let plan = "Listed Property Plus";
         let isPlus = true;
         let maxPhotos = 20;
-        document.getElementById("planPill").textContent = "Listed Property Plus";
+        $("planPill").textContent = "Listed Property Plus";
         const desc = document.getElementById("description");
         const note = document.getElementById("descGateNote");
         if (desc) { desc.disabled = false; desc.classList.remove("dimmed"); }
@@ -744,18 +715,27 @@
     // ===== Boot =====
     (async function boot(){
       const who = (localStorage.getItem("loggedInEmail") || "").trim();
-      document.getElementById("whoLine").textContent = who ? `Logged in as ${who}` : "";
+      $("whoLine").textContent = who ? `Logged in as ${who}` : "";
 
       const formData = getJSON("formData", {});
-      if (formData.address && !document.getElementById("fullAddress").value) {
-        document.getElementById("fullAddress").value = formData.address;
-      }
-
-      if (document.getElementById("previewLink") && listingId) {
-        document.getElementById("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
-      }
+      if (formData.address && !$("fullAddress").value) $("fullAddress").value = formData.address;
 
       await refreshFromServer();
+
+      // Local pros & broker
+      try {
+        const addr = $("fullAddress").value || "";
+        const zip = parseZipFromAddress(addr);
+        if (zip) {
+          const { agents, lenders } = await loadLocalPros(zip);
+          renderProsSidebar(zip, agents, lenders);
+
+          const broker = await loadLocalBroker(zip);
+          renderBrokerStrip(zip, broker);
+        }
+      } catch(e) {
+        console.warn("[local-pros] sidebar/strip skipped:", e);
+      }
     })();
 
     // Upgrades UI wiring (unchanged in behavior)
@@ -773,7 +753,7 @@
           </label>
         `;
       }
-      const box = document.getElementById("upgradesBox");
+      const box = $("upgradesBox");
       if (box && checkoutData.prices) {
         const html = [
           row("Banner", checkoutData.prices.banner ?? 10, "banner"),
@@ -792,28 +772,28 @@
             setJSON("checkoutData", checkoutData);
 
             if (k === "banner") {
-              document.getElementById("bannerText").disabled = !checked && !isPlus;
-              document.getElementById("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
+              $("bannerText").disabled = !checked && !isPlus;
+              $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
             }
             if (k === "premium" || k === "pin") {
               const premOn = (checkoutData.upgrades.premium || checkoutData.upgrades.pin);
-              document.getElementById("preferredArea").disabled = !premOn;
-              document.getElementById("preferredArea").classList.toggle("dimmed", !premOn);
-              document.getElementById("pinArea").disabled = !checkoutData.upgrades.pin;
-              document.getElementById("pinArea").classList.toggle("dimmed", !checkoutData.upgrades.pin);
+              $("preferredArea").disabled = !premOn;
+              $("preferredArea").classList.toggle("dimmed", !premOn);
+              $("pinArea").disabled = !checkoutData.upgrades.pin;
+              $("pinArea").classList.toggle("dimmed", !checkoutData.upgrades.pin);
             }
           });
         });
       }
-      document.getElementById("updateUpgradesBtn")?.addEventListener("click", ()=>{
+      $("updateUpgradesBtn")?.addEventListener("click", ()=>{
         const data = getJSON("checkoutData", null) || {};
         data.meta = data.meta || {};
-        data.meta.preferredArea = document.getElementById("preferredArea").value || data.meta.preferredArea || "";
-        data.meta.pinArea       = document.getElementById("pinArea").value       || data.meta.pinArea       || "";
+        data.meta.preferredArea = $("preferredArea").value || data.meta.preferredArea || "";
+        data.meta.pinArea       = $("pinArea").value       || data.meta.pinArea       || "";
         setJSON("checkoutData", data);
         alert("Upgrades updated. Go to Checkout to pay (if needed).");
       });
-      document.getElementById("goCheckoutBtn")?.addEventListener("click", ()=>{ window.location.href = "/checkout.html"; });
+      $("goCheckoutBtn")?.addEventListener("click", ()=>{ window.location.href = "/checkout.html"; });
     })();
   </script>
 
