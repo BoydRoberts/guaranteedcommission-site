@@ -464,12 +464,12 @@
       }
     }
 
-    // === FORCED BUCKET FIX: always use the bucket where your files live ===
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com";
+    <!-- === FORCED BUCKET FIX: always use the bucket where your files live === -->
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";  <!-- CHANGED ONLY THIS VALUE -->
 
     async function uploadOne(file) {
       // new
-      const storage = getStorage(undefined, BUCKET_URL);  // <<< ONLY CHANGE APPLIED HERE
+      const storage = getStorage(undefined, BUCKET_URL);  // keep this line
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
