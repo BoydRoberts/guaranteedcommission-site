@@ -24,7 +24,7 @@
     <section class="bg-white rounded-2xl shadow p-5">
       <h2 class="text-2xl font-bold text-center">Become a Local Professional</h2>
       <p class="text-sm text-center text-gray-700 mt-1">
-        $5 per month per ZIP code | Maximum 3 ZIP codes | Your information displayed on all listing detail pages in the specified ZIP codes in the Local Professional section | 3 real estate agents and 1 lender displayed per ZIP code.
+        $5 per month per ZIP code | Maximum 3 ZIP codes | Your information displays on listing detail pages in those ZIP codes in the “Local Professionals” section (up to 3 agents and 1 lender per ZIP).
       </p>
 
       <!-- Top mode choice -->
@@ -67,7 +67,7 @@
           <input id="license" class="w-full border rounded px-3 py-2" placeholder="DRE / NMLS (if applicable)">
         </div>
 
-        <!-- Three ZIP inputs for reliability -->
+        <!-- Three ZIP inputs -->
         <div class="md:col-span-2">
           <label class="block text-sm font-semibold mb-1">ZIP Codes (up to 3)</label>
           <div class="grid grid-cols-3 gap-3">
@@ -78,10 +78,12 @@
           <p class="hint mt-2">Enter 5-digit ZIP codes. You can add up to three.</p>
         </div>
 
+        <!-- Optional photo upload -->
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold">Photo (optional)</label>
-          <input id="photo" type="file" accept="image/*" class="w-full">
+          <label class="block text-sm font-semibold">Business Card (optional image)</label>
+          <input id="photo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="w-full">
           <div id="photoPreview" class="mt-2"></div>
+          <p class="hint mt-1">PNG/JPG recommended. Your card shows on listing pages in your chosen ZIPs.</p>
         </div>
 
         <div class="md:col-span-2 flex items-center justify-between mt-2">
@@ -114,7 +116,18 @@
     </section>
   </main>
 
-  <script>
+  <!-- Firebase init -->
+  <script type="module" src="/scripts/firebase-init.js"></script>
+
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import {
+      addDoc, collection, serverTimestamp, doc, updateDoc
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      getStorage, ref, uploadBytes, getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
     const $ = (id) => document.getElementById(id);
     function setStatus(msg, ok=true){
       const el=$('status'); el.classList.remove('hidden');
@@ -133,10 +146,9 @@
       const u=new URL(location.href);
       let mode = u.searchParams.get('mode') || 'apply';
       function show(mode){
-        // We keep a single page: "apply" shows form focus, "search" reveals search area
         if (mode==='search') {
           $('searchArea').classList.remove('hidden');
-          $('zip1')?.closest('form')?.classList.remove('hidden'); // keep both visible
+          $('zip1')?.closest('form')?.classList.remove('hidden');
           $('searchZip').focus();
         }
       }
@@ -159,7 +171,7 @@
     zipFilter($('zip2'), $('zip3'));
     zipFilter($('zip3'), null);
 
-    // price logic: $5 per month per zip (max 3)
+    // price: $5 per month per unique zip, max 3
     function compute(){
       const z1 = $('zip1').value.trim();
       const z2 = $('zip2').value.trim();
@@ -167,8 +179,8 @@
       const zips = [z1,z2,z3].filter(Boolean);
       const uniq = [];
       zips.forEach(z => { if (!uniq.includes(z)) uniq.push(z); });
-      $('total').textContent = money(uniq.length * 5);
-      return uniq;
+      $('total').textContent = money(Math.min(uniq.length, 3) * 5);
+      return uniq.slice(0,3);
     }
     ['role','name','email','phone','license'].forEach(id=>{
       const el=$(id); if(el) el.addEventListener('input', compute);
@@ -176,14 +188,34 @@
 
     // photo preview
     $('photo').addEventListener('change', async (e)=>{
-      const f = e.target.files[0]; if(!f) return;
+      const f = e.target.files?.[0]; if(!f) return;
       const reader = new FileReader();
-      reader.onload = () => { $('photoPreview').innerHTML = `<img src="${reader.result}" alt="Photo" class="h-24 w-24 object-cover rounded">`; };
+      reader.onload = () => { $('photoPreview').innerHTML = `<img src="${reader.result}" alt="Photo" class="h-24 w-24 object-cover rounded border">`; };
       reader.readAsDataURL(f);
     });
 
-    // ✅ Use your Stripe Payment Link
+    // ✅ Stripe Payment Link
     const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_9B64gy0zL42f3hC8GS0VO00";
+
+    // ✅ Correct Firebase Storage bucket
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com";
+
+    async function maybeUploadPhoto(draftId) {
+      try {
+        const file = $('photo').files?.[0];
+        if (!file) return "";
+        const storage = getStorage(undefined, BUCKET_URL);
+        const safe = String(file.name || "local_pro_card").replace(/[^\w\-.]+/g,"_");
+        const path = `localPros/${draftId}/card_${Date.now()}_${safe}`;
+        const r = ref(storage, path);
+        await uploadBytes(r, file);
+        const url = await getDownloadURL(r);
+        return url;
+      } catch (e) {
+        console.warn("[local-pros] photo upload failed:", e);
+        return "";
+      }
+    }
 
     // Proceed to Checkout
     $('checkoutBtn').addEventListener('click', async ()=>{
@@ -207,10 +239,9 @@
         const app = { role, name, email, phone, license, zips, createdAt: Date.now() };
         localStorage.setItem('localProApplication', JSON.stringify(app));
 
-        // START local-pros (draft save): write a pending localPros doc before redirect
+        // Create pending draft in Firestore
+        let draftId = "";
         try {
-          const { db } = await import("/scripts/firebase-init.js");
-          const { addDoc, collection, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
           const draft = {
             role,
             name,
@@ -218,23 +249,35 @@
             phone,
             license,
             zips,
+            photoUrl: "",            // will be set if upload succeeds
             status: "pending",
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
           };
-          const ref = await addDoc(collection(db, "localPros"), draft);
-          localStorage.setItem("localProDraftId", ref.id);
+          const refDoc = await addDoc(collection(db, "localPros"), draft);
+          draftId = refDoc.id;
+          localStorage.setItem("localProDraftId", draftId);
         } catch (e) {
-          console.warn("[local-pros] draft save failed; proceeding to checkout anyway:", e);
+          console.warn("[local-pros] draft save failed; proceeding anyway:", e);
         }
-        // END local-pros (draft save)
 
-        // Build params for Checkout Link
+        // Optional: upload card, patch draft
+        if (draftId) {
+          const photoUrl = await maybeUploadPhoto(draftId);
+          if (photoUrl) {
+            try {
+              await updateDoc(doc(db, "localPros", draftId), { photoUrl, updatedAt: serverTimestamp() });
+            } catch (e) {
+              console.warn("[local-pros] could not patch photoUrl:", e);
+            }
+          }
+        }
+
+        // Build params and redirect to Stripe
         const params = new URLSearchParams({
           prefilled_email: email,
           client_reference_id: JSON.stringify({ role, name, email, phone, license, zips })
         });
-        // Redirect to Stripe-hosted Checkout
         window.location.href = `${CHECKOUT_LINK_BASE}?${params.toString()}`;
       } catch(e){
         setStatus(e.message || "Checkout error.", false);
@@ -253,12 +296,10 @@
       if (u.searchParams.get('status')==='success'){
         $('thanks').classList.remove('hidden');
 
-        // START local-pros (finalize after success): mark pending doc active
+        // Mark pending doc active
         try {
           const draftId = localStorage.getItem("localProDraftId");
           if (draftId) {
-            const { db } = await import("/scripts/firebase-init.js");
-            const { doc, updateDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
             await updateDoc(doc(db, "localPros", draftId), {
               status: "active",
               updatedAt: serverTimestamp()
@@ -267,7 +308,6 @@
         } catch (e) {
           console.warn("[local-pros] finalize failed:", e);
         }
-        // END local-pros (finalize after success)
       }
     })();
 
@@ -292,7 +332,7 @@
         card.innerHTML = `
           <div class="text-sm font-semibold">${p.name || 'Professional'}</div>
           <div class="text-xs text-gray-600">${p.role || ''}${p.license ? ' • ' + p.license : ''}</div>
-          <div class="mt-1 text-sm">${p.phone ? `<a class="text-blue-600 hover:underline" href="tel:${p.phone.replace(/\\D/g,'')}">${p.phone}</a>` : ''}</div>
+          <div class="mt-1 text-sm">${p.phone ? `<a class="text-blue-600 hover:underline" href="tel:${p.phone.replace(/\D/g,'')}">${p.phone}</a>` : ''}</div>
           <div class="text-xs text-gray-500 mt-1">ZIPs: ${(p.zips||[]).join(', ')}</div>
         `;
         box.appendChild(card);
