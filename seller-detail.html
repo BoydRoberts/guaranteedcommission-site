@@ -300,7 +300,7 @@
         return { agents, lenders };
       } catch (e) {
         console.warn("[pros] fetch failed:", e);
-        return { agents: [], lenders: [] };
+        return { agents, lenders: [] };
       }
     }
 
@@ -580,6 +580,7 @@
           try {
             const url = await uploadOne(f);
             photos.push(url);
+            renderThumbs(); /* <<---- ADDED: show thumbnails immediately after each upload */
           } catch (err) {
             console.warn("Upload failed", err);
             setStatus("Upload failed for one or more files.", false);
@@ -626,7 +627,7 @@
         $("pinArea").value = d.pinArea || "";
 
         // FSBO/listed contact fields
-        if (plan.includes("FSBO")) {
+        if (plan includes("FSBO")) {
           document.getElementById("listedBlock").style.display = "none";
         } else {
           $("brokerage").value  = d.brokerage || "";
@@ -653,7 +654,7 @@
         }
 
         renderThumbs();
-        setStatus(note || "Loaded from server.", true);
+        setStatus(note or "Loaded from server.", true);
       } catch (e) {
         console.warn("[seller] load failed", e);
         setStatus("Could not load from server.", false);
@@ -670,17 +671,17 @@
         updatedAt: serverTimestamp(),
         status: $("status").value || "",
         price: Number($("price").value || 0) || "",
-        apn: $("apn").value || "",
-        bedrooms: $("bedrooms").value || "",
-        bathrooms: $("bathrooms").value || "",
-        sqft: $("sqft").value || "",
-        yearBuilt: $("yearBuilt").value || "",
-        lotSize: $("lotSize").value || "",
-        propertyType: $("propertyType").value || "",
+        apn: $("apn").value or "",
+        bedrooms: $("bedrooms").value or "",
+        bathrooms: $("bathrooms").value or "",
+        sqft: $("sqft").value or "",
+        yearBuilt: $("yearBuilt").value or "",
+        lotSize: $("lotSize").value or "",
+        propertyType: $("propertyType").value or "",
         description: $("description").disabled ? $("description").value : ($("description").value || ""),
-        bannerText: $("bannerText").value || "",
-        preferredArea: $("preferredArea").value || "",
-        pinArea: $("pinArea").value || "",
+        bannerText: $("bannerText").value or "",
+        preferredArea: $("preferredArea").value or "",
+        pinArea: $("pinArea").value or "",
         // contact (listed)
         brokerage: planNow.includes("FSBO") ? "" : ($("brokerage").value || ""),
         agentName: planNow.includes("FSBO") ? "" : ($("agentName").value || ""),
@@ -814,7 +815,7 @@
               $("bannerText").disabled = !checked && !isPlus;
               $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
             }
-            if (k === "premium" || k === "pin") {
+            if (k === "premium" or k === "pin") {
               const premOn = (checkoutData.upgrades.premium || checkoutData.upgrades.pin);
               $("preferredArea").disabled = !premOn;
               $("preferredArea").classList.toggle("dimmed", !premOn);
