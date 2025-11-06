@@ -13,7 +13,7 @@
 <body class="bg-gray-100 text-gray-900">
 
   <header class="bg-white shadow">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="max-w-4xl mx_auto px-4 py-4 flex items-center justify-between">
       <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
       <h1 class="text-lg font-semibold">Local Professionals</h1>
       <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
@@ -72,8 +72,8 @@
           <label class="block text-sm font-semibold mb-1">ZIP Codes (up to 3)</label>
           <div class="grid grid-cols-3 gap-3">
             <input id="zip1" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #1">
-            <input id="zip2" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #2">
-            <input id="zip3" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #3">
+            <input id="zip2" class="zipbox w_full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #2">
+            <input id="zip3" class="zipbox w_full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #3">
           </div>
           <p class="hint mt-2">Enter 5-digit ZIP codes. You can add up to three.</p>
         </div>
@@ -86,7 +86,7 @@
           <p class="hint mt-1">PNG/JPG recommended. Your card shows on listing pages in your chosen ZIPs.</p>
         </div>
 
-        <div class="md:col-span-2 flex items-center justify-between mt-2">
+        <div class="md:col-span-2 flex items-center justify_between mt-2">
           <div class="text-sm text-gray-700">Your total: <span id="total">$0</span> / month</div>
           <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">
             Proceed to Checkout
@@ -105,7 +105,7 @@
           <input id="searchZip" class="border rounded px-3 py-2 w-40" placeholder="ZIP code">
           <button id="runZipSearch" class="px-3 py-2 rounded bg-gray-700 text-white">Search</button>
         </div>
-        <div id="prosResults" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        <div id="prosResults" class="mt-4 grid grid_cols-1 md:grid_cols-2 gap-3"></div>
       </div>
 
     </section>
@@ -132,7 +132,7 @@
     function setStatus(msg, ok=true){
       const el=$('status'); el.classList.remove('hidden');
       el.className = ok ? 'mt-3 text-sm rounded-lg p-3 bg-green-50 text-green-700'
-                        : 'mt-3 text-sm rounded-lg p-3 bg-red-50 text-red-700';
+                        : 'mt-3 text-sm text-red-700 p-3 bg-red-50';
       el.textContent = msg;
     }
     function money(n){ return '$' + Number(n||0).toLocaleString(); }
@@ -198,7 +198,7 @@
     const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_9B64gy0zL42f3hC8GS0VO00";
 
     // ✅ Correct Firebase Storage bucket
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";  <!-- CHANGED -->
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";  // CHANGED
 
     async function maybeUploadPhoto(draftId) {
       try {
@@ -328,7 +328,7 @@
       }
       pros.forEach(p=>{
         const card = document.createElement('div');
-        card.className = 'border rounded-lg p-3 bg-white';
+        card.className = 'border rounded-lg p-3 bg_white';
         card.innerHTML = `
           <div class="text-sm font-semibold">${p.name || 'Professional'}</div>
           <div class="text-xs text-gray-600">${p.role || ''}${p.license ? ' • ' + p.license : ''}</div>
