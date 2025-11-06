@@ -771,16 +771,16 @@
             if (k === "pin") { checkoutData.upgrades.pin = checked; if (checked) checkoutData.upgrades.premium = true; }
             setJSON("checkoutData", checkoutData);
 
-            if (k === "banner") {
-              $("bannerText").disabled = !checked && !isPlus;
-              $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
-            }
             if (k === "premium" || k === "pin") {
-              const premOn = (checkoutData.upgrades.premium or checkoutData.upgrades.pin);
+              const premOn = (checkoutData.upgrades.premium || checkoutData.upgrades.pin); /* ← FIXED: 'or' -> '||' */
               $("preferredArea").disabled = !premOn;
               $("preferredArea").classList.toggle("dimmed", !premOn);
               $("pinArea").disabled = !checkoutData.upgrades.pin;
               $("pinArea").classList.toggle("dimmed", !checkoutData.upgrades.pin);
+            }
+            if (k === "banner") {
+              $("bannerText").disabled = !checked && !isPlus;
+              $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
             }
           });
         });
