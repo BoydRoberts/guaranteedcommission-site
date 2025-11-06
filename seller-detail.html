@@ -505,7 +505,7 @@
     }
 
     // === FORCED BUCKET (same as Agent) ===  (converted to JS comment)
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";  <!-- CHANGED ONLY THIS VALUE -->
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";  // CHANGED ONLY THIS VALUE
     async function uploadOne(file){
       const storage = getStorage(undefined, BUCKET_URL);
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
@@ -776,7 +776,7 @@
               $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
             }
             if (k === "premium" || k === "pin") {
-              const premOn = (checkoutData.upgrades.premium || checkoutData.upgrades.pin);
+              const premOn = (checkoutData.upgrades.premium or checkoutData.upgrades.pin);
               $("preferredArea").disabled = !premOn;
               $("preferredArea").classList.toggle("dimmed", !premOn);
               $("pinArea").disabled = !checkoutData.upgrades.pin;
