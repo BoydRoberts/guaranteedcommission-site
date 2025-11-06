@@ -135,7 +135,6 @@
           <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
 
           <div class="flex items-center gap-2">
-            <!-- ONLY CHANGE: accept now limited to PNG/JPG/JPEG -->
             <input id="photoInput" type="file" accept=".png,.jpg,.jpeg" multiple class="block">
             <span id="photoNote" class="note text-gray-500">JPG/PNG are best. Uploads save automatically.</span>
           </div>
@@ -464,12 +463,11 @@
       }
     }
 
-    <!-- === FORCED BUCKET FIX: always use the bucket where your files live === -->
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";  <!-- CHANGED ONLY THIS VALUE -->
+    // === FORCED BUCKET FIX: always use the bucket where your files live ===
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
 
     async function uploadOne(file) {
-      // new
-      const storage = getStorage(undefined, BUCKET_URL);  // keep this line
+      const storage = getStorage(undefined, BUCKET_URL);
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
@@ -590,15 +588,17 @@
         promoBadge.className = active
           ? "text-xs px-2 py-1 rounded bg-green-100 text-green-800"
           : "text-xs px-2 py-1 rounded bg-gray-100 text-gray-700";
-        applyPromoBtn.disabled = !active;
-        promoNote.textContent = active
-          ? "Click to apply free pricing (Banner, Premium, and Pin set to $0) for November (agent-paid)."
-          : "Promo applies during November 2025 when upgrades are paid by the agent.";
+        if (applyPromoBtn) applyPromoBtn.disabled = !active;
+        if (promoNote) {
+          promoNote.textContent = active
+            ? "Click to apply free pricing (Banner, Premium, and Pin set to $0) for November (agent-paid)."
+            : "Promo applies during November 2025 when upgrades are paid by the agent.";
+        }
 
-        if (active && plan === "Listed Property Basic") {
+        if (active && plan === "Listed Property Basic" && freePlusRow && chkFreePlus) {
           freePlusRow.classList.remove("hidden");
           chkFreePlus.checked = !!checkoutData.upgrades.upgradeToPlus || plan === "Listed Property Plus";
-        } else {
+        } else if (freePlusRow && chkFreePlus) {
           freePlusRow.classList.add("hidden");
           chkFreePlus.checked = false;
         }
@@ -622,7 +622,7 @@
         alert("November Free applied. Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.");
         paintUpgrades();
       }
-      applyPromoBtn.addEventListener("click", applyNovemberFree);
+      if (applyPromoBtn) applyPromoBtn.addEventListener("click", applyNovemberFree);
 
       async function flipPlanPlus() {
         plan = "Listed Property Plus"; isPlus = true; maxPhotos = 20;
@@ -656,10 +656,13 @@
         }
       }
 
-      $("chkFreePlus")?.addEventListener("change", (e)=>{
-        if (e.target.checked) flipPlanPlus();
-        else { e.target.checked = true; }
-      });
+      const chkPlusEl = $("chkFreePlus");
+      if (chkPlusEl) {
+        chkPlusEl.addEventListener("change", (e)=>{
+          if (e.target.checked) flipPlanPlus();
+          else { e.target.checked = true; }
+        });
+      }
 
       function row(label, price, key, note="") {
         const checked = !!checkoutData.upgrades[key];
@@ -678,6 +681,7 @@
 
       function paintUpgrades() {
         const box = $("upgradesBox");
+        if (!box) return;
         const p = pricesForUI();
         const html = [
           row("Banner", p.banner, "banner"),
@@ -699,15 +703,19 @@
       }
       paintUpgrades();
 
-      $("updateUpgradesBtn").addEventListener("click", () => {
-        checkoutData.meta = checkoutData.meta || {};
-        checkoutData.meta.preferredArea = $("preferredArea").value || checkoutData.meta.preferredArea || "";
-        checkoutData.meta.pinArea       = $("pinArea").value       || checkoutData.meta.pinArea       || "";
-        checkoutData.payer = "agent";
-        setJSON("checkoutData", checkoutData);
-        alert("Upgrades updated. Go to Checkout to pay (if needed).");
-      });
-      $("goCheckoutBtn2").addEventListener("click", () => { window.location.href = "/checkout.html"; });
+      const updBtn = $("updateUpgradesBtn");
+      if (updBtn) {
+        updBtn.addEventListener("click", () => {
+          checkoutData.meta = checkoutData.meta || {};
+          checkoutData.meta.preferredArea = $("preferredArea").value || checkoutData.meta.preferredArea || "";
+          checkoutData.meta.pinArea       = $("pinArea").value       || checkoutData.meta.pinArea       || "";
+          checkoutData.payer = "agent";
+          setJSON("checkoutData", checkoutData);
+          alert("Upgrades updated. Go to Checkout to pay (if needed).");
+        });
+      }
+      const goCk = $("goCheckoutBtn2");
+      if (goCk) goCk.addEventListener("click", () => { window.location.href = "/checkout.html"; });
     })();
 
     // ---- Boot ----
