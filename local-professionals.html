@@ -38,7 +38,7 @@
       <!-- Apply form -->
       <form id="proForm" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4" autocomplete="off">
         <div>
-          <label class="block text-sm font-weight font-semibold">I am a</label>
+          <label class="block text-sm font-semibold">I am a</label>
           <select id="role" class="w-full border rounded px-3 py-2" required>
             <option value="">Select…</option>
             <option value="real_estate_agent">Real Estate Agent</option>
@@ -86,7 +86,7 @@
           <p class="hint mt-1">PNG/JPG recommended. Your card shows on listing pages in your chosen ZIPs.</p>
         </div>
 
-        <div class="md:col-span-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-2">
+        <div class="md:col-span-2 flex items-center justify-between mt-2">
           <div class="text-sm text-gray-700">Your total: <span id="total">$0</span> / month</div>
           <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">
             Proceed to Checkout
@@ -179,8 +179,7 @@
       const zips = [z1,z2,z3].filter(Boolean);
       const uniq = [];
       zips.forEach(z => { if (!uniq.includes(z)) uniq.push(z); });
-      const qty = Math.min(uniq.length, 3) || 0;
-      $('total').textContent = money(qty * 5);
+      $('total').textContent = money(Math.min(uniq.length, 3) * 5);
       return uniq.slice(0,3);
     }
     ['role','name','email','phone','license'].forEach(id=>{
@@ -191,15 +190,15 @@
     $('photo').addEventListener('change', async (e)=>{
       const f = e.target.files?.[0]; if(!f) return;
       const reader = new FileReader();
-      reader.onload = () => { $('photoPreview').innerHTML = `<img src="${reader.result}" alt="Photo" class="h-24 object-contain rounded border">`; };
+      reader.onload = () => { $('photoPreview').innerHTML = `<img src="${reader.result}" alt="Photo" class="h-24 w-24 object-cover rounded border">`; };
       reader.readAsDataURL(f);
     });
 
-    // ✅ Stripe Payment Link
-    const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_9B64gy0zL42f3hC8GS0VO00";
+    // ✅ Stripe Payment Link — UPDATED
+    const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_8x2dRb4Gr8N4gnlaM44ow00"; // ← updated
 
-    // ✅ Correct Firebase Storage bucket
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
+    // ✅ Correct Firebase Storage bucket (unchanged from your paste)
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com";
 
     async function maybeUploadPhoto(draftId) {
       try {
@@ -230,17 +229,14 @@
         const phone= formatPhoneDisplay($('phone').value.trim());
         const license = $('license').value.trim();
         const zips = compute();
-        const qty = Math.max(1, Math.min(new Set(zips).size, 3)); // 1..3
 
         if (!role || !name || !email || !phone || !zips.length) {
           setStatus('Please complete role, name, email, phone, and at least one ZIP.', false);
-          $('checkoutBtn').disabled = false;
-          $('checkoutBtn').textContent = 'Proceed to Checkout';
           return;
         }
 
         // Cache application for later use
-        const app = { role, name, email, phone, license, zips, qty, createdAt: Date.now() };
+        const app = { role, name, email, phone, license, zips, createdAt: Date.now() };
         localStorage.setItem('localProApplication', JSON.stringify(app));
 
         // Create pending draft in Firestore
@@ -253,7 +249,7 @@
             phone,
             license,
             zips,
-            photoUrl: "",
+            photoUrl: "",            // will be set if upload succeeds
             status: "pending",
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
@@ -277,14 +273,15 @@
           }
         }
 
-        // Build Payment Link with quantity (many Payment Links accept ?quantity=)
-        const url = new URL(CHECKOUT_LINK_BASE);
-        url.searchParams.set('prefilled_email', email);
-        url.searchParams.set('client_reference_id', JSON.stringify({ role, name, email, phone, license, zips, qty }));
-        url.searchParams.set('quantity', String(qty));
-        window.location.href = url.toString();
+        // Build params and redirect to Stripe
+        const params = new URLSearchParams({
+          prefilled_email: email,
+          client_reference_id: JSON.stringify({ role, name, email, phone, license, zips })
+        });
+        window.location.href = `${CHECKOUT_LINK_BASE}?${params.toString()}`;
       } catch(e){
         setStatus(e.message || "Checkout error.", false);
+      } finally {
         $('checkoutBtn').disabled = false;
         $('checkoutBtn').textContent = 'Proceed to Checkout';
       }
@@ -294,24 +291,23 @@
     document.addEventListener('DOMContentLoaded', compute);
 
     // success banner (if you configured redirect back in Stripe)
-    (function(){
+    (async function(){
       const u=new URL(location.href);
       if (u.searchParams.get('status')==='success'){
         $('thanks').classList.remove('hidden');
+
         // Mark pending doc active
-        (async () => {
-          try {
-            const draftId = localStorage.getItem("localProDraftId");
-            if (draftId) {
-              await updateDoc(doc(db, "localPros", draftId), {
-                status: "active",
-                updatedAt: serverTimestamp()
-              });
-            }
-          } catch (e) {
-            console.warn("[local-pros] finalize failed:", e);
+        try {
+          const draftId = localStorage.getItem("localProDraftId");
+          if (draftId) {
+            await updateDoc(doc(db, "localPros", draftId), {
+              status: "active",
+              updatedAt: serverTimestamp()
+            });
           }
-        })();
+        } catch (e) {
+          console.warn("[local-pros] finalize failed:", e);
+        }
       }
     })();
 
