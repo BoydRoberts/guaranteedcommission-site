@@ -68,7 +68,7 @@
           <p class="hint mt-1">Recommended: horizontal image. JPG/PNG.</p>
         </div>
 
-        <div class="md:col-span-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-2">
+        <div class="md:col-span-2 flex items-center justify-between mt-2">
           <div class="text-sm text-gray-700">Your total: <span id="total">$100</span> / month</div>
           <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">
             Proceed to Checkout
@@ -129,10 +129,9 @@
       if (/^\d{5}$/.test(z)) $('zip').value = z;
     })();
 
-    // Stripe Checkout Link (test)
-    const CHECKOUT_LINK_BASE_BROKER = "https://buy.stripe.com/test_9B64gy0zL42f3hC8GS0VO00";
-
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app"; /* CHANGED */
+    // Stripe Checkout Link (test) — UPDATED
+    const CHECKOUT_LINK_BASE_BROKER = "https://buy.stripe.com/test_28EaEZc8T4wO0on7zS4ow01"; // ← updated
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com"; // unchanged
 
     async function maybeUploadPhoto(draftId) {
       try {
@@ -163,10 +162,8 @@
         const website = $('website').value.trim();
         const zip = ($('zip').value || '').trim();
         if (!name || !contact || !email || !phone || !/^\d{5}$/.test(zip)) {
-            setStatus('Please complete brokerage name, contact, email, phone, and a 5-digit ZIP.', false);
-            $('checkoutBtn').disabled = false;
-            $('checkoutBtn').textContent = 'Proceed to Checkout';
-            return;
+          setStatus('Please complete brokerage name, contact, email, phone, and a 5-digit ZIP.', false);
+          return;
         }
 
         // Save draft first (pending)
@@ -199,29 +196,28 @@
         window.location.href = `${CHECKOUT_LINK_BASE_BROKER}?${params.toString()}`;
       } catch (e) {
         setStatus(e.message || "Checkout error.", false);
+      } finally {
         $('checkoutBtn').disabled = false;
         $('checkoutBtn').textContent = 'Proceed to Checkout';
       }
     });
 
     // Finalize after Stripe returns
-    (function finalizeIfSuccess(){
+    (async function finalizeIfSuccess(){
       const u = new URL(location.href);
       if (u.searchParams.get('status') === 'success') {
         $('thanks').classList.remove('hidden');
-        (async () => {
-          try {
-            const id = localStorage.getItem("localBrokerDraftId");
-            if (id) {
-              await updateDoc(doc(db, "localBrokers", id), {
-                status: "active",
-                updatedAt: serverTimestamp()
-              });
-            }
-          } catch (e) {
-            console.warn("[local-brokers] finalize failed:", e);
+        try {
+          const id = localStorage.getItem("localBrokerDraftId");
+          if (id) {
+            await updateDoc(doc(db, "localBrokers", id), {
+              status: "active",
+              updatedAt: serverTimestamp()
+            });
           }
-        })();
+        } catch (e) {
+          console.warn("[local-brokers] finalize failed:", e);
+        }
       }
     })();
   </script>
