@@ -1,3 +1,21 @@
 .font-cursive {
   font-family: 'Brush Script MT', cursive;
 }
+
+/* --- Local Pros/Brokers card images: show rectangular card, not square --- */
+#prosCard img,
+#prosSidebar img {
+  height: 80px;         /* ~rectangular card height */
+  width: auto;          /* keep aspect ratio */
+  max-width: 220px;     /* avoid overflowing layout */
+  object-fit: contain;  /* no cropping */
+  background: #fff;
+  border-radius: 8px;
+}
+
+#prosCard .border,
+#prosSidebar .border {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
