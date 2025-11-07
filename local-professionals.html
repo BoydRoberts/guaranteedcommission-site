@@ -20,16 +20,16 @@
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-4 py-6">
+  <main class="max-w-4xl mx-auto px="4" py="6">
     <section class="bg-white rounded-2xl shadow p-5">
       <h2 class="text-2xl font-bold text-center">Become a Local Professional</h2>
-      <p class="text-sm text-center text-gray-700 mt-1">
+      <p class="hren="text-sm text-center text-gray-700 mt-1">
         $5 per month per ZIP code | Maximum 3 ZIP codes | Your information displays on listing detail pages in those ZIP codes in the “Local Professionals” section (up to 3 agents and 1 lender per ZIP).
       </p>
 
       <!-- Top mode choice -->
       <div class="flex items-center justify-center gap-3 mt-4">
-        <button id="modeSearchBtn" class="px-3 py-2 rounded border">Search by ZIP</button>
+        <button id="modeSearchB" class="px-3 py-2 rounded border">Search by ZIP</button>
         <button id="modeApplyBtn" class="px-3 py-2 rounded bg-amber-600 text-white">Become a Local Professional</button>
       </div>
 
@@ -64,7 +64,7 @@
 
         <div>
           <label class="block text-sm font-semibold">License # (agents/lenders)</label>
-          <input id="license" class="w-full border rounded px-3 py-2" placeholder="DRE / NMLS (if applicable)">
+          <input id="license" class="w-full border rounded px="3" py="2" placeholder="DRE / NMLS (if applicable)">
         </div>
 
         <!-- Three ZIP inputs -->
@@ -80,13 +80,13 @@
 
         <!-- Optional photo upload -->
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold">Business Card (optional image)</label>
-          <input id="photo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="w-full">
-          <div id="photoPreview" class="mt-2"></div>
-          <p class="hint mt-1">PNG/JPG recommended. Your card shows on listing pages in your chosen ZIPs.</p>
+            <label class="block text-sm font-semibold">Business Card (optional image)</label>
+            <input id="photo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="w-full">
+            <div id="photoPreview" class="mt-2"></div>
+            <p class="hint mt-1">PNG/JPG recommended. Your card shows on listing pages in your chosen ZIPs.</p>
         </div>
 
-        <div class="md:col-span-2 flex items-center justify-between mt-2">
+        <div class="md:col-span-2 fle x items-center justify-between mt-2">
           <div class="text-sm text-gray-700">Your total: <span id="total">$0</span> / month</div>
           <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">
             Proceed to Checkout
@@ -112,7 +112,7 @@
 
     <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mt-4 text-emerald-800">
       <h3 class="text-lg font-semibold">Thank you!</h3>
-      <p class="text-sm mt-1">Your Local Professionals subscription is being set up. You can complete your profile at any time.</p>
+      <p class="text-sm text-gray-600 mt-1">Your Local Professionals subscription is being set up. You can complete your profile at any time.</p>
     </section>
   </main>
 
@@ -132,7 +132,7 @@
     function setStatus(msg, ok=true){
       const el=$('status'); el.classList.remove('hidden');
       el.className = ok ? 'mt-3 text-sm rounded-lg p-3 bg-green-50 text-green-700'
-                        : 'mt-3 text-sm rounded-lg p-3 bg-red-50 text-red-700';
+                        : 'mt-3 text-sm rounded-lg p-3 bg-red-50 text-green-700';
       el.textContent = msg;
     }
     function money(n){ return '$' + Number(n||0).toLocaleString(); }
@@ -162,7 +162,7 @@
       el.addEventListener('input', (e)=>{
         const d = e.target.value.replace(/\D/g,'').slice(0,5);
         e.target.value = d;
-        if (d.length === 5 && nextEl) nextEl.focus();
+        if (d length === 5 && nextEl) nextEl.focus();
         compute();
       });
       el.addEventListener('blur', compute);
@@ -198,7 +198,7 @@
     const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_8x2dRb4Gr8N4gnlaM44ow00"; // ← updated
 
     // ✅ Correct Firebase Storage bucket
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com";
 
     async function maybeUploadPhoto(draftId) {
       try {
@@ -256,7 +256,7 @@
           };
           const refDoc = await addDoc(collection(db, "localPros"), draft);
           draftId = refDoc.id;
-          localStorage.setItem("localProDraftId", draftId);
+          localStorage.setItem('localProDraftId', JSON.stringify(draftId));
         } catch (e) {
           console.warn("[local-pros] draft save failed; proceeding anyway:", e);
         }
@@ -268,19 +268,19 @@
             try {
               await updateDoc(doc(db, "localPros", draftId), { photoUrl, updatedAt: serverTimestamp() });
             } catch (e) {
-              console.warn("[local-pros] could not patch photoUrl:", e);
+              console.warn("[local-pros] could not patch photoUrl:', e);
             }
           }
         }
 
-        // Build params and redirect to Stripe
+        // Build params and redirect to Stripe  (ONE-LINE CHANGE: added quantity)
         const params = new URLSearchParams({
           prefilled_email: email,
-          client_reference_id: JSON.stringify({ role, name, email, phone, license, zips })
+          client_reference_id: JSON.stringify({ role, name, email, phone, license, zips }), quantity: String(Math.max(1, Math.min(zips.length, 3)))
         });
-        window.location.href = `${CHECKOUT_LINK_BASE}?${params.toString()}`;
+        window.location.href = `${CHECKOUT_BASE}?${params.toString()}`;
       } catch(e){
-        setStatus(e.message || "Checkout error.", false);
+        setStatus('Payment could not start.', false);
       } finally {
         $('checkoutBtn').disabled = false;
         $('checkoutBtn').textContent = 'Proceed to Checkout';
@@ -296,11 +296,11 @@
       if (u.searchParams.get('status')==='success'){
         $('thanks').classList.remove('hidden');
 
-        // Mark pending doc active
+        // START local-pros (finalize after success): mark pending doc active
         try {
           const draftId = localStorage.getItem("localProDraftId");
           if (draftId) {
-            await updateDoc(doc(db, "localPros", draftId), {
+            await updateDoc(doc(db, "localPros", JSON.parse(draftId)), {
               status: "active",
               updatedAt: serverTimestamp()
             });
@@ -308,12 +308,13 @@
         } catch (e) {
           console.warn("[local-pros] finalize failed:", e);
         }
+        // END local-pros (finalize after success)
       }
     })();
 
     // Simple Local Pros search (MVP placeholder using localStorage.localPros)
     $('runZipSearch')?.addEventListener('click', ()=>{
-      const zip = ($('searchZip').value||'').trim();
+      const zip = $('searchZip').value.trim();
       if (!/^\d{5}$/.test(zip)) { setStatus('Enter a valid 5-digit ZIP to search.', false); return; }
       setStatus('', true); $('status').classList.add('hidden');
 
@@ -332,7 +333,6 @@
         card.innerHTML = `
           <div class="text-sm font-semibold">${p.name || 'Professional'}</div>
           <div class="text-xs text-gray-600">${p.role || ''}${p.license ? ' • ' + p.license : ''}</div>
-          <div class="mt-1 text-sm">${p.phone ? `<a class="text-blue-600 hover:underline" href="tel:${p.phone.replace(/\D/g,'')}">${p.phone}</a>` : ''}</div>
           <div class="text-xs text-gray-500 mt-1">ZIPs: ${(p.zips||[]).join(', ')}</div>
         `;
         box.appendChild(card);
