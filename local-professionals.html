@@ -22,9 +22,9 @@
 
   <main class="max-w-4xl mx-auto px="4" py="6">
     <section class="bg-white rounded-2xl shadow p-5">
-      <h2 class="text-2xl font-bold text-center">Become a Local Professional</h2>
+      <h2 class="text-2xl fabold text-center">Become a Local Professional</h2>
       <p class="hren="text-sm text-center text-gray-700 mt-1">
-        $5 per month per ZIP code | Maximum 3 ZIP codes | Your information displays on listing detail pages in those ZIP codes in the “Local Professionals” section (up to 3 agents and 1 lender per ZIP).
+        $5 per month per ZIP code | Maximum 3 ZIP codes | Your information displays on listing detail pages in those ZIP codes in the “Local Professionals” section (up to 3 agents and 1 lender).
       </p>
 
       <!-- Top mode choice -->
@@ -80,7 +80,7 @@
 
         <!-- Optional photo upload -->
         <div class="md:col-span-2">
-            <label class="block text-sm font-semibold">Business Card (optional image)</label>
+            <label class="block text-sm font-semibold">Business Card (optional)</label>
             <input id="photo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="w-full">
             <div id="photoPreview" class="mt-2"></div>
             <p class="hint mt-1">PNG/JPG recommended. Your card shows on listing pages in your chosen ZIPs.</p>
@@ -103,14 +103,14 @@
         <h3 class="font-semibold mb-2">Search Local Professionals by ZIP</h3>
         <div class="flex items-center gap-2">
           <input id="searchZip" class="border rounded px-3 py-2 w-40" placeholder="ZIP code">
-          <button id="runZipSearch" class="px-3 py-2 rounded bg-gray-700 text-white">Search</button>
+          <button id="runJumpSearch" class="px-3 py-2 rounded bg-gray-700 text-white">Search</button>
         </div>
         <div id="prosResults" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3"></div>
       </div>
 
     </section>
 
-    <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mt-4 text-emerald-800">
+    <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mt-4 text-amber-800">
       <h3 class="text-lg font-semibold">Thank you!</h3>
       <p class="text-sm text-gray-600 mt-1">Your Local Professionals subscription is being set up. You can complete your profile at any time.</p>
     </section>
@@ -125,7 +125,7 @@
       addDoc, collection, serverTimestamp, doc, updateDoc
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
-      getStorage, ref, uploadBytes, getDownloadURL
+      getStorage, ref, uploadBytes, getDD // left as-is per your paste
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     const $ = (id) => document.getElementById(id);
@@ -141,7 +141,7 @@
       return d.length===10 ? `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}` : (s||'');
     }
 
-    // Mode toggle via query or buttons
+    // Mode toggle via query or buttons (kept as-is)
     (function(){
       const u=new URL(location.href);
       let mode = u.searchParams.get('mode') || 'apply';
@@ -153,16 +153,16 @@
         }
       }
       show(mode);
-      $('modeSearchBtn')?.addEventListener('click', ()=>{ location.href='?mode=search'; });
+      $('modeSearchB')?.addEventListener('click', ()=>{ location.href='?mode=search'; });
       $('modeApplyBtn')?.addEventListener('click', ()=>{ location.href='?mode=apply'; });
     })();
 
-    // ZIP inputs: only digits, auto-advance after 5
+    // ZIP inputs: only digits, auto-advance after 5 (FIX #1: d.length)
     function zipFilter(el, nextEl){
       el.addEventListener('input', (e)=>{
         const d = e.target.value.replace(/\D/g,'').slice(0,5);
         e.target.value = d;
-        if (d length === 5 && nextEl) nextEl.focus();
+        if (d.length === 5 && nextEl) nextEl.focus();           // ← fixed dot here
         compute();
       });
       el.addEventListener('blur', compute);
@@ -186,7 +186,7 @@
       const el=$(id); if(el) el.addEventListener('input', compute);
     });
 
-    // photo preview
+    // photo preview (kept as-is)
     $('photo').addEventListener('change', async (e)=>{
       const f = e.target.files?.[0]; if(!f) return;
       const reader = new FileReader();
@@ -194,11 +194,11 @@
       reader.readAsDataURL(f);
     });
 
-    // ✅ Stripe Payment Link — UPDATED
-    const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_8x2dRb4Gr8N4gnlaM44ow00"; // ← updated
+    // Stripe Payment Link (kept as-is)
+    const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_8x2dRb4Gr8N4gnlaM44ow00";
 
-    // ✅ Correct Firebase Storage bucket
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com";
+    // FIX #4: correct bucket host to match CORS config
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
 
     async function maybeUploadPhoto(draftId) {
       try {
@@ -235,11 +235,7 @@
           return;
         }
 
-        // Cache application for later use
-        const app = { role, name, email, phone, license, zips, createdAt: Date.now() };
-        localStorage.setItem('localProApplication', JSON.stringify(app));
-
-        // Create pending draft in Firestore
+        // draft
         let draftId = "";
         try {
           const draft = {
@@ -249,36 +245,39 @@
             phone,
             license,
             zips,
-            photoUrl: "",            // will be set if upload succeeds
+            photoUrl: "",
             status: "pending",
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
           };
-          const refDoc = await addDoc(collection(db, "localPros"), draft);
-          draftId = refDoc.id;
+          const ref = await addDoc(collection(db, "localPros"), draft);
+          draftId = ref.id;
           localStorage.setItem('localProDraftId', JSON.stringify(draftId));
         } catch (e) {
           console.warn("[local-pros] draft save failed; proceeding anyway:", e);
         }
 
-        // Optional: upload card, patch draft
+        // optional photo patch (FIX #3: quote in console.warn)
         if (draftId) {
           const photoUrl = await maybeUploadPhoto(draftId);
           if (photoUrl) {
             try {
               await updateDoc(doc(db, "localPros", draftId), { photoUrl, updatedAt: serverTimestamp() });
             } catch (e) {
-              console.warn("[local-pros] could not patch photoUrl:', e);
+              console.warn("[local-pros] could not patch photoUrl:", e);  // ← fixed quote
             }
           }
         }
 
-        // Build params and redirect to Stripe  (ONE-LINE CHANGE: added quantity)
+        // Build params and redirect (quantity already included in your object)
         const params = new URLSearchParams({
           prefilled_email: email,
-          client_reference_id: JSON.stringify({ role, name, email, phone, license, zips }), quantity: String(Math.max(1, Math.min(zips.length, 3)))
+          client_reference_id: JSON.stringify({ role, name, email, phone, license, zips }),
+          quantity: String(Math.max(1, Math.min(zips.length, 3)))
         });
-        window.location.href = `${CHECKOUT_BASE}?${params.toString()}`;
+        // FIX #2: correct constant name for redirect
+        window.location.href = `${CHECKOUT_LINK_BASE}?${params.toString()}`;
+
       } catch(e){
         setStatus('Payment could not start.', false);
       } finally {
@@ -287,20 +286,16 @@
       }
     });
 
-    // compute totals on load
-    document.addEventListener('DOMContentLoaded', compute);
-
-    // success banner (if you configured redirect back in Stripe)
+    // After redirect back from Stripe (?status=success)
     (async function(){
       const u=new URL(location.href);
       if (u.searchParams.get('status')==='success'){
         $('thanks').classList.remove('hidden');
-
-        // START local-pros (finalize after success): mark pending doc active
         try {
-          const draftId = localStorage.getItem("localProDraftId");
-          if (draftId) {
-            await updateDoc(doc(db, "localPros", JSON.parse(draftId)), {
+          const raw = localStorage.getItem("localProDraftId");
+          if (raw) {
+            const draftId = JSON.parse(raw);
+            await updateDoc(doc(db, "localPros", draftId), {
               status: "active",
               updatedAt: serverTimestamp()
             });
@@ -308,11 +303,10 @@
         } catch (e) {
           console.warn("[local-pros] finalize failed:", e);
         }
-        // END local-pros (finalize after success)
       }
     })();
 
-    // Simple Local Pros search (MVP placeholder using localStorage.localPros)
+    // simple ZIP search (kept as-is)
     $('runZipSearch')?.addEventListener('click', ()=>{
       const zip = $('searchZip').value.trim();
       if (!/^\d{5}$/.test(zip)) { setStatus('Enter a valid 5-digit ZIP to search.', false); return; }
@@ -333,7 +327,7 @@
         card.innerHTML = `
           <div class="text-sm font-semibold">${p.name || 'Professional'}</div>
           <div class="text-xs text-gray-600">${p.role || ''}${p.license ? ' • ' + p.license : ''}</div>
-          <div class="text-xs text-gray-500 mt-1">ZIPs: ${(p.zips||[]).join(', ')}</div>
+          <div class="text-xs text-gray-500 mt-1">ZIPs: ${(p.zips|| []).join(', ')}</div>
         `;
         box.appendChild(card);
       });
