@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -440,7 +440,7 @@
           const img = document.createElement("img");
           img.src = src;
           img.alt = p.name || label || "Local Professional";
-          img.className = "w-16 h-16 object-cover rounded bg-gray-100";
+          img.className = "h-20 w-auto object-contain rounded bg-gray-100"; /* ← changed */
           img.onerror = () => { img.replaceWith(noImage()); };
           left = img;
         } else {
@@ -487,7 +487,7 @@
 
       function noImage(){
         const ph = document.createElement("div");
-        ph.className = "w-16 h-16 rounded bg-gray-200 flex items-center justify-center text-[10px] text-gray-600";
+        ph.className = "h-20 w-auto rounded bg-gray-200 flex items-center justify-center px-3 text-[10px] text-gray-600"; /* subtle rectangle */
         ph.textContent = "No Image";
         return ph;
       }
@@ -581,7 +581,7 @@
 
       function noLogo(){
         const ph = document.createElement("div");
-        ph.className="w-16 h-16 rounded bg-gray-200 flex items-center justify-center text-[10px] text-gray-600";
+        ph.className="h-20 w-auto rounded bg-gray-200 flex items-center justify-center px-3 text-[10px] text-gray-600"; /* rectangle */
         ph.textContent="No Logo";
         return ph;
       }
@@ -592,7 +592,7 @@
         if (p.photoUrl) {
           const img = document.createElement("img");
           img.src = p.photoUrl; img.alt = p.name || "Local Brokerage";
-          img.className="w-16 h-16 object-contain bg-white border rounded";
+          img.className="h-20 w-auto object-contain bg-white border rounded"; /* ← changed */
           img.onerror = ()=>{ img.replaceWith(noLogo()); };
           left = img;
         } else { left = noLogo(); }
