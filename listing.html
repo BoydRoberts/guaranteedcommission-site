@@ -413,7 +413,7 @@
       }
     }
 
-    /* === UPDATED: Local Pros tiles — image only (no text under card) === */
+    /* === Local Pros tiles — image only (no text under card) === */
     function renderPros(zip, agents = [], lenders = []) {
       const card = $("prosCard");
       const grid = $("prosGrid");
@@ -517,7 +517,7 @@
       }
     }
 
-    /* === UPDATED: Brokers image height reduced so header/button are not crowded === */
+    /* === Brokers image height reduced so header/button are not crowded; container aligns with Pros === */
     function renderBrokers(zip, items = []) {
       const card = $("brokersCard");
       const grid = $("brokersGrid");
@@ -527,8 +527,7 @@
       const emptyLink = $("brokersEmptyLink");
       if (!card || !grid) return;
 
-      card.classList.remove("p-5", "card");
-      card.classList.add("p-0", "bg-white", "shadow-none", "rounded-none");
+      /* removed previous lines that stripped p-5/card classes so layout matches Pros */
 
       zipSpan.textContent = zip || "—";
       cta.href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
@@ -552,7 +551,7 @@
       const img = document.createElement("img");
       img.src = b.photoUrl || b.logoUrl || "";
       img.alt = "Local Brokerage";
-      /* shrink heights a notch to keep title/CTA comfortable */
+      /* slightly smaller heights to keep header/CTA comfortable */
       img.className = "w-full h-40 sm:h-48 md:h-56 lg:h-60 xl:h-64 object-contain";
       img.onerror = () => {
         const ph = document.createElement("div");
@@ -632,7 +631,7 @@
         const bds = dflt(d.bedrooms, "");
         const ba  = dflt(d.bathrooms, "");
         const sqft= dflt(d.sqft, "");
-        const brokerage = String(d.brokerage || (plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]"));
+        const brokerage = String(d.brokerage || (plan includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]"));
         const agentName = String(d.agentName || "");
         const agentPhone= String(d.agentPhone || "");
         const banner    = String(d.bannerText || "");
