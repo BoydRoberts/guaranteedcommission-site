@@ -11,6 +11,11 @@
     .lock-note { font-size: 12px; color:#6b7280; }
     .pill { font-size: 11px; padding: 2px 8px; border-radius: 9999px; background:#eef2ff; color:#3730a3; }
     .badge { font-size: 10px; padding:2px 6px; border-radius: 9999px; background:#ecfccb; color:#166534; border:1px solid #bbf7d0; }
+    /* Full-bleed business card container with stable aspect ratio (3.5x2) */
+    .card-wrap { position: relative; width: 100%; aspect-ratio: 1.75; background: #fff; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
+    .card-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .share-bar { position:absolute; left:0.5rem; right:0.5rem; bottom:0.5rem; display:flex; justify-content:space-between; pointer-events:auto; }
+    .share-btn-sml { background:#fff; border:1px solid #e5e7eB; border-radius:6px; padding:.25rem .5rem; font-size:12px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -52,7 +57,7 @@
 
         <!-- Status (required) -->
         <div>
-          <label class="block text sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
+          <label class="block text-sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
           <select id="status" class="w-full border p-2 rounded" required>
             <option value="">Select…</option>
             <option>Active</option>
@@ -64,12 +69,12 @@
         <!-- Price & Commission (commission locked: change requires new listing) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text sm font-semibold mb-1">Listing Price ($)</label>
+            <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
             <input id="price" type="number" min="0" step="1000" placeholder="e.g., 850000" class="w-full border p-2 rounded">
           </div>
 
           <div>
-            <label class="block text sm font-semibold mb-1">Commission (locked)</label>
+            <label class="block text-sm font-semibold mb-1">Commission (locked)</label>
             <div class="flex gap-2">
               <input id="commission" class="w-full border p-2 rounded bg-gray-50" readonly>
               <input id="commissionType" class="w-20 border p-2 rounded bg-gray-50 text-center" readonly>
@@ -80,33 +85,33 @@
 
         <!-- Property Facts -->
         <div>
-          <label class="block text sm font-semibold mb-1">Property Facts</label>
+          <label class="block text-sm font-semibold mb-1">Property Facts</label>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <span class="block text-xs text-gray-600 mb-1">Bedrooms</span>
-              <input id="bedrooms" type="number" min="0" step="1" placeholder="e.g., 3" class="w-full border p-2 rounded">
+              <input id="bedrooms" type="number" min=0 step=1 placeholder="e.g., 3" class="w-full border p-2 rounded">
             </div>
             <div>
-              <span class="block text xs text-gray-600 mb-1">Bathrooms</span>
-              <input id="bathrooms" type="number" min="0" step="0.5" placeholder="e.g., 2.5" class="w-full border p-2 rounded">
+              <span class="block text-xs text-gray-600 mb-1">Bathrooms</span>
+              <input id="bathrooms" type="number" min=0 step=0.5 placeholder="e.g., 2.5" class="w-full border p-2 rounded">
             </div>
             <div>
-              <span class="block text xs text-gray-600 mb-1">Square Footage</span>
-              <input id="sqft" type="number" min="0" step="1" placeholder="e.g., 1860" class="w-full border p-2 rounded">
+              <span class="block text-xs text-gray-600 mb-1">Square Footage</span>
+              <input id="sqft" type="number" min=0 step=1 placeholder="e.g., 1860" class="w-full border p-2 rounded">
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
-              <span class="block text xs text-gray-600 mb-1">Year Built</span>
-              <input id="yearBuilt" type="number" min="1800" step="1" placeholder="e.g., 1972" class="w-full border p-2 rounded">
+              <span class="block text-xs text-gray-600 mb-1">Year Built</span>
+              <input id="yearBuilt" type="number" min=1800 step=1 placeholder="e.g., 1972" class="w-full border p-2 rounded">
             </div>
             <div>
-              <span class="block text xs text-gray-600 mb-1">Lot Size (sqft)</span>
-              <input id="lotSize" type="number" min="0" step="1" placeholder="e.g., 6000" class="w-full border p-2 rounded">
+              <span class="block text-xs text-gray-600 mb-1">Lot Size (sqft)</span>
+              <input id="lotSize" type="number" min=0 step=1 placeholder="e.g., 6000" class="w-full border p-2 rounded">
             </div>
             <div>
-              <span class="block text sm font-semibold mb-1">Property Type</span>
+              <span class="block text-sm font-semibold mb-1">Property Type</span>
               <select id="propertyType" class="w-full border p-2 rounded">
                 <option value="">Select…</option>
                 <option>Single Family</option>
@@ -122,81 +127,79 @@
 
         <!-- APN / Parcel (optional here; required earlier for FSBO) -->
         <div>
-          <label class="block text sm font-semibold mb-1">APN / Parcel #</label>
+          <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
           <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
           <p id="apnReqMsg" class="text-xs text-gray-500 mt-1 hidden">FSBO requires an APN/Parcel value.</p>
         </div>
 
         <!-- Photos -->
         <div>
-          <label class="block text sm font-semibold mb-1">Photos</label>
+          <label class="block text-sm font-semibold mb-1">Photos</label>
           <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
           <input id="photoInput" type="file" accept=".png,.jpg,.jpeg" multiple class="block">
           <div id="photoGrid" class="flex flex-col gap-2 mt-3"></div>
-          <p class="text-xs text-gray-500 mt-2">Click a thumbnail or use the buttons to set primary, replace, or delete.</p>
+          <p class="text-xs text-gray-500">Click a thumbnail or use the buttons to set primary, replace, or delete.</p>
         </div>
 
         <!-- Description (Plus/FSBO only; disabled for Listed Basic) -->
         <div>
-          <label class="block text sm font-semibold mb-1">Full Property Description</label>
+          <label class="block text-sm font-semibold mb-1">Full Property Description</label>
           <textarea id="description" rows="6" placeholder="Enter full property description" class="w-full border p-2 rounded"></textarea>
           <p id="descGateNote" class="lock-note mt-1 hidden">Upgrade to Listed Property Plus to enable Description.</p>
         </div>
 
         <!-- Banner (upsell-driven) -->
         <div>
-          <label class="block text sm font-semibold mb-1">Banner (optional)</label>
+          <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
           <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
-          <p id="bannerGateNote" class="lock-note mt-1 hidden">Purchase Banner to enable this field.</p>
+          <p id="bannerGateNote" class="lock-note mt-1 hidden">Purchase Premium Placement to enable this field.</p>
         </div>
 
         <!-- Preferred / Pin -->
         <div>
-          <label class="block text sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
+          <label class="block text-sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
           <input id="preferredArea" placeholder="e.g., Newport Beach, Harbor View Homes" class="w-full border p-2 rounded">
           <p id="premiumGateNote" class="lock-note mt-1 hidden">Purchase Premium Placement to enable this field.</p>
         </div>
 
         <div>
-          <label class="block text sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
+          <label class="block text-sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
           <input id="pinArea" placeholder="e.g., Newport Beach, Eastbluff" class="w-full border p-2 rounded">
           <p id="pinGateNote" class="lock-note mt-1 hidden">Purchase Pin Placement to enable this field.</p>
         </div>
 
         <!-- Listed-only: Brokerage/Agent confirms -->
-        <div id="listedBlock">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text sm font-semibold mb-1">Listing Brokerage</label>
-              <input id="brokerage" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label class="block text sm font-semibold mb-1">Listing Agent Name</label>
-              <input id="agentName" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label class="block text sm font-semibold mb-1">Listing Agent Email</label>
-              <input id="agentEmail" type="email" class="w-full border p-2 rounded">
-            </div>
-            <div>
-              <label class="block text sm font-semibold mb-1">Listing Agent Phone</label>
-              <input id="agentPhone" class="w-full border p-2 rounded">
-            </div>
+        <div id="moreListed" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold mb-1">Listing Brokerage</label>
+            <input id="brokerage" class=" w-full border p-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-1">Listing Agent Name</label>
+            <input id="agentName" class="w-full border p-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-1">Listing Agent Email</label>
+            <input id="agentEmail" type="email" class="w-full border p-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold mb-1">Listing Agent Phone</label>
+            <input id="agentPhone" class="w-full border p-2 rounded">
           </div>
         </div>
 
         <div class="pt-2 grid grid-cols-2 gap-2">
+          bugfix
           <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
           <a id="previewLink" href="/listing.html" class="text-center px-4 py-2 rounded bg-green-600 text-white">Preview Full Listing Detail</a>
         </div>
       </form>
     </section>
 
-    <!-- RIGHT: Upgrades + Local Pros -->
+    <!-- RIGHT: Sidebars -->
     <aside class="space-y-4">
-
-      <!-- Upgrade to Plus block -->
-      <section class="bg-white rounded shadow p-5">
+      <!-- Upgrade to Plus (HIDDEN on FSBO via JS) -->
+      <section id="upgradePlusCard" class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrade to Listed Property Plus</h2>
         <p class="text-sm text-gray-600 mt-2">
           Unlock full description and up to 20 photos. You can still choose optional placements on Checkout.
@@ -207,17 +210,7 @@
         <p class="text-xs text-gray-500 mt-2">This will update your plan immediately; charges (if any) are handled at Checkout.</p>
       </section>
 
-      <section class="bg-white rounded shadow p-5">
-        <h2 class="text-lg font-semibold">Upgrade your listing</h2>
-        <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
-        <div class="mt-4 flex items-center gap-2">
-          <button id="updateUpgradesBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Update Upgrades</button>
-          <button id="goCheckoutBtn" class="px-3 py-2 rounded border">Go to Checkout</button>
-        </div>
-        <p class="text-xs text-gray-500 mt-2">Purchases are final.</p>
-      </section>
-
-      <!-- Vertical Local Professionals (image-only cards) -->
+      <!-- Local Professionals (vertical, image-only + share buttons) -->
       <section id="prosSidebar" class="bg-white rounded shadow p-5 hidden lg:sticky lg:top-4">
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold">Local Professionals in <span id="prosZip">—</span></h3>
@@ -229,28 +222,33 @@
         </div>
       </section>
 
+      <!-- Local Broker strip (single ad, image sized so header not crowded) -->
+      <section id="brokerStrip" class="bg-white rounded shadow p-5 hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-lg font-semibold">Local Real Estate Brokerage in <span id="brokerZip">—</span></h3>
+          <a id="brokerCtaBtn" href="/local-brokers.html" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Local Brokers</a>
+        </div>
+        <div class="relative">
+          <div id="brokerAd" class="w-full">
+            <!-- image injected here -->
+          </div>
+          <div id="brokerShareBar" class="share-bar hidden">
+            <button id="brokerShareEmail" class="share-btn-sml">Share Email</button>
+            <button id="brokerShareText" class="share-btn-sml">Share Text</button>
+          </div>
+        </div>
+        <div id="brokerEmpty" class="hidden text-sm text-gray-600 mt-2">
+          Your brokerage here. <a id="brokerEmptyLink" href="/local-brokers.html" class="underline text-blue-600">Reserve this ZIP</a>.
+        </div>
+      </section>
     </aside>
-
-    <!-- BOTTOM: full-width Local Broker strip -->
-    <section id="brokerStrip" class="lg:col-span-3 bg-white rounded shadow p-5 hidden">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold">Local Real Estate Brokerage in <span id="brokerZip">—</span></h3>
-        <a id="brokerCtaBtn" href="/local-brokers.html" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Local Brokers</a>
-      </div>
-      <div id="brokerAd" class="w-full">
-        <!-- billboard image injected here -->
-      </div>
-      <div id="brokerEmpty" class="hidden text-sm text-gray-600 mt-2">
-        Your brokerage here. <a id="brokerEmptyLink" href="/local-brokers.html" class="underline text-blue-600">Reserve this ZIP</a>.
-      </div>
-    </section>
 
   </main>
 
   <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
-  <!-- SELLER PAGE LOGIC -->
+  <!-- SELLER PAGE LOGIC (Firestore + Storage) -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import {
@@ -260,19 +258,11 @@
       getStorage, ref, uploadBytes, getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    /* ----------- helpers ----------- */
+    // ===== helpers =====
     const $ = (id) => document.getElementById(id);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
     const plural = (n, a, b) => (n===1 ? a : b);
-
-    /* NBSP sanitizer: replace U+00A0 in all text nodes (prevents “Â” artifacts) */
-    function fixNBSP(root=document.body){
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
-      const nodes = [];
-      while (walker.nextNode()) nodes.push(walker.currentNode);
-      nodes.forEach(n => { if (n.nodeValue && n.nodeValue.includes("\u00A0")) n.nodeValue = n.nodeValue.replace(/\u00A0/g, " "); });
-    }
 
     function setStatus(msg, ok=true) {
       let el = document.getElementById("statusBar");
@@ -283,11 +273,22 @@
         el.className = "mt-2 text-sm";
         hdr.appendChild(el);
       }
-      el.textContent = msg || "";
+      el.textContent = (msg || "").replace(/\u00A0/g,' ');
       el.className = ok ? "mt-2 text-sm text-gray-600" : "mt-2 text-sm text-red-700";
     }
 
-    /* ----------- Local Pros (image-only in sidebar) ----------- */
+    // Simple share helpers (mirrors listing tile behavior)
+    function shareEmail(subject, url){
+      const a = document.createElement('a');
+      a.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(url)}`;
+      a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>{try{document.body.removeChild(a)}catch{}},0);
+    }
+    function shareText(text, url){
+      const msg = `${text}\n\n${url}`;
+      window.location.href = `sms:&body=${encodeURIComponent(msg)}`;
+    }
+
+    // START local-pros: helpers to parse ZIP and load pros/broker
     function parseZipFromAddress(addr="") {
       const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
       return m ? m[1] : "";
@@ -303,9 +304,8 @@
         const snap = await getDocs(q1);
         const all = [];
         snap.forEach(d => all.push({ id: d.id, ...d.data() }));
-        // Keep up to 3 agents + 1 lender as before (but we show image-only)
-        const agents = all.filter(p => String(p.role||"").toLowerCase()==="real_estate_agent").slice(0,3);
-        const lenders = all.filter(p => String(p.role||"").toLowerCase()==="lender").slice(0,1);
+        const agents = all.filter(p => String(p.role||"").toLowerCase().includes("agent")).slice(0,3);
+        const lenders = all.filter(p => String(p.role||"").toLowerCase().includes("lender")).slice(0,1);
         return { agents, lenders };
       } catch (e) {
         console.warn("[pros] fetch failed:", e);
@@ -313,6 +313,7 @@
       }
     }
 
+    // Image-only vertical tiles + share buttons
     function renderProsSidebar(zip, agents=[], lenders=[]) {
       const card = $("prosSidebar");
       if (!card) return;
@@ -324,30 +325,51 @@
       const empty = $("prosEmpty");
       list.innerHTML = "";
 
-      function tileImageOnly(p){
+      const tiles = [];
+      function tile(p){
         const wrap = document.createElement("div");
-        wrap.className = "overflow-hidden rounded border border-gray-200 bg-white";
+        wrap.className = "card-wrap";
         const img = document.createElement("img");
-        img.src = p.photoUrl || "";
-        img.alt = "Local Professional";
-        img.className = "w-full h-36 object-contain bg-white";
-        img.onerror = ()=>{ img.replaceWith(noImage()); };
+        img.className = "card-img";
+        img.src = p.photoUrl || p.imageUrl || p.cardUrl || p.photo || "";
+        img.alt = (p.name || "Local Professional");
+        img.onerror = () => { img.replaceWith(noImage()); };
         wrap.appendChild(img);
+
+        // share buttons (email/text) like listing tile
+        const bar = document.createElement("div");
+        bar.className = "share-bar";
+        const emailBtn = document.createElement("button");
+        emailBtn.className = "share-btn-sml";
+        emailBtn.textContent = "Share Email";
+        emailBtn.addEventListener("click", (e)=>{
+          e.preventDefault();
+          const link = `${window.location.origin}/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
+          shareEmail(`Local Professional in ${zip}`, link);
+        });
+        const textBtn = document.createElement("button");
+        textBtn.className = "share-btn-sml";
+        textBtn.textContent = "Share Text";
+        textBtn.addEventListener("click", (e)=>{
+          e.preventDefault();
+          const link = `${window.location.origin}/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
+          shareText(`Local Professional in ${zip}`, link);
+        });
+        bar.appendChild(emailBtn); bar.appendChild(textBtn);
+        wrap.appendChild(bar);
+
         return wrap;
       }
       function noImage(){
         const ph = document.createElement("div");
-        ph.className = "w-full h-36 flex items-center justify-center bg-gray-200 text-[10px] text-gray-600";
+        ph.className = "card-wrap flex items-center justify-center";
         ph.textContent = "No Image";
         return ph;
       }
 
-      const tiles = [];
-      agents.forEach(a => tiles.push(tileImageOnly(a)));
-      lenders.forEach(l => tiles.push(tileImageOnly(l)));
-
-      if (tiles.length) {
-        tiles.forEach(t => list.appendChild(t));
+      const items = [...agents, ...lenders];
+      if (items.length) {
+        items.forEach(p => list.appendChild(tile(p)));
         empty.classList.add("hidden");
         card.classList.remove("hidden");
       } else {
@@ -356,32 +378,17 @@
       }
     }
 
-    /* ----------- Local Broker billboard (full-width bottom) ----------- */
     async function loadLocalBroker(zip) {
       try {
-        // First, exact zip (single)
         const q1 = query(
           collection(db, "localBrokers"),
           where("status", "==", "active"),
           where("zip", "==", zip)
         );
         const snap = await getDocs(q1);
-        if (!snap.empty) {
-          const d = snap.docs[0].data() || {};
-          return { id: snap.docs[0].id, ...d };
-        }
-        // Or array-contains
-        const q2 = query(
-          collection(db, "localBrokers"),
-          where("status","==","active"),
-          where("zips","array-contains", zip)
-        );
-        const s2 = await getDocs(q2);
-        if (!s2.empty) {
-          const d = s2.docs[0].data() || {};
-          return { id: s2.docs[0].id, ...d };
-        }
-        return null;
+        if (snap.empty) return null;
+        const d = snap.docs[0].data() || {};
+        return { id: snap.docs[0].id, ...d };
       } catch (e) {
         console.warn("[broker] fetch failed:", e);
         return null;
@@ -391,35 +398,53 @@
     function renderBrokerStrip(zip, broker) {
       const strip = $("brokerStrip");
       if (!strip) return;
-      $("brokerZip").textContent = zip || "—";
-      $("brokerCtaBtn").href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
-      $("brokerEmptyLink").href = `/local-brokers.html?zip=${encodeURIComponent(zip)}&mode=apply`;
-
       const ad = $("brokerAd");
       const empty = $("brokerEmpty");
+      const zipEl = $("brokerZip");
+      const cta = $("brokerCtaBtn");
+      const emptyLink = $("brokerEmptyLink");
+      const shareBar = $("brokerShareBar");
+      const shareEmailBtn = $("brokerShareEmail");
+      const shareTextBtn = $("brokerShareText");
+
+      if (zipEl) zipEl.textContent = zip || "—";
+      if (cta) cta.href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
+      if (emptyLink) emptyLink.href = `/local-brokers.html?zip=${encodeURIComponent(zip)}&mode=apply`;
+
       ad.innerHTML = "";
 
-      if (broker && (broker.photoUrl || broker.name)) {
+      if (broker && (broker.photoUrl || broker.logoUrl)) {
         const img = document.createElement("img");
-        img.src = broker.photoUrl || "";
+        img.src = broker.photoUrl || broker.logoUrl;
         img.alt = "Local Brokerage";
-        img.className = "w-full h-40 sm:h-48 md:h-56 lg:h-60 xl:h-64 object-contain bg-white";
+        // Sized so it won’t crowd the header text
+        img.className = "w-full h-40 sm:h-56 md:h-64 object-contain";
         img.onerror = () => {
           const ph = document.createElement("div");
-          ph.className = "w-full h-40 sm:h-48 md:h-56 lg:h-60 xl:h-64 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
+          ph.className = "w-full h-40 sm:h-56 md:h-64 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
           ph.textContent = "No Logo";
           ad.appendChild(ph);
         };
         ad.appendChild(img);
-        empty.classList.add("hidden");
-        strip.classList.remove("hidden");
-      } else {
-        empty.classList.remove("hidden");
-        strip.classList.remove("hidden");
-      }
-    }
 
-    /* ----------- ID hygiene ----------- */
+        // enable share buttons
+        if (shareBar) {
+          shareBar.classList.remove("hidden");
+          const link = `${window.location.origin}/local-brokers.html?zip=${encodeURIComponent(zip)}`;
+          shareEmailBtn.onclick = (e)=>{ e.preventDefault(); shareEmail(`Local Real Estate Broker in ${zip}`, link); };
+          shareTextBtn.onclick  = (e)=>{ e.preventDefault(); shareText(`Local Real Estate Broker in ${zip}`, link); };
+        }
+        if (empty) empty.classList.add("hidden");
+      } else {
+        if (empty) empty.classList.remove("hidden");
+        if (shareBar) shareBar.classList.add("hidden");
+      }
+
+      strip.classList.remove("hidden");
+    }
+    // END local-pros/broker
+
+    // ===== ID hygiene =====
     function cleanId(raw) {
       const m = String(raw || "").trim().match(/^[A-Za-z0-9_-]+/);
       return m ? m[0] : "";
@@ -437,10 +462,10 @@
       }
     })();
 
-    const listingId = localStorage.getItem("lastListingId") || "";
+    const listingId = localStorage.getProperty?.call ? localStorage.getItem("lastListingId") : localStorage.getItem("lastListingId");
     if ($("previewLink") && listingId) $("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
 
-    /* ----------- working state ----------- */
+    // ===== working state =====
     let plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
     const isFSBO = plan.includes("FSBO");
     let isPlus = (plan === "Listed Property Plus" || isFSBO);
@@ -473,7 +498,6 @@
         return;
       }
 
-      // Primary first
       const ordered = photos.map((u,i)=>({u,i}));
       if (primaryIndex > 0) {
         const [prim] = ordered.splice(primaryIndex,1);
@@ -552,7 +576,7 @@
       computePhotoHelp();
     }
 
-    /* ----------- Storage ----------- */
+    // === FORCED BUCKET (use your actual Storage bucket) ===
     const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
     async function uploadOne(file){
       const storage = getStorage(undefined, BUCKET_URL);
@@ -608,75 +632,73 @@
       }
     });
 
-    /* ----------- Refresh from server ----------- */
+    // ===== refresh all fields from server =====
     async function refreshFromServer(note=""){
       if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
 
       try {
         const snap = await getDoc(doc(db, "listings", listingId));
-        if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
-        const d = snap.data() || {};
+        if (!snap exists) { setStatus("Listing not found on server.", false); return; }
+      } catch(e) {}
 
-        // plan & gates
-        plan = d.plan || plan;
-        isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
-        maxPhotos = isPlus ? 20 : 1;
+      const snap = await getDoc(doc(db, "listings", listingId));
+      if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
+      const d = snap.data() || {};
 
-        $("planPill").textContent = plan;
-        $("fullAddress").value = d.address || "";
-        $("status").value = d.status || "";
-        $("price").value = d.price ?? "";
-        $("commission").value = d.commission ?? "";
-        $("commissionType").value = d.commissionType || "%";
-        $("apn").value = d.apn || "";
-        $("bedrooms").value = d.bedrooms ?? "";
-        $("bathrooms").value = d.bathrooms ?? "";
-        $("sqft").value = d.sqft ?? "";
-        $("yearBuilt").value = d.yearBuilt ?? "";
-        $("lotSize").value = d.lotSize ?? "";
-        $("propertyType").value = d.propertyType || "";
-        $("description").value = d.description || "";
-        $("bannerText").value = d.bannerText || "";
-        $("preferredArea").value = d.preferredArea || "";
-        $("pinArea").value = d.pinArea || "";
+      // plan & gates
+      plan = d.hasOwnProperty('plan') ? (d.plan || plan) : plan;
+      const fsbo = String(plan || "").toLowerCase().includes("fsbo");
+      isPlus = (String(plan) === "Listed Property Plus" || fsbo);
+      maxPhotos = isPlus ? 20 : 1;
 
-        // FSBO/listed contact fields
-        if (plan.includes("FSBO")) {
-          document.getElementById("listedBlock").style.display = "none";
-        } else {
-          $("brokerage").value  = d.brokerage || "";
-          $("agentName").value  = d.agentName || "";
-          $("agentEmail").value = d.agentEmail || "";
-          $("agentPhone").value = d.agentPhone || "";
-        }
+      $("planPill").textContent = plan.replace(/\u00A0/g,' ');
+      $("fullAddress").value = (d.address || "").replace(/\u00A0/g,' ');
+      $("status").value = d.status || "";
+      $("price").value = d.price ?? "";
+      $("commission").value = d.commission ?? "";
+      $("commissionType").value = d.commissionType || "%";
+      $("apn").value = d.apn || "";
+      $("bedrooms").value = d.bedrooms ?? "";
+      $("bathrooms").value = d.bathrooms ?? "";
+      $("sqft").value = d.sqft ?? "";
+      $("yearBuilt").value = d.yearBuilt ?? "";
+      $("lotSize").value = d.lotSize ?? "";
+      $("propertyType").value = d.propertyType || "";
+      $("description").value = d.description || "";
+      $("bannerText").value = d.bannerText || "";
+      $("preferredArea").value = d.preferredArea || "";
+      $("pinArea").value = d.pinArea || "";
 
-        // photos
-        photos = Array.isArray(d.photos) ? d.photos.slice(0, maxPhotos) : [];
-        primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
+      // hide listed-only fields if FSBO
+      $("moreListed").style.display = fsbo ? "none" : "";
 
-        // gates for description
-        if (!isPlus) {
-          $("description").classList.add("dimmed");
-          $("description").setAttribute("disabled","disabled");
-          $("descGateNote").classList.remove("hidden");
-          $("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
-        } else {
-          $("description").classList.remove("dimmed");
-          $("description").removeAttribute("disabled");
-          $("descGateNote").classList.add("hidden");
-          const remaining = Math.max(0, maxPhotos - (photos?.length || 0));
-          $("photoHelp").textContent = `You can add up to ${remaining} more ${remaining===1?'photo':'photos'}.`;
-        }
-
-        renderThumbs();
-        setStatus(note || "Loaded from server.", true);
-      } catch (e) {
-        console.warn("[seller] load failed", e);
-        setStatus("Could not load from server.", false);
+      // Hide the Upgrade-to-Plus card on FSBO
+      if (fsbo) {
+        const up = $("upgradePlusCard");
+        if (up) up.classList.add("hidden");
       }
+
+      // photos
+      photos = Array.isArray(d.photos) ? d.photos.slice(0, maxPhotos) : [];
+      primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
+
+      if (!isPlus) {
+        $("description").classList.add("dimmed");
+        $("description").setAttribute("disabled","disabled");
+        $("descGateNote").classList.remove("hidden");
+        $("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
+      } else {
+        $("description").classList.remove("dimmed");
+        $("description").removeAttribute("disabled");
+        $("descGateNote").classList.add("hidden");
+        computePhotoHelp();
+      }
+
+      renderThumbs();
+      setStatus(note || "Loaded from server.", true);
     }
 
-    /* ----------- Save ----------- */
+    // ===== Save button: write fields to Firestore =====
     $("saveBtn").addEventListener("click", async ()=>{
       if (!listingId) { alert("No listing ID in this session."); return; }
 
@@ -698,10 +720,10 @@
         preferredArea: $("preferredArea").value || "",
         pinArea: $("pinArea").value || "",
         // contact (listed)
-        brokerage: planNow.includes("FSBO") ? "" : ($("brokerage").value || ""),
-        agentName: planNow.includes("FSBO") ? "" : ($("agentName").value || ""),
-        agentEmail: planNow.includes("FSBO") ? "" : ($("agentEmail").value || ""),
-        agentPhone: planNow.includes("FSBO") ? "" : ($("agentPhone").value || "")
+        brokerage: planNow.toLowerCase().includes("fsbo") ? "" : ($("brokerage").value || ""),
+        agentName: planNow.toLowerCase().includes("fsbo") ? "" : ($("agentName").value || ""),
+        agentEmail: planNow.toLowerCase().includes("fsbo") ? "" : ($("agentEmail").value || ""),
+        agentPhone: planNow.toLowerCase().includes("fsbo") ? "" : ($("agentPhone").value || "")
       };
 
       // ZIP backfill once
@@ -729,48 +751,40 @@
       }
     });
 
-    /* ----------- Upgrade to Plus ----------- */
-    $("upgradeToPlusBtn")?.addEventListener("click", async () => {
-      if (!listingId) { alert("No listing ID in this session."); return; }
+    // ==== Upgrade to Plus (kept for non-FSBO; hidden for FSBO in refreshFromServer) ====
+    $("upgradeToPlus").addEventListener?.("click", async ()=>{
+      if (!listingId) return;
       try {
         localStorage.setItem("selectedPlan", "Listed Property Plus");
-        let plan = "Listed Property Plus";
-        let isPlus = true;
-        let maxPhotos = 20;
+        plan = "Listed Property Plus";
+        isPlus = true; maxPhotos = 20;
         $("planPill").textContent = "Listed Property Plus";
-        const desc = document.getElementById("description");
-        const note = document.getElementById("descGateNote");
-        if (desc) { desc.disabled = false; desc.classList.remove("dimmed"); }
-        if (note) { note.classList.add("hidden"); }
+        $("description").disabled = false;
+        $("description").classList.remove("dimmed");
+        $("descGateNote").classList.add("hidden");
 
         await updateDoc(doc(db, "listings", listingId), {
           plan: "Listed Property Plus",
           updatedAt: serverTimestamp()
         });
-
         const cd = getJSON("checkoutData", null) || {};
         cd.plan = "Listed Property Plus";
         cd.base = cd.base ?? 0;
         setJSON("checkoutData", cd);
-
         alert("Upgraded to Listed Property Plus. You can now add a full description and up to 20 photos.");
         await refreshFromServer();
-      } catch (e) {
-        console.warn("[seller] upgrade to plus failed", e);
-        alert("Could not upgrade right now. Please try again.");
+      } catch(e){
+        console.warn(e); alert("Could not upgrade right now.");
       }
     });
 
-    /* ----------- Boot ----------- */
+    // ===== Boot =====
     (async function boot(){
-      // sanitize any stray non-breaking spaces to stop “Â”
-      fixNBSP();
-
       const who = (localStorage.getItem("loggedInEmail") || "").trim();
       $("whoLine").textContent = who ? `Logged in as ${who}` : "";
 
       const formData = getJSON("formData", {});
-      if (formData.address && !$("fullAddress").value) $("fullAddress").value = formData.address;
+      if (formData?.address && !$("fullAddress").value) $("fullAddress").value = (formData.address || "").replace(/\u00A0/g,' ');
 
       await refreshFromServer();
 
@@ -786,11 +800,11 @@
           renderBrokerStrip(zip, broker);
         }
       } catch(e) {
-        console.warn("[local-sections] sidebar/strip skipped:", e);
+        console.warn("[local-pros] sidebar/strip skipped:", e);
       }
     })();
 
-    /* ----------- Upgrades UI wiring (unchanged) ----------- */
+    // Upgrades UI wiring (unchanged)
     (function wireUpgrades(){
       const checkoutData = getJSON("checkoutData", null) || {};
       function row(label, price, key) {
@@ -805,7 +819,7 @@
           </label>
         `;
       }
-      const box = $("upgradesBox");
+      const box = document.getElementById("upgradesBox");
       if (box && checkoutData.prices) {
         const html = [
           row("Banner", checkoutData.prices.banner ?? 10, "banner"),
@@ -818,22 +832,37 @@
             const k = e.target.getAttribute("data-key");
             const checked = e.target.checked;
             checkoutData.upgrades = checkoutData.upgrades || {};
-            if (k === "banner") checkoutData.upgrades.banner = checked;
+            if (k === "banner")  checkoutData.upgrades.banner  = checked;
             if (k === "premium") checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
-            if (k === "pin") { checkoutData.upgrades.pin = checked; if (checked) checkoutData.upgrades.premium = true; }
+            if (k === "pin") { 
+              checkoutData.upgrades.pin = checked; 
+              if (checked) checkoutData.upgrades.premium = true; 
+            }
             setJSON("checkoutData", checkoutData);
+
+            if (k === "banner") {
+              $("bannerText").disabled = !checked && !isPlus;
+              $("bannerText").classList.toggle("dimmed", (!checked && !isPlus));
+            }
+            if (k === "premium" || k === "pin") {
+              const premOn = (checkoutData.upgrades.premium || checkoutData.upgrades.pin);
+              $("preferredArea").disabled = !premOn;
+              $("preferredArea").classList.toggle("dimmed", !premOn);
+              $("pinArea").disabled = !checkoutData.upgrades.pin;
+              $("pinArea").classList.toggle("dimmed", !checkoutData.upgrades.pin);
+            }
           });
         });
       }
-      $("updateUpgradesBtn")?.addEventListener("click", ()=>{
+      document.getElementById("updateUpgradesBtn")?.addEventListener("click", ()=>{
         const data = getJSON("checkoutData", null) || {};
-        data.meta = data.meta || {};
-        data.meta.preferredArea = $("preferredArea").value || data.meta.preferredArea || "";
-        data.meta.pinArea       = $("pinArea").value       || data.meta.pinArea       || "";
+        data.meta = data meta? data.meta : {};
+        data.meta.preferredArea = document.getElementById("preferredArea").value || data.meta.preferredArea || "";
+        data.meta.pinArea       = document.getElementById("pinArea").value       || data.meta.pinArea       || "";
         setJSON("checkoutData", data);
         alert("Upgrades updated. Go to Checkout to pay (if needed).");
       });
-      $("goCheckoutBtn")?.addEventListener("click", ()=>{ window.location.href = "/checkout.html"; });
+      document.getElementById("goCheckoutBtn")?.addEventListener("click", ()=>{ window.location.href = "/checkout.html"; });
     })();
   </script>
 
