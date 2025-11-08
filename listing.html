@@ -413,7 +413,7 @@
       }
     }
 
-    /* === UPDATED: Local Pros tiles — full-bleed business card image, no padding/border === */
+    /* === UPDATED: Local Pros tiles — image only (no text under card) === */
     function renderPros(zip, agents = [], lenders = []) {
       const card = $("prosCard");
       const grid = $("prosGrid");
@@ -430,39 +430,20 @@
       grid.innerHTML = "";
       const tiles = [];
 
-      function makeTile(p, label) {
+      function makeTile(p) {
         const div = document.createElement("div");
-        // Full-bleed tile (no inner padding/border)
         div.className = "overflow-hidden bg-white rounded-lg shadow-sm";
-
         const src = p.photoUrl || p.photo || "";
         if (src) {
           const img = document.createElement("img");
           img.src = src;
-          img.alt = p.name || label || "Local Professional";
-          // Fill the tile horizontally, rectangular card look
+          img.alt = "Local Professional";
           img.className = "w-full h-40 object-contain bg-white";
           img.onerror = () => { img.replaceWith(noImage()); };
           div.appendChild(img);
         } else {
           div.appendChild(noImage());
         }
-
-        // Minimal info below (kept small)
-        const info = document.createElement("div");
-        info.className = "p-2 text-center";
-        const name = document.createElement("div");
-        name.className = "font-semibold text-sm";
-        name.textContent = p.name || label || "Local Professional";
-        const line2 = document.createElement("div");
-        line2.className = "text-xs text-gray-600";
-        const roleText = (/lender/.test(p.role || "")) ? "Lender" :
-                         (/agent|broker|real\s*estate/.test(p.role || "")) ? "Real Estate Agent" : "Local Professional";
-        line2.textContent = label || roleText;
-
-        info.appendChild(name);
-        info.appendChild(line2);
-        div.appendChild(info);
         return div;
       }
 
@@ -473,8 +454,8 @@
         return ph;
       }
 
-      agents.forEach(a => tiles.push(makeTile(a, "Agent")));
-      lenders.forEach(l => tiles.push(makeTile(l, "Lender")));
+      agents.forEach(a => tiles.push(makeTile(a)));
+      lenders.forEach(l => tiles.push(makeTile(l)));
 
       if (tiles.length) {
         tiles.forEach(t => grid.appendChild(t));
@@ -488,20 +469,17 @@
     // END local-pros
 
     /* =========================
-       NEW: Local Brokers strip — one oversized image-only tile (spans all 4 columns)
+       Local Brokers strip
        ========================= */
     async function loadLocalBrokers(zip) {
       try {
         const results = [];
 
-        // Active + zip equals
         const qA = query(
           collection(db, "localBrokers"),
           where("status","==","active"),
           where("zip","==", zip)
         );
-
-        // Active + zips array-contains
         const qB = query(
           collection(db, "localBrokers"),
           where("status","==","active"),
@@ -539,7 +517,7 @@
       }
     }
 
-    /* === UPDATED: renderBrokers — one oversized, image-only tile; no name/phone; no padding/border === */
+    /* === UPDATED: Brokers image height reduced so header/button are not crowded === */
     function renderBrokers(zip, items = []) {
       const card = $("brokersCard");
       const grid = $("brokersGrid");
@@ -549,7 +527,6 @@
       const emptyLink = $("brokersEmptyLink");
       if (!card || !grid) return;
 
-      // Remove padding/border look from the brokers section container
       card.classList.remove("p-5", "card");
       card.classList.add("p-0", "bg-white", "shadow-none", "rounded-none");
 
@@ -565,25 +542,21 @@
         return;
       }
 
-      // Use only the first active broker; render as one oversized tile
       const b = items[0];
       const wrapper = document.createElement("div");
-      // Span all columns on large screens (grid has lg:grid-cols-4)
       wrapper.className = "col-span-1 lg:col-span-4";
 
       const tile = document.createElement("div");
-      // No padding/borders; full-bleed image container
       tile.className = "overflow-hidden bg-white";
 
-      // Image (no name/phone text)
       const img = document.createElement("img");
       img.src = b.photoUrl || b.logoUrl || "";
       img.alt = "Local Brokerage";
-      // Tall, billboard-like strip; tweak heights to taste
-      img.className = "w-full h-48 sm:h-56 md:h-64 lg:h-72 xl:h-80 object-contain";
+      /* shrink heights a notch to keep title/CTA comfortable */
+      img.className = "w-full h-40 sm:h-48 md:h-56 lg:h-60 xl:h-64 object-contain";
       img.onerror = () => {
         const ph = document.createElement("div");
-        ph.className = "w-full h-48 sm:h-56 md:h-64 lg:h-72 xl:h-80 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
+        ph.className = "w-full h-40 sm:h-48 md:h-56 lg:h-60 xl:h-64 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
         ph.textContent = "No Logo";
         img.replaceWith(ph);
       };
