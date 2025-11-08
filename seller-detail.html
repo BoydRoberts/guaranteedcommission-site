@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; }
+    .hed { font-size: 16px; }
     .dimmed { opacity: 0.5; pointer-events: none; }
     .lock-note { font-size: 12px; color:#6b7280; }
     .pill { font-size: 11px; padding: 2px 8px; border-radius: 9999px; background:#eef2ff; color:#3730a3; }
@@ -21,7 +22,7 @@
         <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
         <button
           class="text-sm px-2 py-1 rounded border hover:bg-gray-50"
-          onclick="document.referrer ? history.back() : (window.location.href='/welcome.html')">
+          onclick="localStorage.getItem('lastListingId') ? history.back() : (window.location.href='/welcome.html')">
           Back
         </button>
       </div>
@@ -43,7 +44,7 @@
 
       <hr class="my-4"/>
 
-      <form id="sellerForm" class="space-y-5" autocomplete="off">
+      <form id="s" class="space-y-5" autocomplete="off">
         <!-- Address (read-only from Box 2) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Full Property Address</label>
@@ -53,12 +54,12 @@
         <!-- Status (required) -->
         <div>
           <label class="block text sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
-          <select id="status" class="w-full border p-2 rounded" required>
-            <option value="">Select…</option>
-            <option>Active</option>
-            <option>In Contract</option>
-            <option>Sold</option>
-          </select>
+          <input id="status" list="statusList" class="w-full border p-2 rounded" placeholder="Select…">
+          <datalist id="statusList">
+            <option value="Active"></option>
+            <option value="In Contract"></option>
+            <option value="Sold"></option>
+          </datalist>
         </div>
 
         <!-- Price & Commission (commission locked: change requires new listing) -->
@@ -107,7 +108,7 @@
             </div>
             <div>
               <span class="block text sm font-semibold mb-1">Property Type</span>
-              <select id="propertyType" class="w-full border p-2 rounded">
+              <select id="p" class="w-full border p-2 rounded">
                 <option value="">Select…</option>
                 <option>Single Family</option>
                 <option>Condo</option>
@@ -195,17 +196,7 @@
     <!-- RIGHT: Upgrades + Local Pros -->
     <aside class="space-y-4">
 
-      <!-- Upgrade to Plus block -->
-      <section class="bg-white rounded shadow p-5">
-        <h2 class="text-lg font-semibold">Upgrade to Listed Property Plus</h2>
-        <p class="text-sm text-gray-600 mt-2">
-          Unlock full description and up to 20 photos. You can still choose optional placements on Checkout.
-        </p>
-        <button id="upgradeToPlusBtn" class="mt-3 w-full bg-indigo-600 text-white px-3 py-2 rounded">
-          Upgrade to Plus Now
-        </button>
-        <p class="text-xs text-gray-500 mt-2">This will update your plan immediately; charges (if any) are handled at Checkout.</p>
-      </section>
+      <!-- (Removed) Upgrade to Plus block for FSBO -->
 
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrade your listing</h2>
@@ -221,7 +212,7 @@
       <section id="prosSidebar" class="bg-white rounded shadow p-5 hidden lg:sticky lg:top-4">
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold">Local Professionals in <span id="prosZip">—</span></h3>
-          <a id="prosCtaBtn" href="/local-professionals.html" class="text-xs px-2 py-1 rounded border hover:bg-gray-50">Local Professionals</a>
+          <a id="prosC" class="text-xs px-2 py-1 rounded border hover:bg-gray-50" href="/local-professionals.html">Local Professionals</a>
         </div>
         <div id="prosList" class="space-y-3"></div>
         <div id="prosEmpty" class="hidden text-sm text-gray-600 mt-2">
@@ -235,11 +226,9 @@
     <section id="brokerStrip" class="lg:col-span-3 bg-white rounded shadow p-5 hidden">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-semibold">Local Real Estate Brokerage in <span id="brokerZip">—</span></h3>
-        <a id="brokerCtaBtn" href="/local-brokers.html" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Local Brokers</a>
+        <a id="brokerC" href="/local-brokers.html" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Local Brokers</a>
       </div>
-      <div id="brokerAd" class="w-full">
-        <!-- billboard image injected here -->
-      </div>
+      <div id="brokerAd" class="w-full"></div>
       <div id="brokerEmpty" class="hidden text-sm text-gray-600 mt-2">
         Your brokerage here. <a id="brokerEmptyLink" href="/local-brokers.html" class="underline text-blue-600">Reserve this ZIP</a>.
       </div>
@@ -309,7 +298,7 @@
         return { agents, lenders };
       } catch (e) {
         console.warn("[pros] fetch failed:", e);
-        return { agents: [], lenders: [] };
+        return { agents, lenders: [] };
       }
     }
 
@@ -317,7 +306,8 @@
       const card = $("prosSidebar");
       if (!card) return;
       $("prosZip").textContent = zip || "—";
-      $("prosCtaBtn").href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
+      const prosC = $("prosC");
+      if (prosC) prosC.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
       $("prosEmptyLink").href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=apply`;
 
       const list = $("prosList");
@@ -392,7 +382,8 @@
       const strip = $("brokerStrip");
       if (!strip) return;
       $("brokerZip").textContent = zip || "—";
-      $("brokerCtaBtn").href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
+      const brokerC = $("brokerC");
+      if (brokerC) brokerC.href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
       $("brokerEmptyLink").href = `/local-brokers.html?zip=${encodeURIComponent(zip)}&mode=apply`;
 
       const ad = $("brokerAd");
@@ -431,6 +422,7 @@
       if (cleaned) {
         localStorage.setItem("lastListingId", cleaned);
         if (raw !== cleaned) {
+          u.setAttribute && u.setAttribute('href', u.toString());
           u.searchParams.set("id", cleaned);
           history.replaceState({}, "", u.toString());
         }
@@ -488,7 +480,7 @@
         img.src = u;
         img.alt = "Photo " + (idxDisplay+1);
         img.className = "thumb border " + (i===primaryIndex ? "border-green-500" : "border-gray-300");
-        img.title = (i===primaryIndex) ? "Primary photo" : "Click to set as primary";
+        img.title = (i===primaryIndex) ? "Primary photo" : "Click to set primary";
         img.addEventListener("click", async ()=>{
           primaryIndex = i;
           await savePhotosField(true);
@@ -557,7 +549,7 @@
     async function uploadOne(file){
       const storage = getStorage(undefined, BUCKET_URL);
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
-      const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
+      const path = `listings/${localStorage.getItem('lastListingId')||'unknown'}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
       await uploadBytes(r, file);
       const url = await getDownloadURL(r);
@@ -565,10 +557,10 @@
     }
 
     async function savePhotosField(thenRefresh=false){
-      if (!listingId) return;
+      if (!localStorage.getItem('lastListingId')) return;
       try {
         clampPrimary();
-        await updateDoc(doc(db, "listings", listingId), {
+        await updateDoc(doc(db, "listings", localStorage.getItem('lastListingId')), {
           photos: photos.slice(0, maxPhotos),
           primaryIndex: (typeof primaryIndex === "number" ? primaryIndex : 0),
           updatedAt: serverTimestamp()
@@ -580,36 +572,9 @@
       }
     }
 
-    $("photoInput").addEventListener("change", async (e)=>{
-      const files = Array.from(e.target.files || []);
-      if (!files.length) return;
-
-      try {
-        const remaining = Math.max(0, maxPhotos - photos.length);
-        if (remaining <= 0) { alert(`You have reached the photo limit for your plan (${maxPhotos}).`); e.target.value=""; return; }
-        const toUpload = files.slice(0, remaining);
-
-        setStatus("Uploading photo(s)…");
-        for (const f of toUpload) {
-          try {
-            const url = await uploadOne(f);
-            photos.push(url);
-            renderThumbs();
-          } catch (err) {
-            console.warn("Upload failed", err);
-            setStatus("Upload failed for one or more files.", false);
-          }
-        }
-        await savePhotosField(true);
-      } catch (err) {
-        setStatus("Upload failed.", false);
-      } finally {
-        e.target.value = "";
-      }
-    });
-
     /* ----------- Refresh from server ----------- */
     async function refreshFromServer(note=""){
+      const listingId = localStorage.getItem('lastListingId') || '';
       if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
 
       try {
@@ -619,10 +584,10 @@
 
         // plan & gates
         plan = d.plan || plan;
-        isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
+        isPlus = (plan === "Listed Property Plus" || (plan||'').includes("FSBO"));
         maxPhotos = isPlus ? 20 : 1;
 
-        $("planPill").textContent = plan;
+        $("planPill").textContent = plan || '—';
         $("fullAddress").value = d.address || "";
         $("status").value = d.status || "";
         $("price").value = d.price ?? "";
@@ -634,14 +599,14 @@
         $("sqft").value = d.sqft ?? "";
         $("yearBuilt").value = d.yearBuilt ?? "";
         $("lotSize").value = d.lotSize ?? "";
-        $("propertyType").value = d.propertyType || "";
+        $("p").value = d.p || d.propertyType || "";
         $("description").value = d.description || "";
         $("bannerText").value = d.bannerText || "";
         $("preferredArea").value = d.preferredArea || "";
         $("pinArea").value = d.pinArea || "";
 
         // FSBO/listed contact fields
-        if (plan.includes("FSBO")) {
+        if ((d.plan||'').toLowerCase().includes("fsbo")) {
           document.getElementById("listedBlock").style.display = "none";
         } else {
           $("brokerage").value  = d.brokerage || "";
@@ -656,7 +621,7 @@
 
         // gates for description
         if (!isPlus) {
-          $("description").classList.add("dimmed");
+          $("description").className = "w-full border p-2 rounded dimmed";
           $("description").setAttribute("disabled","disabled");
           $("descGateNote").classList.remove("hidden");
           $("photoHelp").textContent = "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
@@ -670,6 +635,21 @@
 
         renderThumbs();
         setStatus(note || "Loaded from server.", true);
+
+        // Local pros & broker
+        try {
+          const zip = d.zip || parseZipFromAddress(d.address||"");
+          if (zip) {
+            const { agents, lenders } = await loadLocalPros(zip);
+            renderProsSidebar(zip, agents, lenders);
+
+            const broker = await loadLocalBroker(zip);
+            renderBrokerStrip(zip, broker);
+          }
+        } catch(e) {
+          console.warn("[local-sections] sidebar/strip skipped:", e);
+        }
+
       } catch (e) {
         console.warn("[seller] load failed", e);
         setStatus("Could not load from server.", false);
@@ -678,6 +658,7 @@
 
     /* ----------- Save ----------- */
     $("saveBtn").addEventListener("click", async ()=>{
+      const listingId = localStorage.getItem('lastListingId') || '';
       if (!listingId) { alert("No listing ID in this session."); return; }
 
       const planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
@@ -692,16 +673,16 @@
         sqft: $("sqft").value || "",
         yearBuilt: $("yearBuilt").value || "",
         lotSize: $("lotSize").value || "",
-        propertyType: $("propertyType").value || "",
+        propertyType: $("p").value || "",
         description: $("description").disabled ? $("description").value : ($("description").value || ""),
         bannerText: $("bannerText").value || "",
         preferredArea: $("preferredArea").value || "",
         pinArea: $("pinArea").value || "",
         // contact (listed)
-        brokerage: planNow.includes("FSBO") ? "" : ($("brokerage").value || ""),
-        agentName: planNow.includes("FSBO") ? "" : ($("agentName").value || ""),
-        agentEmail: planNow.includes("FSBO") ? "" : ($("agentEmail").value || ""),
-        agentPhone: planNow.includes("FSBO") ? "" : ($("agentPhone").value || "")
+        brokerage: planNow.includes("FSBO") ? "" : ($("brokerage")?.value || ""),
+        agentName: planNow.includes("FSBO") ? "" : ($("agentName")?.value || ""),
+        agentEmail: planNow.includes("FSBO") ? "" : ($("agentEmail")?.value || ""),
+        agentPhone: planNow.includes("FSBO") ? "" : ($("agentPhone")?.value || "")
       };
 
       // ZIP backfill once
@@ -729,8 +710,9 @@
       }
     });
 
-    /* ----------- Upgrade to Plus ----------- */
+    /* ----------- Upgrade to Plus (listener left, safe if button absent) ----------- */
     $("upgradeToPlusBtn")?.addEventListener("click", async () => {
+      const listingId = localStorage.getItem('lastListingId') || '';
       if (!listingId) { alert("No listing ID in this session."); return; }
       try {
         localStorage.setItem("selectedPlan", "Listed Property Plus");
@@ -757,37 +739,21 @@
         await refreshFromServer();
       } catch (e) {
         console.warn("[seller] upgrade to plus failed", e);
-        alert("Could not upgrade right now. Please try again.");
+        alert("Could not save. Try again.");
       }
     });
 
     /* ----------- Boot ----------- */
     (async function boot(){
-      // sanitize any stray non-breaking spaces to stop “Â”
       fixNBSP();
 
       const who = (localStorage.getItem("loggedInEmail") || "").trim();
       $("whoLine").textContent = who ? `Logged in as ${who}` : "";
 
       const formData = getJSON("formData", {});
-      if (formData.address && !$("fullAddress").value) $("fullAddress").value = formData.address;
+      if (formData?.address && !$("fullAddress").value) $("fullAddress").value = formData.address;
 
       await refreshFromServer();
-
-      // Local pros & broker
-      try {
-        const addr = $("fullAddress").value || "";
-        const zip = parseZipFromAddress(addr);
-        if (zip) {
-          const { agents, lenders } = await loadLocalPros(zip);
-          renderProsSidebar(zip, agents, lenders);
-
-          const broker = await loadLocalBroker(zip);
-          renderBrokerStrip(zip, broker);
-        }
-      } catch(e) {
-        console.warn("[local-sections] sidebar/strip skipped:", e);
-      }
     })();
 
     /* ----------- Upgrades UI wiring (unchanged) ----------- */
@@ -808,7 +774,7 @@
       const box = $("upgradesBox");
       if (box && checkoutData.prices) {
         const html = [
-          row("Banner", checkoutData.prices.banner ?? 10, "banner"),
+          row("Boyd Roberts", checkoutData.prices.banner ?? 10, "banner"),
           row("Premium Placement", checkoutData.prices.premium ?? 10, "premium"),
           row("Pin Placement", checkoutData.prices.pin ?? 50, "pin")
         ].join("");
