@@ -434,9 +434,18 @@
 
     /* ----------- working state ----------- */
     let plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    const isFSBO = plan.includes("FSBO");
-    let isPlus = (plan === "Listed Property Plus" || isFSBO);
-    let maxPhotos = isPlus ? 20 : 1;
+    let isFSBO = false;
+    let isPlus = false;
+    let maxPhotos = 1;
+
+    // ✅ NEW: single helper to enforce caps by plan (Basic=1, Plus=20, FSBO=20)
+    function setCapsFromPlan(p = "") {
+      isFSBO = p.includes("FSBO");
+      isPlus = (p === "Listed Property Plus" || isFSBO);
+      maxPhotos = isPlus ? 20 : 1;
+    }
+    // initial caps from local plan
+    setCapsFromPlan(plan);
 
     let photos = [];        // Storage URLs
     let primaryIndex = 0;
@@ -465,7 +474,6 @@
         return;
       }
 
-      // Primary first
       const ordered = photos.map((u,i)=>({u,i}));
       if (primaryIndex > 0) {
         const [prim] = ordered.splice(primaryIndex,1);
@@ -582,10 +590,9 @@
         if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
         const d = snap.data() || {};
 
-        // plan & gates
+        // plan & gates (re-apply caps from plan in Firestore)
         plan = d.plan || plan;
-        isPlus = (plan === "Listed Property Plus" || (plan||'').includes("FSBO"));
-        maxPhotos = isPlus ? 20 : 1;
+        setCapsFromPlan(plan); // ✅ enforce caps again from server plan
 
         $("planPill").textContent = plan || '—';
         $("fullAddress").value = d.address || "";
@@ -716,9 +723,8 @@
       if (!listingId) { alert("No listing ID in this session."); return; }
       try {
         localStorage.setItem("selectedPlan", "Listed Property Plus");
-        let plan = "Listed Property Plus";
-        let isPlus = true;
-        let maxPhotos = 20;
+        plan = "Listed Property Plus";
+        setCapsFromPlan(plan); // ✅ re-apply caps on upgrade
         $("planPill").textContent = "Listed Property Plus";
         const desc = document.getElementById("description");
         const note = document.getElementById("descGateNote");
@@ -804,4 +810,4 @@
   </script>
 
 </body>
-</html> 
+</html>
