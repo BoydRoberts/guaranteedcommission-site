@@ -1,6 +1,3 @@
-Seller detail debug · HTML
-Copy
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -309,8 +306,9 @@ Copy
       const card = $("prosSidebar");
       if (!card) return;
       
-      // Check if this is FSBO - only show Local Professionals for FSBO
-      const currentPlan = (localStorage.getItem("selectedPlan") || plan || "").trim();
+      // Check if this is FSBO - use the plan variable which is updated from Firestore
+      // Don't rely solely on localStorage as it may be stale
+      const currentPlan = plan.trim();
       const isFSBO = currentPlan.includes("FSBO");
       
       console.log("[DEBUG renderProsSidebar] currentPlan:", currentPlan);
