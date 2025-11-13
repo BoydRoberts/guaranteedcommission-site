@@ -305,6 +305,18 @@
     function renderProsSidebar(zip, agents=[], lenders=[]) {
       const card = $("prosSidebar");
       if (!card) return;
+      
+      // Check if this is FSBO - only show Local Professionals for FSBO
+      const currentPlan = (localStorage.getItem("selectedPlan") || plan || "").trim();
+      const isFSBO = currentPlan.includes("FSBO");
+      
+      // Hide the entire card for Listed Properties (Basic and Plus)
+      if (!isFSBO) {
+        card.classList.add("hidden");
+        return;
+      }
+      
+      // FSBO only: Show Local Professionals
       $("prosZip").textContent = zip || "—";
       $("prosCtaBtn").href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
       $("prosEmptyLink").href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=apply`;
@@ -313,37 +325,34 @@
       const empty = $("prosEmpty");
       list.innerHTML = "";
 
-      function noImage(){
+      // FSBO: Full business card display (landscape, zero padding)
+      function noImageFSBO(){
         const ph = document.createElement("div");
-        ph.className = "w-14 h-14 rounded bg-gray-200 flex items-center justify-center text-[10px] text-gray-600";
+        ph.className = "w-full h-40 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
         ph.textContent = "No Image";
         return ph;
       }
-      function tile(p, label){
+      
+      function tileFSBO(p){
         const div = document.createElement("div");
-        div.className = "border rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50";
-        const img = document.createElement("img");
-        img.src = p.photoUrl || "";
-        img.alt = p.name || label || "Local Professional";
-        img.className = "w-14 h-14 object-cover rounded bg-gray-100";
-        img.onerror = () => { img.replaceWith(noImage()); };
-        const info = document.createElement("div");
-        info.className = "text-sm";
-        const name = document.createElement("div");
-        name.className = "font-semibold";
-        name.textContent = p.name || label || "Local Professional";
-        div.appendChild(img);
-        div.addEventListener('click', ()=> {
-          if (p.photoUrl) window.open(p.photoUrl, '_blank');
-        });
-        div.appendChild(info);
-        info.appendChild(name);
+        div.className = "overflow-hidden bg-white rounded-lg shadow-sm";
+        const src = p.photoUrl || p.photo || "";
+        if (src) {
+          const img = document.createElement("img");
+          img.src = src;
+          img.alt = "Local Professional";
+          img.className = "w-full h-40 object-contain bg-white";
+          img.onerror = () => { img.replaceWith(noImageFSBO()); };
+          div.appendChild(img);
+        } else {
+          div.appendChild(noImageFSBO());
+        }
         return div;
       }
 
       const tiles = [];
-      agents.forEach(a => tiles.push(tile(a, "Agent")));
-      lenders.forEach(l => tiles.push(tile(l, "Lender")));
+      agents.forEach(a => tiles.push(tileFSBO(a)));
+      lenders.forEach(l => tiles.push(tileFSBO(l)));
 
       if (tiles.length) {
         tiles.forEach(t => list.appendChild(t));
