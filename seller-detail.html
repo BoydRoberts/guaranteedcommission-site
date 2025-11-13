@@ -53,7 +53,7 @@
         <!-- Status (required) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
-          <select id="name=status" class="w-full border p-2 rounded" required>
+          <select id="status" class="w-full border p-2 rounded" required>
             <option value="">Select…</option>
             <option>Active</option>
             <option>In Contract</option>
@@ -64,7 +64,7 @@
         <!-- Price & Commission (commission locked: change requires new listing) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-semibold mb-1">Number of Bedrooms</label>
+            <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
             <input id="price" type="number" min="0" step="1000" placeholder="e.g., 850000" class="w-full border p-2 rounded">
           </div>
 
@@ -122,14 +122,14 @@
 
         <!-- APN / Parcel (optional here; required earlier for FSBO) -->
         <div>
-          <label class="block text sm font-semibold mb-1">APN / Parcel #</label>
+          <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
           <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
           <p id="apnReqMsg" class="text-xs text-gray-500 mt-1">FSBO requires an APN/Parcel value.</p>
         </div>
 
         <!-- Photos -->
         <div>
-          <label class="block text sm font-semibold mb-1">Photos</label>
+          <label class="block text-sm font-semibold mb-1">Photos</label>
           <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
           <input id="photoInput" type="file" accept=".png,.jpg,.jpeg" multiple class="block">
           <div id="photoGrid" class="flex flex-col gap-2 mt-3"></div>
@@ -138,26 +138,26 @@
 
         <!-- Description (Plus/FSBO only; disabled for Listed Basic) -->
         <div>
-          <label class="block text sm font-semibold mb-1">Full Property Description</label>
+          <label class="block text-sm font-semibold mb-1">Full Property Description</label>
           <textarea id="description" rows="6" placeholder="Enter full property description" class="w-full border p-2 rounded"></textarea>
           <p id="descGateNote" class="lock-note mt-1 hidden">* Upgrade to Listed Property Plus to enable Description.</p>
         </div>
 
         <!-- Banner / Preferred / Pin -->
         <div>
-          <label class="block text sm font-semibold mb-1">Banner (optional)</label>
+          <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
           <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1–4)" class="w-full border p-2 rounded">
           <p id="bannerGateNote" class="lock-note mt-1 hidden">Purchase Banner to enable this field.</p>
         </div>
 
         <div>
-          <label class="block text sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
+          <label class="block text-sm font-semibold mb-1">Preferred Placement Area (city/neighborhood)</label>
           <input id="preferredArea" placeholder="e.g., Newport Beach, Harbor View Homes" class="w-full border p-2 rounded">
           <p id="premiumGateNote" class="lock-note mt-1 hidden">Purchase Premium Placement to enable this field.</p>
         </div>
 
         <div>
-          <label class="block text sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
+          <label class="block text-sm font-semibold mb-1">Pin Placement Area (city/neighborhood)</label>
           <input id="pinArea" placeholder="e.g., Newport Beach, Eastbluff" class="w-full border p-2 rounded">
           <p id="pinGateNote" class="lock-note mt-1 hidden">Purchase Pin Placement to enable this field.</p>
         </div>
@@ -166,19 +166,19 @@
         <div id="listedBlock">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text sm font-semibold mb-1">Listing Brokerage</label>
+              <label class="block text-sm font-semibold mb-1">Listing Brokerage</label>
               <input id="brokerage" class="w-full border p-2 rounded">
             </div>
             <div>
-              <label class="block text sm font-semibold mb-1">Listing Agent Name</label>
+              <label class="block text-sm font-semibold mb-1">Listing Agent Name</label>
               <input id="agentName" class="w-full border p-2 rounded">
             </div>
             <div>
-              <label class="block text sm font-semibold mb-1">Listing Agent Email</label>
+              <label class="block text-sm font-semibold mb-1">Listing Agent Email</label>
               <input id="agentEmail" type="email" class="w-full border p-2 rounded">
             </div>
             <div>
-              <label class="block text sm font-semibold mb-1">Listing Agent Phone</label>
+              <label class="block text-sm font-semibold mb-1">Listing Agent Phone</label>
               <input id="agentPhone" class="w-full border p-2 rounded">
             </div>
           </div>
@@ -191,16 +191,16 @@
       </form>
     </section>
 
-    <!-- RIGHT: Upgrades + Local Pros (baseline, unchanged) -->
+    <!-- RIGHT: Upgrades + Local Pros -->
     <aside class="space-y-4">
 
-      <!-- Upgrade to Plus (kept as-is in baseline) -->
+      <!-- Upgrade to Plus -->
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrade to Listed Property Plus</h2>
         <p class="text-sm text-gray-600 mt-2">
           Access full description and up to 20 photos. You can still choose optional placements on Checkout.
         </p>
-        <button id="upgradeToPlusBtn" class="mt-3 w-full bg db9f22 text-white px-3 py-2 rounded">
+        <button id="upgradeToPlusBtn" class="mt-3 w-full bg-amber-600 text-white px-3 py-2 rounded">
           Upgrade to Plus Now
         </button>
         <p class="text-xs text-gray-500 mt-2">This updates your plan immediately; charges (if any) are handled at Checkout.</p>
@@ -265,19 +265,21 @@
     function setStatus(msg, ok=true) {
       let el = document.getElementById("statusBar");
       if (!el) {
-        const hdr = document.querySelector("header") || document.body;
         el = document.createElement("p");
         el.id = "statusBar";
         el.className = "mt-2 text-sm";
-        document.body.insertBefore(el, document.querySelector('main'));
+        const main = document.querySelector('main');
+        if (main && main.parentNode) {
+          main.parentNode.insertBefore(el, main);
+        }
       }
       el.textContent = msg || "";
-      el.className = ok ? "mt-2 text-sm text-gray-600" : "mt-2 text-sm text-red-700";
+      el.className = ok ? "max-w-6xl mx-auto px-3 mt-2 text-sm text-gray-600" : "max-w-6xl mx-auto px-3 mt-2 text-sm text-red-700";
     }
 
     // --- Local pros / brokers helpers ---
     function parseZipFromAddress(addr="") {
-      const m = String(addr).match(/\\b(\\d{5})(?:-\\d{4})?\\b/);
+      const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
       return m ? m[1] : "";
     }
 
@@ -304,7 +306,7 @@
       const card = $("prosSidebar");
       if (!card) return;
       $("prosZip").textContent = zip || "—";
-      $("prosC").href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
+      $("prosCtaBtn").href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
       $("prosEmptyLink").href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=apply`;
 
       const list = $("prosList");
@@ -319,7 +321,7 @@
       }
       function tile(p, label){
         const div = document.createElement("div");
-        div.className = "border rounded-lg p-3 flex items-center gap-3";
+        div.className = "border rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50";
         const img = document.createElement("img");
         img.src = p.photoUrl || "";
         img.alt = p.name || label || "Local Professional";
@@ -330,16 +332,12 @@
         const name = document.createElement("div");
         name.className = "font-semibold";
         name.textContent = p.name || label || "Local Professional";
-        const line2 = document.createElement("div");
-        line2.className = "text-xs text-white"; // hidden by style tweak later if needed
-        line2.textContent = "";
         div.appendChild(img);
         div.addEventListener('click', ()=> {
           if (p.photoUrl) window.open(p.photoUrl, '_blank');
         });
         div.appendChild(info);
         info.appendChild(name);
-        info.appendChild(line2);
         return div;
       }
 
@@ -390,7 +388,7 @@
       const strip = $("brokerStrip");
       if (!strip) return;
       $("brokerZip").textContent = zip || "—";
-      $("brokerC").href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
+      $("brokerCtaBtn").href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
       $("brokerEmptyLink").href = `/local-brokers.html?zip=${encodeURIComponent(zip)}&mode=apply`;
 
       const ad = $("brokerAd");
@@ -398,8 +396,6 @@
       ad.innerHTML = "";
 
       if (broker && (broker.photoUrl || broker.name)) {
-        const wrap = document.createElement("div");
-        wrap = document.createElement("div");
         const img = document.createElement("img");
         img.src = broker.photoUrl || "";
         img.alt = broker.name || "Local Brokerage";
@@ -411,7 +407,7 @@
           ad.appendChild(ph);
         };
         ad.appendChild(img);
-        empty.classList.add("null");
+        empty.classList.add("hidden");
       } else {
         empty.classList.remove("hidden");
       }
@@ -436,7 +432,7 @@
       }
     })();
 
-    const listingId = localStorage.getElementById ? (localStorage.getItem("lastListingId") || "") : "";
+    const listingId = localStorage.getItem("lastListingId") || "";
 
     if ($("previewLink") && listingId) {
       $("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
@@ -460,10 +456,12 @@
           : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
       }
     }
+    
     function clampPrimary(){
       if (!Array.isArray(photos) || photos.length === 0) { primaryIndex = 0; return; }
       if (primaryIndex < 0 || primaryIndex >= photos.length) primaryIndex = 0;
     }
+    
     function renderThumbs(){
       clampPrimary();
       const grid = $("photoGrid");
@@ -546,6 +544,9 @@
           await savePhotosField(true);
         };
 
+        btns.appendChild(bReplace);
+        btns.appendChild(bDelete);
+
         row.appendChild(img);
         row.appendChild(btns);
         grid.appendChild(row);
@@ -556,6 +557,7 @@
 
     // --- storage bucket (working) ---
     const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
+    
     async function uploadOne(file){
       const storage = getStorage(undefined, BUCKET_URL);
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
@@ -571,17 +573,18 @@
       try {
         clampPrimary();
         await updateDoc(doc(db, "listings", listingId), {
-          photos: photos.slice(0, maxOfTwo(photos.length, maxPhotos)),
+          photos: photos.slice(0, maxPhotos),
           primaryIndex: (typeof primaryIndex === "number" ? primaryIndex : 0),
           updatedAt: serverTimestamp()
         });
-        if (then) { /* placeholder no-op */ }
+        if (thenRefresh) {
+          await refreshFromServer("Photos saved.");
+        }
       } catch (e) {
         console.warn("[seller] photos update failed", e);
         setStatus("Photos could not be saved.", false);
       }
     }
-    function maxOfTwo(a,b){ return a<b ? a : b; }
 
     $("photoInput")?.addEventListener("change", async (e)=>{
       const files = Array.from(e.target.files || []);
@@ -589,7 +592,11 @@
 
       try {
         const remaining = Math.max(0, maxPhotos - photos.length);
-        if (remaining <= 0) { alert(`You have reached the photo limit for your plan (${maxPhotos}).`); e.target.value=""; return; }
+        if (remaining <= 0) { 
+          alert(`You have reached the photo limit for your plan (${maxPhotos}).`); 
+          e.target.value=""; 
+          return; 
+        }
         const toUpload = files.slice(0, remaining);
 
         setStatus("Uploading photo(s)…");
@@ -597,7 +604,6 @@
           try {
             const url = await uploadOne(f);
             photos.push(url);
-            renderThumbs(); // show thumbnails immediately
           } catch (err) {
             console.warn("Upload failed", err);
             setStatus("Upload failed for one or more files.", false);
@@ -613,11 +619,17 @@
 
     // ===== refresh all fields from server =====
     async function refreshFromServer(note=""){
-      if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
+      if (!listingId) { 
+        setStatus("No listing selected (missing id).", false); 
+        return; 
+      }
 
       try {
         const snap = await getDoc(doc(db, "listings", listingId));
-        if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
+        if (!snap.exists()) { 
+          setStatus("Listing not found on server.", false); 
+          return; 
+        }
         const d = snap.data() || {};
 
         // plan & gates
@@ -627,9 +639,9 @@
 
         $("planPill").textContent = plan || "—";
         $("fullAddress").value = d.address || "";
-        $("name=status").value = d.status || "";
+        $("status").value = d.status || "";
         $("price").value = d.price ?? "";
-        $("commission").value = d.mission ? d.mission : d.commission ?? "";
+        $("commission").value = d.commission ?? "";
         $("commissionType").value = d.commissionType || "%";
         $("apn").value = d.apn || "";
         $("bedrooms").value = d.bedrooms ?? "";
@@ -642,27 +654,38 @@
         $("bannerText").value = d.bannerText || "";
         $("preferredArea").value = d.preferredArea || "";
         $("pinArea").value = d.pinArea || "";
+        $("brokerage").value = d.brokerage || "";
+        $("agentName").value = d.agentName || "";
+        $("agentEmail").value = d.agentEmail || "";
+        $("agentPhone").value = d.agentPhone || "";
 
         if (plan.includes("FSBO")) {
-          const block = document.getElementById("listedBlock");
+          const block = $("listedBlock");
           if (block) block.style.display = "none";
         }
 
         photos = Array.isArray(d.photos) ? d.photos.slice(0, maxPhotos) : [];
-        primaryIndex = (typeof d.primeIndex === "number") ? d.primeIndex : (typeof d.primaryIndex==="number" ? d.primaryIndex : 0);
+        primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
 
-        if (!isFullyEnabled()){
-          const desc = $("description");
-          const note = $("descteNote");
-          if (desc) { desc.classList.add("dimmed"); desc.setAttribute("disabled","disabled"); }
-          if (note)  { note.classList.remove("hidden"); }
-          computePhotoHelp();
+        // Gates for description
+        const desc = $("description");
+        const descNote = $("descGateNote");
+        if (!isPlus) {
+          if (desc) { 
+            desc.classList.add("dimmed"); 
+            desc.setAttribute("disabled","disabled"); 
+          }
+          if (descNote) { 
+            descNote.classList.remove("hidden"); 
+          }
         } else {
-          const desc = $("description");
-          const note = $("descteNote");
-          if (desc) { desc.classList.remove("dimmed"); desc.removeAttribute("disabled"); }
-          if (note)  { note.classList.add("hidden"); }
-          computePhotoHelp();
+          if (desc) { 
+            desc.classList.remove("dimmed"); 
+            desc.removeAttribute("disabled"); 
+          }
+          if (descNote) { 
+            descNote.classList.add("hidden"); 
+          }
         }
 
         renderThumbs();
@@ -672,8 +695,8 @@
         try {
           const zip = d.zip || parseZipFromAddress($("fullAddress").value || "");
           if (zip) {
-            const { assets, lenders } = await loadLocalPros(zip);
-            renderP sSidebar(zip, assets, lenders);
+            const { agents, lenders } = await loadLocalPros(zip);
+            renderProsSidebar(zip, agents, lenders);
 
             const broker = await loadLocalBroker(zip);
             renderBrokerStrip(zip, broker);
@@ -687,17 +710,18 @@
       }
     }
 
-    function isFullyEnabled(){ return isPlus; }
-
     // ===== Save button: write fields to Firestore =====
     $("saveBtn")?.addEventListener("click", async ()=>{
-      if (!listingId) { alert("No listing ID in this session."); return; }
+      if (!listingId) { 
+        alert("No listing ID in this session."); 
+        return; 
+      }
 
       const planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
 
       const update = {
         updatedAt: serverTimestamp(),
-        status: $("name=status").value || "",
+        status: $("status").value || "",
         price: Number($("price").value || 0) || "",
         apn: $("apn").value || "",
         bedrooms: $("bedrooms").value || "",
@@ -706,16 +730,19 @@
         yearBuilt: $("yearBuilt").value || "",
         lotSize: $("lotSize").value || "",
         propertyType: $("propertyType").value || "",
-        description: $("description").disabled ? $("description").value : ($("description").value || ""),
+        description: $("description").value || "",
         bannerText: $("bannerText").value || "",
         preferredArea: $("preferredArea").value || "",
-        pinArea: $("pinArea").value || "",
-        // contact (listed)
-        brokerage: planNow.includes("FSBO") ? "" : ($("brokerage").value || ""),
-        agentName:  planNow.includes("FSBO") ? "" : ($("agentName").value  || ""),
-        agentEmail: planNow.includes("FSBO") ? "" : ($("agentEmail").value || ""),
-        agentPhone: planNow includes? $("agentPhone").value : "" // baseline mirrors working behavior
+        pinArea: $("pinArea").value || ""
       };
+
+      // Contact fields (Listed only)
+      if (!planNow.includes("FSBO")) {
+        update.brokerage = $("brokerage").value || "";
+        update.agentName = $("agentName").value || "";
+        update.agentEmail = $("agentEmail").value || "";
+        update.agentPhone = $("agentPhone").value || "";
+      }
 
       // ZIP backfill
       try {
@@ -723,7 +750,7 @@
         const cur = curSnap.exists() ? (curSnap.data() || {}) : {};
         if (!cur.zip) {
           const addr = $("fullAddress").value || "";
-          const m = String(addr).match(/\\b(\\d{5})(?:-\\d{4})?\\b/);
+          const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
           const zip = m ? m[1] : "";
           if (zip) update.zip = zip;
         }
@@ -743,8 +770,11 @@
     });
 
     // ==== Upgrade to Plus (Seller) ====
-    $("radeToPlusBtn")?.addEventListener("click", async () => {
-      if (!listingId) { alert("No listing ID in this session."); return; }
+    $("upgradeToPlusBtn")?.addEventListener("click", async () => {
+      if (!listingId) { 
+        alert("No listing ID in this session."); 
+        return; 
+      }
       try {
         localStorage.setItem("selectedPlan", "Listed Property Plus");
         plan = "Listed Property Plus";
@@ -752,10 +782,15 @@
         maxPhotos = 20;
         $("planPill").textContent = "Listed Property Plus";
 
-        const desc = document.getElementById("description");
-        const note = document.getElementById("descGateNote");
-        if (desc) { desc.disabled = false; desc.clas sList.remove("dimmed"); }
-        if (note) { note.classList.add("hidden"); }
+        const desc = $("description");
+        const note = $("descGateNote");
+        if (desc) { 
+          desc.disabled = false; 
+          desc.classList.remove("dimmed"); 
+        }
+        if (note) { 
+          note.classList.add("hidden"); 
+        }
 
         await updateDoc(doc(db, "listings", listingId), {
           plan: "Listed Property Plus",
@@ -781,10 +816,14 @@
       $("whoLine").textContent = who ? `Logged in as ${who}` : "";
 
       const formData = getJSON("formData", {});
-      if (formData.address && !$("fullAddress").value) $("fullAddress").value = formData.address;
+      if (formData.address && !$("fullAddress").value) {
+        $("fullAddress").value = formData.address;
+      }
 
       await refreshFromServer();
+      computePhotoHelp();
 
+      // Load local pros/brokers on boot
       try {
         const addr = $("fullAddress").value || "";
         const zip = parseZipFromAddress(addr);
@@ -830,20 +869,11 @@
             checkoutData.upgrades = checkoutData.upgrades || {};
             if (k === "banner")  checkoutData.upgrades.banner  = checked;
             if (k === "premium") checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
-            if (k === "pin") { checkoutData.upgrades.pin = checked; if (checked) checkoutData.upgrades.premium = true; }
+            if (k === "pin") { 
+              checkoutData.upgrades.pin = checked; 
+              if (checked) checkoutData.upgrades.premium = true; 
+            }
             setJSON("checkoutData", checkoutData);
-
-            if (k === "banner") {
-              const bt = $("bannerText");
-              if (bt) { bt.disabled = !checked && !isPlus; bt.classList.toggle("dimmed", (!checked && !isPro?)); }
-            }
-            if (k === "premium" || k === "pin") {
-              const premOn = (checkoutData.upgrades.premium || checkoutData.upgrades.pin);
-              const pa = $("preferredArea");
-              const pna = $("pinArea");
-              if (pa) { pa.disabled = !premOn;  pa.classList.toggle("dimmed", !premOn); }
-              if (pna){ pna.disabled = !checkoutData.upgrades.pin; pna.classList.toggle("dimmed", !checkoutData.upgrades.pin); }
-            }
           });
         });
       }
@@ -855,7 +885,9 @@
         setJSON("checkoutData", data);
         alert("Upgrades updated. Go to Checkout to pay (if needed).");
       });
-      $("goCheckoutBtn")?.addEventListener("click", ()=>{ window.location.href = "/checkout.html"; });
+      $("goCheckoutBtn")?.addEventListener("click", ()=>{ 
+        window.location.href = "/checkout.html"; 
+      });
     })();
   </script>
 
