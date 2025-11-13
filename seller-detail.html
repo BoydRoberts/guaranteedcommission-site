@@ -1,3 +1,6 @@
+Seller detail debug · HTML
+Copy
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -310,11 +313,18 @@
       const currentPlan = (localStorage.getItem("selectedPlan") || plan || "").trim();
       const isFSBO = currentPlan.includes("FSBO");
       
+      console.log("[DEBUG renderProsSidebar] currentPlan:", currentPlan);
+      console.log("[DEBUG renderProsSidebar] isFSBO:", isFSBO);
+      console.log("[DEBUG renderProsSidebar] agents:", agents.length, "lenders:", lenders.length);
+      
       // Hide the entire card for Listed Properties (Basic and Plus)
       if (!isFSBO) {
+        console.log("[DEBUG renderProsSidebar] Hiding card for non-FSBO listing");
         card.classList.add("hidden");
         return;
       }
+      
+      console.log("[DEBUG renderProsSidebar] Showing card for FSBO listing");
       
       // FSBO only: Show Local Professionals
       $("prosZip").textContent = zip || "—";
