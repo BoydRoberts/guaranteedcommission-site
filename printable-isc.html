@@ -97,6 +97,12 @@
 
         <!-- Embedded: counter BELOW signature row, centered; Standalone: hidden -->
         <div id="sigCounterBelow" class="fine text-center mt-1"></div>
+
+        <!-- Commission History Section (only shows if history exists) -->
+        <div id="commissionHistorySection" class="hidden mt-6 pt-4" style="border-top: 1px solid #d1d5db;">
+          <h3 class="font-semibold text-sm mb-2">Commission History</h3>
+          <div id="commissionHistoryList" class="text-xs text-gray-700 space-y-1"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -154,6 +160,33 @@
       return String(commission) + "%";
     }
 
+    // ✅ ADD: Commission History renderer
+    function renderCommissionHistory(history) {
+      const section = $("commissionHistorySection");
+      const list = $("commissionHistoryList");
+      
+      if (!section || !list) return;
+      
+      if (!Array.isArray(history) || history.length <= 1) {
+        // Hide if no changes or only original
+        section.classList.add("hidden");
+        return;
+      }
+      
+      section.classList.remove("hidden");
+      list.innerHTML = "";
+      
+      history.forEach((entry, index) => {
+        const commDisplay = entry.commissionType === "%" 
+          ? `${entry.commission}%` 
+          : `$${Number(entry.commission).toLocaleString()}`;
+        
+        const item = document.createElement("div");
+        item.textContent = `- ${commDisplay} (${entry.label} - ${entry.date})`;
+        list.appendChild(item);
+      });
+    }
+
     function buildFromData(d, id) {
       const plan = String(d.plan || "");
       const isFSBO = plan.includes("FSBO");
@@ -179,11 +212,11 @@
       let p1 = "", p2 = "";
       if (isFSBO) {
         p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email address is ${email}.`;
-        p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
+        p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission not to exceed ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       } else {
         const showParcel = !!apn;
         p1 = `I, ${name}, am the owner/seller of ${fullAddr}${showParcel ? `, # ${apn}` : ""}. ${short} is listed for sale by ${brokerage}, ${agent}, listing agent, ${phone}${email ? `, ${email}` : ""}.`;
-        p2 = `Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
+        p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       }
 
       // Signature block data (no creeping date)
@@ -202,7 +235,7 @@
       const sigLabel = $("sigLabel");
       if (sigLabel && embedded) sigLabel.style.display = "none";
 
-      // Counter below the signature row (embedded only), text “Viewed N times” (no period)
+      // Counter below the signature row (embedded only), text "Viewed N times" (no period)
       const below = $("sigCounterBelow");
       if (embedded) {
         // Show Firestore counter (iscViews) without increment
@@ -214,6 +247,11 @@
         if (id) {
           updateDoc(doc(db, "listings", id), { iscViews: increment(1), updatedAt: serverTimestamp() }).catch(()=>{});
         }
+      }
+
+      // ✅ ADD: Render commission history
+      if (d.commissionHistory) {
+        renderCommissionHistory(d.commissionHistory);
       }
     }
 
