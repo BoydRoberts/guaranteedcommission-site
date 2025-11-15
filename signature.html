@@ -137,7 +137,7 @@
 
 I, ${name}, am the owner/seller of ${addressFull}${apn?`, # ${apn}`:""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email address is ${email}.
 
-Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker a commission not to exceed ${commissionDisplay}${commissionDisplay ? suffix : ""}.`;
+Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission not to exceed ${commissionDisplay}${commissionDisplay ? suffix : ""}.`;
       } else {
         const brokerage  = d.brokerage  || "[listing brokerage]";
         const agentName  = d.agentName  || "[listing agent]";
@@ -147,7 +147,7 @@ Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, y
 
 I, ${name}, am the owner/seller of ${addressFull}${apn?`, # ${apn}`:""}. ${short} is listed for sale by ${brokerage}, ${agentName}, listing agent, ${phone}, ${email}.
 
-Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${commissionDisplay ? suffix : ""}.`;
+Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${commissionDisplay ? suffix : ""}.`;
       }
     }
 
@@ -191,10 +191,10 @@ Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, y
           return;
         }
         if (!typed) {
-          help.textContent = `Please type your full name exactly as entered: “${expected}”.`;
+          help.textContent = `Please type your full name exactly as entered: "${expected}".`;
           help.className = "text-xs mt-2 text-gray-600";
         } else if (!ok) {
-          help.textContent = `Signature must match the seller name exactly: “${expected}”.`;
+          help.textContent = `Signature must match the seller name exactly: "${expected}".`;
           help.className = "text-xs mt-2 text-red-600";
         } else {
           help.textContent = "Signature looks good.";
@@ -226,6 +226,46 @@ Let it be known: if a buyer’s agent/broker facilitates the sale of ${short}, y
 
           await updateDoc(doc(db, "listings", listingId), updates);
           $("sigSaved").classList.remove("hidden");
+
+          // ✅ ADD: Check if this is a commission change
+          try {
+            const checkoutData = JSON.parse(localStorage.getItem("checkoutData") || "{}");
+            if (checkoutData.meta && checkoutData.meta.newCommission) {
+              const newCommission = checkoutData.meta.newCommission;
+              const newType = checkoutData.meta.newCommissionType;
+              
+              // Build new history entry
+              const newHistoryEntry = {
+                commission: newCommission,
+                commissionType: newType,
+                date: todayISO(),
+                label: "Changed",
+                timestamp: serverTimestamp()
+              };
+              
+              // Get existing history
+              const existingHistory = d.commissionHistory || [];
+              
+              // Update Firestore with new commission
+              await updateDoc(doc(db, "listings", listingId), {
+                commission: newCommission,
+                commissionType: newType,
+                commissionHistory: [...existingHistory, newHistoryEntry],
+                commissionChangeUsed: true,
+                updatedAt: serverTimestamp()
+              });
+              
+              console.log("[signature] Commission changed successfully");
+              
+              // Clear the meta fields from checkoutData
+              delete checkoutData.meta.newCommission;
+              delete checkoutData.meta.newCommissionType;
+              localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
+            }
+          } catch (err) {
+            console.error("[signature] Failed to update commission:", err);
+          }
+
         } catch (e) {
           console.warn("[signature] save failed; continuing local-only:", e);
         }
