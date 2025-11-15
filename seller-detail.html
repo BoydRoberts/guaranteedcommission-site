@@ -197,18 +197,6 @@ Copy
     <!-- RIGHT: Upgrades + Local Pros -->
     <aside class="space-y-4">
 
-      <!-- Upgrade to Plus -->
-      <section class="bg-white rounded shadow p-5">
-        <h2 class="text-lg font-semibold">Upgrade to Listed Property Plus</h2>
-        <p class="text-sm text-gray-600 mt-2">
-          Access full description and up to 20 photos. You can still choose optional placements on Checkout.
-        </p>
-        <button id="upgradeToPlusBtn" class="mt-3 w-full bg-amber-600 text-white px-3 py-2 rounded">
-          Upgrade to Plus Now
-        </button>
-        <p class="text-xs text-gray-500 mt-2">This updates your plan immediately; charges (if any) are handled at Checkout.</p>
-      </section>
-
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrade your listing</h2>
         <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
@@ -246,8 +234,43 @@ Copy
 
   </main>
 
+  <!-- Change Commission Modal -->
+  <div id="changeCommissionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md relative p-6">
+      <button onclick="closeChangeCommissionModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
+      
+      <h2 class="text-lg font-bold mb-4">Change Commission</h2>
+      <p class="text-sm text-gray-600 mb-4">Enter your new commission amount and type. After payment, you'll sign a new Irrevocable Seller Communication with the updated commission.</p>
+      
+      <div class="space-y-4">
+        <div class="flex gap-2">
+          <input type="text" id="newCommission" placeholder="Commission amount (e.g., 2.5 or 5000)" class="flex-1 border p-2 rounded">
+          <select id="newCommissionType" class="border p-2 rounded w-20">
+            <option value="%">%</option>
+            <option value="$">$</option>
+          </select>
+        </div>
+        
+        <div class="flex items-center justify-end gap-2">
+          <button type="button" onclick="closeChangeCommissionModal()" class="px-4 py-2 rounded border">Cancel</button>
+          <button id="confirmCommissionBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">Confirm New Commission</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
+
+  <script>
+    // Change Commission Modal helpers (non-module)
+    function openChangeCommissionModal() {
+      document.getElementById('changeCommissionModal').classList.remove('hidden');
+    }
+    function closeChangeCommissionModal() {
+      document.getElementById('changeCommissionModal').classList.add('hidden');
+    }
+  </script>
 
   <!-- SELLER PAGE LOGIC (Firestore + Storage) -->
   <script type="module">
@@ -806,46 +829,167 @@ Copy
       }
     });
 
-    // ==== Upgrade to Plus (Seller) ====
-    $("upgradeToPlusBtn")?.addEventListener("click", async () => {
-      if (!listingId) { 
-        alert("No listing ID in this session."); 
-        return; 
+    // ==== Upgrades UI wiring (comprehensive with all upgrade options) ====
+    (async function wireUpgrades(){
+      const checkoutData = getJSON("checkoutData", null) || {};
+      
+      // Get current listing data to check what's already paid
+      let listingData = {};
+      if (listingId) {
+        try {
+          const snap = await getDoc(doc(db, "listings", listingId));
+          if (snap.exists()) {
+            listingData = snap.data() || {};
+          }
+        } catch (e) {
+          console.warn("[upgrades] could not fetch listing data:", e);
+        }
       }
-      try {
-        localStorage.setItem("selectedPlan", "Listed Property Plus");
-        plan = "Listed Property Plus";
-        isPlus = true;
-        maxPhotos = 20;
-        $("planPill").textContent = "Listed Property Plus";
 
-        const desc = $("description");
-        const note = $("descGateNote");
-        if (desc) { 
-          desc.disabled = false; 
-          desc.classList.remove("dimmed"); 
-        }
-        if (note) { 
-          note.classList.add("hidden"); 
-        }
+      const currentPlan = plan.trim();
+      const isFSBO = currentPlan.includes("FSBO");
+      const isPlus = currentPlan === "Listed Property Plus";
+      const isBasic = currentPlan === "Listed Property Basic";
 
-        await updateDoc(doc(db, "listings", listingId), {
-          plan: "Listed Property Plus",
-          updatedAt: serverTimestamp()
+      // Check what's already been paid for
+      const paidUpgrades = listingData.paidUpgrades || {};
+      const commissionChangeUsed = listingData.commissionChangeUsed || false;
+
+      function row(label, price, key, paid, description) {
+        const checked = paid || !!(checkoutData.upgrades && checkoutData.upgrades[key]);
+        const disabled = paid ? 'disabled' : '';
+        const grayedClass = paid ? 'bg-gray-100 opacity-60' : '';
+        const paidLabel = paid ? '<span class="text-xs text-green-600 ml-2">✓ Paid</span>' : '';
+        const desc = description ? `<div class="text-xs text-gray-500">${description}</div>` : '';
+        
+        return `
+          <label class="flex items-center justify-between border rounded-lg px-3 py-2 ${grayedClass}">
+            <div>
+              <span class="font-medium">${label}</span>
+              <span class="text-gray-500"> — $${price}</span>
+              ${paidLabel}
+              ${desc}
+            </div>
+            <input type="checkbox" data-key="${key}" class="h-4 w-4" ${checked?'checked':''} ${disabled}/>
+          </label>
+        `;
+      }
+
+      const box = $("upgradesBox");
+      if (!box) return;
+
+      const upgrades = [];
+
+      // Listed Property Basic: show upgrade to Plus
+      if (isBasic) {
+        upgrades.push(row(
+          "Listed Property Plus",
+          20,
+          "upgradeToPlus",
+          false,
+          "20 photos + full property description"
+        ));
+      }
+
+      // Listed Property Plus: show as current plan
+      if (isPlus) {
+        upgrades.push(row(
+          "Listed Property Plus",
+          20,
+          "upgradeToPlus",
+          true,
+          "Current Plan"
+        ));
+      }
+
+      // Common upgrades for all plans
+      upgrades.push(row("Banner", 10, "banner", paidUpgrades.banner));
+      upgrades.push(row("Premium Placement", 10, "premium", paidUpgrades.premium));
+      upgrades.push(row("Pin Placement", 50, "pin", paidUpgrades.pin));
+
+      // FSBO-specific upgrades
+      if (isFSBO) {
+        upgrades.push(row("Confidential FSBO Upgrade", 100, "confidential", paidUpgrades.confidential));
+        upgrades.push(row("Change Commission", 50, "changeCommission", commissionChangeUsed, commissionChangeUsed ? "Already Used" : ""));
+      } else {
+        // Listed (Basic or Plus)
+        upgrades.push(row("Change Commission", 10, "changeCommission", commissionChangeUsed, commissionChangeUsed ? "Already Used" : ""));
+      }
+
+      box.innerHTML = upgrades.join("");
+
+      // Wire up checkboxes
+      box.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener("change", (e) => {
+          const k = e.target.getAttribute("data-key");
+          const checked = e.target.checked;
+          checkoutData.upgrades = checkoutData.upgrades || {};
+
+          if (k === "upgradeToPlus") {
+            checkoutData.upgrades.upgradeToPlus = checked;
+          } else if (k === "banner") {
+            checkoutData.upgrades.banner = checked;
+          } else if (k === "premium") {
+            checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
+          } else if (k === "pin") {
+            checkoutData.upgrades.pin = checked;
+            if (checked) checkoutData.upgrades.premium = true;
+          } else if (k === "confidential") {
+            checkoutData.upgrades.confidential = checked;
+          } else if (k === "changeCommission") {
+            if (checked) {
+              // Open modal to get new commission
+              openChangeCommissionModal();
+              
+              // Wire up the confirm button
+              const confirmBtn = document.getElementById("confirmCommissionBtn");
+              confirmBtn.onclick = () => {
+                const newComm = document.getElementById("newCommission").value.trim();
+                const newType = document.getElementById("newCommissionType").value;
+                
+                if (!newComm) {
+                  alert("Please enter a commission amount.");
+                  return;
+                }
+                
+                // Store the new commission in checkoutData
+                checkoutData.upgrades.changeCommission = true;
+                checkoutData.meta = checkoutData.meta || {};
+                checkoutData.meta.newCommission = newComm;
+                checkoutData.meta.newCommissionType = newType;
+                setJSON("checkoutData", checkoutData);
+                
+                closeChangeCommissionModal();
+                alert("New commission set. Continue to checkout to complete the change.");
+              };
+            } else {
+              checkoutData.upgrades.changeCommission = false;
+              if (checkoutData.meta) {
+                delete checkoutData.meta.newCommission;
+                delete checkoutData.meta.newCommissionType;
+              }
+            }
+          }
+          
+          setJSON("checkoutData", checkoutData);
         });
+      });
 
-        const cd = getJSON("checkoutData", null) || {};
-        cd.plan = "Listed Property Plus";
-        cd.base = cd.base ?? 0;
-        setJSON("checkoutData", cd);
+      // Update Upgrades button
+      $("updateUpgradesBtn")?.addEventListener("click", () => {
+        const data = getJSON("checkoutData", null) || {};
+        data.meta = data.meta || {};
+        data.meta.preferredArea = $("preferredArea").value || data.meta.preferredArea || "";
+        data.meta.pinArea = $("pinArea").value || data.meta.pinArea || "";
+        setJSON("checkoutData", data);
+        alert("Upgrades updated. Go to Checkout to pay (if needed).");
+      });
 
-        alert("Upgraded to Listed Property Plus. You can now add a full description and up to 20 photos.");
-        await refreshFromServer();
-      } catch (e) {
-        console.warn("[seller] upgrade to plus failed", e);
-        alert("Could not upgrade right now. Please try again.");
-      }
-    });
+      // Go to Checkout button
+      $("goCheckoutBtn")?.addEventListener("click", () => {
+        window.location.href = "/checkout.html";
+      });
+    })();
 
     // ===== Boot =====
     (async function boot(){
@@ -874,57 +1018,6 @@ Copy
       } catch (e) {
         console.warn("[local-pros] sidebar/strip skipped:", e);
       }
-    })();
-
-    // Upgrades UI wiring (baseline)
-    (function wireUpgrades(){
-      const checkoutData = getJSON("checkoutData", null) || {};
-      function row(label, price, key) {
-        const checked = !!(checkoutData.upgrades && checkoutData.upgrades[key]);
-        return `
-          <label class="flex items-center justify-between border rounded-lg px-3 py-2">
-            <div>
-              <span class="font-medium">${label}</span>
-              <span class="text-gray-500"> — $${price}</span>
-            </div>
-            <input type="checkbox" data-key="${key}" class="h-4 w-4" ${checked?'checked':''}/>
-          </label>
-        `;
-      }
-      const box = $("upgradesBox");
-      if (box && checkoutData.prices) {
-        const html = [
-          row("Banner", checkoutData.prices.banner ?? 10, "banner"),
-          row("Premium Placement", checkoutData.prices.premium ?? 10, "premium"),
-          row("Pin Placement", checkoutData.prices.pin ?? 50, "pin")
-        ].join("");
-        box.innerHTML = html;
-        box.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
-          cb.addEventListener("change", (e)=>{
-            const k = e.target.getAttribute("data-key");
-            const checked = e.target.checked;
-            checkoutData.upgrades = checkoutData.upgrades || {};
-            if (k === "banner")  checkoutData.upgrades.banner  = checked;
-            if (k === "premium") checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
-            if (k === "pin") { 
-              checkoutData.upgrades.pin = checked; 
-              if (checked) checkoutData.upgrades.premium = true; 
-            }
-            setJSON("checkoutData", checkoutData);
-          });
-        });
-      }
-      $("updateUpgradesBtn")?.addEventListener("click", ()=>{
-        const data = getJSON("checkoutData", null) || {};
-        data.meta = data.meta || {};
-        data.meta.preferredArea = $("preferredArea").value || data.meta.preferredArea || "";
-        data.meta.pinArea       = $("pinArea").value       || data.meta.pinArea       || "";
-        setJSON("checkoutData", data);
-        alert("Upgrades updated. Go to Checkout to pay (if needed).");
-      });
-      $("goCheckoutBtn")?.addEventListener("click", ()=>{ 
-        window.location.href = "/checkout.html"; 
-      });
     })();
   </script>
 
