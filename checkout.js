@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-11-01h (Seller Box2 Basic: no upsells => Basic $0 + signature)
+/ /checkout.js — build 2025-11-15 (Added Change Commission support)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-11-01h");
+  console.log("[checkout.js] build 2025-11-15 with Change Commission");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -50,8 +50,8 @@ document.addEventListener("DOMContentLoaded", () => {
     data = {
       plan,
       base: isFSBOPlan(plan) ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
-      upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
-      prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
+      upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false, changeCommission:false },
+      prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100, changeCommissionListed:10, changeCommissionFSBO:50 },
       meta: {},
       total: 0,
       payer: "seller"
@@ -65,17 +65,18 @@ document.addEventListener("DOMContentLoaded", () => {
         banner:        arr.some(s => s.includes("banner")),
         premium:       arr.some(s => s.includes("premium")),
         pin:           arr.some(s => s.includes("pin")),
-        confidential:  arr.some(s => s.includes("confidential"))
+        confidential:  arr.some(s => s.includes("confidential")),
+        changeCommission: arr.some(s => s.includes("change commission"))
       };
     } else {
       data.upgrades = Object.assign(
-        { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false },
+        { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false, changeCommission:false },
         data.upgrades || {}
       );
     }
     // price table
     data.prices = Object.assign(
-      { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100 },
+      { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100, changeCommissionListed:10, changeCommissionFSBO:50 },
       data.prices || {}
     );
     // base
@@ -97,7 +98,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---- STRONG NORMALIZATION (permanent Basic $0 for Box2/no-upsells)
   (function enforceSellerBasicIfNoUpsells(){
     const noUpsells =
-      !data.upgrades.upgradeToPlus && !data.upgrades.banner && !data.upgrades.premium && !data.upgrades.pin && !data.upgrades.confidential;
+      !data.upgrades.upgradeToPlus && !data.upgrades.banner && !data.upgrades.premium && 
+      !data.upgrades.pin && !data.upgrades.confidential && !data.upgrades.changeCommission;
 
     if (likelySellerFlow && !isFSBOPlan(planLS) && noUpsells) {
       data.plan = "Listed Property Basic";
@@ -155,6 +157,13 @@ document.addEventListener("DOMContentLoaded", () => {
       else d.upgrades.confidential = false;
     }
 
+    // ✅ ADD: Change Commission pricing
+    if (d.upgrades.changeCommission) {
+      const isFSBO = isFSBOPlan(plan);
+      const changeCommPrice = isFSBO ? (d.prices.changeCommissionFSBO ?? 50) : (d.prices.changeCommissionListed ?? 10);
+      total += changeCommPrice;
+    }
+
     d.plan  = plan;
     d.base  = base;
     d.total = total;
@@ -183,6 +192,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (data.upgrades.pin)     sel.push(`Pin Placement ($${pinPrice})`);
     else if (data.upgrades.premium) sel.push(`Premium Placement ($${premiumPrice})`);
     if (isFSBOPlan(data.plan) && data.upgrades.confidential) sel.push(`Confidential FSBO Upgrade ($${data.prices.confidential})`);
+    
+    // ✅ ADD: Change Commission in summary
+    if (data.upgrades.changeCommission) {
+      const isFSBO = isFSBOPlan(data.plan);
+      const price = isFSBO ? (data.prices.changeCommissionFSBO ?? 50) : (data.prices.changeCommissionListed ?? 10);
+      sel.push(`Change Commission ($${price})`);
+    }
 
     if ($("selectedList")) {
       $("selectedList").innerHTML = sel.length ? sel.map(s => `<li>${s}</li>`).join("") : `<li class="text-gray-400">None</li>`;
@@ -205,6 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!box) return;
 
     const isBasic = data.plan === "Listed Property Basic";
+    const isFSBO = isFSBOPlan(data.plan);
     const promo   = isAgentNovemberPromoActive();
 
     const toggles = [];
@@ -225,9 +242,20 @@ document.addEventListener("DOMContentLoaded", () => {
     toggles.push({ key:"banner",  label:"Banner",            price: bannerPrice,  checked: !!data.upgrades.banner });
     toggles.push({ key:"premium", label:"Premium Placement", price: premiumPrice, checked: !!data.upgrades.premium && !data.upgrades.pin });
     toggles.push({ key:"pin",     label:"Pin Placement",     price: pinPrice,     checked: !!data.upgrades.pin, note:"(includes Premium)" });
-    if (isFSBOPlan(data.plan)) {
+    
+    if (isFSBO) {
       toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price: data.prices.confidential ?? 100, checked: !!data.upgrades.confidential });
     }
+
+    // ✅ ADD: Change Commission in last-chance upsells
+    const changeCommPrice = isFSBO ? (data.prices.changeCommissionFSBO ?? 50) : (data.prices.changeCommissionListed ?? 10);
+    toggles.push({ 
+      key: "changeCommission", 
+      label: "Change Commission", 
+      price: changeCommPrice, 
+      checked: !!data.upgrades.changeCommission,
+      note: "(One-time commission change)"
+    });
 
     box.innerHTML = toggles.map(t => `
       <label class="flex items-center justify-between border rounded-lg px-3 py-2 bg-white">
@@ -264,6 +292,8 @@ document.addEventListener("DOMContentLoaded", () => {
           if (checked) data.upgrades.premium = true;
         } else if (k === "confidential") {
           data.upgrades.confidential = checked && isFSBOPlan(data.plan);
+        } else if (k === "changeCommission") {
+          data.upgrades.changeCommission = checked;
         }
         data = recompute(data);
         localStorage.setItem("checkoutData", JSON.stringify(data));
@@ -302,7 +332,10 @@ document.addEventListener("DOMContentLoaded", () => {
         BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR",
         PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h",
         PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
-        CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm"
+        CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm",
+        // ✅ ADD: Change Commission Price IDs
+        CHANGE_COMMISSION_LISTED: "price_1STqWzPTiT2zuxx0ZKLMFpuE",
+        CHANGE_COMMISSION_FSBO: "price_1STqakPTiT2zuxx0zS0nEjDT"
       };
 
       const promo   = isAgentNovemberPromoActive();
@@ -328,6 +361,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!promo) items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
       }
       if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
+
+      // ✅ ADD: Change Commission to Stripe items
+      if (data.upgrades.changeCommission) {
+        const priceId = isFSBO ? PRICE_IDS.CHANGE_COMMISSION_FSBO : PRICE_IDS.CHANGE_COMMISSION_LISTED;
+        items.push({ price: priceId, quantity: 1 });
+      }
 
       if (!items.length && (data.total || 0) > 0) {
         // Safety: if total > 0 but no items, bill Plus
