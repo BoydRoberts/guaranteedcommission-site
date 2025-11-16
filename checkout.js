@@ -1,6 +1,9 @@
-/ /checkout.js — build 2025-11-15 (Added Change Commission support)
+Checkout · JS
+Copy
+
+// /checkout.js — build 2025-11-16 (Added Commission History & Paid Upgrades Tracking)
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-11-15 with Change Commission");
+  console.log("[checkout.js] build 2025-11-16 with Change Commission & Paid Upgrades Tracking");
 
   const $ = (id) => document.getElementById(id);
   const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -157,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
       else d.upgrades.confidential = false;
     }
 
-    // ✅ ADD: Change Commission pricing
+    // Change Commission pricing
     if (d.upgrades.changeCommission) {
       const isFSBO = isFSBOPlan(plan);
       const changeCommPrice = isFSBO ? (d.prices.changeCommissionFSBO ?? 50) : (d.prices.changeCommissionListed ?? 10);
@@ -193,7 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
     else if (data.upgrades.premium) sel.push(`Premium Placement ($${premiumPrice})`);
     if (isFSBOPlan(data.plan) && data.upgrades.confidential) sel.push(`Confidential FSBO Upgrade ($${data.prices.confidential})`);
     
-    // ✅ ADD: Change Commission in summary
+    // Change Commission in summary
     if (data.upgrades.changeCommission) {
       const isFSBO = isFSBOPlan(data.plan);
       const price = isFSBO ? (data.prices.changeCommissionFSBO ?? 50) : (data.prices.changeCommissionListed ?? 10);
@@ -247,7 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
       toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price: data.prices.confidential ?? 100, checked: !!data.upgrades.confidential });
     }
 
-    // ✅ ADD: Change Commission in last-chance upsells
+    // Change Commission in last-chance upsells
     const changeCommPrice = isFSBO ? (data.prices.changeCommissionFSBO ?? 50) : (data.prices.changeCommissionListed ?? 10);
     toggles.push({ 
       key: "changeCommission", 
@@ -333,7 +336,7 @@ document.addEventListener("DOMContentLoaded", () => {
         PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h",
         PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
         CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm",
-        // ✅ ADD: Change Commission Price IDs
+        // Change Commission Price IDs
         CHANGE_COMMISSION_LISTED: "price_1STqWzPTiT2zuxx0ZKLMFpuE",
         CHANGE_COMMISSION_FSBO: "price_1STqakPTiT2zuxx0zS0nEjDT"
       };
@@ -362,7 +365,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
 
-      // ✅ ADD: Change Commission to Stripe items
+      // Change Commission to Stripe items
       if (data.upgrades.changeCommission) {
         const priceId = isFSBO ? PRICE_IDS.CHANGE_COMMISSION_FSBO : PRICE_IDS.CHANGE_COMMISSION_LISTED;
         items.push({ price: priceId, quantity: 1 });
@@ -404,37 +407,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // After Stripe success: ensure plan=Plus if upgrades purchased
-  (async function ensurePlanUpdatedAfterStripeSuccess(){
-    try {
-      const url = new URL(window.location.href);
-      if (url.searchParams.get("success") !== "true") return;
-
-      const listingId = (localStorage.getItem("lastListingId") || "").trim();
-      if (!listingId) return;
-
-      const d = data || getJSON("checkoutData", {});
-      const upgraded = (d?.plan || "").includes("Listed Property Plus")
-                    || d?.upgrades?.upgradeToPlus
-                    || d?.upgrades?.banner
-                    || d?.upgrades?.premium
-                    || d?.upgrades?.pin;
-
-      if (!upgraded) return;
-
-      const { db } = await import("/scripts/firebase-init.js");
-      if (!db) return;
-      const { doc, updateDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-
-      await updateDoc(doc(db, "listings", listingId), {
-        plan: "Listed Property Plus",
-        updatedAt: serverTimestamp()
-      });
-      console.log("[checkout] Plan set to Listed Property Plus for", listingId);
-    } catch (e) {
-      console.warn("[checkout] post-success plan update skipped:", e);
-    }
-  })();
+  // Note: Paid upgrades are tracked in signature.html/agent-detail.html after Stripe redirect
+  // Users go directly to those pages after payment, not back to checkout.html
 
   if (!localStorage.getItem("originalPlan")) {
     localStorage.setItem("originalPlan", planLS);
