@@ -211,11 +211,11 @@
           <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
 
           <div id="listedPhoneRow">
-            <input type="tel" id="agentPhone" placeholder="Agent’s direct phone only – NOT your number" class="w-full border p-1 rounded">
+            <input type="tel" id="agentPhone" placeholder="Agent's direct phone only – NOT your number" class="w-full border p-1 rounded">
             <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (###) ###-####</span>
           </div>
 
-          <input type="email" id="agentEmail" placeholder="Agent’s Email – NOT your email" class="w-full border p-1 rounded">
+          <input type="email" id="agentEmail" placeholder="Agent's Email – NOT your email" class="w-full border p-1 rounded">
           <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
           <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
 
@@ -252,9 +252,9 @@
             <span id="letterAgentPhone">[agent phone]</span>, <span id="letterAgentEmail">[agent email]</span>.
           </p>
           <p class="mt-2">
-            Let it be known: if a buyer’s agent/broker facilitates the sale of
+            Let it be known: if a buyer's agent/broker facilitates the sale of
             <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed
-            to credit/compensate the buyer’s broker – first, by debiting the listing brokerage (if there is an agreement for
+            to credit/compensate the buyer's broker – first, by debiting the listing brokerage (if there is an agreement for
             broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed
             <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
           </p>
@@ -271,9 +271,9 @@
             My phone number is <span id="fsboPhone"></span>. My email address is <span id="fsboEmail"></span>.
           </p>
           <p class="mt-2">
-            Let it be known: if a buyer’s agent/broker facilitates the sale of
+            Let it be known: if a buyer's agent/broker facilitates the sale of
             <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent) are irrevocably
-            instructed to credit/compensate the buyer’s broker a commission not to exceed
+            instructed to credit/compensate the buyer's broker a commission not to exceed
             <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
           </p>
           <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
@@ -395,7 +395,7 @@
       } else {
         title.textContent = (type === 'plus' ? 'Listed Property Plus Communication Form' : 'Listed Property Communication Form');
         listedPhoneRow.classList.remove('hidden');
-        phoneInput.placeholder = 'Agent’s direct phone only – NOT your number';
+        phoneInput.placeholder = 'Agent's direct phone only – NOT your number';
         brokerageInput.style.display = 'block';
         agentInput.style.display = 'block';
         agentEmailInput.style.display = 'block';
@@ -423,7 +423,7 @@
 
       [b1, b2, b3].forEach(b => b.style.height = target + 'px');
 
-      // If a box still overflows, progressively add compact tiers (don’t strip any)
+      // If a box still overflows, progressively add compact tiers (don't strip any)
       function ensureFits(el){
         const tiers = ['compact','compact2','compact3'];
         for (let i=0; i<tiers.length; i++){
@@ -628,6 +628,23 @@
             status: "Draft",
             commission: formData.commission || "",
             commissionType: formData.commissionType || "%",
+            // ✅ ADD: Initialize commission history with original entry
+            commissionHistory: [{
+              commission: formData.commission || "",
+              commissionType: formData.commissionType || "%",
+              date: new Date().toISOString().split('T')[0],
+              label: "Original",
+              timestamp: serverTimestamp()
+            }],
+            // ✅ ADD: Initialize paid upgrades tracking
+            paidUpgrades: {
+              banner: false,
+              premium: false,
+              pin: false,
+              confidential: false
+            },
+            // ✅ ADD: Initialize commission change tracking
+            commissionChangeUsed: false,
             ownerName: formData.name || "",
             ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",
             // START FIX: store FSBO owner phone so printable ISC can display it
