@@ -11,14 +11,13 @@
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-2xl bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-08-24b</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-11-16a</span>
       </div>
-
       <h1 class="text-2xl font-bold text-center mb-1">Review & Checkout</h1>
-      <p class="text-sm text-gray-600 text-center mb-6">Confirm your selections. You’ll sign next.</p>
-
+      <p class="text-sm text-gray-600 text-center mb-6">Confirm your selections. You'll sign next.</p>
       <div id="whoRow" class="text-center text-xs text-gray-500 mb-5 hidden"><span id="whoLine"></span></div>
-
+      
+      <!-- Main Review Section -->
       <section class="bg-white rounded-2xl shadow p-5 mb-5">
         <div class="grid md:grid-cols-2 gap-6">
           <div class="space-y-3">
@@ -39,16 +38,18 @@
           </div>
         </div>
       </section>
-
+      
+      <!-- Upsell Section -->
       <section class="rounded-2xl p-4 border mb-6 bg-gray-50">
         <p class="text-sm font-semibold mb-2">Add upgrades before you pay:</p>
         <div id="upsellChoices" class="space-y-2 text-sm"></div>
       </section>
-
+      
+      <!-- Action Buttons -->
       <div class="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
-        <button id="backBtn" class="px-4 py-2 rounded border">Back</button>
+        <button id="backBtn" class="px-4 py-2 rounded border hover:bg-gray-50 transition">Back</button>
         <div class="flex gap-3 justify-end">
-          <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">
+          <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition">
             Continue (no payment due)
           </a>
           <button id="payNowBtn" class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition">
@@ -56,19 +57,25 @@
           </button>
         </div>
       </div>
-
+      
       <p class="text-[11px] text-gray-500 text-center mt-4">
-        You’ll be able to electronically sign your Irrevocable Seller Communication at the next step.
+        You'll be able to electronically sign your Irrevocable Seller Communication at the next step.
       </p>
-
+      
+      <!-- Diagnostics -->
       <details class="mt-6">
-        <summary class="text-xs cursor-pointer text-gray-600">Stripe diagnostics</summary>
-        <pre id="diag" class="text-[11px] bg-gray-50 border rounded p-3 mt-2 overflow-auto"></pre>
+        <summary class="text-xs cursor-pointer text-gray-600 hover:text-gray-900">Stripe diagnostics</summary>
+        <pre id="diag" class="text-[11px] bg-gray-50 border rounded p-3 mt-2 overflow-auto max-h-64"></pre>
       </details>
     </div>
   </div>
-
+  
+  <!-- Firebase init include -->
+  <script type="module" src="/scripts/firebase-init.js"></script>
+  
+  <!-- Main checkout logic -->
   <script src="/checkout.js"></script>
+  
   <script>
     // ----- Back behavior (aligned with sitewide logic) -----
     (function wireBack(){
