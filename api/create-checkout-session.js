@@ -17,17 +17,22 @@ export default async function handler(req, res) {
 
   try {
     const { lineItems, successUrl, cancelUrl } = req.body || {};
+
     if (!Array.isArray(lineItems) || !lineItems.length) {
       return res.status(400).json({ error: "No line items" });
     }
+
     if (!successUrl || !cancelUrl) {
       return res.status(400).json({ error: "Missing successUrl/cancelUrl" });
     }
 
+    // ✅ CRITICAL FIX: Append {CHECKOUT_SESSION_ID} to success URL
+    const successUrlWithSession = `${successUrl}${successUrl.includes('?') ? '&' : '?'}session_id={CHECKOUT_SESSION_ID}`;
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: lineItems,
-      success_url: successUrl,
+      success_url: successUrlWithSession,
       cancel_url: cancelUrl,
       billing_address_collection: "auto"
     });
