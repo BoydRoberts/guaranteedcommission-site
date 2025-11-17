@@ -1,6 +1,3 @@
-Checkout · JS
-Copy
-
 // /checkout.js — build 2025-11-16 (Added Commission History & Paid Upgrades Tracking)
 document.addEventListener("DOMContentLoaded", () => {
   console.log("[checkout.js] build 2025-11-16 with Change Commission & Paid Upgrades Tracking");
