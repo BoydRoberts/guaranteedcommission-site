@@ -7,8 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root{
-      --title-bottom-gap: .75rem;         /* controls spacing under all three titles */
-      --box2-first-input-offset: 1rem;    /* lowers Box 2 first input ~1 line */
+      --title-bottom-gap: .75rem;
+      --box2-first-input-offset: 1rem;
     }
 
     .font-cursive { font-family: 'Brush Script MT', cursive; }
@@ -26,19 +26,15 @@
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
     .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
-    /* === ADDED: overlay share buttons on the photo === */
     .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
     .gc-share-left { left:10px; }
     .gc-share-right{ right:10px; }
 
-    /* --- Strip 1: same-size boxes (Box 1 = baseline), no scrollbars --- */
     #box1, #formBlock, #box3 { overflow: hidden; }
     .gc-title { text-align:center; font-weight:700; font-size:1.125rem; line-height:1.25; margin:0 0 var(--title-bottom-gap); }
 
-    /* Lower Box 2 form by ~1 line */
     .gc-form-offset { margin-top: var(--box2-first-input-offset); }
 
-    /* Real-Reflow compact tiers for Box 2 (form) */
     #formBlock.compact * { line-height:1.25; }
     #formBlock.compact h2.gc-title { font-size:1.05rem; }
     #formBlock.compact input, #formBlock.compact select, #formBlock.compact button { padding:.3rem .45rem !important; font-size:.85rem !important; }
@@ -53,7 +49,6 @@
     #formBlock.compact3 h2.gc-title { font-size:.95rem; }
     #formBlock.compact3 input, #formBlock.compact3 select, #formBlock.compact button { padding:.22rem .35rem !important; font-size:.75rem !important; }
 
-    /* Real-Reflow compact tiers for Box 3 (ISC) */
     #box3.compact * { line-height:1.35; }
     #box3.compact p { font-size:.95rem; }
     #box3.compact2 * { line-height:1.3; }
@@ -63,10 +58,8 @@
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-  <!-- Header -->
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
-      <!-- LEFT CLUSTER: Back + Investor -->
       <div class="flex items-center gap-3">
         <button id="backBtnHdr" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
         <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
@@ -90,7 +83,6 @@
     </div>
   </header>
 
-  <!-- Investor Modal -->
   <div id="investorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl relative p-5 max-h-[85vh] overflow-auto">
       <button onclick="closeInvestorModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
@@ -144,7 +136,6 @@
     </div>
   </div>
 
-  <!-- Press Modal -->
   <div id="pressModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
       <button onclick="closePressModal()" class="absolute top-2 right-2 text-xl font-bold">&times;</button>
@@ -158,7 +149,6 @@
     </div>
   </div>
 
-  <!-- Nav -->
   <nav class="bg-gray-200 py-2">
     <ul class="flex justify-center space-x-8 font-semibold">
       <li class="group">
@@ -174,10 +164,8 @@
     </ul>
   </nav>
 
-  <!-- Strip 1 -->
   <div style="background-color:#4DA6FF;">
     <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
-      <!-- Box 1 (p-4 -> p-3) -->
       <div id="box1" class="w-full md:w-1/3 bg-white p-3 rounded shadow text-sm">
         <h2 class="gc-title">Commission Communication Menu</h2>
         <ul class="space-y-3">
@@ -202,7 +190,6 @@
         </ul>
       </div>
 
-      <!-- Box 2 (pre-apply compact2) -->
       <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm compact2">
         <h2 id="formTitle" class="gc-title">Listed Property Communication Form</h2>
         <form id="listingForm" class="gc-form-offset space-y-2" autocomplete="off">
@@ -237,7 +224,6 @@
         </form>
       </div>
 
-      <!-- Box 3 (p-4 -> p-3) -->
       <div id="box3" class="w-full md:w-1/3 bg-white p-3 rounded shadow text-sm">
         <h2 class="gc-title">Irrevocable Seller Communication</h2>
 
@@ -282,7 +268,6 @@
     </section>
   </div>
 
-  <!-- Strip 2: Search / Tiles -->
   <div style="background-color:#ffffff;">
     <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12 pt-6">
       <div class="text-center mb-4 mt-0">
@@ -299,7 +284,6 @@
     </section>
   </div>
 
-  <!-- Footer -->
   <footer class="bg-white border-t mt-8">
     <div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-gray-600 space-y-3">
       <button onclick="openPressModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-2 rounded">
@@ -315,16 +299,13 @@
     </div>
   </footer>
 
-  <!-- Scripts -->
   <script>
-    /* Header modals */
     function openInvestorModal(){ document.getElementById('investorModal').classList.remove('hidden'); }
     function closeInvestorModal(){ document.getElementById('investorModal').classList.add('hidden'); }
     function openPressModal(){ document.getElementById('pressModal').classList.remove('hidden'); }
     function closePressModal(){ document.getElementById('pressModal').classList.add('hidden'); }
     function submitPressForm(){ document.getElementById('pressConfirmation').classList.remove('hidden'); }
 
-    // Keep commission submenu open on hover
     (function(){
       const li = document.querySelector('.group');
       const menu = document.getElementById('commissionMenu');
@@ -340,7 +321,6 @@
       document.getElementById('commissionToggle')?.addEventListener('blur', close);
     })();
 
-    // Back button (safe fallback)
     (function(){
       const btn = document.getElementById('backBtnHdr');
       if (!btn) return;
@@ -350,20 +330,18 @@
           if (history.length > 1 && ref && ref !== location.href) {
             history.back();
           } else {
-            // no-op fallback (already home)
+            // no-op fallback
           }
-        } catch (_) { /* no-op */ }
+        } catch (_) { }
       });
     })();
 
-    // Address validator
     function isValidFullAddress(s) {
       if (!s) return false;
       const re = /^\s*.+?,\s*[A-Za-z .'\-]+,\s*[A-Za-z]{2}\s+\d{5}(?:-\d{4})?\s*$/;
       return re.test(s.trim());
     }
 
-    /* Plan switcher */
     function selectPlan(planName){
       localStorage.setItem("selectedPlan", planName);
       showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
@@ -371,7 +349,6 @@
       setTimeout(fitStrip1, 120);
     }
 
-    /* Toggle form + ISC */
     function showForm(type){
       const title = document.getElementById("formTitle");
       const phoneInput = document.getElementById('agentPhone');
@@ -406,14 +383,12 @@
       }
     }
 
-    /* === Fit Strip 1: equalize heights but PRESERVE existing compact tiers === */
     function fitStrip1(){
       const b1 = document.getElementById('box1');
       const b2 = document.getElementById('formBlock');
       const b3 = document.getElementById('box3');
       if (!b1 || !b2 || !b3) return;
 
-      // Reset height only (do NOT remove compact classes)
       [b1, b2, b3].forEach(b => { b.style.height = 'auto'; });
 
       const h1 = Math.max(b1.scrollHeight, b1.getBoundingClientRect().height);
@@ -423,7 +398,6 @@
 
       [b1, b2, b3].forEach(b => b.style.height = target + 'px');
 
-      // If a box still overflows, progressively add compact tiers (don't strip any)
       function ensureFits(el){
         const tiers = ['compact','compact2','compact3'];
         for (let i=0; i<tiers.length; i++){
@@ -434,7 +408,6 @@
       ensureFits(b2);
       ensureFits(b3);
 
-      // Re-equalize after compaction
       const t2 = Math.max(
         b1.scrollHeight, b1.getBoundingClientRect().height,
         b2.scrollHeight, b2.getBoundingClientRect().height,
@@ -443,7 +416,6 @@
       [b1, b2, b3].forEach(b => b.style.height = t2 + 'px');
     }
 
-    // Observe content changes in the three boxes and refit
     (function observeStrip1(){
       const ids = ['box1','formBlock','box3'];
       const els = ids.map(id => document.getElementById(id)).filter(Boolean);
@@ -452,13 +424,11 @@
       els.forEach(el => mo.observe(el, { childList:true, subtree:true, characterData:true }));
     })();
 
-    /* On load */
     window.addEventListener('DOMContentLoaded', () => {
       const lastSelected = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
       showForm('listed');
       localStorage.setItem('selectedPlan', lastSelected.includes('FSBO') ? 'Listed Property Basic' : lastSelected);
 
-      // Phone mask: (###) ###-####
       const phoneInput = document.getElementById('agentPhone');
       const phoneError = document.getElementById('phoneError');
       phoneInput?.addEventListener('input', function(){
@@ -497,7 +467,6 @@
         const suffix = type === '%' ? 'of the total purchase price' : '';
         const display = type === '$' ? (amount ? ('$' + Number(amount).toLocaleString()) : '') : (amount ? amount + '%' : '');
 
-        // Listed
         document.getElementById('letterName').textContent = nameVal || '[name]';
         document.getElementById('letterAddressFull').textContent = fullAddr || '[full address]';
         document.getElementById('letterAPN').textContent = apnVal || '[Parcel # / Pin # / Tax ID # / Folio # / APN #]';
@@ -511,7 +480,6 @@
         document.getElementById('commissionSuffix').textContent = display ? (' ' + suffix) : '';
         document.getElementById('signatureName').textContent = nameVal || '[Name]';
 
-        // FSBO
         document.getElementById('letterNameFSBO').textContent = nameVal || '[name]';
         document.getElementById('letterAddressFullFSBO').textContent = fullAddr || '[full address]';
         document.getElementById('letterAddressShort1FSBO').textContent = short || '[short address]';
@@ -525,7 +493,6 @@
       }
       syncAll();
 
-      // Do NOT build local/demo tiles. Firestore will populate tiles.
       wireSearch();
 
       fitStrip1();
@@ -533,7 +500,6 @@
       window.addEventListener('resize', fitStrip1);
     });
 
-    /* Submit — data-bleed guard + duplicate guard + Firestore save */
     async function submitForm(){
       const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
       const requiredIds = ['name','address','agentPhone'];
@@ -554,7 +520,7 @@
         return;
       } else addressEl.classList.remove('border-red-500');
 
-      // Clear prior local listing state to avoid bleed
+      // ✅ FIXED: Don't clear lastListingId anymore
       try {
         ['agentListing','checkoutData','intakeFollowups','lastListingAddress','signature','signedISC']
           .forEach(k=>localStorage.removeItem(k));
@@ -584,11 +550,10 @@
       const plan=localStorage.getItem('selectedPlan')||'Listed Property Basic';
       localStorage.setItem('postSignatureOptions',plan.includes('FSBO')?'fsbo':'listed');
 
-      // Mark origin so login/verify routes correctly
       localStorage.setItem('loginOrigin','box2');
       localStorage.setItem('nextAfterLogin','/verify-code.html');
 
-      // Duplicate guard + save (unchanged)
+      // ✅ FIXED: Removed problematic commissionHistory and other complex fields
       try {
         const db = window.gc && window.gc.db;
         if (db) {
@@ -599,14 +564,12 @@
 
           const listingsCol = collection(db, "listings");
 
-          // Pass 1: exact match
           let existingId = "";
           try {
             const exactSnap = await getDocs(query(listingsCol, where("address","==", addrVal), limit(5)));
             exactSnap.forEach(d => { if (!existingId) existingId = d.id; });
           } catch {}
 
-          // Pass 2: newest N lower-case compare
           if (!existingId) {
             try {
               const recentSnap = await getDocs(query(listingsCol, orderBy("createdAt","desc"), limit(50)));
@@ -619,7 +582,7 @@
             } catch {}
           }
 
-          // Create new doc  (fixed: plan.includes)
+          // ✅ SIMPLIFIED PAYLOAD - removed problematic fields
           const payload = {
             address: formData.address,
             shortAddress: (formData.address.split(",")[0] || "").trim(),
@@ -628,28 +591,9 @@
             status: "Draft",
             commission: formData.commission || "",
             commissionType: formData.commissionType || "%",
-            // ✅ ADD: Initialize commission history with original entry
-            commissionHistory: [{
-              commission: formData.commission || "",
-              commissionType: formData.commissionType || "%",
-              date: new Date().toISOString().split('T')[0],
-              label: "Original",
-              timestamp: serverTimestamp()
-            }],
-            // ✅ ADD: Initialize paid upgrades tracking
-            paidUpgrades: {
-              banner: false,
-              premium: false,
-              pin: false,
-              confidential: false
-            },
-            // ✅ ADD: Initialize commission change tracking
-            commissionChangeUsed: false,
             ownerName: formData.name || "",
             ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",
-            // START FIX: store FSBO owner phone so printable ISC can display it
             ownerPhone: plan.includes('FSBO') ? (formData.phone || "") : "",
-            // END FIX
             agentName:  plan.includes('FSBO') ? "" : (formData.agent || ""),
             agentPhone: plan.includes('FSBO') ? "" : (formData.phone || ""),
             agentEmail: plan.includes('FSBO') ? "" : (formData.agentEmail || ""),
@@ -659,24 +603,29 @@
             source: "index.box2"
           };
 
+          console.log("[index] 💾 Saving listing to Firestore...");
           const ref = await addDoc(listingsCol, payload);
+          console.log("[index] ✅ Listing saved! ID:", ref.id);
+          
           localStorage.setItem("lastListingId", ref.id);
+          console.log("[index] ✅ Saved to localStorage:", ref.id);
+          
           localStorage.setItem("lastListingAddress", payload.address || "");
           localStorage.setItem(`formData:${ref.id}`, JSON.stringify(formData));
         } else {
           console.warn("[firestore] db not available — skipped server save");
         }
       } catch (err) {
-        console.warn("[firestore] duplicate guard/save failed; continuing local-only:", err);
+        console.error("[firestore] Save failed:", err);
+        alert("Error saving listing. Please try again.");
+        return;
       }
 
       window.location.href="/login.html";
     }
 
-    // ---------- Strip 2 helpers ----------
     function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
 
-    // === Share helpers (soft daily limit: 5/device/day) ===
     function shareLimitOk() {
       try {
         const day = new Date().toISOString().slice(0,10);
@@ -693,7 +642,6 @@
     function openEmail(address, url) {
       const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
       const body = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
-      // more reliable mailto
       const a = document.createElement('a');
       a.href = `mailto:?subject=${subject}&body=${body}`;
       a.style.display = 'none';
@@ -760,7 +708,6 @@
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
           </button>
-          <!-- ADDED: share buttons overlay on the photo -->
           <button type="button" class="gc-share gc-share-left" data-share="email">Share Email</button>
           <button type="button" class="gc-share gc-share-right" data-share="text">Share Text</button>
         </div>
@@ -781,7 +728,6 @@
           </div>
         </div>
       `;
-      // like button behavior with one-time server increment (requires helper further below)
       const heart = card.querySelector(".gc-heart");
       const statsEl = card.querySelector("[data-stats]");
       if (heart) {
@@ -800,7 +746,6 @@
           const nowLiked = tog(favId);
           heart.innerHTML = svg(nowLiked);
 
-          // First-like on this device? bump likes in Firestore and UI
           if (id && nowLiked) {
             const onceKey = 'likedOnce:' + id;
             if (!localStorage.getItem(onceKey) && window.gcIncLike) {
@@ -818,7 +763,6 @@
         });
       }
 
-      // Share buttons (overlay)
       const emailBtn = card.querySelector('[data-share="email"]');
       const textBtn  = card.querySelector('[data-share="text"]');
       const shareUrl = id ? (window.location.origin + '/listing.html?id=' + encodeURIComponent(id))
@@ -842,7 +786,6 @@
       return card;
     }
 
-    // Render Strip-2 tiles from a list source
     function renderStrip2TilesFrom(list, filterText=""){
       const grid = document.getElementById('tileGrid');
       const empty = document.getElementById('tilesEmpty');
@@ -871,13 +814,10 @@
     }
   </script>
 
-  <!-- Firebase init include -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
-  <!-- Helper (module): expose a global like-incrementer for non-module code -->
   <script type="module">
     import { doc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    // Safe global shim — used by the non-module heart handler above
     window.gcIncLike = async (listingId) => {
       const db = (window.gc && window.gc.db);
       if (!db || !listingId) return;
@@ -885,7 +825,6 @@
     };
   </script>
 
-  <!-- Firestore tiles repaint (no demo, newest first) — Firestore ONLY -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -900,10 +839,8 @@
         const items = [];
         snap.forEach(docu => {
           const d = docu.data() || {};
-          // Hide archived
           if (d.archived === true) return;
 
-          // hide drafts (require signed OR status:Active)
           const signed = !!(d.signedISC && typeof d.signedISC === 'object' && d.signedISC.date);
           const isActive = String(d.status || '').toLowerCase() === 'active';
           if (!signed && !isActive) return;
@@ -926,17 +863,14 @@
             bathrooms: d.bathrooms ?? "",
             sqft: d.sqft ?? "",
             propertyType: d.propertyType || "",
-            // NEW: counters
             views: Number(d.views || 0),
             likes: Number(d.likes || 0)
           });
         });
 
-        // Paint tiles strictly from Firestore
         const lastQ = (localStorage.getItem('lastSearch') || '').trim();
         renderStrip2TilesFrom(items, lastQ);
 
-        // Fallback: if filter hid everything, show all and clear the stale filter
         if (grid && grid.children.length === 0) {
           try { localStorage.removeItem('lastSearch'); } catch {}
           renderStrip2TilesFrom(items, '');
