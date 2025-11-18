@@ -616,9 +616,12 @@
     function applyFreePromo() {
       if (!isAgentPromoActive()) return;
       
-      // Recreate checkoutData with current plan value
+      // Upgrade to Plus if currently Basic
+      const newPlan = "Listed Property Plus";
+      
+      // Recreate checkoutData with Plus plan
       checkoutData = {
-        plan: plan,
+        plan: newPlan,
         base: 0,  // Will be 0 because of promo
         upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false },
         prices:  { plus:0, banner:0, premium:0, pin:0 },
@@ -631,7 +634,33 @@
       
       setJSON("checkoutData", checkoutData);
       
-      alert(`${getCurrentPromoMonth()} Free applied. Plus, Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.`);
+      // Update local state
+      plan = newPlan;
+      isPlus = true;
+      maxPhotos = 20;
+      localStorage.setItem("selectedPlan", newPlan);
+      
+      // Update UI
+      $("planPill").textContent = newPlan;
+      $("description").classList.remove("dimmed");
+      $("description").removeAttribute("disabled");
+      $("descGateNote").classList.add("hidden");
+      computePhotoHelp();
+      
+      // Save to Firestore
+      if (listingId) {
+        updateDoc(doc(db, "listings", listingId), {
+          plan: newPlan,
+          updatedAt: serverTimestamp()
+        }).then(() => {
+          setStatus("Upgraded to Plus (FREE via promo)!", true);
+        }).catch(err => {
+          console.warn("[promo] Firestore update failed:", err);
+          setStatus("Local upgrade succeeded, but server update failed.", false);
+        });
+      }
+      
+      alert(`${getCurrentPromoMonth()} Free applied. Upgraded to Listed Property Plus + all upgrades are now $0 for agent-paid upgrades this month.`);
     }
 
     $("applyPromoBtn")?.addEventListener("click", applyFreePromo);
