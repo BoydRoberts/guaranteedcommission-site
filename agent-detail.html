@@ -621,6 +621,14 @@
       checkoutData.prices.pin = 0;
       checkoutData.meta = checkoutData.meta || {};
       checkoutData.meta[getCurrentPromoMonth().toLowerCase() + "AgentFree"] = true;
+      
+      // Recalculate total with new $0 prices
+      let total = (checkoutData.base || 0);
+      if (checkoutData.upgrades.banner) total += 0;
+      if (checkoutData.upgrades.pin) total += 0;
+      else if (checkoutData.upgrades.premium) total += 0;
+      checkoutData.total = total;
+      
       setJSON("checkoutData", checkoutData);
       
       alert(`${getCurrentPromoMonth()} Free applied. Plus, Banner, Premium, and Pin are now $0 for agent-paid upgrades this month.`);
