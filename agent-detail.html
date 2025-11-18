@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<!-- Build: 2025-11-18 Agent Promo Fix --><html lang="en">
+<!-- Build: 2025-11-18 Agent Promo Fix -->
+<html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -615,24 +616,18 @@
     function applyFreePromo() {
       if (!isAgentPromoActive()) return;
       
-      checkoutData.prices.plus = 0;
-      checkoutData.prices.banner = 0;
-      checkoutData.prices.premium = 0;
-      checkoutData.prices.pin = 0;
-      checkoutData.meta = checkoutData.meta || {};
+      // Recreate checkoutData with current plan value
+      checkoutData = {
+        plan: plan,
+        base: 0,  // Will be 0 because of promo
+        upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false },
+        prices:  { plus:0, banner:0, premium:0, pin:0 },
+        meta: {},
+        payer: "agent"
+      };
+      
       checkoutData.meta[getCurrentPromoMonth().toLowerCase() + "AgentFree"] = true;
-      
-      // Zero out base price for Plus plans
-      if (plan === "Listed Property Plus") {
-        checkoutData.base = 0;
-      }
-      
-      // Recalculate total with new $0 prices
-      let total = (checkoutData.base || 0);
-      if (checkoutData.upgrades.banner) total += 0;
-      if (checkoutData.upgrades.pin) total += 0;
-      else if (checkoutData.upgrades.premium) total += 0;
-      checkoutData.total = total;
+      checkoutData.total = 0;
       
       setJSON("checkoutData", checkoutData);
       
