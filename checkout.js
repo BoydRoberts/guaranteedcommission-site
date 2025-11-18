@@ -1,3 +1,6 @@
+out · JS
+Copy
+
 // /checkout.js — build 2025-11-16 (Added Commission History & Paid Upgrades Tracking)
 document.addEventListener("DOMContentLoaded", () => {
   console.log("[checkout.js] build 2025-11-16 with Change Commission & Paid Upgrades Tracking");
@@ -120,6 +123,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // Pricing + totals
   function recompute(d) {
     let plan = d.plan || planLS;
+    
+    // ⚠️ AGENT BLOCK #4: Agents can never pay for Change Commission (prevent stale data)
+    if (d.payer === "agent" && d.upgrades.changeCommission) {
+      d.upgrades.changeCommission = false;
+    }
+    
     let base = (typeof d.base === "number") ? d.base
              : (isFSBOPlan(plan) ? (d.prices.fsbo ?? 100)
              : (plan === "Listed Property Plus" ? (d.prices.plus ?? 20) : 0));
@@ -193,8 +202,8 @@ document.addEventListener("DOMContentLoaded", () => {
     else if (data.upgrades.premium) sel.push(`Premium Placement ($${premiumPrice})`);
     if (isFSBOPlan(data.plan) && data.upgrades.confidential) sel.push(`Confidential FSBO Upgrade ($${data.prices.confidential})`);
     
-    // Change Commission in summary
-    if (data.upgrades.changeCommission) {
+    // ⚠️ AGENT BLOCK #3: Don't show Change Commission in summary for agents
+    if (data.upgrades.changeCommission && data.payer === "seller") {
       const isFSBO = isFSBOPlan(data.plan);
       const price = isFSBO ? (data.prices.changeCommissionFSBO ?? 50) : (data.prices.changeCommissionListed ?? 10);
       sel.push(`Change Commission ($${price})`);
@@ -247,15 +256,17 @@ document.addEventListener("DOMContentLoaded", () => {
       toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price: data.prices.confidential ?? 100, checked: !!data.upgrades.confidential });
     }
 
-    // Change Commission in last-chance upsells
-    const changeCommPrice = isFSBO ? (data.prices.changeCommissionFSBO ?? 50) : (data.prices.changeCommissionListed ?? 10);
-    toggles.push({ 
-      key: "changeCommission", 
-      label: "Change Commission", 
-      price: changeCommPrice, 
-      checked: !!data.upgrades.changeCommission,
-      note: "(One-time commission change)"
-    });
+    // ⚠️ AGENT BLOCK #1: Only show Change Commission to sellers
+    if (data.payer === "seller") {
+      const changeCommPrice = isFSBO ? (data.prices.changeCommissionFSBO ?? 50) : (data.prices.changeCommissionListed ?? 10);
+      toggles.push({ 
+        key: "changeCommission", 
+        label: "Change Commission", 
+        price: changeCommPrice, 
+        checked: !!data.upgrades.changeCommission,
+        note: "(One-time commission change)"
+      });
+    }
 
     box.innerHTML = toggles.map(t => `
       <label class="flex items-center justify-between border rounded-lg px-3 py-2 bg-white">
@@ -316,8 +327,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!stripe) throw new Error("Stripe not available on this page.");
 
       const listingId       = (localStorage.getItem("lastListingId") || "").trim();
-      const successSignature= window.location.origin + "/signature.html"    + (listingId ? `?id=${encodeURIComponent(listingId)}` : "");
-      const successAgent    = window.location.origin + "/agent-detail.html" + (listingId ? `?id=${encodeURIComponent(listingId)}` : "");
+      const successSignature= window.location.origin + "/signature.html"    + (listingId ? `?id=${encodeURIComponent(listingId)}&session_id={CHECKOUT_SESSION_ID}` : "?session_id={CHECKOUT_SESSION_ID}");
+      const successAgent    = window.location.origin + "/agent-detail.html" + (listingId ? `?id=${encodeURIComponent(listingId)}&session_id={CHECKOUT_SESSION_ID}` : "?session_id={CHECKOUT_SESSION_ID}");
 
       // Zero total → route immediately (seller→signature, agent→agent-detail)
       if ((data.total || 0) <= 0) {
@@ -362,8 +373,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
 
-      // Change Commission to Stripe items
-      if (data.upgrades.changeCommission) {
+      // ⚠️ AGENT BLOCK #2: Only charge sellers for commission changes
+      if (data.upgrades.changeCommission && data.payer === "seller") {
         const priceId = isFSBO ? PRICE_IDS.CHANGE_COMMISSION_FSBO : PRICE_IDS.CHANGE_COMMISSION_LISTED;
         items.push({ price: priceId, quantity: 1 });
       }
