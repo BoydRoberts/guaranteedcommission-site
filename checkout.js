@@ -1,6 +1,3 @@
-out · JS
-Copy
-
 // /checkout.js — build 2025-11-16 (Added Commission History & Paid Upgrades Tracking)
 document.addEventListener("DOMContentLoaded", () => {
   console.log("[checkout.js] build 2025-11-16 with Change Commission & Paid Upgrades Tracking");
@@ -112,11 +109,11 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("checkoutData", JSON.stringify(data));
   })();
 
-  // Agent-only November promo (agent = free in November)
+  // Agent promo (active all year in 2025, matches agent-detail.html)
   function isAgentNovemberPromoActive() {
     try {
       const now = new Date();
-      return data.payer === "agent" && now.getFullYear() === 2025 && now.getMonth() === 10; // Nov = 10
+      return data.payer === "agent" && now.getFullYear() === 2025;
     } catch { return false; }
   }
 
