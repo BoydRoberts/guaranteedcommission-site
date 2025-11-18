@@ -1,3 +1,6 @@
+Agent detail updated · HTML
+Copy
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -621,6 +624,11 @@
       checkoutData.prices.pin = 0;
       checkoutData.meta = checkoutData.meta || {};
       checkoutData.meta[getCurrentPromoMonth().toLowerCase() + "AgentFree"] = true;
+      
+      // Zero out base price for Plus plans
+      if (plan === "Listed Property Plus") {
+        checkoutData.base = 0;
+      }
       
       // Recalculate total with new $0 prices
       let total = (checkoutData.base || 0);
