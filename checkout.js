@@ -1,54 +1,55 @@
-// /checkout.js — build 2025-11-16 (Added Commission History & Paid Upgrades Tracking)
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("[checkout.js] build 2025-11-16 with Change Commission & Paid Upgrades Tracking");
+// /checkout.js — build 2025-11-25 (Change Commission visible but disabled on first checkout)
+document.addEventListener("DOMContentLoaded", function() {
+  console.log("[checkout.js] build 2025-11-25 - Change Commission disabled on first checkout");
 
-  const $ = (id) => document.getElementById(id);
-  const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+  var $ = function(id) { return document.getElementById(id); };
+  var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
 
   // Stripe (test)
-  const STRIPE_PUBLISHABLE_KEY = "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
-  let stripe = null;
+  var STRIPE_PUBLISHABLE_KEY = "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
+  var stripe = null;
   try { stripe = Stripe(STRIPE_PUBLISHABLE_KEY); } catch (e) { console.error("Stripe init error:", e); }
 
   // Context
-  const formData     = getJSON("formData", {});
-  const agentListing = getJSON("agentListing", {});
-  const planLS       = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-  const role         = (localStorage.getItem("userRole") || "").trim();
+  var formData     = getJSON("formData", {});
+  var agentListing = getJSON("agentListing", {});
+  var planLS       = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+  var role         = (localStorage.getItem("userRole") || "").trim();
 
-  const isFSBOPlan = (p) => typeof p === "string" && p.includes("FSBO");
-  const likelySellerFlow =
+  var isFSBOPlan = function(p) { return typeof p === "string" && p.includes("FSBO"); };
+  var likelySellerFlow =
     !!(formData && (formData.fsboEmail || formData.ownerEmail || formData.sellerEmail)) ||
     planLS === "Listed Property Basic" || isFSBOPlan(planLS);
 
   // Who row (pure display)
   (function renderWhoRow(){
     if (!$("whoLine")) return;
-    const addr = formData.address || "[Full Address]";
-    const name = formData.name || "[Name]";
-    const type = (agentListing?.commissionType || formData?.commissionType || "%");
-    const raw  = (agentListing?.commission ?? formData?.commission ?? "");
-    const comm = raw ? (type === "$" ? "$" + Math.round(Number(raw)).toLocaleString() : `${raw}%`) : "[commission]";
+    var addr = formData.address || "[Full Address]";
+    var name = formData.name || "[Name]";
+    var type = (agentListing && agentListing.commissionType) || (formData && formData.commissionType) || "%";
+    var raw  = (agentListing && agentListing.commission != null) ? agentListing.commission : ((formData && formData.commission != null) ? formData.commission : "");
+    var comm = raw ? (type === "$" ? "$" + Math.round(Number(raw)).toLocaleString() : raw + "%") : "[commission]";
 
     if (isFSBOPlan(planLS)) {
-      const email = formData.fsboEmail || formData.ownerEmail || "[owner/seller email]";
-      const phone = formData.phone || formData.agentPhone || "[owner/seller phone]";
-      $("whoLine").textContent = [addr, name, email, phone, comm].join(" • ");
+      var email = formData.fsboEmail || formData.ownerEmail || "[owner/seller email]";
+      var phone = formData.phone || formData.agentPhone || "[owner/seller phone]";
+      $("whoLine").textContent = [addr, name, email, phone, comm].join(" * ");
     } else {
-      const brokerage = formData.brokerage || "[Listing Brokerage]";
-      const agent     = formData.agent || "[Listing Agent]";
-      const agentPh   = formData.phone || formData.agentPhone || "[Listing Agent phone]";
-      $("whoLine").textContent = [addr, name, brokerage, agent, agentPh, comm].join(" • ");
+      var brokerage = formData.brokerage || "[Listing Brokerage]";
+      var agent     = formData.agent || "[Listing Agent]";
+      var agentPh   = formData.phone || formData.agentPhone || "[Listing Agent phone]";
+      $("whoLine").textContent = [addr, name, brokerage, agent, agentPh, comm].join(" * ");
     }
-    $("whoRow")?.classList.remove("hidden");
+    var whoRow = $("whoRow");
+    if (whoRow) whoRow.classList.remove("hidden");
   })();
 
   // ---- checkoutData normalize
-  let data = getJSON("checkoutData", null);
+  var data = getJSON("checkoutData", null);
   if (!data) {
-    const plan = planLS;
+    var plan = planLS;
     data = {
-      plan,
+      plan: plan,
       base: isFSBOPlan(plan) ? 100 : (plan === "Listed Property Plus" ? 20 : 0),
       upgrades: { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false, changeCommission:false },
       prices:  { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100, changeCommissionListed:10, changeCommissionFSBO:50 },
@@ -59,33 +60,40 @@ document.addEventListener("DOMContentLoaded", () => {
   } else {
     // upgrades -> canonical object
     if (Array.isArray(data.upgrades)) {
-      const arr = data.upgrades.map(s => (s||"").toLowerCase());
+      var arr = data.upgrades.map(function(s) { return (s||"").toLowerCase(); });
       data.upgrades = {
-        upgradeToPlus: arr.some(s => s.includes("upgrade to listed property plus")),
-        banner:        arr.some(s => s.includes("banner")),
-        premium:       arr.some(s => s.includes("premium")),
-        pin:           arr.some(s => s.includes("pin")),
-        confidential:  arr.some(s => s.includes("confidential")),
-        changeCommission: arr.some(s => s.includes("change commission"))
+        upgradeToPlus: arr.some(function(s) { return s.includes("upgrade to listed property plus"); }),
+        banner:        arr.some(function(s) { return s.includes("banner"); }),
+        premium:       arr.some(function(s) { return s.includes("premium"); }),
+        pin:           arr.some(function(s) { return s.includes("pin"); }),
+        confidential:  arr.some(function(s) { return s.includes("confidential"); }),
+        changeCommission: arr.some(function(s) { return s.includes("change commission"); })
       };
     } else {
-      data.upgrades = Object.assign(
-        { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false, changeCommission:false },
-        data.upgrades || {}
-      );
+      var defaultUpgrades = { upgradeToPlus:false, banner:false, premium:false, pin:false, confidential:false, changeCommission:false };
+      for (var key in defaultUpgrades) {
+        if (!(key in (data.upgrades || {}))) {
+          data.upgrades = data.upgrades || {};
+          data.upgrades[key] = defaultUpgrades[key];
+        }
+      }
     }
     // price table
-    data.prices = Object.assign(
-      { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100, changeCommissionListed:10, changeCommissionFSBO:50 },
-      data.prices || {}
-    );
+    var defaultPrices = { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100, changeCommissionListed:10, changeCommissionFSBO:50 };
+    data.prices = data.prices || {};
+    for (var pk in defaultPrices) {
+      if (!(pk in data.prices)) {
+        data.prices[pk] = defaultPrices[pk];
+      }
+    }
     // base
     if (typeof data.base !== "number") {
       data.base = isFSBOPlan(data.plan) ? data.prices.fsbo
-           : (data.plan === "Listed Property Plus") ? (data.prices.plus ?? 20)
+           : (data.plan === "Listed Property Plus") ? (data.prices.plus || 20)
            : 0;
     }
     if (!data.payer) data.payer = "seller";
+    if (!data.meta) data.meta = {};
   }
 
   // Decide payer (so seller BASIC $0 routes to signature)
@@ -97,7 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ---- STRONG NORMALIZATION (permanent Basic $0 for Box2/no-upsells)
   (function enforceSellerBasicIfNoUpsells(){
-    const noUpsells =
+    var noUpsells =
       !data.upgrades.upgradeToPlus && !data.upgrades.banner && !data.upgrades.premium && 
       !data.upgrades.pin && !data.upgrades.confidential && !data.upgrades.changeCommission;
 
@@ -112,61 +120,71 @@ document.addEventListener("DOMContentLoaded", () => {
   // Agent promo (active all year in 2025, matches agent-detail.html)
   function isAgentNovemberPromoActive() {
     try {
-      const now = new Date();
+      var now = new Date();
       return data.payer === "agent" && now.getFullYear() === 2025;
-    } catch { return false; }
+    } catch(e) { return false; }
+  }
+
+  // Check if Change Commission was initiated from seller-detail
+  function isChangeCommissionEnabled() {
+    return !!(data.meta && data.meta.fromChangeCommission === true);
   }
 
   // Pricing + totals
   function recompute(d) {
-    let plan = d.plan || planLS;
+    var plan = d.plan || planLS;
     
-    // ⚠️ AGENT BLOCK #4: Agents can never pay for Change Commission (prevent stale data)
+    // AGENT BLOCK #4: Agents can never pay for Change Commission (prevent stale data)
     if (d.payer === "agent" && d.upgrades.changeCommission) {
       d.upgrades.changeCommission = false;
     }
-    
-    let base = (typeof d.base === "number") ? d.base
-             : (isFSBOPlan(plan) ? (d.prices.fsbo ?? 100)
-             : (plan === "Listed Property Plus" ? (d.prices.plus ?? 20) : 0));
 
-    const promo = isAgentNovemberPromoActive();
+    // CHANGE COMMISSION BLOCK: Only charge if enabled from seller-detail
+    if (d.upgrades.changeCommission && !isChangeCommissionEnabled()) {
+      d.upgrades.changeCommission = false;
+    }
+    
+    var base = (typeof d.base === "number") ? d.base
+             : (isFSBOPlan(plan) ? (d.prices.fsbo || 100)
+             : (plan === "Listed Property Plus" ? (d.prices.plus || 20) : 0));
+
+    var promo = isAgentNovemberPromoActive();
 
     // If Basic and user chooses upgradeToPlus at checkout
     if (!isFSBOPlan(plan) && plan === "Listed Property Basic" && d.upgrades.upgradeToPlus) {
       plan = "Listed Property Plus";
-      base = promo ? 0 : (d.prices.plus ?? 20);
+      base = promo ? 0 : (d.prices.plus || 20);
       localStorage.setItem("selectedPlan", "Listed Property Plus");
     }
 
     // If already Plus, ensure seller pays base unless agent-promo or explicit free meta
     if (!isFSBOPlan(plan) && plan === "Listed Property Plus") {
-      const freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
+      var freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
       if ((base == null || base === 0) && !promo && d.payer !== "agent" && !freeFlag) {
-        base = d.prices.plus ?? 20;
+        base = d.prices.plus || 20;
       }
       if (promo) base = 0;
     }
 
-    let total = base || 0;
+    var total = base || 0;
 
-    const bannerPrice  = promo ? 0 : (d.prices.banner  ?? 10);
-    const premiumPrice = promo ? 0 : (d.prices.premium ?? 10);
-    const pinPrice     = promo ? 0 : (d.prices.pin     ?? 50);
+    var bannerPrice  = promo ? 0 : (d.prices.banner  || 10);
+    var premiumPrice = promo ? 0 : (d.prices.premium || 10);
+    var pinPrice     = promo ? 0 : (d.prices.pin     || 50);
 
     if (d.upgrades.banner)  total += bannerPrice;
     if (d.upgrades.pin)     total += pinPrice;
     else if (d.upgrades.premium) total += premiumPrice;
 
     if (isFSBOPlan(plan)) {
-      if (d.upgrades.confidential) total += (d.prices.confidential ?? 100);
+      if (d.upgrades.confidential) total += (d.prices.confidential || 100);
       else d.upgrades.confidential = false;
     }
 
-    // Change Commission pricing
-    if (d.upgrades.changeCommission) {
-      const isFSBO = isFSBOPlan(plan);
-      const changeCommPrice = isFSBO ? (d.prices.changeCommissionFSBO ?? 50) : (d.prices.changeCommissionListed ?? 10);
+    // Change Commission pricing - ONLY if enabled from seller-detail
+    if (d.upgrades.changeCommission && isChangeCommissionEnabled()) {
+      var isFSBO = isFSBOPlan(plan);
+      var changeCommPrice = isFSBO ? (d.prices.changeCommissionFSBO || 50) : (d.prices.changeCommissionListed || 10);
       total += changeCommPrice;
     }
 
@@ -181,105 +199,131 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Summary UI
   function renderSummary() {
-    $("planName")    && ($("planName").textContent    = data.plan);
-    $("basePrice")   && ($("basePrice").textContent   = (data.base || 0));
-    $("totalAmount") && ($("totalAmount").textContent = (data.total || 0));
-
-    const promo = isAgentNovemberPromoActive();
-    const sel = [];
-    if (data.upgrades.upgradeToPlus) {
-      sel.push(`Upgrade to Listed Property Plus (${promo ? "$0 — November promo" : "$" + (data.prices.plus ?? 20)})`);
-    }
-    const bannerPrice  = promo ? 0 : (data.prices.banner  ?? 10);
-    const premiumPrice = promo ? 0 : (data.prices.premium ?? 10);
-    const pinPrice     = promo ? 0 : (data.prices.pin     ?? 50);
-
-    if (data.upgrades.banner)  sel.push(`Banner ($${bannerPrice})`);
-    if (data.upgrades.pin)     sel.push(`Pin Placement ($${pinPrice})`);
-    else if (data.upgrades.premium) sel.push(`Premium Placement ($${premiumPrice})`);
-    if (isFSBOPlan(data.plan) && data.upgrades.confidential) sel.push(`Confidential FSBO Upgrade ($${data.prices.confidential})`);
+    var planNameEl = $("planName");
+    var basePriceEl = $("basePrice");
+    var totalAmountEl = $("totalAmount");
     
-    // ⚠️ AGENT BLOCK #3: Don't show Change Commission in summary for agents
-    if (data.upgrades.changeCommission && data.payer === "seller") {
-      const isFSBO = isFSBOPlan(data.plan);
-      const price = isFSBO ? (data.prices.changeCommissionFSBO ?? 50) : (data.prices.changeCommissionListed ?? 10);
-      sel.push(`Change Commission ($${price})`);
+    if (planNameEl) planNameEl.textContent = data.plan;
+    if (basePriceEl) basePriceEl.textContent = (data.base || 0);
+    if (totalAmountEl) totalAmountEl.textContent = (data.total || 0);
+
+    var promo = isAgentNovemberPromoActive();
+    var sel = [];
+    if (data.upgrades.upgradeToPlus) {
+      sel.push("Upgrade to Listed Property Plus (" + (promo ? "$0 - November promo" : "$" + (data.prices.plus || 20)) + ")");
+    }
+    var bannerPrice  = promo ? 0 : (data.prices.banner  || 10);
+    var premiumPrice = promo ? 0 : (data.prices.premium || 10);
+    var pinPrice     = promo ? 0 : (data.prices.pin     || 50);
+
+    if (data.upgrades.banner)  sel.push("Banner ($" + bannerPrice + ")");
+    if (data.upgrades.pin)     sel.push("Pin Placement ($" + pinPrice + ")");
+    else if (data.upgrades.premium) sel.push("Premium Placement ($" + premiumPrice + ")");
+    if (isFSBOPlan(data.plan) && data.upgrades.confidential) sel.push("Confidential FSBO Upgrade ($" + data.prices.confidential + ")");
+    
+    // AGENT BLOCK #3: Only show Change Commission in summary if ENABLED and seller
+    if (data.upgrades.changeCommission && data.payer === "seller" && isChangeCommissionEnabled()) {
+      var isFSBO = isFSBOPlan(data.plan);
+      var price = isFSBO ? (data.prices.changeCommissionFSBO || 50) : (data.prices.changeCommissionListed || 10);
+      sel.push("Change Commission ($" + price + ")");
     }
 
-    if ($("selectedList")) {
-      $("selectedList").innerHTML = sel.length ? sel.map(s => `<li>${s}</li>`).join("") : `<li class="text-gray-400">None</li>`;
-    }
-
-    if ($("goSignatureZero") && $("payNowBtn")) {
-      if ((data.total || 0) <= 0) {
-        $("goSignatureZero").classList.remove("hidden");
-        $("payNowBtn").classList.add("hidden");
+    var selectedListEl = $("selectedList");
+    if (selectedListEl) {
+      if (sel.length) {
+        selectedListEl.innerHTML = sel.map(function(s) { return "<li>" + s + "</li>"; }).join("");
       } else {
-        $("goSignatureZero").classList.add("hidden");
-        $("payNowBtn").classList.remove("hidden");
+        selectedListEl.innerHTML = "<li class=\"text-gray-400\">None</li>";
+      }
+    }
+
+    var goSignatureZeroEl = $("goSignatureZero");
+    var payNowBtnEl = $("payNowBtn");
+    if (goSignatureZeroEl && payNowBtnEl) {
+      if ((data.total || 0) <= 0) {
+        goSignatureZeroEl.classList.remove("hidden");
+        payNowBtnEl.classList.add("hidden");
+      } else {
+        goSignatureZeroEl.classList.add("hidden");
+        payNowBtnEl.classList.remove("hidden");
       }
     }
   }
 
   // Toggles (last-chance)
   function renderLastChance() {
-    const box = $("upsellChoices");
+    var box = $("upsellChoices");
     if (!box) return;
 
-    const isBasic = data.plan === "Listed Property Basic";
-    const isFSBO = isFSBOPlan(data.plan);
-    const promo   = isAgentNovemberPromoActive();
+    var isBasic = data.plan === "Listed Property Basic";
+    var isFSBO = isFSBOPlan(data.plan);
+    var promo   = isAgentNovemberPromoActive();
 
-    const toggles = [];
+    var toggles = [];
     if (isBasic) {
       toggles.push({
         key:"upgradeToPlus",
         label:"Upgrade to Listed Property Plus",
-        price: promo ? 0 : (data.prices.plus ?? 20),
-        note:  promo ? "(November promo — free for agents)" : "",
-        checked: !!data.upgrades.upgradeToPlus
+        price: promo ? 0 : (data.prices.plus || 20),
+        note:  promo ? "(November promo - free for agents)" : "",
+        checked: !!data.upgrades.upgradeToPlus,
+        disabled: false
       });
     }
 
-    const bannerPrice  = promo ? 0 : (data.prices.banner  ?? 10);
-    const premiumPrice = promo ? 0 : (data.prices.premium ?? 10);
-    const pinPrice     = promo ? 0 : (data.prices.pin     ?? 50);
+    var bannerPrice  = promo ? 0 : (data.prices.banner  || 10);
+    var premiumPrice = promo ? 0 : (data.prices.premium || 10);
+    var pinPrice     = promo ? 0 : (data.prices.pin     || 50);
 
-    toggles.push({ key:"banner",  label:"Banner",            price: bannerPrice,  checked: !!data.upgrades.banner });
-    toggles.push({ key:"premium", label:"Premium Placement", price: premiumPrice, checked: !!data.upgrades.premium && !data.upgrades.pin });
-    toggles.push({ key:"pin",     label:"Pin Placement",     price: pinPrice,     checked: !!data.upgrades.pin, note:"(includes Premium)" });
+    toggles.push({ key:"banner",  label:"Banner",            price: bannerPrice,  checked: !!data.upgrades.banner, disabled: false, note: "" });
+    toggles.push({ key:"premium", label:"Premium Placement", price: premiumPrice, checked: !!data.upgrades.premium && !data.upgrades.pin, disabled: false, note: "" });
+    toggles.push({ key:"pin",     label:"Pin Placement",     price: pinPrice,     checked: !!data.upgrades.pin, note:"(includes Premium)", disabled: false });
     
     if (isFSBO) {
-      toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price: data.prices.confidential ?? 100, checked: !!data.upgrades.confidential });
+      toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price: data.prices.confidential || 100, checked: !!data.upgrades.confidential, disabled: false, note: "" });
     }
 
-    // ⚠️ AGENT BLOCK #1: Only show Change Commission to sellers
+    // CHANGE COMMISSION: Show for sellers, but DISABLED unless fromChangeCommission is true
     if (data.payer === "seller") {
-      const changeCommPrice = isFSBO ? (data.prices.changeCommissionFSBO ?? 50) : (data.prices.changeCommissionListed ?? 10);
+      var changeCommPrice = isFSBO ? (data.prices.changeCommissionFSBO || 50) : (data.prices.changeCommissionListed || 10);
+      var isEnabled = isChangeCommissionEnabled();
+      
       toggles.push({ 
         key: "changeCommission", 
         label: "Change Commission", 
         price: changeCommPrice, 
-        checked: !!data.upgrades.changeCommission,
-        note: "(One-time commission change)"
+        checked: isEnabled ? !!data.upgrades.changeCommission : false,
+        disabled: !isEnabled,
+        note: isEnabled ? "(One-time commission change)" : "(Available after listing is created)"
       });
     }
 
-    box.innerHTML = toggles.map(t => `
-      <label class="flex items-center justify-between border rounded-lg px-3 py-2 bg-white">
-        <div>
-          <span class="font-medium">${t.label}</span>
-          <span class="text-gray-500"> — $${t.price}</span>
-          ${t.note ? `<div class="text-[11px] text-gray-500">${t.note}</div>` : ``}
-        </div>
-        <input type="checkbox" class="h-4 w-4" data-key="${t.key}" ${t.checked ? "checked": ""}/>
-      </label>
-    `).join("");
+    var html = "";
+    for (var i = 0; i < toggles.length; i++) {
+      var t = toggles[i];
+      var disabledAttr = t.disabled ? "disabled" : "";
+      var disabledClass = t.disabled ? "opacity-50 cursor-not-allowed" : "";
+      var checkedAttr = t.checked ? "checked" : "";
+      
+      html += "<label class=\"flex items-center justify-between border rounded-lg px-3 py-2 bg-white " + disabledClass + "\">";
+      html += "<div>";
+      html += "<span class=\"font-medium\">" + t.label + "</span>";
+      html += "<span class=\"text-gray-500\"> - $" + t.price + "</span>";
+      if (t.note) {
+        html += "<div class=\"text-[11px] text-gray-500\">" + t.note + "</div>";
+      }
+      html += "</div>";
+      html += "<input type=\"checkbox\" class=\"h-4 w-4\" data-key=\"" + t.key + "\" " + checkedAttr + " " + disabledAttr + "/>";
+      html += "</label>";
+    }
+    box.innerHTML = html;
 
-    Array.from(box.querySelectorAll('input[type="checkbox"]')).forEach(cb => {
-      cb.addEventListener("change", (e) => {
-        const k = e.target.getAttribute("data-key");
-        const checked = e.target.checked;
+    // Wire up checkboxes (only non-disabled ones)
+    var checkboxes = box.querySelectorAll("input[type=\"checkbox\"]:not([disabled])");
+    for (var j = 0; j < checkboxes.length; j++) {
+      checkboxes[j].addEventListener("change", function(e) {
+        var k = e.target.getAttribute("data-key");
+        var checked = e.target.checked;
         data.upgrades = data.upgrades || {};
         if (k === "upgradeToPlus") {
           data.upgrades[k] = checked;
@@ -301,119 +345,128 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (k === "confidential") {
           data.upgrades.confidential = checked && isFSBOPlan(data.plan);
         } else if (k === "changeCommission") {
-          data.upgrades.changeCommission = checked;
+          // Only allow if enabled from seller-detail
+          if (isChangeCommissionEnabled()) {
+            data.upgrades.changeCommission = checked;
+          }
         }
         data = recompute(data);
         localStorage.setItem("checkoutData", JSON.stringify(data));
         renderSummary();
         renderLastChance();
       });
-    });
+    }
   }
 
   // Back
-  $("backBtn")?.addEventListener("click", () => { window.location.href = "/upsell.html"; });
+  var backBtnEl = $("backBtn");
+  if (backBtnEl) {
+    backBtnEl.addEventListener("click", function() { window.location.href = "/upsell.html"; });
+  }
 
   // Pay Now
-  $("payNowBtn")?.addEventListener("click", async () => {
-    const btn = $("payNowBtn");
-    btn.disabled = true;
-    btn.textContent = "Creating checkout…";
+  var payNowBtnEl = $("payNowBtn");
+  if (payNowBtnEl) {
+    payNowBtnEl.addEventListener("click", async function() {
+      var btn = $("payNowBtn");
+      btn.disabled = true;
+      btn.textContent = "Creating checkout...";
 
-    try {
-      if (!stripe) throw new Error("Stripe not available on this page.");
+      try {
+        if (!stripe) throw new Error("Stripe not available on this page.");
 
-      const listingId       = (localStorage.getItem("lastListingId") || "").trim();
-      const successSignature= window.location.origin + "/signature.html"    + (listingId ? `?id=${encodeURIComponent(listingId)}&session_id={CHECKOUT_SESSION_ID}` : "?session_id={CHECKOUT_SESSION_ID}");
-      const successAgent    = window.location.origin + "/agent-detail.html" + (listingId ? `?id=${encodeURIComponent(listingId)}&session_id={CHECKOUT_SESSION_ID}` : "?session_id={CHECKOUT_SESSION_ID}");
+        var listingId       = (localStorage.getItem("lastListingId") || "").trim();
+        var successSignature= window.location.origin + "/signature.html"    + (listingId ? "?id=" + encodeURIComponent(listingId) + "&session_id={CHECKOUT_SESSION_ID}" : "?session_id={CHECKOUT_SESSION_ID}");
+        var successAgent    = window.location.origin + "/agent-detail.html" + (listingId ? "?id=" + encodeURIComponent(listingId) + "&session_id={CHECKOUT_SESSION_ID}" : "?session_id={CHECKOUT_SESSION_ID}");
 
-      // Zero total → route immediately (seller→signature, agent→agent-detail)
-      if ((data.total || 0) <= 0) {
-        window.location.href = (data.payer === "agent") ? successAgent : successSignature;
-        return;
+        // Zero total -> route immediately (seller->signature, agent->agent-detail)
+        if ((data.total || 0) <= 0) {
+          window.location.href = (data.payer === "agent") ? successAgent : successSignature;
+          return;
+        }
+
+        // Price IDs (test)
+        var PRICE_IDS = {
+          PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
+          FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
+          BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR",
+          PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h",
+          PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
+          CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm",
+          CHANGE_COMMISSION_LISTED: "price_1STqWzPTiT2zuxx0ZKLMFpuE",
+          CHANGE_COMMISSION_FSBO: "price_1STqakPTiT2zuxx0zS0nEjDT"
+        };
+
+        var promo   = isAgentNovemberPromoActive();
+        var isFSBO  = isFSBOPlan(data.plan);
+        var isPlus  = data.plan === "Listed Property Plus";
+        var isBasic = data.plan === "Listed Property Basic";
+
+        var items = [];
+
+        if (isFSBO && (data.base || data.prices.fsbo) > 0) {
+          items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
+        } else if (isPlus) {
+          var shouldChargePlus = (data.base || 0) > 0 && !promo;
+          if (shouldChargePlus) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
+        } else if (isBasic && data.upgrades.upgradeToPlus && !promo) {
+          items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
+        }
+
+        if (data.upgrades.banner && !promo)   items.push({ price: PRICE_IDS.BANNER,  quantity: 1 });
+        if (data.upgrades.pin) {
+          if (!promo) items.push({ price: PRICE_IDS.PIN, quantity: 1 });
+        } else if (data.upgrades.premium) {
+          if (!promo) items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
+        }
+        if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
+
+        // AGENT BLOCK #2: Only charge sellers for commission changes, AND only if enabled
+        if (data.upgrades.changeCommission && data.payer === "seller" && isChangeCommissionEnabled()) {
+          var priceId = isFSBO ? PRICE_IDS.CHANGE_COMMISSION_FSBO : PRICE_IDS.CHANGE_COMMISSION_LISTED;
+          items.push({ price: priceId, quantity: 1 });
+        }
+
+        if (!items.length && (data.total || 0) > 0) {
+          // Safety: if total > 0 but no items, bill Plus
+          items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
+        }
+
+        var successUrl = (data.payer === "agent") ? successAgent : successSignature;
+
+        var resp = await fetch("/api/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lineItems: items,
+            successUrl: successUrl,
+            cancelUrl: window.location.origin + "/checkout.html"
+          })
+        });
+
+        var ct  = resp.headers.get("content-type") || "";
+        var out = ct.includes("application/json") ? await resp.json() : { error: "Non-JSON server response" };
+        if (!resp.ok) throw new Error(out.error || "Server failed to create session.");
+
+        if (out.url) { window.location.href = out.url; return; }
+        if (out.id)  {
+          var result = await stripe.redirectToCheckout({ sessionId: out.id });
+          if (result.error) throw new Error(result.error.message || "Stripe redirect failed.");
+          return;
+        }
+        throw new Error("Server returned neither url nor id.");
+      } catch (err) {
+        console.error("[checkout] payment error:", err);
+        alert(err.message || "Payment could not start.");
+      } finally {
+        var btn2 = $("payNowBtn"); 
+        if (btn2) { 
+          btn2.disabled = false; 
+          btn2.textContent = "Pay Now with Stripe"; 
+        }
       }
-
-      // Price IDs (test)
-      const PRICE_IDS = {
-        PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
-        FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
-        BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR",
-        PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h",
-        PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
-        CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm",
-        // Change Commission Price IDs
-        CHANGE_COMMISSION_LISTED: "price_1STqWzPTiT2zuxx0ZKLMFpuE",
-        CHANGE_COMMISSION_FSBO: "price_1STqakPTiT2zuxx0zS0nEjDT"
-      };
-
-      const promo   = isAgentNovemberPromoActive();
-      const isFSBO  = isFSBOPlan(data.plan);
-      const isPlus  = data.plan === "Listed Property Plus";
-      const isBasic = data.plan === "Listed Property Basic";
-
-      const items = [];
-
-      if (isFSBO && (data.base ?? data.prices.fsbo) > 0) {
-        items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
-      } else if (isPlus) {
-        const shouldChargePlus = (data.base ?? 0) > 0 && !promo;
-        if (shouldChargePlus) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-      } else if (isBasic && data.upgrades.upgradeToPlus && !promo) {
-        items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-      }
-
-      if (data.upgrades.banner && !promo)   items.push({ price: PRICE_IDS.BANNER,  quantity: 1 });
-      if (data.upgrades.pin) {
-        if (!promo) items.push({ price: PRICE_IDS.PIN, quantity: 1 });
-      } else if (data.upgrades.premium) {
-        if (!promo) items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
-      }
-      if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
-
-      // ⚠️ AGENT BLOCK #2: Only charge sellers for commission changes
-      if (data.upgrades.changeCommission && data.payer === "seller") {
-        const priceId = isFSBO ? PRICE_IDS.CHANGE_COMMISSION_FSBO : PRICE_IDS.CHANGE_COMMISSION_LISTED;
-        items.push({ price: priceId, quantity: 1 });
-      }
-
-      if (!items.length && (data.total || 0) > 0) {
-        // Safety: if total > 0 but no items, bill Plus
-        items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-      }
-
-      const successUrl = (data.payer === "agent") ? successAgent : successSignature;
-
-      const resp = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lineItems: items,
-          successUrl,
-          cancelUrl: window.location.origin + "/checkout.html"
-        })
-      });
-
-      const ct  = resp.headers.get("content-type") || "";
-      const out = ct.includes("application/json") ? await resp.json() : { error: "Non-JSON server response" };
-      if (!resp.ok) throw new Error(out.error || "Server failed to create session.");
-
-      if (out.url) { window.location.href = out.url; return; }
-      if (out.id)  {
-        const { error } = await stripe.redirectToCheckout({ sessionId: out.id });
-        if (error) throw new Error(error.message || "Stripe redirect failed.");
-        return;
-      }
-      throw new Error("Server returned neither url nor id.");
-    } catch (err) {
-      console.error("[checkout] payment error:", err);
-      alert(err.message || "Payment could not start.");
-    } finally {
-      const btn2 = $("payNowBtn"); if (btn2) { btn2.disabled = false; btn2.textContent = "Pay Now with Stripe"; }
-    }
-  });
-
-  // Note: Paid upgrades are tracked in signature.html/agent-detail.html after Stripe redirect
-  // Users go directly to those pages after payment, not back to checkout.html
+    });
+  }
 
   if (!localStorage.getItem("originalPlan")) {
     localStorage.setItem("originalPlan", planLS);
