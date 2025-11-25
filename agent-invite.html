@@ -1,3 +1,6 @@
+Agent invite · HTML
+Copy
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -149,14 +152,20 @@
 
         // Save to localStorage (agentListing)
         const current = JSON.parse(localStorage.getItem('agentListing') || '{}');
-        if (priceVal === null) delete current.price;
-        else current.price = priceVal;
+        if (priceVal === null) {
+          delete current.price;
+        } else {
+          current.price = priceVal;
+        }
         localStorage.setItem('agentListing', JSON.stringify(current));
 
         // Save to localStorage (formData) for consistency
         const fd = JSON.parse(localStorage.getItem('formData') || '{}');
-        if (priceVal === null) delete fd.price;
-        else fd.price = priceVal;
+        if (priceVal === null) {
+          delete fd.price;
+        } else {
+          fd.price = priceVal;
+        }
         localStorage.setItem('formData', JSON.stringify(fd));
 
         // ✅ NEW: Save to Firestore immediately
