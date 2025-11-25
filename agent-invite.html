@@ -1,6 +1,3 @@
-Agent invite · HTML
-Copy
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -224,7 +221,9 @@ Copy
         const fd = JSON.parse(localStorage.getItem('formData') || '{}');
         fd.agentEmail = email;
         localStorage.setItem('formData', JSON.stringify(fd));
-      } catch {}
+      } catch(err) {
+        console.warn('[agent-invite] could not save agent email to formData:', err);
+      }
 
       // Write to Firestore (so Welcome > Agent finds the listing)
       const ok = await writeAgentToFirestore(email);
