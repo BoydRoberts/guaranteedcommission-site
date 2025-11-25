@@ -192,9 +192,8 @@
       <section class="bg-white rounded shadow p-5">
         <h2 class="text-lg font-semibold">Upgrade your listing</h2>
         <div id="upgradesBox" class="mt-4 space-y-3 text-sm"></div>
-        <div class="mt-4 flex items-center gap-2">
-          <button id="updateUpgradesBtn" class="bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700">Update Upgrades</button>
-          <button id="goCheckoutBtn" class="px-3 py-2 rounded bg-[#4DA6FF] text-white hover:bg-blue-500">Go to Checkout</button>
+        <div class="mt-4">
+          <button id="goCheckoutBtn" class="w-full bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700">Go to Checkout</button>
         </div>
         <p class="text-xs text-gray-500 mt-2">Purchases are final.</p>
       </section>
@@ -1031,19 +1030,6 @@
           }
           
           setJSON("checkoutData", checkoutData);
-        });
-      }
-
-      // Update Upgrades button
-      var updateBtn = $("updateUpgradesBtn");
-      if (updateBtn) {
-        updateBtn.addEventListener("click", function() {
-          var dataLocal = getJSON("checkoutData", null) || {};
-          dataLocal.meta = dataLocal.meta || {};
-          dataLocal.meta.preferredArea = $("preferredArea").value || dataLocal.meta.preferredArea || "";
-          dataLocal.meta.pinArea = $("pinArea").value || dataLocal.meta.pinArea || "";
-          setJSON("checkoutData", dataLocal);
-          alert("Upgrades updated. Go to Checkout to pay (if needed).");
         });
       }
 
