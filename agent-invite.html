@@ -13,7 +13,7 @@
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-xl bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">agent-invite build 2025-10-01</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">agent-invite build 2025-11-25 (price save fix)</span>
       </div>
 
       <!-- Back (consistent site-wide) -->
@@ -45,7 +45,7 @@
         <section class="border rounded-xl p-4">
           <h2 class="font-semibold mb-2">Invite my agent to complete listing</h2>
           <p class="text-sm text-gray-600 mb-3">
-            We’ll save your details, notify your agent, and return you to your Welcome page.
+            We'll save your details, notify your agent, and return you to your Welcome page.
           </p>
 
           <label class="block text-sm font-medium">Agent Email</label>
@@ -62,14 +62,13 @@
         <section class="border rounded-xl p-4">
           <h2 class="font-semibold mb-2">I will complete the listing myself</h2>
           <p class="text-sm text-gray-600 mb-3">
-            You’ll be able to upload photos, set the price, status, and more. (Agents can still be invited later.)
+            You'll be able to upload photos, set the price, status, and more. (Agents can still be invited later.)
           </p>
 
-          <a id="sellerContinue"
-             href="/seller-detail.html"
-             class="inline-flex items-center justify-center w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition">
+          <button id="sellerContinue"
+                  class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition">
             Continue
-          </a>
+          </button>
         </section>
       </div>
 
@@ -138,8 +137,8 @@
       n.classList.remove('hidden');
     }
 
-    // Save price helper (to agentListing)
-    function saveCurrentPrice() {
+    // ✅ FIX: Save price to BOTH localStorage AND Firestore
+    async function saveCurrentPrice() {
       try {
         const raw = $('currentPrice').value;
         let priceVal = null;
@@ -147,12 +146,34 @@
           const n = Number(raw);
           priceVal = isFinite(n) ? n : null;
         }
+
+        // Save to localStorage (agentListing)
         const current = JSON.parse(localStorage.getItem('agentListing') || '{}');
         if (priceVal === null) delete current.price;
         else current.price = priceVal;
         localStorage.setItem('agentListing', JSON.stringify(current));
-      } catch(e) { console.warn('[agent-invite] could not save current price:', e); }
+
+        // Save to localStorage (formData) for consistency
+        const fd = JSON.parse(localStorage.getItem('formData') || '{}');
+        if (priceVal === null) delete fd.price;
+        else fd.price = priceVal;
+        localStorage.setItem('formData', JSON.stringify(fd));
+
+        // ✅ NEW: Save to Firestore immediately
+        const listingId = (localStorage.getItem('lastListingId') || '').trim();
+        if (listingId && db && priceVal !== null) {
+          await updateDoc(doc(db, "listings", listingId), {
+            price: priceVal,
+            updatedAt: serverTimestamp()
+          });
+          console.log('[agent-invite] ✅ Price saved to Firestore:', priceVal);
+        }
+      } catch(e) { 
+        console.warn('[agent-invite] could not save current price:', e); 
+      }
     }
+
+    // Auto-save price on input/change/blur
     $('currentPrice').addEventListener('input', saveCurrentPrice);
     $('currentPrice').addEventListener('change', saveCurrentPrice);
     $('currentPrice').addEventListener('blur', saveCurrentPrice);
@@ -178,8 +199,8 @@
     $('inviteBtn').addEventListener('click', async (e) => {
       e.preventDefault();
 
-      // Save price first
-      saveCurrentPrice();
+      // ✅ Save price first (to localStorage AND Firestore)
+      await saveCurrentPrice();
 
       const email = ($('agentEmail').value || '').trim();
       if (!email || !/^\S+@\S+\.\S{2,}$/.test(email)) {
@@ -201,17 +222,22 @@
       if (!ok) {
         alert('Invite saved locally, but we could not update the server right now. Your agent may not see the listing yet.');
       } else {
-        alert('Your agent has been invited. We’ll return you to your Welcome page.');
+        alert('Your agent has been invited. We'll return you to your Welcome page.');
       }
 
       // Seller returns to Welcome (agent will log in separately)
       window.location.href = '/welcome.html';
     });
 
-    // Seller completes: ensure we persist price before following link
-    $('sellerContinue').addEventListener('click', (e) => {
-      saveCurrentPrice();
-      // let the <a> navigate
+    // ✅ Seller completes: ensure we persist price before navigating
+    $('sellerContinue').addEventListener('click', async (e) => {
+      e.preventDefault();
+      
+      // Save price to Firestore first
+      await saveCurrentPrice();
+      
+      // Then navigate to seller-detail
+      window.location.href = '/seller-detail.html';
     });
   </script>
 </body>
