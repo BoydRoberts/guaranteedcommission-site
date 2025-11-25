@@ -375,13 +375,33 @@ document.addEventListener("DOMContentLoaded", function() {
       try {
         if (!stripe) throw new Error("Stripe not available on this page.");
 
-        var listingId       = (localStorage.getItem("lastListingId") || "").trim();
-        var successSignature= window.location.origin + "/signature.html"    + (listingId ? "?id=" + encodeURIComponent(listingId) + "&session_id={CHECKOUT_SESSION_ID}" : "?session_id={CHECKOUT_SESSION_ID}");
-        var successAgent    = window.location.origin + "/agent-detail.html" + (listingId ? "?id=" + encodeURIComponent(listingId) + "&session_id={CHECKOUT_SESSION_ID}" : "?session_id={CHECKOUT_SESSION_ID}");
+        var listingId = (localStorage.getItem("lastListingId") || "").trim();
+        
+        // Determine where to go after payment:
+        // - Commission change -> signature.html (to sign new ISC)
+        // - Regular upgrades -> seller-detail.html (back to intake)
+        // - Agent -> agent-detail.html
+        var isCommissionChange = isChangeCommissionEnabled();
+        
+        var successSignature = window.location.origin + "/signature.html" + (listingId ? "?id=" + encodeURIComponent(listingId) + "&session_id={CHECKOUT_SESSION_ID}" : "?session_id={CHECKOUT_SESSION_ID}");
+        var successSellerDetail = window.location.origin + "/seller-detail.html" + (listingId ? "?id=" + encodeURIComponent(listingId) + "&session_id={CHECKOUT_SESSION_ID}&upgraded=true" : "?session_id={CHECKOUT_SESSION_ID}&upgraded=true");
+        var successAgent = window.location.origin + "/agent-detail.html" + (listingId ? "?id=" + encodeURIComponent(listingId) + "&session_id={CHECKOUT_SESSION_ID}" : "?session_id={CHECKOUT_SESSION_ID}");
 
-        // Zero total -> route immediately (seller->signature, agent->agent-detail)
+        // Determine success URL based on payer and upgrade type
+        var successUrl;
+        if (data.payer === "agent") {
+          successUrl = successAgent;
+        } else if (isCommissionChange) {
+          // Commission change requires new ISC signature
+          successUrl = successSignature;
+        } else {
+          // Regular upgrades (Banner, Premium, Pin, etc.) go back to seller detail
+          successUrl = successSellerDetail;
+        }
+
+        // Zero total -> route immediately
         if ((data.total || 0) <= 0) {
-          window.location.href = (data.payer === "agent") ? successAgent : successSignature;
+          window.location.href = successUrl;
           return;
         }
 
@@ -422,7 +442,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
 
         // AGENT BLOCK #2: Only charge sellers for commission changes, AND only if enabled
-        if (data.upgrades.changeCommission && data.payer === "seller" && isChangeCommissionEnabled()) {
+        if (data.upgrades.changeCommission && data.payer === "seller" && isCommissionChange) {
           var priceId = isFSBO ? PRICE_IDS.CHANGE_COMMISSION_FSBO : PRICE_IDS.CHANGE_COMMISSION_LISTED;
           items.push({ price: priceId, quantity: 1 });
         }
@@ -431,8 +451,6 @@ document.addEventListener("DOMContentLoaded", function() {
           // Safety: if total > 0 but no items, bill Plus
           items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
         }
-
-        var successUrl = (data.payer === "agent") ? successAgent : successSignature;
 
         var resp = await fetch("/api/create-checkout-session", {
           method: "POST",
