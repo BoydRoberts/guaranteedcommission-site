@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-11-26 (fix double-charging when coming from seller-detail)
+// /checkout.js — build 2025-11-26-v2 (fix upgradeToPlus charging)
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("[checkout.js] build 2025-11-26 - No double-charging for upgrades from seller-detail");
+  console.log("[checkout.js] build 2025-11-26-v2 - Fix upgradeToPlus + no double-charging");
 
   var $ = function(id) { return document.getElementById(id); };
   var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
@@ -147,41 +147,36 @@ document.addEventListener("DOMContentLoaded", function() {
     // Check if this is an upgrade from seller-detail (already paid for base plan)
     var isUpgradeFromSellerDetail = !!(d.meta && d.meta.fromSellerDetail === true);
     
-    var base = (typeof d.base === "number") ? d.base
-             : (isFSBOPlan(plan) ? (d.prices.fsbo || 100)
-             : (plan === "Listed Property Plus" ? (d.prices.plus || 20) : 0));
-
-    var promo = isAgentNovemberPromoActive();
-
-    // If Basic and user chooses upgradeToPlus at checkout
-    if (!isFSBOPlan(plan) && plan === "Listed Property Basic" && d.upgrades.upgradeToPlus) {
-      plan = "Listed Property Plus";
-      base = promo ? 0 : (d.prices.plus || 20);
-      localStorage.setItem("selectedPlan", "Listed Property Plus");
-    }
-
-    // If already Plus, ensure seller pays base unless:
-    // - agent promo
-    // - explicit free meta flag
-    // - OR coming from seller-detail (already paid for plan)
-    if (!isFSBOPlan(plan) && plan === "Listed Property Plus") {
-      var freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
-      if ((base == null || base === 0) && !promo && d.payer !== "agent" && !freeFlag && !isUpgradeFromSellerDetail) {
-        base = d.prices.plus || 20;
-      }
-      // If coming from seller-detail, they already paid for Plus - don't charge again
-      if (isUpgradeFromSellerDetail) {
-        base = 0;
-      }
-      if (promo) base = 0;
-    }
+    // Track if user is upgrading from Basic to Plus (need to charge even from seller-detail)
+    var isUpgradingToPlus = !isFSBOPlan(plan) && plan === "Listed Property Basic" && d.upgrades.upgradeToPlus;
     
-    // FSBO from seller-detail - already paid for FSBO base
-    if (isFSBOPlan(plan) && isUpgradeFromSellerDetail) {
+    var promo = isAgentNovemberPromoActive();
+    
+    // Calculate base fee
+    var base = 0;
+    
+    if (isFSBOPlan(plan)) {
+      // FSBO: $100 unless coming from seller-detail (already paid)
+      base = isUpgradeFromSellerDetail ? 0 : (d.prices.fsbo || 100);
+    } else if (isUpgradingToPlus) {
+      // Basic upgrading to Plus: $20 (charge even from seller-detail - this is a NEW purchase)
+      base = promo ? 0 : (d.prices.plus || 20);
+      plan = "Listed Property Plus";
+      localStorage.setItem("selectedPlan", "Listed Property Plus");
+    } else if (plan === "Listed Property Plus") {
+      // Already Plus: $0 if from seller-detail (already paid), otherwise $20
+      if (isUpgradeFromSellerDetail) {
+        base = 0; // Already paid for Plus
+      } else {
+        var freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
+        base = (promo || d.payer === "agent" || freeFlag) ? 0 : (d.prices.plus || 20);
+      }
+    } else {
+      // Basic (not upgrading): $0
       base = 0;
     }
 
-    var total = base || 0;
+    var total = base;
 
     var bannerPrice  = promo ? 0 : (d.prices.banner  || 10);
     var premiumPrice = promo ? 0 : (d.prices.premium || 10);
@@ -445,22 +440,35 @@ document.addEventListener("DOMContentLoaded", function() {
         var isFSBO  = isFSBOPlan(data.plan);
         var isPlus  = data.plan === "Listed Property Plus";
         var isBasic = data.plan === "Listed Property Basic";
+        var isUpgradingToPlus = data.upgrades && data.upgrades.upgradeToPlus;
 
         var items = [];
 
-        if (isFSBO && (data.base || data.prices.fsbo) > 0) {
+        // FSBO base fee
+        if (isFSBO && (data.base || 0) > 0) {
           items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
-        } else if (isPlus) {
-          var shouldChargePlus = (data.base || 0) > 0 && !promo;
+        } 
+        // Plus base fee - either already Plus OR upgrading to Plus
+        else if ((isPlus || isUpgradingToPlus) && !promo) {
+          // Charge if: base > 0, OR explicitly upgrading to Plus
+          var shouldChargePlus = (data.base || 0) > 0 || isUpgradingToPlus;
+          // But don't charge if coming from seller-detail AND NOT upgrading (already paid)
+          var isUpgradeFromSellerDetail = !!(data.meta && data.meta.fromSellerDetail === true);
+          if (isUpgradeFromSellerDetail && !isUpgradingToPlus) {
+            shouldChargePlus = false;
+          }
           if (shouldChargePlus) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
-        } else if (isBasic && data.upgrades.upgradeToPlus && !promo) {
-          items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
         }
 
-        if (data.upgrades.banner && !promo)   items.push({ price: PRICE_IDS.BANNER,  quantity: 1 });
-        if (data.upgrades.pin) {
+        // Check paidUpgrades to avoid double-charging for add-ons
+        var paidUpgrades = (data.meta && data.meta.paidUpgrades) || {};
+
+        if (data.upgrades.banner && !paidUpgrades.banner && !promo) {
+          items.push({ price: PRICE_IDS.BANNER, quantity: 1 });
+        }
+        if (data.upgrades.pin && !paidUpgrades.pin) {
           if (!promo) items.push({ price: PRICE_IDS.PIN, quantity: 1 });
-        } else if (data.upgrades.premium) {
+        } else if (data.upgrades.premium && !paidUpgrades.premium && !paidUpgrades.pin) {
           if (!promo) items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
         }
         if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
