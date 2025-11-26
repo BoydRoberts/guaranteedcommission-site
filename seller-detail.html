@@ -1,3 +1,6 @@
+Seller detail · HTML
+Copy
+
 <!DOCTYPE html>
 <!-- seller-detail.html - Build 2025-11-25 (paidUpgrades write after payment) -->
 <html lang="en">
@@ -668,7 +671,7 @@
       
       paidUpgrades = paidUpgrades || {};
       
-      // --- Description: Only Plus and FSBO can use ---
+      // --- Description: Only Plus and FSBO can use (Basic cannot purchase this) ---
       var descEl = $("description");
       var descNote = $("descGateNote");
       if (isBasic) {
@@ -679,21 +682,10 @@
         if (descNote) descNote.classList.add("hidden");
       }
       
-      // --- Banner: Locked for Basic; FSBO needs paidUpgrades.banner ---
+      // --- Banner: All plans can unlock if paid ---
       var bannerEl = $("bannerText");
       var bannerNote = $("bannerGateNote");
-      var bannerUnlocked = false;
-      
-      if (isPlus) {
-        // Listed Property Plus: Banner requires purchase
-        bannerUnlocked = !!paidUpgrades.banner;
-      } else if (isFSBO) {
-        // FSBO Plus: Banner requires purchase
-        bannerUnlocked = !!paidUpgrades.banner;
-      } else if (isBasic) {
-        // Basic: Banner always locked
-        bannerUnlocked = false;
-      }
+      var bannerUnlocked = !!paidUpgrades.banner;
       
       if (bannerUnlocked) {
         if (bannerEl) { bannerEl.classList.remove("dimmed"); bannerEl.removeAttribute("disabled"); }
@@ -703,18 +695,10 @@
         if (bannerNote) bannerNote.classList.remove("hidden");
       }
       
-      // --- Premium (preferredArea): Locked for Basic; others need paidUpgrades.premium ---
+      // --- Premium (preferredArea): All plans can unlock if paid (Pin includes Premium) ---
       var premiumEl = $("preferredArea");
       var premiumNote = $("premiumGateNote");
-      var premiumUnlocked = false;
-      
-      if (isPlus) {
-        premiumUnlocked = !!paidUpgrades.premium || !!paidUpgrades.pin; // Pin includes Premium
-      } else if (isFSBO) {
-        premiumUnlocked = !!paidUpgrades.premium || !!paidUpgrades.pin;
-      } else if (isBasic) {
-        premiumUnlocked = false;
-      }
+      var premiumUnlocked = !!paidUpgrades.premium || !!paidUpgrades.pin;
       
       if (premiumUnlocked) {
         if (premiumEl) { premiumEl.classList.remove("dimmed"); premiumEl.removeAttribute("disabled"); }
@@ -724,18 +708,10 @@
         if (premiumNote) premiumNote.classList.remove("hidden");
       }
       
-      // --- Pin (pinArea): Locked for Basic; others need paidUpgrades.pin ---
+      // --- Pin (pinArea): All plans can unlock if paid ---
       var pinEl = $("pinArea");
       var pinNote = $("pinGateNote");
-      var pinUnlocked = false;
-      
-      if (isPlus) {
-        pinUnlocked = !!paidUpgrades.pin;
-      } else if (isFSBO) {
-        pinUnlocked = !!paidUpgrades.pin;
-      } else if (isBasic) {
-        pinUnlocked = false;
-      }
+      var pinUnlocked = !!paidUpgrades.pin;
       
       if (pinUnlocked) {
         if (pinEl) { pinEl.classList.remove("dimmed"); pinEl.removeAttribute("disabled"); }
@@ -1059,15 +1035,34 @@
       }
 
       // Check if returning from successful upgrade payment
+      // Option 1: Check URL params (if Stripe redirect works correctly)
       var urlParams = new URLSearchParams(window.location.search);
       var upgraded = urlParams.get("upgraded") === "true";
       var sessionId = urlParams.get("session_id");
       
-      if (upgraded && sessionId) {
-        // User just paid for upgrades - write paidUpgrades to Firestore
+      // Option 2: Check if we have pending upgrades from seller-detail checkout
+      var checkoutData = getJSON("checkoutData", {});
+      var hasPendingUpgrades = checkoutData.meta && checkoutData.meta.fromSellerDetail === true;
+      var hasUpgradesToProcess = checkoutData.upgrades && (
+        checkoutData.upgrades.banner || 
+        checkoutData.upgrades.premium || 
+        checkoutData.upgrades.pin || 
+        checkoutData.upgrades.confidential
+      );
+      
+      console.log("[boot] URL params - upgraded:", upgraded, "sessionId:", sessionId);
+      console.log("[boot] checkoutData.meta:", checkoutData.meta);
+      console.log("[boot] checkoutData.upgrades:", checkoutData.upgrades);
+      console.log("[boot] hasPendingUpgrades:", hasPendingUpgrades, "hasUpgradesToProcess:", hasUpgradesToProcess);
+      
+      // Process if either URL says upgraded=true OR we have pending upgrades from seller-detail
+      if ((upgraded && sessionId) || (hasPendingUpgrades && hasUpgradesToProcess)) {
+        console.log("[boot] Processing paid upgrades...");
         await processPaidUpgrades();
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname + "?id=" + (urlParams.get("id") || localStorage.getItem("lastListingId") || ""));
+        // Clean up URL if needed
+        if (upgraded || sessionId) {
+          window.history.replaceState({}, document.title, window.location.pathname + "?id=" + (urlParams.get("id") || localStorage.getItem("lastListingId") || ""));
+        }
       }
 
       await refreshFromServer();
@@ -1093,13 +1088,22 @@
     async function processPaidUpgrades() {
       try {
         var listingId = (new URLSearchParams(window.location.search).get("id") || localStorage.getItem("lastListingId") || "").trim();
+        console.log("[processPaidUpgrades] listingId:", listingId);
+        
         if (!listingId) {
           console.warn("[processPaidUpgrades] No listing ID found");
           return;
         }
         
         var checkoutData = getJSON("checkoutData", {});
+        console.log("[processPaidUpgrades] Full checkoutData:", JSON.stringify(checkoutData));
+        
         var upgrades = checkoutData.upgrades || {};
+        console.log("[processPaidUpgrades] Upgrades object:", JSON.stringify(upgrades));
+        
+        // Check if upgrading from Basic to Plus
+        var upgradingToPlus = !!upgrades.upgradeToPlus;
+        console.log("[processPaidUpgrades] Upgrading to Plus:", upgradingToPlus);
         
         // Build paidUpgrades object from what was purchased
         var newPaidUpgrades = {};
@@ -1111,32 +1115,50 @@
         }
         if (upgrades.confidential) newPaidUpgrades.confidential = true;
         
-        // Only update if there's something to update
-        if (Object.keys(newPaidUpgrades).length === 0) {
-          console.log("[processPaidUpgrades] No upgrades to process");
+        console.log("[processPaidUpgrades] newPaidUpgrades to write:", JSON.stringify(newPaidUpgrades));
+        
+        // Only update if there's something to update (upgrades OR plan change)
+        if (Object.keys(newPaidUpgrades).length === 0 && !upgradingToPlus) {
+          console.log("[processPaidUpgrades] No upgrades to process - upgrades object was:", JSON.stringify(upgrades));
           return;
         }
         
         console.log("[processPaidUpgrades] Writing to Firestore:", newPaidUpgrades);
         
-        // Get current paidUpgrades from Firestore and merge
+        // Get current data from Firestore and merge
         var docRef = doc(db, "listings", listingId);
         var snap = await getDoc(docRef);
         var existingPaidUpgrades = {};
+        var currentPlan = "Listed Property Basic";
         if (snap.exists()) {
           existingPaidUpgrades = snap.data().paidUpgrades || {};
+          currentPlan = snap.data().plan || "Listed Property Basic";
         }
         
-        // Merge new with existing
+        // Merge new with existing paidUpgrades
         var mergedPaidUpgrades = Object.assign({}, existingPaidUpgrades, newPaidUpgrades);
         
-        // Write to Firestore
-        await updateDoc(docRef, {
-          paidUpgrades: mergedPaidUpgrades,
+        // Build the update object
+        var updateData = {
           updatedAt: serverTimestamp()
-        });
+        };
         
-        console.log("[processPaidUpgrades] Successfully updated paidUpgrades:", mergedPaidUpgrades);
+        // Add paidUpgrades if any
+        if (Object.keys(mergedPaidUpgrades).length > 0) {
+          updateData.paidUpgrades = mergedPaidUpgrades;
+        }
+        
+        // Upgrade plan from Basic to Plus if purchased
+        if (upgradingToPlus && currentPlan === "Listed Property Basic") {
+          updateData.plan = "Listed Property Plus";
+          localStorage.setItem("selectedPlan", "Listed Property Plus");
+          console.log("[processPaidUpgrades] Upgrading plan from Basic to Plus");
+        }
+        
+        // Write to Firestore
+        await updateDoc(docRef, updateData);
+        
+        console.log("[processPaidUpgrades] Successfully updated Firestore:", updateData);
         
         // Clear the upgrades from checkoutData so they don't get re-processed
         checkoutData.upgrades = { upgradeToPlus: false, banner: false, premium: false, pin: false, confidential: false, changeCommission: false };
