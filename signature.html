@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- signature.html - Build 2025-11-26 (fix new commission display on ISC) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -71,6 +72,7 @@
 
     const $ = (id)=>document.getElementById(id);
     const todayISO = () => new Date().toISOString().slice(0,10);
+    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
 
     // ----- Back behavior (sitewide) -----
     (function wireBack(){
@@ -114,8 +116,8 @@
       if (a) a.href = `/printable-isc.html?id=${encodeURIComponent(listingId)}`;
     })();
 
-    // Simple ISC builder (keeps your original wording)
-    function buildIscTextFromDoc(d) {
+    // Simple ISC builder - NOW accepts optional commission override for commission changes
+    function buildIscTextFromDoc(d, overrideCommission, overrideCommissionType) {
       const addressFull = (d.address || "").trim();
       const short = addressFull.split(",")[0] || "[short address]";
       const apn = (d.apn || "[APN]");
@@ -123,8 +125,10 @@
       const plan = (d.plan || "");
       const isFSBO = plan.includes("FSBO");
 
-      const commissionType = d.commissionType || "%";
-      const cVal = (d.commission || "");
+      // Use override if provided (for commission changes), otherwise use existing
+      const commissionType = overrideCommissionType || d.commissionType || "%";
+      const cVal = overrideCommission || d.commission || "";
+      
       const commissionDisplay = commissionType === "$"
         ? (cVal ? ("$" + Number(cVal).toLocaleString()) : "[commission]")
         : (cVal ? (cVal + "%") : "[commission]");
@@ -164,8 +168,22 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
 
       if (!d) { $("invalidBox").classList.remove("hidden"); return; }
 
-      // Paint ISC and reveal signer UI
-      $("iscText").textContent = buildIscTextFromDoc(d);
+      // Check if this is a commission change - use new commission for ISC
+      const checkoutData = getJSON("checkoutData", {});
+      const isCommissionChange = !!(checkoutData.meta && checkoutData.meta.fromChangeCommission);
+      const newCommission = (checkoutData.meta && checkoutData.meta.newCommission) || null;
+      const newCommissionType = (checkoutData.meta && checkoutData.meta.newCommissionType) || null;
+      
+      console.log("[signature] isCommissionChange:", isCommissionChange);
+      console.log("[signature] newCommission:", newCommission, "newCommissionType:", newCommissionType);
+
+      // Paint ISC with NEW commission if this is a commission change
+      if (isCommissionChange && newCommission) {
+        $("iscText").textContent = buildIscTextFromDoc(d, newCommission, newCommissionType);
+      } else {
+        $("iscText").textContent = buildIscTextFromDoc(d);
+      }
+      
       $("signWrap").classList.remove("hidden");
 
       // Expected seller name (from Firestore)
@@ -227,20 +245,15 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
           await updateDoc(doc(db, "listings", listingId), updates);
           $("sigSaved").classList.remove("hidden");
 
-          // ✅ ADD: Check if this is a commission change
-          try {
-            const checkoutData = JSON.parse(localStorage.getItem("checkoutData") || "{}");
-            if (checkoutData.meta && checkoutData.meta.newCommission) {
-              const newCommission = checkoutData.meta.newCommission;
-              const newType = checkoutData.meta.newCommissionType;
-              
+          // Check if this is a commission change - update the commission in Firestore
+          if (isCommissionChange && newCommission) {
+            try {
               // Build new history entry
               const newHistoryEntry = {
                 commission: newCommission,
-                commissionType: newType,
+                commissionType: newCommissionType || "%",
                 date: todayISO(),
-                label: "Changed",
-                timestamp: serverTimestamp()
+                label: "Changed"
               };
               
               // Get existing history
@@ -249,31 +262,45 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
               // Update Firestore with new commission
               await updateDoc(doc(db, "listings", listingId), {
                 commission: newCommission,
-                commissionType: newType,
+                commissionType: newCommissionType || "%",
                 commissionHistory: [...existingHistory, newHistoryEntry],
                 commissionChangeUsed: true,
                 updatedAt: serverTimestamp()
               });
               
-              console.log("[signature] Commission changed successfully");
+              console.log("[signature] Commission changed successfully to:", newCommission, newCommissionType);
               
-              // Clear the meta fields from checkoutData
-              delete checkoutData.meta.newCommission;
-              delete checkoutData.meta.newCommissionType;
-              localStorage.setItem("checkoutData", JSON.stringify(checkoutData));
+              // Clear the commission change flags from checkoutData
+              const updatedCheckoutData = getJSON("checkoutData", {});
+              if (updatedCheckoutData.meta) {
+                delete updatedCheckoutData.meta.newCommission;
+                delete updatedCheckoutData.meta.newCommissionType;
+                delete updatedCheckoutData.meta.fromChangeCommission;
+              }
+              if (updatedCheckoutData.upgrades) {
+                updatedCheckoutData.upgrades.changeCommission = false;
+              }
+              localStorage.setItem("checkoutData", JSON.stringify(updatedCheckoutData));
+              
+            } catch (err) {
+              console.error("[signature] Failed to update commission:", err);
+              alert("Signature saved, but commission update failed. Please contact support.");
             }
-          } catch (err) {
-            console.error("[signature] Failed to update commission:", err);
           }
 
         } catch (e) {
           console.warn("[signature] save failed; continuing local-only:", e);
         }
 
-        // Continue to intake / invite path
-        window.location.href = isFSBO
-          ? "/seller-detail.html?id=" + encodeURIComponent(listingId)
-          : "/agent-invite.html?id=" + encodeURIComponent(listingId);
+        // For commission changes, go back to seller-detail; otherwise continue normal flow
+        if (isCommissionChange) {
+          window.location.href = "/seller-detail.html?id=" + encodeURIComponent(listingId);
+        } else {
+          // Continue to intake / invite path
+          window.location.href = isFSBO
+            ? "/seller-detail.html?id=" + encodeURIComponent(listingId)
+            : "/agent-invite.html?id=" + encodeURIComponent(listingId);
+        }
       });
     })();
   </script>
