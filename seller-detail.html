@@ -1,8 +1,5 @@
-Seller detail · HTML
-Copy
-
 <!DOCTYPE html>
-<!-- seller-detail.html - Build 2025-11-25 (paidUpgrades write after payment) -->
+<!-- seller-detail.html - Build 2025-11-26 (fix double-charging, pass paidUpgrades to checkout) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -619,9 +616,11 @@ Copy
           primaryIndex: (typeof primaryIndex === "number" ? primaryIndex : 0),
           updatedAt: serverTimestamp()
         });
-        if (thenRefresh) {
-          await refreshFromServer("Photos saved.");
-        }
+        // Don't refresh entire form - just update photos UI and status
+        // This prevents wiping unsaved form fields (beds, baths, sqft, etc.)
+        renderThumbs();
+        computePhotoHelp();
+        setStatus("Photos saved.", true);
       } catch (e) {
         console.warn("[seller] photos update failed", e);
         setStatus("Photos could not be saved.", false);
@@ -985,10 +984,12 @@ Copy
                   return;
                 }
                 
-                // Store the new commission in checkoutData AND set fromChangeCommission flag
+                // Store the new commission in checkoutData AND set flags
                 checkoutData.upgrades.changeCommission = true;
                 checkoutData.meta = checkoutData.meta || {};
                 checkoutData.meta.fromChangeCommission = true; // THIS enables it in checkout.js
+                checkoutData.meta.fromSellerDetail = true; // Don't charge base fee again
+                checkoutData.meta.paidUpgrades = paidUpgradesNow; // Don't double-charge upgrades
                 checkoutData.meta.newCommission = newComm;
                 checkoutData.meta.newCommissionType = newType;
                 setJSON("checkoutData", checkoutData);
@@ -1013,11 +1014,24 @@ Copy
       // Go to Checkout button
       var checkoutBtn = $("goCheckoutBtn");
       if (checkoutBtn) {
-        checkoutBtn.addEventListener("click", function() {
+        checkoutBtn.addEventListener("click", async function() {
           // Set flag so checkout.js knows this is an upgrade from seller-detail, NOT first listing
           var checkoutData = getJSON("checkoutData", {});
           checkoutData.meta = checkoutData.meta || {};
           checkoutData.meta.fromSellerDetail = true;
+          
+          // Pass current paidUpgrades so checkout doesn't double-charge
+          try {
+            if (listingId && db) {
+              var snap = await getDoc(doc(db, "listings", listingId));
+              if (snap.exists()) {
+                checkoutData.meta.paidUpgrades = snap.data().paidUpgrades || {};
+              }
+            }
+          } catch (e) {
+            console.warn("[goCheckout] Could not fetch paidUpgrades:", e);
+          }
+          
           setJSON("checkoutData", checkoutData);
           window.location.href = "/checkout.html";
         });
