@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- seller-detail.html - Build 2025-11-25 (paidUpgrades write after payment) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -1057,6 +1058,18 @@
         $("fullAddress").value = formData.address;
       }
 
+      // Check if returning from successful upgrade payment
+      var urlParams = new URLSearchParams(window.location.search);
+      var upgraded = urlParams.get("upgraded") === "true";
+      var sessionId = urlParams.get("session_id");
+      
+      if (upgraded && sessionId) {
+        // User just paid for upgrades - write paidUpgrades to Firestore
+        await processPaidUpgrades();
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname + "?id=" + (urlParams.get("id") || localStorage.getItem("lastListingId") || ""));
+      }
+
       await refreshFromServer();
       computePhotoHelp();
 
@@ -1075,6 +1088,70 @@
         console.warn("[local-pros] sidebar/strip skipped:", e);
       }
     })();
+    
+    // Process paid upgrades after successful Stripe payment
+    async function processPaidUpgrades() {
+      try {
+        var listingId = (new URLSearchParams(window.location.search).get("id") || localStorage.getItem("lastListingId") || "").trim();
+        if (!listingId) {
+          console.warn("[processPaidUpgrades] No listing ID found");
+          return;
+        }
+        
+        var checkoutData = getJSON("checkoutData", {});
+        var upgrades = checkoutData.upgrades || {};
+        
+        // Build paidUpgrades object from what was purchased
+        var newPaidUpgrades = {};
+        if (upgrades.banner) newPaidUpgrades.banner = true;
+        if (upgrades.premium) newPaidUpgrades.premium = true;
+        if (upgrades.pin) {
+          newPaidUpgrades.pin = true;
+          newPaidUpgrades.premium = true; // Pin includes Premium
+        }
+        if (upgrades.confidential) newPaidUpgrades.confidential = true;
+        
+        // Only update if there's something to update
+        if (Object.keys(newPaidUpgrades).length === 0) {
+          console.log("[processPaidUpgrades] No upgrades to process");
+          return;
+        }
+        
+        console.log("[processPaidUpgrades] Writing to Firestore:", newPaidUpgrades);
+        
+        // Get current paidUpgrades from Firestore and merge
+        var docRef = doc(db, "listings", listingId);
+        var snap = await getDoc(docRef);
+        var existingPaidUpgrades = {};
+        if (snap.exists()) {
+          existingPaidUpgrades = snap.data().paidUpgrades || {};
+        }
+        
+        // Merge new with existing
+        var mergedPaidUpgrades = Object.assign({}, existingPaidUpgrades, newPaidUpgrades);
+        
+        // Write to Firestore
+        await updateDoc(docRef, {
+          paidUpgrades: mergedPaidUpgrades,
+          updatedAt: serverTimestamp()
+        });
+        
+        console.log("[processPaidUpgrades] Successfully updated paidUpgrades:", mergedPaidUpgrades);
+        
+        // Clear the upgrades from checkoutData so they don't get re-processed
+        checkoutData.upgrades = { upgradeToPlus: false, banner: false, premium: false, pin: false, confidential: false, changeCommission: false };
+        checkoutData.meta = checkoutData.meta || {};
+        checkoutData.meta.fromSellerDetail = false;
+        setJSON("checkoutData", checkoutData);
+        
+        // Show success message
+        alert("Payment successful! Your upgrades have been activated.");
+        
+      } catch (err) {
+        console.error("[processPaidUpgrades] Error:", err);
+        alert("Payment received but there was an error activating upgrades. Please contact support.");
+      }
+    }
   </script>
 
 </body>
