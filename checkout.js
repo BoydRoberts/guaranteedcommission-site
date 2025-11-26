@@ -1,6 +1,6 @@
-// /checkout.js — build 2025-11-26-v2 (fix upgradeToPlus charging)
+// /checkout.js — build 2025-11-26-v4 (hard reset for new Basic, prefer fresh selectedPlan)
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("[checkout.js] build 2025-11-26-v2 - Fix upgradeToPlus + no double-charging");
+  console.log("[checkout.js] build 2025-11-26-v4 - Hard reset for new Basic sellers");
 
   var $ = function(id) { return document.getElementById(id); };
   var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
@@ -17,9 +17,15 @@ document.addEventListener("DOMContentLoaded", function() {
   var role         = (localStorage.getItem("userRole") || "").trim();
 
   var isFSBOPlan = function(p) { return typeof p === "string" && p.includes("FSBO"); };
-  var likelySellerFlow =
-    !!(formData && (formData.fsboEmail || formData.ownerEmail || formData.sellerEmail)) ||
-    planLS === "Listed Property Basic" || isFSBOPlan(planLS);
+  
+  // Detect seller flow - check formData for seller indicators
+  // Don't rely on planLS which might be stale from previous session
+  var hasSellerEmail = !!(formData && (formData.fsboEmail || formData.ownerEmail || formData.sellerEmail));
+  var hasAgentData = !!(agentListing && (agentListing.agentEmail || agentListing.brokerage));
+  var roleIsAgent = (role === "listing_agent" || role === "buyers_agent");
+  
+  // Seller flow if: has seller email, OR not clearly an agent flow
+  var likelySellerFlow = hasSellerEmail || (!hasAgentData && !roleIsAgent);
 
   // Who row (pure display)
   (function renderWhoRow(){
@@ -103,18 +109,33 @@ document.addEventListener("DOMContentLoaded", function() {
     data.payer = "agent";
   }
 
-  // ---- STRONG NORMALIZATION (permanent Basic $0 for Box2/no-upsells)
-  (function enforceSellerBasicIfNoUpsells(){
-    var noUpsells =
-      !data.upgrades.upgradeToPlus && !data.upgrades.banner && !data.upgrades.premium && 
-      !data.upgrades.pin && !data.upgrades.confidential && !data.upgrades.changeCommission;
-
-    if (likelySellerFlow && !isFSBOPlan(planLS) && noUpsells) {
+  // ---- HARD RESET for brand-new Basic seller checkouts ----
+  // This ensures stale checkoutData from previous sessions doesn't pollute new Basic listings
+  (function hardResetNewBasicSellerCheckout(){
+    var isNewBasic = !isFSBOPlan(planLS) && planLS === "Listed Property Basic" && likelySellerFlow;
+    
+    var hasMetaFlags = data.meta && (data.meta.fromSellerDetail || data.meta.fromChangeCommission);
+    var ups = data.upgrades || {};
+    var hasUpsells = !!(ups.upgradeToPlus || ups.banner || ups.premium || ups.pin || ups.confidential || ups.changeCommission);
+    
+    // If this is a new Basic seller with no upsells and no meta flags, wipe everything
+    if (isNewBasic && !hasMetaFlags && !hasUpsells) {
       data.plan = "Listed Property Basic";
       data.base = 0;
+      data.total = 0;
+      data.upgrades = {
+        upgradeToPlus: false,
+        banner: false,
+        premium: false,
+        pin: false,
+        confidential: false,
+        changeCommission: false
+      };
+      data.meta = {}; // wipe any stale junk
       localStorage.setItem("selectedPlan", "Listed Property Basic");
+      localStorage.setItem("checkoutData", JSON.stringify(data));
+      console.log("[checkout] Hard reset: New Basic seller, $0");
     }
-    localStorage.setItem("checkoutData", JSON.stringify(data));
   })();
 
   // Agent promo (active all year in 2025, matches agent-detail.html)
@@ -132,7 +153,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // Pricing + totals
   function recompute(d) {
-    var plan = d.plan || planLS;
+    // CRITICAL: Always trust the current selection from localStorage first.
+    // This prevents stale data.plan from overriding new Basic selections.
+    var freshPlan = (localStorage.getItem("selectedPlan") || "").trim();
+    var plan = freshPlan || d.plan || "Listed Property Basic";
     
     // AGENT BLOCK #4: Agents can never pay for Change Commission (prevent stale data)
     if (d.payer === "agent" && d.upgrades.changeCommission) {
