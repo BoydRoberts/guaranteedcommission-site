@@ -1037,6 +1037,11 @@
       var checkoutBtn = $("goCheckoutBtn");
       if (checkoutBtn) {
         checkoutBtn.addEventListener("click", function() {
+          // Set flag so checkout.js knows this is an upgrade from seller-detail, NOT first listing
+          var checkoutData = getJSON("checkoutData", {});
+          checkoutData.meta = checkoutData.meta || {};
+          checkoutData.meta.fromSellerDetail = true;
+          setJSON("checkoutData", checkoutData);
           window.location.href = "/checkout.html";
         });
       }
