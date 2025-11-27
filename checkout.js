@@ -1,6 +1,9 @@
-// /checkout.js — build 2025-11-26-v4 (hard reset for new Basic, prefer fresh selectedPlan)
+Checkout · JS
+Copy
+
+// /checkout.js — build 2025-11-26-v5 (force Basic for sellers with no upsells)
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("[checkout.js] build 2025-11-26-v4 - Hard reset for new Basic sellers");
+  console.log("[checkout.js] build 2025-11-26-v5 - Force Basic $0 for sellers with no upsells");
 
   var $ = function(id) { return document.getElementById(id); };
   var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
@@ -111,15 +114,15 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ---- HARD RESET for brand-new Basic seller checkouts ----
   // This ensures stale checkoutData from previous sessions doesn't pollute new Basic listings
+  // KEY FIX: For sellers without explicit upgrade flags, ALWAYS default to Basic
   (function hardResetNewBasicSellerCheckout(){
-    var isNewBasic = !isFSBOPlan(planLS) && planLS === "Listed Property Basic" && likelySellerFlow;
-    
-    var hasMetaFlags = data.meta && (data.meta.fromSellerDetail || data.meta.fromChangeCommission);
     var ups = data.upgrades || {};
+    var hasMetaFlags = data.meta && (data.meta.fromSellerDetail || data.meta.fromChangeCommission);
     var hasUpsells = !!(ups.upgradeToPlus || ups.banner || ups.premium || ups.pin || ups.confidential || ups.changeCommission);
     
-    // If this is a new Basic seller with no upsells and no meta flags, wipe everything
-    if (isNewBasic && !hasMetaFlags && !hasUpsells) {
+    // If this is a seller flow with NO upsells and NO meta flags, force Basic $0
+    // This catches stale "Listed Property Plus" in localStorage from previous sessions
+    if (likelySellerFlow && !hasMetaFlags && !hasUpsells && !isFSBOPlan(planLS)) {
       data.plan = "Listed Property Basic";
       data.base = 0;
       data.total = 0;
@@ -134,7 +137,7 @@ document.addEventListener("DOMContentLoaded", function() {
       data.meta = {}; // wipe any stale junk
       localStorage.setItem("selectedPlan", "Listed Property Basic");
       localStorage.setItem("checkoutData", JSON.stringify(data));
-      console.log("[checkout] Hard reset: New Basic seller, $0");
+      console.log("[checkout] Hard reset: Seller with no upsells -> Basic $0");
     }
   })();
 
