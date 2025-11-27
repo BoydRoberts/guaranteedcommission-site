@@ -1,7 +1,4 @@
-Checkout · JS
-Copy
-
-// /checkout.js — build 2025-11-26-v5 (force Basic for sellers with no upsells)
+// /checkout.js - build 2025-11-26-v5 (force Basic for sellers with no upsells)
 document.addEventListener("DOMContentLoaded", function() {
   console.log("[checkout.js] build 2025-11-26-v5 - Force Basic $0 for sellers with no upsells");
 
