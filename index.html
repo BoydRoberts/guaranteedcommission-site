@@ -1,4 +1,5 @@
 <!DOCTYPE html> 
+<!-- index.html - Build 2025-11-28 (fix Basic plan default) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -130,7 +131,7 @@
         </div>
 
         <p id="investorConfirmation" class="mt-3 text-green-700 font-semibold text-center hidden">
-          Thank you — your Accredited Investor Certification has been prepared.
+          Thank you - your Accredited Investor Certification has been prepared.
         </p>
       </form>
     </div>
@@ -198,11 +199,11 @@
           <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
 
           <div id="listedPhoneRow">
-            <input type="tel" id="agentPhone" placeholder="Agent's direct phone only – NOT your number" class="w-full border p-1 rounded">
+            <input type="tel" id="agentPhone" placeholder="Agent's direct phone only - NOT your number" class="w-full border p-1 rounded">
             <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (###) ###-####</span>
           </div>
 
-          <input type="email" id="agentEmail" placeholder="Agent's Email – NOT your email" class="w-full border p-1 rounded">
+          <input type="email" id="agentEmail" placeholder="Agent's Email - NOT your email" class="w-full border p-1 rounded">
           <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
           <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
 
@@ -240,8 +241,8 @@
           <p class="mt-2">
             Let it be known: if a buyer's agent/broker facilitates the sale of
             <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed
-            to credit/compensate the buyer's broker – first, by debiting the listing brokerage (if there is an agreement for
-            broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed
+            to credit/compensate the buyer's broker - first, by debiting the listing brokerage (if there is an agreement for
+            broker-to-broker compensation) and second by debiting me, the seller - a commission not to exceed
             <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
           </p>
           <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
@@ -273,7 +274,7 @@
       <div class="text-center mb-4 mt-0">
         <div class="flex items-center justify-center">
           <div class="flex items-center gap-2">
-            <input id="searchBox" type="text" placeholder="Search city, neighborhood, or ZIP…" class="border rounded px-3 py-2 w-72 sm:w-96">
+            <input id="searchBox" type="text" placeholder="Search city, neighborhood, or ZIP..." class="border rounded px-3 py-2 w-72 sm:w-96">
             <button id="searchBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Search Guaranteed Commissions</button>
           </div>
         </div>
@@ -290,9 +291,9 @@
         Press Inquiry
       </button>
       <p>© 2025 GuaranteedCommission.com. All rights reserved.</p>
-      <p>Boyd Roberts · California Licensed Real Estate Broker · DRE License #01354788</p>
+      <p>Boyd Roberts - California Licensed Real Estate Broker - DRE License #01354788</p>
       <p>
-        <a href="/privacy.html" class="hover:underline">Privacy Policy</a> · 
+        <a href="/privacy.html" class="hover:underline">Privacy Policy</a> - 
         <a href="/terms.html" class="hover:underline">Terms of Use</a>
       </p>
       <p class="text-[10px] text-gray-400">This platform is a Commission Communication Platform. All purchases subject to quality control review.</p>
@@ -300,6 +301,9 @@
   </footer>
 
   <script>
+    // Track which plan user explicitly selected this session
+    var userSelectedPlanThisSession = null;
+
     function openInvestorModal(){ document.getElementById('investorModal').classList.remove('hidden'); }
     function closeInvestorModal(){ document.getElementById('investorModal').classList.add('hidden'); }
     function openPressModal(){ document.getElementById('pressModal').classList.remove('hidden'); }
@@ -307,42 +311,41 @@
     function submitPressForm(){ document.getElementById('pressConfirmation').classList.remove('hidden'); }
 
     (function(){
-      const li = document.querySelector('.group');
-      const menu = document.getElementById('commissionMenu');
+      var li = document.querySelector('.group');
+      var menu = document.getElementById('commissionMenu');
       if (!li || !menu) return;
-      let t;
+      var t;
       function open(){ li.classList.add('nav-open'); clearTimeout(t); }
-      function close(){ t = setTimeout(()=>li.classList.remove('nav-open'), 120); }
+      function close(){ t = setTimeout(function(){li.classList.remove('nav-open');}, 120); }
       li.addEventListener('mouseenter', open);
       li.addEventListener('mouseleave', close);
       menu.addEventListener('mouseenter', open);
       menu.addEventListener('mouseleave', close);
-      document.getElementById('commissionToggle')?.addEventListener('focus', open);
-      document.getElementById('commissionToggle')?.addEventListener('blur', close);
+      var toggle = document.getElementById('commissionToggle');
+      if(toggle){ toggle.addEventListener('focus', open); toggle.addEventListener('blur', close); }
     })();
 
     (function(){
-      const btn = document.getElementById('backBtnHdr');
+      var btn = document.getElementById('backBtnHdr');
       if (!btn) return;
       btn.addEventListener('click', function(){
         try {
-          const ref = document.referrer || "";
+          var ref = document.referrer || "";
           if (history.length > 1 && ref && ref !== location.href) {
             history.back();
-          } else {
-            // no-op fallback
           }
-        } catch (_) { }
+        } catch (e) { }
       });
     })();
 
     function isValidFullAddress(s) {
       if (!s) return false;
-      const re = /^\s*.+?,\s*[A-Za-z .'\-]+,\s*[A-Za-z]{2}\s+\d{5}(?:-\d{4})?\s*$/;
+      var re = /^\s*.+?,\s*[A-Za-z .'\-]+,\s*[A-Za-z]{2}\s+\d{5}(?:-\d{4})?\s*$/;
       return re.test(s.trim());
     }
 
     function selectPlan(planName){
+      userSelectedPlanThisSession = planName; // Track explicit selection
       localStorage.setItem("selectedPlan", planName);
       showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
       setTimeout(fitStrip1, 0);
@@ -350,13 +353,13 @@
     }
 
     function showForm(type){
-      const title = document.getElementById("formTitle");
-      const phoneInput = document.getElementById('agentPhone');
-      const brokerageInput = document.getElementById('brokerage');
-      const agentInput = document.getElementById('agent');
-      const agentEmailInput = document.getElementById('agentEmail');
-      const fsboEmailRow = document.getElementById('fsboEmailRow');
-      const listedPhoneRow = document.getElementById('listedPhoneRow');
+      var title = document.getElementById("formTitle");
+      var phoneInput = document.getElementById('agentPhone');
+      var brokerageInput = document.getElementById('brokerage');
+      var agentInput = document.getElementById('agent');
+      var agentEmailInput = document.getElementById('agentEmail');
+      var fsboEmailRow = document.getElementById('fsboEmailRow');
+      var listedPhoneRow = document.getElementById('listedPhoneRow');
 
       if(type === 'fsbo'){
         title.textContent = 'FSBO Communication Form';
@@ -372,7 +375,7 @@
       } else {
         title.textContent = (type === 'plus' ? 'Listed Property Plus Communication Form' : 'Listed Property Communication Form');
         listedPhoneRow.classList.remove('hidden');
-        phoneInput.placeholder = "Agent's direct phone only – NOT your number";
+        phoneInput.placeholder = "Agent's direct phone only - NOT your number";
         brokerageInput.style.display = 'block';
         agentInput.style.display = 'block';
         agentEmailInput.style.display = 'block';
@@ -384,23 +387,23 @@
     }
 
     function fitStrip1(){
-      const b1 = document.getElementById('box1');
-      const b2 = document.getElementById('formBlock');
-      const b3 = document.getElementById('box3');
+      var b1 = document.getElementById('box1');
+      var b2 = document.getElementById('formBlock');
+      var b3 = document.getElementById('box3');
       if (!b1 || !b2 || !b3) return;
 
-      [b1, b2, b3].forEach(b => { b.style.height = 'auto'; });
+      [b1, b2, b3].forEach(function(b){ b.style.height = 'auto'; });
 
-      const h1 = Math.max(b1.scrollHeight, b1.getBoundingClientRect().height);
-      const h2 = Math.max(b2.scrollHeight, b2.getBoundingClientRect().height);
-      const h3 = Math.max(b3.scrollHeight, b3.getBoundingClientRect().height);
-      let target = Math.max(h1, h2, h3);
+      var h1 = Math.max(b1.scrollHeight, b1.getBoundingClientRect().height);
+      var h2 = Math.max(b2.scrollHeight, b2.getBoundingClientRect().height);
+      var h3 = Math.max(b3.scrollHeight, b3.getBoundingClientRect().height);
+      var target = Math.max(h1, h2, h3);
 
-      [b1, b2, b3].forEach(b => b.style.height = target + 'px');
+      [b1, b2, b3].forEach(function(b){ b.style.height = target + 'px'; });
 
       function ensureFits(el){
-        const tiers = ['compact','compact2','compact3'];
-        for (let i=0; i<tiers.length; i++){
+        var tiers = ['compact','compact2','compact3'];
+        for (var i=0; i<tiers.length; i++){
           if (el.scrollHeight <= el.clientHeight + 1) return;
           if (!el.classList.contains(tiers[i])) el.classList.add(tiers[i]);
         }
@@ -408,64 +411,77 @@
       ensureFits(b2);
       ensureFits(b3);
 
-      const t2 = Math.max(
+      var t2 = Math.max(
         b1.scrollHeight, b1.getBoundingClientRect().height,
         b2.scrollHeight, b2.getBoundingClientRect().height,
         b3.scrollHeight, b3.getBoundingClientRect().height
       );
-      [b1, b2, b3].forEach(b => b.style.height = t2 + 'px');
+      [b1, b2, b3].forEach(function(b){ b.style.height = t2 + 'px'; });
     }
 
     (function observeStrip1(){
-      const ids = ['box1','formBlock','box3'];
-      const els = ids.map(id => document.getElementById(id)).filter(Boolean);
+      var ids = ['box1','formBlock','box3'];
+      var els = [];
+      for(var i=0;i<ids.length;i++){
+        var el = document.getElementById(ids[i]);
+        if(el) els.push(el);
+      }
       if (!els.length) return;
-      const mo = new MutationObserver(() => fitStrip1());
-      els.forEach(el => mo.observe(el, { childList:true, subtree:true, characterData:true }));
+      var mo = new MutationObserver(function(){ fitStrip1(); });
+      for(var j=0;j<els.length;j++){
+        mo.observe(els[j], { childList:true, subtree:true, characterData:true });
+      }
     })();
 
-    window.addEventListener('DOMContentLoaded', () => {
-      const lastSelected = localStorage.getItem('selectedPlan') || 'Listed Property Basic';
+    window.addEventListener('DOMContentLoaded', function() {
+      // CRITICAL FIX: Always default to Basic on page load
+      // This prevents stale "Listed Property Plus" from polluting new listings
       showForm('listed');
-      localStorage.setItem('selectedPlan', lastSelected.includes('FSBO') ? 'Listed Property Basic' : lastSelected);
+      localStorage.setItem('selectedPlan', 'Listed Property Basic');
+      console.log('[index] Page load: Reset selectedPlan to Listed Property Basic');
 
-      const phoneInput = document.getElementById('agentPhone');
-      const phoneError = document.getElementById('phoneError');
-      phoneInput?.addEventListener('input', function(){
-        let d = this.value.replace(/\D/g,'').slice(0,10);
-        let v = d;
-        if (d.length > 6) v = `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
-        else if (d.length > 3) v = `(${d.slice(0,3)}) ${d.slice(3)}`;
-        this.value = v;
-        const ok = /^\(\d{3}\)\s\d{3}-\d{4}$/.test(this.value);
-        phoneError?.classList.toggle('hidden', ok || d.length < 10);
-        this.classList.toggle('border-red-500', !ok && d.length === 10);
-        syncAll();
-        fitStrip1();
-      });
-
-      ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission','commissionType']
-        .forEach(id=>{
-          const el=document.getElementById(id);
-          if(!el) return;
-          el.addEventListener('input', ()=>{ syncAll(); fitStrip1(); });
-          el.addEventListener('change', ()=>{ syncAll(); fitStrip1(); });
+      var phoneInput = document.getElementById('agentPhone');
+      var phoneError = document.getElementById('phoneError');
+      if(phoneInput){
+        phoneInput.addEventListener('input', function(){
+          var d = this.value.replace(/\D/g,'').slice(0,10);
+          var v = d;
+          if (d.length > 6) v = '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+          else if (d.length > 3) v = '(' + d.slice(0,3) + ') ' + d.slice(3);
+          this.value = v;
+          var ok = /^\(\d{3}\)\s\d{3}-\d{4}$/.test(this.value);
+          if(phoneError){
+            phoneError.classList.toggle('hidden', ok || d.length < 10);
+          }
+          this.classList.toggle('border-red-500', !ok && d.length === 10);
+          syncAll();
+          fitStrip1();
         });
+      }
+
+      var syncFields = ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission','commissionType'];
+      for(var i=0;i<syncFields.length;i++){
+        var el = document.getElementById(syncFields[i]);
+        if(el){
+          el.addEventListener('input', function(){ syncAll(); fitStrip1(); });
+          el.addEventListener('change', function(){ syncAll(); fitStrip1(); });
+        }
+      }
 
       function syncAll(){
-        const fullAddr = (document.getElementById('address').value || '').trim();
-        const short = fullAddr.split(',')[0] || '';
-        const nameVal = document.getElementById('name').value || '';
-        const apnVal = document.getElementById('apn').value || '';
-        const phoneVal = document.getElementById('agentPhone').value || '';
-        const brokerageVal = document.getElementById('brokerage').value || '';
-        const agentVal = document.getElementById('agent').value || '';
-        const agentEmailVal = document.getElementById('agentEmail').value || '';
-        const fsboEmailInput = document.getElementById('fsboEmailInput');
-        const amount = (document.getElementById('commission').value || '').trim();
-        const type = document.getElementById('commissionType').value;
-        const suffix = type === '%' ? 'of the total purchase price' : '';
-        const display = type === '$' ? (amount ? ('$' + Number(amount).toLocaleString()) : '') : (amount ? amount + '%' : '');
+        var fullAddr = (document.getElementById('address').value || '').trim();
+        var short = fullAddr.split(',')[0] || '';
+        var nameVal = document.getElementById('name').value || '';
+        var apnVal = document.getElementById('apn').value || '';
+        var phoneVal = document.getElementById('agentPhone').value || '';
+        var brokerageVal = document.getElementById('brokerage').value || '';
+        var agentVal = document.getElementById('agent').value || '';
+        var agentEmailVal = document.getElementById('agentEmail').value || '';
+        var fsboEmailInput = document.getElementById('fsboEmailInput');
+        var amount = (document.getElementById('commission').value || '').trim();
+        var type = document.getElementById('commissionType').value;
+        var suffix = type === '%' ? 'of the total purchase price' : '';
+        var display = type === '$' ? (amount ? ('$' + Number(amount).toLocaleString()) : '') : (amount ? amount + '%' : '');
 
         document.getElementById('letterName').textContent = nameVal || '[name]';
         document.getElementById('letterAddressFull').textContent = fullAddr || '[full address]';
@@ -501,119 +517,150 @@
     });
 
     async function submitForm(){
-      const isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
-      const requiredIds = ['name','address','agentPhone'];
-      if (isFSBO) requiredIds.push('apn','fsboEmailInput');
-      let ok=true;
-      for(const id of requiredIds){
-        const el=document.getElementById(id);
-        if(!el||!el.value.trim()){ if(el) el.classList.add('border-red-500'); ok=false; }
-        else el.classList.remove('border-red-500');
+      var isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
+      var requiredIds = ['name','address','agentPhone'];
+      if (isFSBO) { requiredIds.push('apn'); requiredIds.push('fsboEmailInput'); }
+      var ok = true;
+      for(var i=0;i<requiredIds.length;i++){
+        var id = requiredIds[i];
+        var el = document.getElementById(id);
+        if(!el || !el.value.trim()){ 
+          if(el) el.classList.add('border-red-500'); 
+          ok = false; 
+        } else {
+          el.classList.remove('border-red-500');
+        }
       }
       if(!ok){ alert('Please complete all required fields.'); return; }
 
-      const addressEl=document.getElementById('address');
-      const addrVal=(addressEl.value||'').trim();
+      var addressEl = document.getElementById('address');
+      var addrVal = (addressEl.value || '').trim();
       if(!isValidFullAddress(addrVal)){
         addressEl.classList.add('border-red-500');
         alert('Please use full address format: Street, City, ST 12345');
         return;
-      } else addressEl.classList.remove('border-red-500');
+      } else {
+        addressEl.classList.remove('border-red-500');
+      }
 
-      // ✅ FIXED: Don't clear lastListingId anymore
+      // Clear stale session data for new listing
       try {
-        ['agentListing','checkoutData','intakeFollowups','lastListingAddress','signature','signedISC']
-          .forEach(k=>localStorage.removeItem(k));
-        Object.keys(localStorage).forEach(k=>{
-          if (k.startsWith('formData:') || k.startsWith('agentListing:') || k.startsWith('signedISC:')) localStorage.removeItem(k);
-        });
+        var keysToRemove = ['agentListing','checkoutData','intakeFollowups','lastListingAddress','signature','signedISC'];
+        for(var k=0;k<keysToRemove.length;k++){
+          localStorage.removeItem(keysToRemove[k]);
+        }
+        var allKeys = Object.keys(localStorage);
+        for(var m=0;m<allKeys.length;m++){
+          var key = allKeys[m];
+          if (key.indexOf('formData:') === 0 || key.indexOf('agentListing:') === 0 || key.indexOf('signedISC:') === 0) {
+            localStorage.removeItem(key);
+          }
+        }
       } catch(e) {}
 
-      const fsboEmailEl=document.getElementById('fsboEmailInput');
-      const formData={
-        name:document.getElementById('name').value.trim(),
-        address:addrVal,
-        apn:document.getElementById('apn').value.trim(),
-        commission:document.getElementById('commission').value.trim(),
-        commissionType:document.getElementById('commissionType').value,
-        phone:document.getElementById('agentPhone').value.trim(),
-        brokerage:document.getElementById('brokerage').value.trim(),
-        agent:document.getElementById('agent').value.trim(),
-        agentEmail:document.getElementById('agentEmail').value.trim(),
-        fsboEmail:fsboEmailEl?fsboEmailEl.value.trim():''
+      var fsboEmailEl = document.getElementById('fsboEmailInput');
+      var formData = {
+        name: document.getElementById('name').value.trim(),
+        address: addrVal,
+        apn: document.getElementById('apn').value.trim(),
+        commission: document.getElementById('commission').value.trim(),
+        commissionType: document.getElementById('commissionType').value,
+        phone: document.getElementById('agentPhone').value.trim(),
+        brokerage: document.getElementById('brokerage').value.trim(),
+        agent: document.getElementById('agent').value.trim(),
+        agentEmail: document.getElementById('agentEmail').value.trim(),
+        fsboEmail: fsboEmailEl ? fsboEmailEl.value.trim() : ''
       };
-      localStorage.setItem("formData",JSON.stringify(formData));
+      localStorage.setItem("formData", JSON.stringify(formData));
       if(formData.address){
-        const short=formData.address.split(',')[0];
-        localStorage.setItem('shortAddress',short);
+        var short = formData.address.split(',')[0];
+        localStorage.setItem('shortAddress', short);
       }
-      const plan=localStorage.getItem('selectedPlan')||'Listed Property Basic';
-      localStorage.setItem('postSignatureOptions',plan.includes('FSBO')?'fsbo':'listed');
+      
+      // CRITICAL FIX: Determine plan based on what user explicitly selected THIS SESSION
+      // If user didn't click a plan option, default to Basic (for Listed) or FSBO
+      var plan;
+      if (isFSBO) {
+        plan = 'FSBO Plus';
+      } else if (userSelectedPlanThisSession === 'Listed Property Plus') {
+        plan = 'Listed Property Plus';
+      } else {
+        // Default to Basic - user either selected Basic or didn't select anything
+        plan = 'Listed Property Basic';
+      }
+      
+      // Save the correct plan
+      localStorage.setItem('selectedPlan', plan);
+      console.log('[index] submitForm: plan =', plan, '(userSelectedPlanThisSession:', userSelectedPlanThisSession, ')');
+      
+      localStorage.setItem('postSignatureOptions', plan.indexOf('FSBO') >= 0 ? 'fsbo' : 'listed');
 
-      localStorage.setItem('loginOrigin','box2');
-      localStorage.setItem('nextAfterLogin','/verify-code.html');
+      localStorage.setItem('loginOrigin', 'box2');
+      localStorage.setItem('nextAfterLogin', '/verify-code.html');
 
-      // ✅ FIXED: Removed problematic commissionHistory and other complex fields
       try {
-        const db = window.gc && window.gc.db;
+        var db = window.gc && window.gc.db;
         if (db) {
-          const {
-            addDoc, collection, serverTimestamp,
-            getDocs, query, where, orderBy, limit
-          } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+          var firestore = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+          var addDoc = firestore.addDoc;
+          var collection = firestore.collection;
+          var serverTimestamp = firestore.serverTimestamp;
+          var getDocs = firestore.getDocs;
+          var query = firestore.query;
+          var where = firestore.where;
+          var orderBy = firestore.orderBy;
+          var limit = firestore.limit;
 
-          const listingsCol = collection(db, "listings");
+          var listingsCol = collection(db, "listings");
 
-          let existingId = "";
+          var existingId = "";
           try {
-            const exactSnap = await getDocs(query(listingsCol, where("address","==", addrVal), limit(5)));
-            exactSnap.forEach(d => { if (!existingId) existingId = d.id; });
-          } catch {}
+            var exactSnap = await getDocs(query(listingsCol, where("address","==", addrVal), limit(5)));
+            exactSnap.forEach(function(d){ if (!existingId) existingId = d.id; });
+          } catch(e) {}
 
           if (!existingId) {
             try {
-              const recentSnap = await getDocs(query(listingsCol, orderBy("createdAt","desc"), limit(50)));
-              const addrLower = addrVal.toLowerCase();
-              recentSnap.forEach(d => {
-                const data = d.data() || {};
-                const a = (data.address || '').toLowerCase();
+              var recentSnap = await getDocs(query(listingsCol, orderBy("createdAt","desc"), limit(50)));
+              var addrLower = addrVal.toLowerCase();
+              recentSnap.forEach(function(d){
+                var data = d.data() || {};
+                var a = (data.address || '').toLowerCase();
                 if (!existingId && a === addrLower) existingId = d.id;
               });
-            } catch {}
+            } catch(e) {}
           }
 
-          // ✅ SIMPLIFIED PAYLOAD - removed problematic fields
-          const payload = {
+          // Save listing with correct plan
+          var payload = {
             address: formData.address,
             shortAddress: (formData.address.split(",")[0] || "").trim(),
             apn: formData.apn || "",
-            plan,
+            plan: plan,
             status: "Draft",
             commission: formData.commission || "",
             commissionType: formData.commissionType || "%",
             ownerName: formData.name || "",
-            ownerEmail: plan.includes('FSBO') ? (formData.fsboEmail || "") : "",
-            ownerPhone: plan.includes('FSBO') ? (formData.phone || "") : "",
-            agentName:  plan.includes('FSBO') ? "" : (formData.agent || ""),
-            agentPhone: plan.includes('FSBO') ? "" : (formData.phone || ""),
-            agentEmail: plan.includes('FSBO') ? "" : (formData.agentEmail || ""),
-            brokerage:  plan.includes('FSBO') ? "" : (formData.brokerage || ""),
+            ownerEmail: plan.indexOf('FSBO') >= 0 ? (formData.fsboEmail || "") : "",
+            ownerPhone: plan.indexOf('FSBO') >= 0 ? (formData.phone || "") : "",
+            agentName:  plan.indexOf('FSBO') >= 0 ? "" : (formData.agent || ""),
+            agentPhone: plan.indexOf('FSBO') >= 0 ? "" : (formData.phone || ""),
+            agentEmail: plan.indexOf('FSBO') >= 0 ? "" : (formData.agentEmail || ""),
+            brokerage:  plan.indexOf('FSBO') >= 0 ? "" : (formData.brokerage || ""),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             source: "index.box2"
           };
 
-          console.log("[index] 💾 Saving listing to Firestore...");
-          const ref = await addDoc(listingsCol, payload);
-          console.log("[index] ✅ Listing saved! ID:", ref.id);
+          console.log("[index] Saving listing to Firestore with plan:", plan);
+          var ref = await addDoc(listingsCol, payload);
+          console.log("[index] Listing saved! ID:", ref.id);
           
           localStorage.setItem("lastListingId", ref.id);
-          console.log("[index] ✅ Saved to localStorage:", ref.id);
-          
           localStorage.setItem("lastListingAddress", payload.address || "");
-          localStorage.setItem(`formData:${ref.id}`, JSON.stringify(formData));
+          localStorage.setItem('formData:' + ref.id, JSON.stringify(formData));
         } else {
-          console.warn("[firestore] db not available — skipped server save");
+          console.warn("[firestore] db not available - skipped server save");
         }
       } catch (err) {
         console.error("[firestore] Save failed:", err);
@@ -621,162 +668,166 @@
         return;
       }
 
-      window.location.href="/login.html";
+      window.location.href = "/login.html";
     }
 
-    function fmtUSD(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
+    function fmtUSD(n){ var v = Number(n||0); return v ? ("$"+v.toLocaleString()) : "$-"; }
 
     function shareLimitOk() {
       try {
-        const day = new Date().toISOString().slice(0,10);
-        const key = 'shareCount:' + day;
-        const n = Number(localStorage.getItem(key) || 0);
+        var day = new Date().toISOString().slice(0,10);
+        var key = 'shareCount:' + day;
+        var n = Number(localStorage.getItem(key) || 0);
         if (n >= 5) return false;
         localStorage.setItem(key, String(n + 1));
         return true;
-      } catch { return true; }
+      } catch(e) { return true; }
     }
     function buildListingUrlById(id) {
       return window.location.origin + '/listing.html?id=' + encodeURIComponent(id);
     }
     function openEmail(address, url) {
-      const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
-      const body = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
-      const a = document.createElement('a');
-      a.href = `mailto:?subject=${subject}&body=${body}`;
+      var subject = encodeURIComponent(address ? 'Listing: ' + address : 'Listing');
+      var body = encodeURIComponent((address ? (address + " - ") : "") + 'commission posted with photos.\n\n' + url);
+      var a = document.createElement('a');
+      a.href = 'mailto:?subject=' + subject + '&body=' + body;
       a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      setTimeout(()=>{ try { document.body.removeChild(a); } catch {} }, 0);
+      setTimeout(function(){ try { document.body.removeChild(a); } catch(e){} }, 0);
     }
     function openText(address, url) {
-      const msg = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
-      window.location.href = `sms:&body=${msg}`;
+      var msg = encodeURIComponent((address ? (address + " - ") : "") + 'commission posted with photos.\n\n' + url);
+      window.location.href = 'sms:&body=' + msg;
     }
 
     function commissionDollars(price, val, type){
-      const p=Number(price||0), c=Number(val||0);
+      var p = Number(price||0), c = Number(val||0);
       if(!c) return null;
-      if(type==='$') return Math.round(c);
+      if(type === '$') return Math.round(c);
       if(p) return Math.round(p*(c/100));
       return null;
     }
+    
     function renderTile(data){
-      const {
-        id,
-        address="[full address]",
-        price,
-        commission,
-        commissionType="%",
-        bannerText="",
-        photos=[],
-        primaryIndex=0,
-        status="Active",
-        brokerage="[listing brokerage]",
-        agentName="",
-        agentPhone="",
-        plan="Listed Property Basic",
-        bedrooms, bathrooms, sqft,
-        propertyType,
-        views=0,
-        likes=0
-      } = data || {};
+      var id = data.id || "";
+      var address = data.address || "[full address]";
+      var price = data.price;
+      var commission = data.commission;
+      var commissionType = data.commissionType || "%";
+      var bannerText = data.bannerText || "";
+      var photos = data.photos || [];
+      var primaryIndex = data.primaryIndex || 0;
+      var status = data.status || "Active";
+      var brokerage = data.brokerage || "[listing brokerage]";
+      var agentName = data.agentName || "";
+      var agentPhone = data.agentPhone || "";
+      var plan = data.plan || "Listed Property Basic";
+      var bedrooms = data.bedrooms;
+      var bathrooms = data.bathrooms;
+      var sqft = data.sqft;
+      var propertyType = data.propertyType || "";
+      var views = data.views || 0;
+      var likes = data.likes || 0;
 
-      const calc = commissionDollars(price, commission, commissionType);
-      const line1Left  = fmtUSD(price);
-      const line1Mid   = commission ? (commissionType==='%' ? `${commission}%` : `$${Number(commission).toLocaleString()}`) : '—';
-      const line1Right = (calc!=null) ? `$${calc.toLocaleString()}` : '—';
-      const img = (Array.isArray(photos) && photos.length ? photos[primaryIndex||0] : "");
-      const typeSeg = propertyType ? ` | ${propertyType}` : '';
-      const card = document.createElement('article');
+      var calc = commissionDollars(price, commission, commissionType);
+      var line1Left  = fmtUSD(price);
+      var line1Mid   = commission ? (commissionType === '%' ? commission + '%' : '$' + Number(commission).toLocaleString()) : '-';
+      var line1Right = (calc != null) ? '$' + calc.toLocaleString() : '-';
+      var img = (Array.isArray(photos) && photos.length ? photos[primaryIndex||0] : "");
+      var typeSeg = propertyType ? ' | ' + propertyType : '';
+      var card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
-      card.onclick = () => {
+      card.onclick = function() {
         if (id) {
-          window.location.href = `/listing.html?id=${encodeURIComponent(id)}`;
+          window.location.href = '/listing.html?id=' + encodeURIComponent(id);
         } else {
-          const slug = encodeURIComponent(address);
-          window.location.href = `/listing.html?addr=${slug}`;
+          var slug = encodeURIComponent(address);
+          window.location.href = '/listing.html?addr=' + slug;
         }
       };
 
-      card.innerHTML = `
-        <div class="relative">
-          <img class="gc-photo" src="${img || ''}" alt="Listing photo">
-          ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ``}
-          <button type="button" class="gc-heart" aria-label="Like">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2" aria-hidden="true">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>
-            </svg>
-          </button>
-          <button type="button" class="gc-share gc-share-left" data-share="email">Share Email</button>
-          <button type="button" class="gc-share gc-share-right" data-share="text">Share Text</button>
-        </div>
-        <div class="p-3 space-y-2">
-          <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
-            <div class="truncate">${line1Left}</div>
-            <div class="truncate text-red-600">Commission ${line1Mid} | ${line1Right}</div>
-          </div>
-          <div class="text-[12px] text-gray-700">
-            ${bedrooms ?? '—'} bds | ${bathrooms ?? '—'} ba | ${sqft ? Number(sqft).toLocaleString() : '—'} sqft${typeSeg} | ${status}
-          </div>
-          <div class="text-sm font-medium">${address}</div>
-          <div class="text-[12px] text-gray-600">
-            ${((plan||'').includes('FSBO') ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]')).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}
-          </div>
-          <div class="text-[12px] text-gray-500 text-center" data-stats>
-            Viewed ${Number(views||0).toLocaleString()} time${Number(views||0)===1?'':'s'} | Liked ${Number(likes||0).toLocaleString()} time${Number(likes||0)===1?'':'s'}
-          </div>
-        </div>
-      `;
-      const heart = card.querySelector(".gc-heart");
-      const statsEl = card.querySelector("[data-stats]");
+      var brokerageDisplay = (plan||'').indexOf('FSBO') >= 0 ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]').toUpperCase();
+      
+      card.innerHTML = 
+        '<div class="relative">' +
+          '<img class="gc-photo" src="' + (img || '') + '" alt="Listing photo">' +
+          (bannerText ? '<div class="gc-ribbon">' + bannerText + '</div>' : '') +
+          '<button type="button" class="gc-heart" aria-label="Like">' +
+            '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2" aria-hidden="true">' +
+              '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>' +
+            '</svg>' +
+          '</button>' +
+          '<button type="button" class="gc-share gc-share-left" data-share="email">Share Email</button>' +
+          '<button type="button" class="gc-share gc-share-right" data-share="text">Share Text</button>' +
+        '</div>' +
+        '<div class="p-3 space-y-2">' +
+          '<div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">' +
+            '<div class="truncate">' + line1Left + '</div>' +
+            '<div class="truncate text-red-600">Commission ' + line1Mid + ' | ' + line1Right + '</div>' +
+          '</div>' +
+          '<div class="text-[12px] text-gray-700">' +
+            (bedrooms != null ? bedrooms : '-') + ' bds | ' + (bathrooms != null ? bathrooms : '-') + ' ba | ' + (sqft ? Number(sqft).toLocaleString() : '-') + ' sqft' + typeSeg + ' | ' + status +
+          '</div>' +
+          '<div class="text-sm font-medium">' + address + '</div>' +
+          '<div class="text-[12px] text-gray-600">' +
+            brokerageDisplay + (agentName ? ' - ' + agentName : '') + (agentPhone ? ' - ' + agentPhone : '') +
+          '</div>' +
+          '<div class="text-[12px] text-gray-500 text-center" data-stats>' +
+            'Viewed ' + Number(views||0).toLocaleString() + ' time' + (Number(views||0)===1?'':'s') + ' | Liked ' + Number(likes||0).toLocaleString() + ' time' + (Number(likes||0)===1?'':'s') +
+          '</div>' +
+        '</div>';
+
+      var heart = card.querySelector(".gc-heart");
+      var statsEl = card.querySelector("[data-stats]");
       if (heart) {
-        const KEY='gcFavorites';
-        const favs = ()=>{ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch { return []; } };
-        const setF = a=>{ try { localStorage.setItem(KEY, JSON.stringify(a||[])); } catch {} };
-        const isFav = id2 => favs().includes(id2);
-        const tog = id2 => { const a=favs(); const i=a.indexOf(id2); if(i>=0)a.splice(i,1); else a.push(id2); setF(a); return a.includes(id2); };
-        const svg = a => a
-          ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
-          : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
-        const favId = `fav:${id || address}`;
+        var KEY = 'gcFavorites';
+        var favs = function(){ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch(e) { return []; } };
+        var setF = function(a){ try { localStorage.setItem(KEY, JSON.stringify(a||[])); } catch(e) {} };
+        var isFav = function(id2){ return favs().indexOf(id2) >= 0; };
+        var tog = function(id2){ var a=favs(); var i=a.indexOf(id2); if(i>=0)a.splice(i,1); else a.push(id2); setF(a); return a.indexOf(id2)>=0; };
+        var svg = function(a){ return a
+          ? '<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>'
+          : '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+        };
+        var favId = 'fav:' + (id || address);
         heart.innerHTML = svg(isFav(favId));
-        heart.addEventListener("click", async (e)=>{
+        heart.addEventListener("click", async function(e){
           e.preventDefault(); e.stopPropagation();
-          const nowLiked = tog(favId);
+          var nowLiked = tog(favId);
           heart.innerHTML = svg(nowLiked);
 
           if (id && nowLiked) {
-            const onceKey = 'likedOnce:' + id;
+            var onceKey = 'likedOnce:' + id;
             if (!localStorage.getItem(onceKey) && window.gcIncLike) {
               try {
                 await window.gcIncLike(id);
                 localStorage.setItem(onceKey,'1');
-                const currentLikes = Number(likes||0) + 1;
-                const v = Number(views||0);
+                var currentLikes = Number(likes||0) + 1;
+                var v = Number(views||0);
                 if (statsEl) {
-                  statsEl.textContent = `Viewed ${v.toLocaleString()} time${v===1?'':'s'} | Liked ${currentLikes.toLocaleString()} time${currentLikes===1?'':'s'}`;
+                  statsEl.textContent = 'Viewed ' + v.toLocaleString() + ' time' + (v===1?'':'s') + ' | Liked ' + currentLikes.toLocaleString() + ' time' + (currentLikes===1?'':'s');
                 }
-              } catch {}
+              } catch(err) {}
             }
           }
         });
       }
 
-      const emailBtn = card.querySelector('[data-share="email"]');
-      const textBtn  = card.querySelector('[data-share="text"]');
-      const shareUrl = id ? (window.location.origin + '/listing.html?id=' + encodeURIComponent(id))
-                          : (window.location.origin + '/listing.html?addr=' + encodeURIComponent(address));
+      var emailBtn = card.querySelector('[data-share="email"]');
+      var textBtn  = card.querySelector('[data-share="text"]');
+      var shareUrl = id ? (window.location.origin + '/listing.html?id=' + encodeURIComponent(id))
+                        : (window.location.origin + '/listing.html?addr=' + encodeURIComponent(address));
 
       if (emailBtn) {
-        emailBtn.addEventListener('click', (e)=>{
+        emailBtn.addEventListener('click', function(e){
           e.preventDefault(); e.stopPropagation();
           if (!shareLimitOk()) return;
           openEmail(address, shareUrl);
         });
       }
       if (textBtn) {
-        textBtn.addEventListener('click', (e)=>{
+        textBtn.addEventListener('click', function(e){
           e.preventDefault(); e.stopPropagation();
           if (!shareLimitOk()) return;
           openText(address, shareUrl);
@@ -786,31 +837,34 @@
       return card;
     }
 
-    function renderStrip2TilesFrom(list, filterText=""){
-      const grid = document.getElementById('tileGrid');
-      const empty = document.getElementById('tilesEmpty');
+    function renderStrip2TilesFrom(list, filterText){
+      filterText = filterText || "";
+      var grid = document.getElementById('tileGrid');
+      var empty = document.getElementById('tilesEmpty');
       grid.innerHTML = '';
-      const q = (filterText || '').toLowerCase();
-      const arr = q ? list.filter(d => (String(d.address||'').toLowerCase().includes(q))) : list;
+      var q = (filterText || '').toLowerCase();
+      var arr = q ? list.filter(function(d){ return (String(d.address||'').toLowerCase().indexOf(q) >= 0); }) : list;
       if (!arr.length) {
         empty.classList.remove('hidden');
         return;
       }
       empty.classList.add('hidden');
-      arr.forEach(d => grid.appendChild(renderTile(d)));
+      for(var i=0;i<arr.length;i++){
+        grid.appendChild(renderTile(arr[i]));
+      }
     }
 
     function wireSearch(){
-      const box = document.getElementById('searchBox');
-      const btn = document.getElementById('searchBtn');
-      const go = () => {
-        const q = (box.value || '').trim();
+      var box = document.getElementById('searchBox');
+      var btn = document.getElementById('searchBtn');
+      var go = function() {
+        var q = (box.value || '').trim();
         localStorage.setItem('lastSearch', q);
         if (!q) { return; }
-        window.location.href = `/search.html?q=${encodeURIComponent(q)}`;
+        window.location.href = '/search.html?q=' + encodeURIComponent(q);
       };
       btn.addEventListener('click', go);
-      box.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); }});
+      box.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); go(); }});
     }
   </script>
 
@@ -818,8 +872,8 @@
 
   <script type="module">
     import { doc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    window.gcIncLike = async (listingId) => {
-      const db = (window.gc && window.gc.db);
+    window.gcIncLike = async function(listingId) {
+      var db = (window.gc && window.gc.db);
       if (!db || !listingId) return;
       await updateDoc(doc(db, "listings", listingId), { likes: increment(1), updatedAt: serverTimestamp() });
     };
@@ -831,25 +885,25 @@
 
     (async function loadTilesFromFirestore(){
       try {
-        const grid  = document.getElementById('tileGrid');
-        const empty = document.getElementById('tilesEmpty');
+        var grid  = document.getElementById('tileGrid');
+        var empty = document.getElementById('tilesEmpty');
         if (!grid || !db) return;
 
-        const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(100)));
-        const items = [];
-        snap.forEach(docu => {
-          const d = docu.data() || {};
+        var snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(100)));
+        var items = [];
+        snap.forEach(function(docu) {
+          var d = docu.data() || {};
           if (d.archived === true) return;
 
-          const signed = !!(d.signedISC && typeof d.signedISC === 'object' && d.signedISC.date);
-          const isActive = String(d.status || '').toLowerCase() === 'active';
+          var signed = !!(d.signedISC && typeof d.signedISC === 'object' && d.signedISC.date);
+          var isActive = String(d.status || '').toLowerCase() === 'active';
           if (!signed && !isActive) return;
 
           items.push({
             id: docu.id,
             address: d.address || "",
-            price: d.price ?? "",
-            commission: d.commission ?? "",
+            price: d.price != null ? d.price : "",
+            commission: d.commission != null ? d.commission : "",
             commissionType: d.commissionType || "%",
             bannerText: d.bannerText || "",
             photos: Array.isArray(d.photos) ? d.photos : [],
@@ -859,26 +913,27 @@
             agentName: d.agentName || "",
             agentPhone: d.agentPhone || "",
             plan: d.plan || "Listed Property Basic",
-            bedrooms: d.bedrooms ?? "",
-            bathrooms: d.bathrooms ?? "",
-            sqft: d.sqft ?? "",
+            bedrooms: d.bedrooms != null ? d.bedrooms : "",
+            bathrooms: d.bathrooms != null ? d.bathrooms : "",
+            sqft: d.sqft != null ? d.sqft : "",
             propertyType: d.propertyType || "",
             views: Number(d.views || 0),
             likes: Number(d.likes || 0)
           });
         });
 
-        const lastQ = (localStorage.getItem('lastSearch') || '').trim();
+        var lastQ = (localStorage.getItem('lastSearch') || '').trim();
         renderStrip2TilesFrom(items, lastQ);
 
         if (grid && grid.children.length === 0) {
-          try { localStorage.removeItem('lastSearch'); } catch {}
+          try { localStorage.removeItem('lastSearch'); } catch(e) {}
           renderStrip2TilesFrom(items, '');
           if (empty) empty.classList.add('hidden');
         }
       } catch (e) {
         console.warn("[index] Firestore tiles load failed:", e);
-        document.getElementById('tilesEmpty')?.classList.remove('hidden');
+        var emptyEl = document.getElementById('tilesEmpty');
+        if(emptyEl) emptyEl.classList.remove('hidden');
       }
     })();
   </script>
