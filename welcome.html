@@ -8,17 +8,9 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <!-- Sticky Back (consistent site-wide) -->
-  <button id="gcBackBtn"
-          class="fixed top-3 left-3 z-50 px-3 py-1 rounded border bg-white/90 text-sm shadow hover:bg-white"
-          aria-label="Go back"
-          title="Back">
-    ← Back
-  </button>
-
   <header class="bg-white shadow">
     <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
+      <a href="/index.html" class="text-sm text-blue-600 hover:underline">Home</a>
       <h1 class="text-lg font-semibold">Welcome</h1>
       <div class="flex items-center gap-3">
         <a href="/search.html" class="text-sm text-blue-600 hover:underline">Search</a>
@@ -32,7 +24,7 @@
       <h2 class="text-xl font-bold mb-1">Hi <span id="who">there</span></h2>
       <p class="text-sm text-gray-600 mb-4">What would you like to do next?</p>
 
-      <!-- Seller/Agent prompt (we’ll show exactly one when it’s obvious) -->
+      <!-- Seller/Agent prompt (we'll show exactly one when it's obvious) -->
       <div id="promptHost" class="mb-4"></div>
 
       <div id="roleBoxes" class="space-y-4">
@@ -103,7 +95,7 @@
           </div>
         </div>
 
-        <!-- Buyer’s Agent -->
+        <!-- Buyer's Agent -->
         <div id="boxBuyersAgent" class="hidden space-y-4">
           <div class="border rounded-lg p-4">
             <h3 class="font-semibold mb-2">Become a Local Professional</h3>
@@ -155,19 +147,6 @@
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id)=>document.getElementById(id);
-
-    // Back button wiring
-    (function wireSoftBack(){
-      const btn = document.getElementById('gcBackBtn');
-      if (!btn) return;
-      const ref = document.referrer || '';
-      const sameOrigin = ref.startsWith(location.origin);
-      btn.addEventListener('click', (e)=>{
-        e.preventDefault();
-        if (sameOrigin && window.history.length > 1) history.back();
-        else location.href = '/index.html#strip2Search';
-      });
-    })();
 
     // Who + role
     const emailRaw = (localStorage.getItem('loggedInEmail') || '').trim();
@@ -344,7 +323,7 @@
 
       // Build Agent dropdown source:
       // If we have at least 1 strict agent match, use those.
-      // Otherwise, fall back to ALL your listings (so nothing “disappears”).
+      // Otherwise, fall back to ALL your listings (so nothing "disappears").
       const agentSource = agent.length ? agent.slice() : all.slice();
 
       // Prompt card: show seller prompt if exactly one owner listing; otherwise if one agentSource.
