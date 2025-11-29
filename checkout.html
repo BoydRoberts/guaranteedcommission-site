@@ -46,8 +46,7 @@
       </section>
       
       <!-- Action Buttons -->
-      <div class="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
-        <button id="backBtn" class="px-4 py-2 rounded border hover:bg-gray-50 transition">Back</button>
+      <div class="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
         <div class="flex gap-3 justify-end">
           <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition">
             Continue (no payment due)
@@ -75,26 +74,5 @@
   
   <!-- Main checkout logic -->
   <script src="/checkout.js"></script>
-  
-  <script>
-    // ----- Back behavior (aligned with sitewide logic) -----
-    (function wireBack(){
-      function goBack() {
-        try {
-          const ref = document.referrer || '';
-          const sameOrigin = ref.startsWith(location.origin);
-          if (sameOrigin && ref !== location.href && history.length > 1) {
-            history.back();
-          } else {
-            // Fallback: send users to Strip 2 search anchor
-            location.href = '/index.html#strip2Search';
-          }
-        } catch (_) {
-          location.href = '/index.html#strip2Search';
-        }
-      }
-      document.getElementById('backBtn')?.addEventListener('click', goBack);
-    })();
-  </script>
 </body>
 </html>
