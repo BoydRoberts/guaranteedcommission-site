@@ -62,7 +62,6 @@
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
       <div class="flex items-center gap-3">
-        <button id="backBtnHdr" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
         <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
           Accredited Investors Only
         </button>
@@ -323,19 +322,6 @@
       menu.addEventListener('mouseleave', close);
       var toggle = document.getElementById('commissionToggle');
       if(toggle){ toggle.addEventListener('focus', open); toggle.addEventListener('blur', close); }
-    })();
-
-    (function(){
-      var btn = document.getElementById('backBtnHdr');
-      if (!btn) return;
-      btn.addEventListener('click', function(){
-        try {
-          var ref = document.referrer || "";
-          if (history.length > 1 && ref && ref !== location.href) {
-            history.back();
-          }
-        } catch (e) { }
-      });
     })();
 
     function isValidFullAddress(s) {
