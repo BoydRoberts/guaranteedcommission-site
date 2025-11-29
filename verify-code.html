@@ -8,15 +8,10 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <!-- Back control (matches site pattern) -->
-  <div class="max-w-md mx-auto px-4 pt-4">
-    <button id="backBtn" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
-  </div>
-
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">verify build 2025-10-17a</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">verify build 2025-11-29</span>
       </div>
 
       <h1 class="text-2xl font-bold text-center">Enter Verification Code</h1>
@@ -66,23 +61,7 @@
   </div>
 
   <script>
-    console.log('[verify] build 2025-10-17a');
-
-    // ---------- Back wiring ----------
-    (function wireBack(){
-      function goBack() {
-        try {
-          if (document.referrer && document.referrer !== location.href && history.length > 1) {
-            history.back();
-          } else {
-            location.href = '/index.html';
-          }
-        } catch (_) {
-          location.href = '/index.html';
-        }
-      }
-      document.getElementById('backBtn')?.addEventListener('click', goBack);
-    })();
+    console.log('[verify] build 2025-11-29');
 
     // ---------- tiny helpers ----------
     const $ = (id) => document.getElementById(id);
@@ -184,11 +163,11 @@
 
       const saved = safeGet('verificationCode', '');
       if (!/^\d{6}$/.test(saved)) {
-        setStatus('No code found. Click “Resend code” and try again.', false);
+        setStatus('No code found. Click "Resend code" and try again.', false);
         return;
       }
       if (entered !== saved) {
-        setStatus('Incorrect code. Please try again or click “Resend code”.', false);
+        setStatus('Incorrect code. Please try again or click "Resend code".', false);
         return;
       }
 
