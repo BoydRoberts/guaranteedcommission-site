@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -44,8 +44,7 @@
   <!-- Top bar -->
   <header class="bg-white border-b">
     <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-      <!-- Back button with safe, context-aware fallback -->
-      <button id="backBtnHdr" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
+      <span></span>
       <h1 class="text-lg font-semibold">GuaranteedCommission.com</h1>
       <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
     </div>
@@ -82,7 +81,7 @@
           <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
           <div id="tileAddress" class="text-sm font-medium">[full address]</div>
           <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROAGE] — [listing agent] — [agent phone]</div>
-          <!-- Centered “Viewed N times | Liked M times” -->
+          <!-- Centered "Viewed N times | Liked M times" -->
           <div id="tileStats" class="text-[12px] text-gray-500 text-center">Viewed — | Liked —</div>
         </div>
       </article>
@@ -149,13 +148,13 @@
   <script type="module" src="/scripts/firebase-init.js"></script>
 
   <script>
-    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvbjduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
+    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvajduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
     if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
     const $ = (id) => document.getElementById(id);
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
 
-    // Clamp ISC iframe to tile height (avoid “lip”); match map to tile
+    // Clamp ISC iframe to tile height (avoid "lip"); match map to tile
     function alignHeights(){
       const tile = $("tileCard");
       const mapCard = $("mapCard");
@@ -757,35 +756,6 @@
             </div>
           </div>`);
       }
-    })();
-  </script>
-
-  <!-- Context-aware Back button wiring -->
-  <script>
-    (function(){
-      const btn = document.getElementById('backBtnHdr');
-      if (!btn) return;
-      btn.addEventListener('click', function(){
-        try {
-          const ref = document.referrer || "";
-          const hasHistory = (history.length > 1);
-          const cameFromWelcome = /\/welcome\.html/i.test(ref);
-          const loggedIn = String(localStorage.getItem('isLoggedIn') || '').toLowerCase() === 'true';
-
-          if (hasHistory && ref && ref !== location.href) {
-            history.back();
-          } else if (cameFromWelcome || loggedIn) {
-            // Prefer Welcome when the user is logged in or referrer was Welcome
-            location.href = "/welcome.html";
-          } else {
-            // Public fallback (same as before)
-            location.href = "/index.html#strip2Search";
-          }
-        } catch (_) {
-          const loggedIn = String(localStorage.getItem('isLoggedIn') || '').toLowerCase() === 'true';
-          location.href = loggedIn ? "/welcome.html" : "/index.html#strip2Search";
-        }
-      });
     })();
   </script>
 </body>
