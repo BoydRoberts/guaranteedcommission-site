@@ -9,10 +9,6 @@
   <style>.font-cursive{font-family:'Brush Script MT',cursive}</style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-  <!-- Back row (sitewide pattern) -->
-  <div class="max-w-3xl mx-auto mt-4 px-4">
-    <button id="backBtn" type="button" class="text-sm text-blue-600 hover:underline">&larr; Back</button>
-  </div>
 
   <div class="max-w-3xl mx-auto mt-4 bg-white p-6 rounded shadow">
     <h1 class="text-2xl font-bold text-center mb-6">Irrevocable Seller Communication</h1>
@@ -73,24 +69,6 @@
     const $ = (id)=>document.getElementById(id);
     const todayISO = () => new Date().toISOString().slice(0,10);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
-
-    // ----- Back behavior (sitewide) -----
-    (function wireBack(){
-      function goBack() {
-        try {
-          const ref = document.referrer || '';
-          const sameOrigin = ref.startsWith(location.origin);
-          if (sameOrigin && ref !== location.href && history.length > 1) {
-            history.back();
-          } else {
-            location.href = '/index.html#strip2Search';
-          }
-        } catch (_) {
-          location.href = '/index.html#strip2Search';
-        }
-      }
-      document.getElementById('backBtn')?.addEventListener('click', goBack);
-    })();
 
     // Resolve listing id: prefer ?id=, else localStorage.lastListingId
     const params = new URLSearchParams(location.search);
