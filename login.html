@@ -11,12 +11,11 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <!-- Header (original copy) -->
+  <!-- Header -->
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
       <div class="flex items-center gap-3">
-        <button id="backBtnHeader" type="button" class="text-xs text-blue-600 hover:underline">&larr; Back</button>
-        <a href="/index.html" class="text-xs text-blue-600 hover:underline">&larr; Home</a>
+        <a href="/index.html" class="text-xs text-blue-600 hover:underline">Home</a>
       </div>
       <div class="text-center">
         <h1 class="text-2xl font-bold">GuaranteedCommission.com</h1>
@@ -31,7 +30,7 @@
   <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-3">
-        <span class="badge">secure access build 2025-08-14b</span>
+        <span class="badge">secure access build 2025-11-29</span>
       </div>
 
       <!-- Tabs -->
@@ -158,7 +157,7 @@
           <select id="createRole" class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="seller">Seller</option>
             <option value="listing_agent">Listing Agent</option>
-            <option value="buyers_agent">Buyer’s Agent</option>
+            <option value="buyers_agent">Buyer's Agent</option>
             <option value="buyer">Buyer</option>
             <option value="other">Other</option>
           </select>
@@ -190,23 +189,7 @@
   </main>
 
   <script>
-    console.log('[login] secure access build 2025-08-14b');
-
-    // ---------- Back wiring ----------
-    (function wireBack(){
-      function goBack() {
-        try {
-          if (document.referrer && document.referrer !== location.href && history.length > 1) {
-            history.back();
-          } else {
-            location.href = '/index.html';
-          }
-        } catch (_) {
-          location.href = '/index.html';
-        }
-      }
-      document.getElementById('backBtnHeader')?.addEventListener('click', goBack);
-    })();
+    console.log('[login] secure access build 2025-11-29');
 
     // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
