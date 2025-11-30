@@ -13,7 +13,7 @@
 
   <header class="bg-white shadow">
     <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/index.html" class="text-sm text-blue-600 hover:underline">&larr; Home</a>
+      <a href="/index.html" class="text-sm text-blue-600 hover:underline">Home</a>
       <h1 class="text-lg font-semibold">Local Brokers</h1>
       <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
     </div>
@@ -23,7 +23,7 @@
     <section class="bg-white rounded-2xl shadow p-5">
       <h2 class="text-2xl font-bold text-center">Reserve Your Broker Ad</h2>
       <p class="text-sm text-center text-gray-700 mt-1">
-        $100 per month per ZIP (1 broker per ZIP). Your brokerage ad displays on all listing detail pages in that ZIP in the “Local Real Estate Brokerage” section.
+        $100 per month per ZIP (1 broker per ZIP). Your brokerage ad displays on all listing detail pages in that ZIP in the "Local Real Estate Brokerage" section.
       </p>
 
       <div id="status" class="hidden mt-4 text-sm rounded-lg p-3"></div>
@@ -114,13 +114,16 @@
     // Price label (fixed $100/mo)
     (function(){ $('total').textContent = money(100); })();
 
-    // Preview photo
-    $('photo').addEventListener('change', (e) => {
-      const f = e.target.files?.[0]; if (!f) return;
-      const r = new FileReader();
-      r.onload = () => { $('photoPreview').innerHTML = `<img src="${r.result}" alt="Ad" class="h-28 object-contain rounded border">`; };
-      r.readAsDataURL(f);
-    });
+    // Preview photo (guarded)
+    const photoInput = $('photo');
+    if (photoInput) {
+      photoInput.addEventListener('change', (e) => {
+        const f = e.target.files?.[0]; if (!f) return;
+        const r = new FileReader();
+        r.onload = () => { $('photoPreview').innerHTML = `<img src="${r.result}" alt="Ad" class="h-28 object-contain rounded border">`; };
+        r.readAsDataURL(f);
+      });
+    }
 
     // If listing page passed a ZIP (convenience)
     (function(){
@@ -135,7 +138,7 @@
 
     async function maybeUploadPhoto(draftId) {
       try {
-        const file = $('photo').files?.[0];
+        const file = $('photo')?.files?.[0];
         if (!file) return "";
         const storage = getStorage(undefined, BUCKET_URL);
         const safe = String(file.name || "broker_ad").replace(/[^\w\-.]+/g,"_");
@@ -158,11 +161,23 @@
         const name = $('name').value.trim();
         const contact = $('contact').value.trim();
         const email = $('email').value.trim().toLowerCase();
+        const phoneDigits = onlyDigits($('phone').value);
         const phone = formatPhone($('phone').value.trim());
         const website = $('website').value.trim();
         const zip = ($('zip').value || '').trim();
-        if (!name || !contact || !email || !phone || !/^\d{5}$/.test(zip)) {
-          setStatus('Please complete brokerage name, contact, email, phone, and a 5-digit ZIP.', false);
+        
+        if (!name || !contact || !email || !/^\d{5}$/.test(zip)) {
+          setStatus('Please complete brokerage name, contact, email, and a 5-digit ZIP.', false);
+          return;
+        }
+        
+        if (!/^\S+@\S+\.\S{2,}$/.test(email)) {
+          setStatus('Please enter a valid email address.', false);
+          return;
+        }
+        
+        if (phoneDigits.length !== 10) {
+          setStatus('Please enter a valid 10-digit phone number.', false);
           return;
         }
 
