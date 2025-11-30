@@ -37,18 +37,15 @@
     .gc-form-offset { margin-top: var(--box2-first-input-offset); }
 
     #formBlock.compact * { line-height:1.25; }
-    #formBlock.compact h2.gc-title { font-size:1.05rem; }
-    #formBlock.compact input, #formBlock.compact select, #formBlock.compact button { padding:.3rem .45rem !important; font-size:.85rem !important; }
+    #formBlock.compact input, #formBlock.compact select, #formBlock.compact button { padding:.4rem .5rem !important; font-size:.85rem !important; }
     #formBlock.compact .space-y-2 > * { margin-top:.25rem !important; margin-bottom:.25rem !important; }
 
     #formBlock.compact2 * { line-height:1.2; }
-    #formBlock.compact2 h2.gc-title { font-size:1.0rem; }
-    #formBlock.compact2 input, #formBlock.compact2 select, #formBlock.compact button { padding:.25rem .4rem !important; font-size:.8rem !important; }
+    #formBlock.compact2 input, #formBlock.compact2 select, #formBlock.compact2 button { padding:.35rem .45rem !important; font-size:.8rem !important; }
     #formBlock.compact2 .space-y-2 > * { margin-top:.2rem !important; margin-bottom:.2rem !important; }
 
     #formBlock.compact3 * { line-height:1.15; }
-    #formBlock.compact3 h2.gc-title { font-size:.95rem; }
-    #formBlock.compact3 input, #formBlock.compact3 select, #formBlock.compact button { padding:.22rem .35rem !important; font-size:.75rem !important; }
+    #formBlock.compact3 input, #formBlock.compact3 select, #formBlock.compact3 button { padding:.3rem .4rem !important; font-size:.75rem !important; }
 
     #box3.compact * { line-height:1.35; }
     #box3.compact p { font-size:.95rem; }
@@ -62,9 +59,9 @@
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
       <div class="flex items-center gap-3">
-        <button onclick="openInvestorModal()" class="bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded">
-          Accredited Investors Only
-        </button>
+        <a href="/local-brokers.html" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-1 rounded">
+          Local Brokers
+        </a>
       </div>
 
       <div class="text-center flex-1">
@@ -172,13 +169,13 @@
           <li>
             <div onclick="selectPlan('Listed Property Basic')" class="cursor-pointer">
               <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
-              <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number.</p>
+              <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number. <span class="text-red-600">(We never sell your information.)</span></p>
             </div>
           </li>
           <li>
             <div onclick="selectPlan('Listed Property Plus')" class="cursor-pointer">
               <p class="text-base font-semibold">Listed Property Plus | $20</p>
-              <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description.</p>
+              <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description. <span class="text-red-600">(We never sell your information.)</span></p>
             </div>
           </li>
           <li>
@@ -193,32 +190,32 @@
       <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm compact2">
         <h2 id="formTitle" class="gc-title">Listed Property Communication Form</h2>
         <form id="listingForm" class="gc-form-offset space-y-2" autocomplete="off">
-          <input type="text" id="name" placeholder="Name" class="w-full border p-1 rounded" required>
-          <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border p-1 rounded" autocomplete="street-address" spellcheck="false" required >
-          <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border p-1 rounded">
+          <input type="text" id="name" placeholder="Name" class="w-full border py-1.5 px-2 rounded" required>
+          <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border py-1.5 px-2 rounded" autocomplete="street-address" spellcheck="false" required >
+          <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border py-1.5 px-2 rounded">
 
           <div id="listedPhoneRow">
-            <input type="tel" id="agentPhone" placeholder="Agent's direct phone only - NOT your number" class="w-full border p-1 rounded">
+            <input type="tel" id="agentPhone" placeholder="Agent's direct phone only - NOT your number" class="w-full border py-1.5 px-2 rounded">
             <span id="phoneError" class="text-xs text-red-600 hidden">Please enter a valid phone number (###) ###-####</span>
           </div>
 
-          <input type="email" id="agentEmail" placeholder="Agent's Email - NOT your email" class="w-full border p-1 rounded">
-          <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border p-1 rounded">
-          <input type="text" id="agent" placeholder="Listing Agent" class="w-full border p-1 rounded">
+          <input type="email" id="agentEmail" placeholder="Agent's Email - NOT your email" class="w-full border py-1.5 px-2 rounded">
+          <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border py-1.5 px-2 rounded">
+          <input type="text" id="agent" placeholder="Listing Agent" class="w-full border py-1.5 px-2 rounded">
 
           <div id="fsboEmailRow" class="hidden">
-            <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border p-1 rounded">
+            <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border py-1.5 px-2 rounded">
           </div>
 
           <div class="flex gap-2">
-            <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border p-1 rounded">
-            <select id="commissionType" class="border p-1 rounded">
+            <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border py-1.5 px-2 rounded">
+            <select id="commissionType" class="border py-1.5 px-2 rounded">
               <option value="%">%</option>
               <option value="$">$</option>
             </select>
           </div>
 
-          <button type="button" onclick="submitForm()" class="w-full bg-green-600 text-white py-2 rounded mt-2">
+          <button type="button" onclick="submitForm()" class="w-full bg-[#4DA6FF] hover:bg-blue-500 text-white py-2 rounded mt-2">
             Submit Guaranteed Commission
           </button>
         </form>
@@ -244,7 +241,10 @@
             broker-to-broker compensation) and second by debiting me, the seller - a commission not to exceed
             <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
           </p>
-          <p class="mt-4"><span id="signatureName" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+          <div class="mt-4 flex items-baseline justify-between">
+          <span id="signatureName" class="ml-8 font-cursive">[Name]</span>
+          <span class="mr-8">Electronic Signature <span class="ml-8">date</span></span>
+        </div>
         </div>
 
         <div id="iscTextFSBO" class="hidden">
@@ -262,7 +262,10 @@
             instructed to credit/compensate the buyer's broker a commission not to exceed
             <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
           </p>
-          <p class="mt-4"><span id="signatureNameFSBO" class="pl-5 font-cursive">[Name]</span> Electronic Signature      date</p>
+          <div class="mt-4 flex items-baseline justify-between">
+            <span id="signatureNameFSBO" class="ml-8 font-cursive">[Name]</span>
+            <span class="mr-8">Electronic Signature <span class="ml-8">date</span></span>
+          </div>
         </div>
       </div>
     </section>
@@ -274,7 +277,7 @@
         <div class="flex items-center justify-center">
           <div class="flex items-center gap-2">
             <input id="searchBox" type="text" placeholder="Search city, neighborhood, or ZIP..." class="border rounded px-3 py-2 w-72 sm:w-96">
-            <button id="searchBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Search Guaranteed Commissions</button>
+            <button id="searchBtn" class="bg-[#4DA6FF] hover:bg-blue-500 text-white px-3 py-2 rounded">Search Guaranteed Commissions</button>
           </div>
         </div>
       </div>
@@ -286,9 +289,14 @@
 
   <footer class="bg-white border-t mt-8">
     <div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-gray-600 space-y-3">
-      <button onclick="openPressModal()" class="bg-blue-600 text-white text-xs font-semibold px-3 py-2 rounded">
-        Press Inquiry
-      </button>
+      <div class="flex justify-center gap-3">
+        <button onclick="openPressModal()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded">
+          Press Inquiry
+        </button>
+        <button onclick="openInvestorModal()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded">
+          Accredited Investors Only
+        </button>
+      </div>
       <p>© 2025 GuaranteedCommission.com. All rights reserved.</p>
       <p>Boyd Roberts - California Licensed Real Estate Broker - DRE License #01354788</p>
       <p>
