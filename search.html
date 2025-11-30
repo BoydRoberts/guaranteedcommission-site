@@ -169,7 +169,7 @@
 
   <script>
     // Mapbox token
-    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtZXJvajduajA5MW8yanBvMTgxcWx2a2IifQ.dMBWViogHJkh0SgeVX5N_Q";
+    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
     if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
     const $ = (id) => document.getElementById(id);
@@ -450,6 +450,19 @@
       });
 
       return card;
+    }
+
+    // Show/hide save banner
+    function showSaveBanner(show) {
+      const banner = document.getElementById('saveBanner');
+      if (!banner) return;
+      banner.style.display = show ? 'block' : 'none';
+      if (!show) {
+        const login = document.getElementById('saveLoginNeeded');
+        const conf  = document.getElementById('saveConfirmed');
+        if (login) login.classList.add('hidden');
+        if (conf)  conf.classList.add('hidden');
+      }
     }
 
     // Main boot
