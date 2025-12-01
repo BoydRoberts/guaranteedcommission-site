@@ -1,3 +1,6 @@
+Index · HTML
+Copy
+
 <!DOCTYPE html> 
 <!-- index.html - Build 2025-11-28 (fix Basic plan default) -->
 <html lang="en">
@@ -9,7 +12,7 @@
   <style>
     :root{
       --title-bottom-gap: .75rem;
-      --box2-first-input-offset: 1rem;
+      --box2-first-input-offset: 0.75rem;
     }
 
     .font-cursive { font-family: 'Brush Script MT', cursive; }
@@ -31,8 +34,9 @@
     .gc-share-left { left:10px; }
     .gc-share-right{ right:10px; }
 
-    #box1, #formBlock, #box3 { overflow: hidden; }
-    .gc-title { text-align:center; font-weight:700; font-size:1.125rem; line-height:1.25; margin:0 0 var(--title-bottom-gap); }
+    #box1, #formBlock, #box3 { overflow: hidden; padding-top: 1rem; }
+    .gc-title { text-align:center; font-weight:700; font-size:1.125rem; line-height:1.25; margin-top:0; margin-bottom:var(--title-bottom-gap); }
+    .gc-body-top { margin-top: 0.75rem; }
 
     .gc-form-offset { margin-top: var(--box2-first-input-offset); }
 
@@ -69,7 +73,7 @@
           <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-8 w-8 object-contain">
           <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
         </div>
-        <p class="text-sm text-red-600 mt-1 px-2">
+        <p class="text-base text-red-600 mt-1 px-2">
           Guaranteeing commissions so your home will sell quickly at a higher price.
         </p>
       </div>
@@ -165,30 +169,30 @@
     <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
       <div id="box1" class="w-full md:w-1/3 bg-white p-3 rounded shadow text-sm">
         <h2 class="gc-title">Commission Communication Menu</h2>
-        <ul class="space-y-3">
+        <ul class="gc-body-top space-y-3">
           <li>
             <div onclick="selectPlan('Listed Property Basic')" class="cursor-pointer">
               <p class="text-base font-semibold">Listed Property Basic | <span class="text-red-600">FREE</span></p>
-              <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number. <span class="text-red-600">(We never sell your information.)</span></p>
+              <p class="text-gray-600 pl-5">Printable commission letter, map search, listing price, main photo, address, square footage, bedrooms, bathrooms, listing brokerage, listing agent, listing agent phone number. <span class="text-base text-red-600">(We never sell your information.)</span></p>
             </div>
           </li>
           <li>
             <div onclick="selectPlan('Listed Property Plus')" class="cursor-pointer">
               <p class="text-base font-semibold">Listed Property Plus | $20</p>
-              <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description. <span class="text-red-600">(We never sell your information.)</span></p>
+              <p class="text-gray-600 pl-5">Listed Property Basic plus 20 photos and full property description. <span class="text-base text-red-600">(We never sell your information.)</span></p>
             </div>
           </li>
           <li>
             <div onclick="selectPlan('FSBO Plus')" class="cursor-pointer">
               <p class="text-base font-semibold">FSBO Plus | $100</p>
-              <p class="text-gray-600 pl-5">Listed Property Plus minus the listing agency. Includes showing instructions.</p>
+              <p class="text-gray-600 pl-5">Listed Property Plus minus the listing agency. Includes showing instructions. <span class="text-base text-red-600">(Confidential FSBO upgrade available at checkout.)</span></p>
             </div>
           </li>
         </ul>
       </div>
 
       <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm compact2">
-        <h2 id="formTitle" class="gc-title">Listed Property Communication Form</h2>
+        <h2 id="formTitle" class="gc-title tracking-tight">Listed Property Communication Form</h2>
         <form id="listingForm" class="gc-form-offset space-y-2" autocomplete="off">
           <input type="text" id="name" placeholder="Name" class="w-full border py-1.5 px-2 rounded" required>
           <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border py-1.5 px-2 rounded" autocomplete="street-address" spellcheck="false" required >
@@ -224,7 +228,7 @@
       <div id="box3" class="w-full md:w-1/3 bg-white p-3 rounded shadow text-sm">
         <h2 class="gc-title">Irrevocable Seller Communication</h2>
 
-        <div id="iscTextListed">
+        <div id="iscTextListed" class="gc-body-top">
           <p>To the escrow holder/closing agent,</p>
           <p class="mt-2">
             I, <span id="letterName">[name]</span>, am the owner/seller of
@@ -241,13 +245,14 @@
             broker-to-broker compensation) and second by debiting me, the seller - a commission not to exceed
             <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
           </p>
-          <div class="mt-4 flex items-baseline justify-between">
-          <span id="signatureName" class="ml-8 font-cursive">[Name]</span>
-          <span class="mr-8">Electronic Signature <span class="ml-8">date</span></span>
-        </div>
+          <div class="mt-4 flex items-baseline">
+            <span id="signatureName" class="ml-8 font-cursive text-[1.5rem] font-semibold" style="color:#4DA6FF;">[Name]</span>
+            <span class="flex-grow"></span>
+            <span class="font-bold mr-16">Date</span>
+          </div>
         </div>
 
-        <div id="iscTextFSBO" class="hidden">
+        <div id="iscTextFSBO" class="gc-body-top hidden">
           <p>To the escrow holder/closing agent,</p>
           <p class="mt-2">
             I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
@@ -262,9 +267,10 @@
             instructed to credit/compensate the buyer's broker a commission not to exceed
             <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
           </p>
-          <div class="mt-4 flex items-baseline justify-between">
-            <span id="signatureNameFSBO" class="ml-8 font-cursive">[Name]</span>
-            <span class="mr-8">Electronic Signature <span class="ml-8">date</span></span>
+          <div class="mt-4 flex items-baseline">
+            <span id="signatureNameFSBO" class="ml-8 font-cursive text-[1.5rem] font-semibold" style="color:#4DA6FF;">[Name]</span>
+            <span class="flex-grow"></span>
+            <span class="font-bold mr-16">Date</span>
           </div>
         </div>
       </div>
