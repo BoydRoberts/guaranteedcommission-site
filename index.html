@@ -1,3 +1,4 @@
+<!DOCTYPE html> 
 <!-- index.html - Build 2025-11-28 (fix Basic plan default) -->
 <html lang="en">
 <head>
@@ -187,9 +188,9 @@
         </ul>
       </div>
 
-      <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm compact2 flex flex-col">
+      <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm compact2">
         <h2 id="formTitle" class="gc-title tracking-tight">Listed Property Communication Form</h2>
-        <form id="listingForm" class="space-y-2 flex-grow flex flex-col" autocomplete="off">
+        <form id="listingForm" class="space-y-2" autocomplete="off">
           <input type="text" id="name" placeholder="Name" class="w-full border py-1.5 px-2 rounded gc-form-offset" required>
           <input type="text" id="address" placeholder="Address format: Street, City, ST 12345" class="w-full border py-1.5 px-2 rounded" autocomplete="street-address" spellcheck="false" required >
           <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border py-1.5 px-2 rounded">
@@ -215,8 +216,7 @@
             </select>
           </div>
 
-          <div class="flex-grow"></div>
-          <button type="button" onclick="submitForm()" class="w-full bg-[#4DA6FF] hover:bg-blue-500 text-white py-2.5 rounded text-sm font-semibold">
+          <button type="button" onclick="submitForm()" class="w-full bg-[#4DA6FF] hover:bg-blue-500 text-white py-2.5 rounded mt-2 text-sm font-semibold">
             Submit Guaranteed Commission
           </button>
         </form>
@@ -225,7 +225,7 @@
       <div id="box3" class="w-full md:w-1/3 bg-white p-3 rounded shadow text-sm">
         <h2 class="gc-title">Irrevocable Seller Communication</h2>
 
-        <div id="iscTextListed" class="gc-body-top flex flex-col h-full">
+        <div id="iscTextListed" class="gc-body-top">
           <p>To the escrow holder/closing agent,</p>
           <p class="mt-2">
             I, <span id="letterName">[name]</span>, am the owner/seller of
@@ -242,13 +242,13 @@
             broker-to-broker compensation) and second by debiting me, the seller - a commission not to exceed
             <span id="letterCommissionDisplay">[commission]</span> <span id="commissionSuffix"></span>.
           </p>
-          <div class="mt-auto flex items-baseline">
+          <div class="mt-4 flex items-baseline">
             <span id="signatureName" class="font-cursive text-[1.5rem] font-semibold" style="color:#4DA6FF;">[Name]</span>
             <span class="font-bold text-[1.125rem] ml-auto">Date</span>
           </div>
         </div>
 
-        <div id="iscTextFSBO" class="gc-body-top hidden flex flex-col h-full">
+        <div id="iscTextFSBO" class="gc-body-top hidden">
           <p>To the escrow holder/closing agent,</p>
           <p class="mt-2">
             I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
@@ -263,7 +263,7 @@
             instructed to credit/compensate the buyer's broker a commission not to exceed
             <span id="letterCommissionDisplayFSBO">[commission]</span> <span id="commissionSuffixFSBO"></span>.
           </p>
-          <div class="mt-auto flex items-baseline">
+          <div class="mt-4 flex items-baseline">
             <span id="signatureNameFSBO" class="font-cursive text-[1.5rem] font-semibold" style="color:#4DA6FF;">[Name]</span>
             <span class="font-bold text-[1.125rem] ml-auto">Date</span>
           </div>
