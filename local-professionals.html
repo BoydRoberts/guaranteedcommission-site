@@ -25,13 +25,12 @@
     <section class="bg-white rounded-2xl shadow p-5">
       <h2 class="text-2xl font-bold text-center">Become a Local Professional</h2>
       <p class="text-sm text-center text-gray-700 mt-1">
-        $5 per month per ZIP code | Maximum 3 ZIP codes | Your information displays on listing detail pages in those ZIP codes in the "Local Professionals" section (up to 3 agents and 1 lender per ZIP).
+        Display your business card on every listing detail page and on every FSBO intake page in a specified ZIP Code | Three agents and one lender per ZIP | $5 per month per ZIP | Maximum 3 ZIPs | First come first served | Your display rights preserved until you cancel
       </p>
 
       <!-- Top mode choice -->
       <div class="flex items-center justify-center gap-3 mt-4">
-        <button id="modeSearchB" class="px-3 py-2 rounded border">Search by ZIP</button>
-        <button id="modeApplyBtn" class="px-3 py-2 rounded bg-amber-600 text-white">Become a Local Professional</button>
+        <button id="modeSearchB" class="px-3 py-2 rounded border" style="background-color:#4DA6FF; color:white;">Search by ZIP</button>
       </div>
 
       <div id="status" class="hidden mt-4 text-sm rounded-lg p-3"></div>
@@ -44,13 +43,17 @@
             <option value="">Select…</option>
             <option value="real_estate_agent">Real Estate Agent</option>
             <option value="lender">Lender</option>
-            <option value="other">Other</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-sm font-semibold">Full Name / Company</label>
-          <input id="name" class="w-full border rounded px-3 py-2" placeholder="Your name / firm" required>
+          <label class="block text-sm font-semibold">Name</label>
+          <input id="personalName" class="w-full border rounded px-3 py-2" placeholder="Your name" required>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold">Company Name</label>
+          <input id="name" class="w-full border rounded px-3 py-2" placeholder="Full Company Name" required>
         </div>
 
         <div>
@@ -65,7 +68,7 @@
 
         <div>
           <label class="block text-sm font-semibold">License # (agents/lenders)</label>
-          <input id="license" class="w-full border rounded px-3 py-2" placeholder="DRE / NMLS (if applicable)">
+          <input id="license" class="w-full border rounded px-3 py-2" placeholder="license # / DRE # / NMLS # (if applicable)">
         </div>
 
         <!-- Three ZIP inputs -->
@@ -84,12 +87,12 @@
           <label class="block text-sm font-semibold">Business Card (optional image)</label>
           <input id="photo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="w-full">
           <div id="photoPreview" class="mt-2"></div>
-          <p class="hint mt-1">PNG/JPG recommended. Your card shows on listing pages in your chosen ZIPs.</p>
+          <p class="hint mt-1">PNG/JPG recommended.</p>
         </div>
 
         <div class="md:col-span-2 flex items-center justify-between mt-2">
           <div class="text-sm text-gray-700">Your total: <span id="total">$0</span> / month</div>
-          <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">
+          <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white">
             Proceed to Checkout
           </button>
         </div>
@@ -135,7 +138,7 @@
       const el = $('status'); el.classList.remove('hidden');
       el.className = ok
         ? 'mt-3 text-sm rounded-lg p-3 bg-green-50 text-green-700'
-        : 'mt-3 text-sm rounded-lg p-3 bg-red-50 text-green-700';
+        : 'mt-3 text-sm rounded-lg p-3 bg-red-50 text-red-700';
       el.textContent = msg;
     }
 
@@ -161,7 +164,6 @@
 
       show(mode);
       $('modeSearchB')?.addEventListener('click', ()=>{ location.href='?mode=search'; });
-      $('modeApplyBtn')?.addEventListener('click', ()=>{ location.href='?mode=apply'; });
     })();
 
     // ZIP inputs: only digits, auto-advance after 5
@@ -190,7 +192,7 @@
       $('total').textContent = money(Math.min(uniq.length, 3) * 5);
       return uniq.slice(0,3);
     }
-    ['role','name','email','phone','license'].forEach(id=>{
+    ['role','personalName','name','email','phone','license'].forEach(id=>{
       const el=$(id); if(el) el.addEventListener('input', compute);
     });
 
@@ -233,14 +235,17 @@
         btn.textContent = 'Starting checkout…';
 
         const role = $('role').value.trim();
+        const personalName = $('personalName').value.trim();
         const name = $('name').value.trim();
         const email = $('email').value.trim();
         const phone = formatPhoneDisplay($('phone').value.trim());
         const license = $('license').value.trim();
         const zips = compute();
 
-        if (!role || !name || !email || !phone || !zips.length) {
-          setStatus('Please complete role, name, email, phone, and at least one ZIP.', false);
+        if (!role || !personalName || !name || !email || !phone || !zips.length) {
+          setStatus('Please complete all required fields and at least one ZIP.', false);
+          btn.disabled = false;
+          btn.textContent = 'Proceed to Checkout';
           return;
         }
 
@@ -249,6 +254,7 @@
         try {
           const draft = {
             role,
+            personalName,
             name,
             email: String(email || "").toLowerCase(),
             phone,
