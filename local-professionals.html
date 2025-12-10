@@ -123,7 +123,7 @@
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import {
-      addDoc, collection, serverTimestamp, doc, updateDoc
+      addDoc, collection, serverTimestamp, doc, updateDoc, query, where, getDocs
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
       getStorage, ref, uploadBytes, getDownloadURL
@@ -317,30 +317,48 @@
     })();
 
     // Search (local cached only for now)
-    $('runZipSearch')?.addEventListener('click', ()=>{
+    $('runZipSearch')?.addEventListener('click', async ()=>{
       const zip = $('searchZip').value.trim();
       if (!/^\d{5}$/.test(zip)) { setStatus('Enter a valid 5-digit ZIP to search.', false); return; }
-      setStatus('', true); $('status').classList.add('hidden');
+      setStatus('Searching...', true);
 
-      const pros = (function(){
-        try { return JSON.parse(localStorage.getItem('localPros')||'[]'); } catch { return []; }
-      })().filter(p => (p.zips||[]).includes(zip));
+      try {
+        // Query Firestore for active professionals in this ZIP
+        const q = query(
+          collection(db, "localPros"),
+          where("zips", "array-contains", zip),
+          where("status", "==", "active")
+        );
+        const snapshot = await getDocs(q);
+        
+        const pros = [];
+        snapshot.forEach(doc => {
+          pros.push({ id: doc.id, ...doc.data() });
+        });
 
-      const box = $('prosResults'); box.innerHTML='';
-      if (!pros.length) {
-        box.innerHTML = `<div class="text-sm text-gray-600">No Local Professionals in ${zip} yet.</div>`;
-        return;
+        const box = $('prosResults'); 
+        box.innerHTML='';
+        $('status').classList.add('hidden');
+        
+        if (!pros.length) {
+          box.innerHTML = `<div class="text-sm text-gray-600">No Local Professionals in ${zip} yet.</div>`;
+          return;
+        }
+        
+        pros.forEach(p=>{
+          const card = document.createElement('div');
+          card.className = 'border rounded-lg p-3 bg-white';
+          card.innerHTML = `
+            <div class="text-sm font-semibold">${p.name || 'Professional'}</div>
+            <div class="text-xs text-gray-600">${p.role || ''}${p.license ? ' • ' + p.license : ''}</div>
+            <div class="text-xs text-gray-500 mt-1">ZIPs: ${(p.zips||[]).join(', ')}</div>
+          `;
+          box.appendChild(card);
+        });
+      } catch (err) {
+        console.error('Search error:', err);
+        setStatus('Search failed. Please try again.', false);
       }
-      pros.forEach(p=>{
-        const card = document.createElement('div');
-        card.className = 'border rounded-lg p-3 bg-white';
-        card.innerHTML = `
-          <div class="text-sm font-semibold">${p.name || 'Professional'}</div>
-          <div class="text-xs text-gray-600">${p.role || ''}${p.license ? ' • ' + p.license : ''}</div>
-          <div class="text-xs text-gray-500 mt-1">ZIPs: ${(p.zips||[]).join(', ')}</div>
-        `;
-        box.appendChild(card);
-      });
     });
   </script>
 </body>
