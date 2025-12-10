@@ -14,13 +14,6 @@
 
     .font-cursive { font-family: 'Brush Script MT', cursive; }
 
-    /* Nav hover */
-    .group { position: relative; }
-    #commissionMenu { display: none; position: absolute; left: 0; top: 100%; }
-    .group:hover #commissionMenu,
-    .group:focus-within #commissionMenu,
-    .group.nav-open #commissionMenu { display: block; }
-
     /* --- Strip 2 tile styles --- */
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
@@ -67,9 +60,7 @@
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
       <div class="flex items-center gap-3">
-        <a href="/local-brokers.html" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-1 rounded">
-          Local Brokers
-        </a>
+        <!-- Empty left side for symmetry -->
       </div>
 
       <div class="text-center flex-1">
@@ -83,7 +74,7 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <a href="/local-professionals.html" class="bg-amber-600 text-white text-xs font-semibold px-3 py-1 rounded">Local Professionals</a>
+        <!-- Empty right side for symmetry -->
       </div>
     </div>
   </header>
@@ -156,16 +147,8 @@
 
   <nav class="bg-gray-200 py-2">
     <ul class="flex justify-center space-x-8 font-semibold">
-      <li class="group">
-        <span class="hover:underline cursor-pointer" tabindex="0" id="commissionToggle">Communicate Guaranteed Commission</span>
-        <ul id="commissionMenu" class="mt-2 w-64 bg-white border shadow text-sm text-gray-700 z-10">
-          <li><a href="#" onclick="selectPlan('Listed Property Basic')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Basic</a></li>
-          <li><a href="#" onclick="selectPlan('Listed Property Plus')" class="block px-4 py-2 hover:bg-gray-100">Listed Property Plus</a></li>
-          <li><a href="#" onclick="selectPlan('FSBO Plus')" class="block px-4 py-2 hover:bg-gray-100">FSBO Plus</a></li>
-        </ul>
-      </li>
-      <li><a href="#strip2Search" class="hover:underline">Search Guaranteed Commission</a></li>
-      <li><a href="/login.html" class="hover:underline">Log In</a></li>
+      <li><a href="/advertise.html" class="hover:underline" style="color:#4DA6FF;">Advertise</a></li>
+      <li><a href="/login.html" class="hover:underline" style="color:#4DA6FF;">Log In</a></li>
     </ul>
   </nav>
 
@@ -326,21 +309,6 @@
     function openPressModal(){ document.getElementById('pressModal').classList.remove('hidden'); }
     function closePressModal(){ document.getElementById('pressModal').classList.add('hidden'); }
     function submitPressForm(){ document.getElementById('pressConfirmation').classList.remove('hidden'); }
-
-    (function(){
-      var li = document.querySelector('.group');
-      var menu = document.getElementById('commissionMenu');
-      if (!li || !menu) return;
-      var t;
-      function open(){ li.classList.add('nav-open'); clearTimeout(t); }
-      function close(){ t = setTimeout(function(){li.classList.remove('nav-open');}, 120); }
-      li.addEventListener('mouseenter', open);
-      li.addEventListener('mouseleave', close);
-      menu.addEventListener('mouseenter', open);
-      menu.addEventListener('mouseleave', close);
-      var toggle = document.getElementById('commissionToggle');
-      if(toggle){ toggle.addEventListener('focus', open); toggle.addEventListener('blur', close); }
-    })();
 
     function isValidFullAddress(s) {
       if (!s) return false;
