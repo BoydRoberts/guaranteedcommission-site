@@ -47,7 +47,13 @@
       margin: 0 0 0.5rem 0;
     }
 
-    .p { font-size: 0.95rem; margin-top: 0.5rem; }
+    /* Match index.html feel: justified body text */
+    .p {
+      font-size: 0.95rem;
+      margin-top: 0.5rem;
+      text-align: justify;
+      hyphens: auto;
+    }
 
     .sig-row {
       margin-top: 1rem;
@@ -137,23 +143,22 @@
     function renderCommissionHistory(history) {
       const section = $("commissionHistorySection");
       const list = $("commissionHistoryList");
-      
+
       if (!section || !list) return;
-      
+
       if (!Array.isArray(history) || history.length <= 1) {
-        // Hide if no changes or only original
         section.classList.add("hidden");
         return;
       }
-      
+
       section.classList.remove("hidden");
       list.innerHTML = "";
-      
-      history.forEach((entry, index) => {
-        const commDisplay = entry.commissionType === "%" 
-          ? `${entry.commission}%` 
+
+      history.forEach((entry) => {
+        const commDisplay = entry.commissionType === "%"
+          ? `${entry.commission}%`
           : `$${Number(entry.commission).toLocaleString()}`;
-        
+
         const item = document.createElement("div");
         item.textContent = `- ${commDisplay} (${entry.label} - ${entry.date})`;
         list.appendChild(item);
@@ -167,14 +172,18 @@
       const fullAddr = String(d.address || "").trim() || "[full address]";
       const short    = fullAddr.split(",")[0] || "[short address]";
       const apn      = (d.apn || "").trim();
+
       const name     = (d.ownerName || d.name || "[name]");
       const brokerage= d.brokerage || "[listing brokerage]";
       const agent    = d.agentName || d.agent || "[listing agent]";
-      // Prefer owner/seller phone for FSBO
-      const phone    = isFSBO
-        ? (d.ownerPhone || d.phone || d.agentPhone || "[owner/seller phone]")
+
+      const phone = isFSBO
+        ? (d.ownerPhone || d.phone || d.agentPhone || "[owner/seller phone number]")
         : (d.agentPhone || d.phone || "[agent phone]");
-      const email    = isFSBO ? (d.ownerEmail || "[owner/seller email]") : (d.agentEmail || "[agent email]");
+
+      const email = isFSBO
+        ? (d.ownerEmail || "[owner/seller email]")
+        : (d.agentEmail || "[agent email]");
 
       const cType    = (d.commissionType === "$" || d.commissionType === "%") ? d.commissionType : "%";
       const cVal     = (d.commission ?? "").toString().trim();
@@ -182,13 +191,15 @@
       const commSfx  = (cVal && cType === "%") ? " of the total purchase price" : "";
 
       let p1 = "", p2 = "";
+
       if (isFSBO) {
-        p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email address is ${email}.`;
-        p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission not to exceed ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
+        // FSBO: keep APN
+        p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by owner (Me): ${phone}, ${email}.`;
+        p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       } else {
-        const showParcel = !!apn;
-        p1 = `I, ${name}, am the owner/seller of ${fullAddr}${showParcel ? `, # ${apn}` : ""}. ${short} is listed for sale by ${brokerage}, ${agent}, listing agent, ${phone}${email ? `, ${email}` : ""}.`;
-        p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
+        // LISTED: NEVER show APN (match your new index.html)
+        p1 = `I, ${name}, am the owner/seller of ${fullAddr}. ${short} is listed for sale. ${agent} with ${brokerage} is the listing agent: ${phone}, ${email}.`;
+        p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       }
 
       // Signature block data (no creeping date)
@@ -210,12 +221,10 @@
       // Counter below the signature row (embedded only), text "Viewed N times" (no period)
       const below = $("sigCounterBelow");
       if (embedded) {
-        // Show Firestore counter (iscViews) without increment
         const n = Number(d.iscViews || 0);
         if (below) below.textContent = `Viewed ${n} time${n===1 ? "" : "s"}`;
       } else {
         if (below) below.style.display = "none";
-        // Increment iscViews once per standalone open (if we have an id)
         if (id) {
           updateDoc(doc(db, "listings", id), { iscViews: increment(1), updatedAt: serverTimestamp() }).catch(()=>{});
         }
@@ -231,6 +240,7 @@
       const embedded = isEmbed();
       const printRow = document.getElementById('printRow');
       const printBtn = document.getElementById('printBtn');
+
       if (embedded) {
         if (printRow) printRow.style.display = 'none';
       } else {
@@ -246,7 +256,7 @@
 
       try {
         const u = new URL(location.href);
-        let id   = (u.searchParams.get("id") || "").trim();
+        let id = (u.searchParams.get("id") || "").trim();
 
         if (id && db) {
           try {
