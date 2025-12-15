@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <!-- index.html - Build 2025-11-28 (fix Basic plan default) -->
 <html lang="en">
 <head>
@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
   <style>
     :root{
       --title-bottom-gap: .75rem;
@@ -19,33 +18,35 @@
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
-    .gc-heart { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
     .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
     .gc-share-left { left:10px; }
-    .gc-share-right { right:10px; }
+    .gc-share-right{ right:10px; }
 
-    /* Box shells */
-    #box1, #formBlock, #box3 { overflow:hidden; padding-top:1rem; }
+    #box1, #formBlock, #box3 { overflow: hidden; padding-top: 1rem; }
     .gc-title { text-align:center; font-weight:700; font-size:1.125rem; line-height:1.25; margin-top:0; margin-bottom:var(--title-bottom-gap); }
-
-    /* Your “second-line alignment” tuning */
     .gc-body-top-box1 { margin-top: calc(var(--box2-first-input-offset) - 12px); }
     .gc-body-top-box3 { margin-top: calc(var(--box2-first-input-offset) - 12px); }
+
     .gc-form-offset { margin-top: var(--box2-first-input-offset); }
 
     /* Box 1 FSBO compact mode */
-    #box1.fsbo-compact { font-size:0.75rem; }
-    #box1.fsbo-compact .gc-title { font-size:1.125rem; }
-    #box1.fsbo-compact ul { --tw-space-y-reverse:0; margin-bottom:calc(0.5rem * var(--tw-space-y-reverse)); }
-    #box1.fsbo-compact ul > * + * { margin-top:0.5rem; }
-    #box1.fsbo-compact p.text-base { font-size:0.875rem; }
+    #box1.fsbo-compact { font-size: 0.75rem; }
+    #box1.fsbo-compact .gc-title { font-size: 1.125rem; }
+    #box1.fsbo-compact ul { --tw-space-y-reverse: 0; margin-bottom: calc(0.5rem * var(--tw-space-y-reverse)); }
+    #box1.fsbo-compact ul > * + * { margin-top: 0.5rem; }
+    #box1.fsbo-compact p.text-base { font-size: 0.875rem; }
+    
+    /* Box 1: justified text with minimal spacing */
+    #box1 p { text-align: justify; hyphens: auto; }
+    
+    /* Box 3: justified ISC text */
+    #box3 p { text-align: justify; hyphens: auto; }
+    
+    /* Only break overly long emails when necessary to prevent overflow */
+    #letterAgentEmail, #fsboEmail { overflow-wrap: break-word; }
 
-    /* Box 1 + Box 3 justified text */
-    #box1 p { text-align:justify; hyphens:auto; }
-    #box3 p { text-align:justify; hyphens:auto; }
-
-    /* Compact tiers for Box 2 */
     #formBlock.compact * { line-height:1.25; }
     #formBlock.compact input, #formBlock.compact select, #formBlock.compact button { padding:.4rem .5rem !important; font-size:.85rem !important; }
     #formBlock.compact .space-y-2 > * { margin-top:.25rem !important; margin-bottom:.25rem !important; }
@@ -57,7 +58,6 @@
     #formBlock.compact3 * { line-height:1.15; }
     #formBlock.compact3 input, #formBlock.compact3 select, #formBlock.compact3 button { padding:.3rem .4rem !important; font-size:.75rem !important; }
 
-    /* Compact tiers for Box 3 */
     #box3.compact * { line-height:1.35; }
     #box3.compact p { font-size:.95rem; }
     #box3.compact2 * { line-height:1.3; }
@@ -66,12 +66,12 @@
     #box3.compact3 p { font-size:.85rem; }
   </style>
 </head>
-
 <body class="bg-gray-100 text-gray-800">
-
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
-      <div class="flex items-center gap-3"><!-- symmetry --></div>
+      <div class="flex items-center gap-3">
+        <!-- Empty left side for symmetry -->
+      </div>
 
       <div class="text-center flex-1">
         <div class="flex items-end justify-center gap-0">
@@ -83,11 +83,12 @@
         </p>
       </div>
 
-      <div class="flex items-center gap-2"><!-- symmetry --></div>
+      <div class="flex items-center gap-2">
+        <!-- Empty right side for symmetry -->
+      </div>
     </div>
   </header>
 
-  <!-- Investor modal -->
   <div id="investorModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl relative p-5 max-h-[85vh] overflow-auto">
       <button onclick="closeInvestorModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
@@ -141,7 +142,6 @@
     </div>
   </div>
 
-  <!-- Press modal -->
   <div id="pressModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
       <button onclick="closePressModal()" class="absolute top-2 right-2 text-xl font-bold">&times;</button>
@@ -162,14 +162,11 @@
     </ul>
   </nav>
 
-  <!-- STRIP 1 -->
   <div style="background-color:#4DA6FF;">
     <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
-
       <!-- BOX 1 -->
       <div id="box1" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm flex flex-col">
         <h2 class="gc-title">Commission Communication Menu</h2>
-
         <ul class="gc-body-top-box1 space-y-3 flex-1">
           <li>
             <div onclick="selectPlan('Listed Property Basic')" class="cursor-pointer">
@@ -183,7 +180,6 @@
               </p>
             </div>
           </li>
-
           <li>
             <div onclick="selectPlan('Listed Property Plus')" class="cursor-pointer">
               <p class="text-base font-semibold">Listed Property Plus | $20</p>
@@ -193,7 +189,6 @@
               </p>
             </div>
           </li>
-
           <li>
             <div onclick="selectPlan('FSBO Plus')" class="cursor-pointer">
               <p class="text-base font-semibold">FSBO Plus | $100</p>
@@ -209,12 +204,12 @@
       <!-- BOX 2 -->
       <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm compact2 flex flex-col">
         <h2 id="formTitle" class="gc-title tracking-tight">Listed Property Communication Form</h2>
-
         <form id="listingForm" class="space-y-2 flex flex-col flex-1" autocomplete="off">
           <input type="text" id="name" placeholder="Owner/Seller Name"
                  class="w-full border py-1.5 px-2 rounded gc-form-offset" required>
 
-          <input type="text" id="address" placeholder="Full Property Address (Street, City, ST 12345)"
+          <input type="text" id="address"
+                 placeholder="Full Property Address (Street, City, ST 12345)"
                  class="w-full border py-1.5 px-2 rounded"
                  autocomplete="street-address" spellcheck="false" required>
 
@@ -232,23 +227,26 @@
                  class="w-full border py-1.5 px-2 rounded">
 
           <div id="listedPhoneRow">
-            <input type="tel" id="agentPhone" placeholder="Agent Phone - NOT Your Phone"
+            <input type="tel" id="agentPhone"
+                   placeholder="Agent Phone - NOT Your Phone"
                    class="w-full border py-1.5 px-2 rounded">
             <span id="phoneError" class="text-xs text-red-600 hidden">
-              Please enter a valid phone number (###) ###-####
-            </span>
+              Please enter a valid phone number (###) ###-####</span>
           </div>
 
-          <input type="email" id="agentEmail" placeholder="Agent Email - NOT Your Email"
+          <input type="email" id="agentEmail"
+                 placeholder="Agent Email - NOT Your Email"
                  class="w-full border py-1.5 px-2 rounded">
 
           <div id="fsboEmailRow" class="hidden">
-            <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email"
+            <input type="email" id="fsboEmailInput"
+                   placeholder="Owner/Seller email"
                    class="w-full border py-1.5 px-2 rounded">
           </div>
 
           <div class="flex gap-2">
-            <input type="text" id="commission" placeholder="Buyer Agent Commission"
+            <input type="text" id="commission"
+                   placeholder="Buyer Agent Commission"
                    class="w-full border py-1.5 px-2 rounded">
             <select id="commissionType" class="border py-1.5 px-2 rounded">
               <option value="%">%</option>
@@ -256,10 +254,11 @@
             </select>
           </div>
 
+          <!-- bottom-anchored button -->
           <div class="text-center mt-auto">
             <button type="button" onclick="submitForm()"
                     class="bg-[#4DA6FF] hover:bg-blue-500 text-white px-3 py-2 rounded mt-2 text-sm font-semibold"
-                    style="padding:0.5rem 0.75rem !important; font-size:0.875rem !important;">
+                    style="padding: 0.5rem 0.75rem !important; font-size: 0.875rem !important;">
               Submit Guaranteed Commission
             </button>
           </div>
@@ -273,17 +272,13 @@
         <!-- LISTED ISC -->
         <div id="iscTextListed" class="gc-body-top-box3 flex flex-col flex-1">
           <p>To the escrow holder/closing agent,</p>
-
           <p class="mt-2">
             I, <span id="letterName">[name]</span>, am the owner/seller of
             <span id="letterAddressFull">[full address]</span>.
             <span id="letterAddressShort1">[short address]</span> is listed for sale.
-            <span id="letterAgent">[listing agent]</span> with
-            <span id="letterBrokerage">[listing brokerage]</span> is the listing agent:
-            <span id="letterAgentPhone">[agent phone]</span>,
-            <span id="letterAgentEmail">[agent email]</span>.
+            <span id="letterAgent">[listing agent]</span> with <span id="letterBrokerage">[listing brokerage]</span> is the listing agent:
+            <span id="letterAgentPhone">[agent phone]</span>, <span id="letterAgentEmail">[agent email]</span>.
           </p>
-
           <p class="mt-2">
             Let it be known: if a buyer's agent/broker facilitates the sale of
             <span id="letterAddressShort2">[short address]</span>, you (the escrow holder/closing agent) are irrevocably instructed
@@ -291,60 +286,43 @@
             broker-to-broker compensation) and second by debiting me, the seller - a commission equal to
             <span id="letterCommissionDisplay">[commission]</span><span id="commissionSuffix"></span>.
           </p>
-
-          <div class="mt-auto flex items-baseline">
+          <div class="mt-auto flex items-baseline justify-center gap-8">
             <span id="signatureName"
-                  class="ml-16 font-cursive text-[1.5rem] font-semibold"
-                  style="color:#4DA6FF; transform:translateY(-2px); display:inline-block;">
-              [Name]
-            </span>
-            <span id="signatureDate"
-                  class="text-[1.5rem] font-semibold ml-auto mr-16"
-                  style="color:#4DA6FF; font-size:1.2rem;">
-              Date
-            </span>
+                  class="font-cursive text-[1.5rem] font-semibold"
+                  style="color:#4DA6FF; transform: translateY(-8px); display: inline-block; margin-left: -2rem;">[Name]</span>
+            <span id="signatureDate" class="text-[1.5rem] font-semibold"
+                  style="color:#4DA6FF; font-size: 1.2rem; transform: translateY(-6px); display: inline-block; margin-right: -2rem;">Date</span>
           </div>
         </div>
 
         <!-- FSBO ISC -->
         <div id="iscTextFSBO" class="gc-body-top-box3 hidden flex flex-col flex-1">
           <p>To the escrow holder/closing agent,</p>
-
           <p class="mt-2">
             I, <span id="letterNameFSBO">[name]</span>, am the owner/seller of
             <span id="letterAddressFullFSBO">[full address]</span>, #
             <span id="letterAPNFSBO">[Parcel # / Pin # / Tax ID # / Folio # / APN #]</span>.
             <span id="letterAddressShort1FSBO">[short address]</span> is listed for sale by owner (Me):
-            <span id="fsboPhone">[owner/seller phone number]</span>,
-            <span id="fsboEmail">[owner/seller email]</span>.
+            <span id="fsboPhone">[owner/seller phone number]</span>, <span id="fsboEmail">[owner/seller email]</span>.
           </p>
-
           <p class="mt-2">
             Let it be known: if a buyer's agent/broker facilitates the sale of
             <span id="letterAddressShort2FSBO">[short address]</span>, you (the escrow holder/closing agent) are irrevocably
             instructed to credit/compensate the buyer's broker a commission equal to
             <span id="letterCommissionDisplayFSBO">[commission]</span><span id="commissionSuffixFSBO"></span>.
           </p>
-
-          <div class="mt-auto flex items-baseline">
+          <div class="mt-auto flex items-baseline justify-center gap-8">
             <span id="signatureNameFSBO"
-                  class="ml-16 font-cursive text-[1.5rem] font-semibold"
-                  style="color:#4DA6FF; transform:translateY(-2px); display:inline-block;">
-              [Name]
-            </span>
-            <span id="signatureDateFSBO"
-                  class="text-[1.5rem] font-semibold ml-auto mr-16"
-                  style="color:#4DA6FF; font-size:1.2rem;">
-              Date
-            </span>
+                  class="font-cursive text-[1.5rem] font-semibold"
+                  style="color:#4DA6FF; transform: translateY(-8px); display: inline-block; margin-left: -2rem;">[Name]</span>
+            <span id="signatureDateFSBO" class="text-[1.5rem] font-semibold"
+                  style="color:#4DA6FF; font-size: 1.2rem; transform: translateY(-6px); display: inline-block; margin-right: -2rem;">Date</span>
           </div>
         </div>
       </div>
-
     </section>
   </div>
 
-  <!-- STRIP 2 -->
   <div style="background-color:#ffffff;">
     <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12 pt-6">
       <div class="text-center mb-4 mt-0">
@@ -364,13 +342,17 @@
   <footer class="bg-white border-t mt-8">
     <div class="max-w-7xl mx-auto px-4 py-6 text-center text-xs text-gray-600 space-y-3">
       <div class="flex justify-center gap-3">
-        <button onclick="openPressModal()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded">Press Inquiry</button>
-        <button onclick="openInvestorModal()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded">Accredited Investors Only</button>
+        <button onclick="openPressModal()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded">
+          Press Inquiry
+        </button>
+        <button onclick="openInvestorModal()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-2 rounded">
+          Accredited Investors Only
+        </button>
       </div>
       <p>© 2025 GuaranteedCommission.com. All rights reserved.</p>
       <p>Boyd Roberts - California Licensed Real Estate Broker - DRE License #01354788</p>
       <p>
-        <a href="/privacy.html" class="hover:underline">Privacy Policy</a> -
+        <a href="/privacy.html" class="hover:underline">Privacy Policy</a> - 
         <a href="/terms.html" class="hover:underline">Terms of Use</a>
       </p>
       <p class="text-[10px] text-gray-400">This platform is a Commission Communication Platform. All purchases subject to quality control review.</p>
@@ -426,7 +408,7 @@
 
         document.getElementById('iscTextListed').classList.add('hidden');
         document.getElementById('iscTextFSBO').classList.remove('hidden');
-
+        
         // Make Box 1 smaller in FSBO mode
         box1.classList.add('fsbo-compact');
       } else {
@@ -443,7 +425,7 @@
 
         document.getElementById('iscTextListed').classList.remove('hidden');
         document.getElementById('iscTextFSBO').classList.add('hidden');
-
+        
         // Remove compact styling from Box 1 when not FSBO
         box1.classList.remove('fsbo-compact');
       }
@@ -497,21 +479,11 @@
     })();
 
     window.addEventListener('DOMContentLoaded', function() {
-      // Always default to Basic on page load
+      // CRITICAL FIX: Always default to Basic on page load
+      // This prevents stale "Listed Property Plus" from polluting new listings
       showForm('listed');
       localStorage.setItem('selectedPlan', 'Listed Property Basic');
       console.log('[index] Page load: Reset selectedPlan to Listed Property Basic');
-
-      // Set current date in Box 3
-      var today = new Date();
-      var month = today.getMonth() + 1;
-      var day = today.getDate();
-      var year = today.getFullYear();
-      var dateStr = month + '/' + day + '/' + year;
-      var sd = document.getElementById('signatureDate');
-      var sdf = document.getElementById('signatureDateFSBO');
-      if (sd) sd.textContent = dateStr;
-      if (sdf) sdf.textContent = dateStr;
 
       var phoneInput = document.getElementById('agentPhone');
       var phoneError = document.getElementById('phoneError');
@@ -554,11 +526,8 @@
         var amount = (document.getElementById('commission').value || '').trim();
         var type = document.getElementById('commissionType').value;
         var suffix = type === '%' ? 'of the total purchase price' : '';
-        var display = type === '$'
-          ? (amount ? ('$' + Number(amount).toLocaleString()) : '')
-          : (amount ? amount + '%' : '');
+        var display = type === '$' ? (amount ? ('$' + Number(amount).toLocaleString()) : '') : (amount ? amount + '%' : '');
 
-        // LISTED ISC
         document.getElementById('letterName').textContent = nameVal || '[name]';
         document.getElementById('letterAddressFull').textContent = fullAddr || '[full address]';
         document.getElementById('letterAddressShort1').textContent = short || '[short address]';
@@ -571,7 +540,6 @@
         document.getElementById('commissionSuffix').textContent = display ? (' ' + suffix) : '';
         document.getElementById('signatureName').textContent = nameVal || '[Name]';
 
-        // FSBO ISC
         document.getElementById('letterNameFSBO').textContent = nameVal || '[name]';
         document.getElementById('letterAddressFullFSBO').textContent = fullAddr || '[full address]';
         document.getElementById('letterAddressShort1FSBO').textContent = short || '[short address]';
@@ -583,9 +551,19 @@
         document.getElementById('commissionSuffixFSBO').textContent = display ? (' ' + suffix) : '';
         document.getElementById('signatureNameFSBO').textContent = nameVal || '[Name]';
       }
-
       syncAll();
+
+      // Set current date
+      var today = new Date();
+      var month = today.getMonth() + 1;
+      var day = today.getDate();
+      var year = today.getFullYear();
+      var dateStr = month + '/' + day + '/' + year;
+      document.getElementById('signatureDate').textContent = dateStr;
+      document.getElementById('signatureDateFSBO').textContent = dateStr;
+
       wireSearch();
+
       fitStrip1();
       setTimeout(fitStrip1, 150);
       window.addEventListener('resize', fitStrip1);
@@ -593,17 +571,15 @@
 
     async function submitForm(){
       var isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
-
       var requiredIds = ['name','address','agentPhone'];
       if (isFSBO) { requiredIds.push('apn'); requiredIds.push('fsboEmailInput'); }
-
       var ok = true;
       for(var i=0;i<requiredIds.length;i++){
         var id = requiredIds[i];
         var el = document.getElementById(id);
-        if(!el || !el.value.trim()){
-          if(el) el.classList.add('border-red-500');
-          ok = false;
+        if(!el || !el.value.trim()){ 
+          if(el) el.classList.add('border-red-500'); 
+          ok = false; 
         } else {
           el.classList.remove('border-red-500');
         }
@@ -623,8 +599,9 @@
       // Clear stale session data for new listing
       try {
         var keysToRemove = ['agentListing','checkoutData','intakeFollowups','lastListingAddress','signature','signedISC'];
-        for(var k=0;k<keysToRemove.length;k++) localStorage.removeItem(keysToRemove[k]);
-
+        for(var k=0;k<keysToRemove.length;k++){
+          localStorage.removeItem(keysToRemove[k]);
+        }
         var allKeys = Object.keys(localStorage);
         for(var m=0;m<allKeys.length;m++){
           var key = allKeys[m];
@@ -649,16 +626,26 @@
       };
       localStorage.setItem("formData", JSON.stringify(formData));
       if(formData.address){
-        localStorage.setItem('shortAddress', formData.address.split(',')[0]);
+        var short = formData.address.split(',')[0];
+        localStorage.setItem('shortAddress', short);
       }
-
+      
+      // CRITICAL FIX: Determine plan based on what user explicitly selected THIS SESSION
+      // If user didn't click a plan option, default to Basic (for Listed) or FSBO
       var plan;
-      if (isFSBO) plan = 'FSBO Plus';
-      else if (userSelectedPlanThisSession === 'Listed Property Plus') plan = 'Listed Property Plus';
-      else plan = 'Listed Property Basic';
-
+      if (isFSBO) {
+        plan = 'FSBO Plus';
+      } else if (userSelectedPlanThisSession === 'Listed Property Plus') {
+        plan = 'Listed Property Plus';
+      } else {
+        // Default to Basic - user either selected Basic or didn't select anything
+        plan = 'Listed Property Basic';
+      }
+      
+      // Save the correct plan
       localStorage.setItem('selectedPlan', plan);
       console.log('[index] submitForm: plan =', plan, '(userSelectedPlanThisSession:', userSelectedPlanThisSession, ')');
+      
       localStorage.setItem('postSignatureOptions', plan.indexOf('FSBO') >= 0 ? 'fsbo' : 'listed');
 
       localStorage.setItem('loginOrigin', 'box2');
@@ -679,7 +666,6 @@
 
           var listingsCol = collection(db, "listings");
 
-          // (kept from your prior logic — used for dedupe attempts)
           var existingId = "";
           try {
             var exactSnap = await getDocs(query(listingsCol, where("address","==", addrVal), limit(5)));
@@ -698,6 +684,7 @@
             } catch(e) {}
           }
 
+          // Save listing with correct plan
           var payload = {
             address: formData.address,
             shortAddress: (formData.address.split(",")[0] || "").trim(),
@@ -721,7 +708,7 @@
           console.log("[index] Saving listing to Firestore with plan:", plan);
           var ref = await addDoc(listingsCol, payload);
           console.log("[index] Listing saved! ID:", ref.id);
-
+          
           localStorage.setItem("lastListingId", ref.id);
           localStorage.setItem("lastListingAddress", payload.address || "");
           localStorage.setItem('formData:' + ref.id, JSON.stringify(formData));
@@ -749,7 +736,9 @@
         return true;
       } catch(e) { return true; }
     }
-
+    function buildListingUrlById(id) {
+      return window.location.origin + '/listing.html?id=' + encodeURIComponent(id);
+    }
     function openEmail(address, url) {
       var subject = encodeURIComponent(address ? 'Listing: ' + address : 'Listing');
       var body = encodeURIComponent((address ? (address + " - ") : "") + 'commission posted with photos.\n\n' + url);
@@ -760,7 +749,6 @@
       a.click();
       setTimeout(function(){ try { document.body.removeChild(a); } catch(e){} }, 0);
     }
-
     function openText(address, url) {
       var msg = encodeURIComponent((address ? (address + " - ") : "") + 'commission posted with photos.\n\n' + url);
       window.location.href = 'sms:&body=' + msg;
@@ -773,7 +761,7 @@
       if(p) return Math.round(p*(c/100));
       return null;
     }
-
+    
     function renderTile(data){
       var id = data.id || "";
       var address = data.address || "[full address]";
@@ -801,17 +789,20 @@
       var line1Right = (calc != null) ? '$' + calc.toLocaleString() : '-';
       var img = (Array.isArray(photos) && photos.length ? photos[primaryIndex||0] : "");
       var typeSeg = propertyType ? ' | ' + propertyType : '';
-
       var card = document.createElement('article');
       card.className = "gc-tile cursor-pointer";
       card.onclick = function() {
-        if (id) window.location.href = '/listing.html?id=' + encodeURIComponent(id);
-        else window.location.href = '/listing.html?addr=' + encodeURIComponent(address);
+        if (id) {
+          window.location.href = '/listing.html?id=' + encodeURIComponent(id);
+        } else {
+          var slug = encodeURIComponent(address);
+          window.location.href = '/listing.html?addr=' + slug;
+        }
       };
 
       var brokerageDisplay = (plan||'').indexOf('FSBO') >= 0 ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]').toUpperCase();
-
-      card.innerHTML =
+      
+      card.innerHTML = 
         '<div class="relative">' +
           '<img class="gc-photo" src="' + (img || '') + '" alt="Listing photo">' +
           (bannerText ? '<div class="gc-ribbon">' + bannerText + '</div>' : '') +
@@ -829,17 +820,14 @@
             '<div class="truncate text-red-600">Commission ' + line1Mid + ' | ' + line1Right + '</div>' +
           '</div>' +
           '<div class="text-[12px] text-gray-700">' +
-            (bedrooms != null ? bedrooms : '-') + ' bds | ' +
-            (bathrooms != null ? bathrooms : '-') + ' ba | ' +
-            (sqft ? Number(sqft).toLocaleString() : '-') + ' sqft' + typeSeg + ' | ' + status +
+            (bedrooms != null ? bedrooms : '-') + ' bds | ' + (bathrooms != null ? bathrooms : '-') + ' ba | ' + (sqft ? Number(sqft).toLocaleString() : '-') + ' sqft' + typeSeg + ' | ' + status +
           '</div>' +
           '<div class="text-sm font-medium">' + address + '</div>' +
           '<div class="text-[12px] text-gray-600">' +
             brokerageDisplay + (agentName ? ' - ' + agentName : '') + (agentPhone ? ' - ' + agentPhone : '') +
           '</div>' +
           '<div class="text-[12px] text-gray-500 text-center" data-stats>' +
-            'Viewed ' + Number(views||0).toLocaleString() + ' time' + (Number(views||0)===1?'':'s') +
-            ' | Liked ' + Number(likes||0).toLocaleString() + ' time' + (Number(likes||0)===1?'':'s') +
+            'Viewed ' + Number(views||0).toLocaleString() + ' time' + (Number(views||0)===1?'':'s') + ' | Liked ' + Number(likes||0).toLocaleString() + ' time' + (Number(likes||0)===1?'':'s') +
           '</div>' +
         '</div>';
 
@@ -871,8 +859,7 @@
                 var currentLikes = Number(likes||0) + 1;
                 var v = Number(views||0);
                 if (statsEl) {
-                  statsEl.textContent = 'Viewed ' + v.toLocaleString() + ' time' + (v===1?'':'s') +
-                                        ' | Liked ' + currentLikes.toLocaleString() + ' time' + (currentLikes===1?'':'s');
+                  statsEl.textContent = 'Viewed ' + v.toLocaleString() + ' time' + (v===1?'':'s') + ' | Liked ' + currentLikes.toLocaleString() + ' time' + (currentLikes===1?'':'s');
                 }
               } catch(err) {}
             }
@@ -910,7 +897,10 @@
       grid.innerHTML = '';
       var q = (filterText || '').toLowerCase();
       var arr = q ? list.filter(function(d){ return (String(d.address||'').toLowerCase().indexOf(q) >= 0); }) : list;
-      if (!arr.length) { empty.classList.remove('hidden'); return; }
+      if (!arr.length) {
+        empty.classList.remove('hidden');
+        return;
+      }
       empty.classList.add('hidden');
       for(var i=0;i<arr.length;i++){
         grid.appendChild(renderTile(arr[i]));
@@ -1000,6 +990,5 @@
       }
     })();
   </script>
-
 </body>
 </html>
