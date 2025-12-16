@@ -251,9 +251,6 @@
     </div>
   </div>
 
-  <!-- Firebase init -->
-  <script type="module" src="/scripts/firebase-init.js"></script>
-
   <script>
     // Change Commission Modal helpers (non-module)
     function openChangeCommissionModal() {
@@ -266,7 +263,8 @@
 
   <!-- SELLER PAGE LOGIC (Firestore + Storage) -->
   <script type="module">
-    import { db } from "/scripts/firebase-init.js";
+    // ✅ FIX #2: Import STORAGE_BUCKET_GS from single source of truth
+    import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
     import {
       doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -594,11 +592,11 @@
       computePhotoHelp();
     }
 
-    // --- storage bucket (working) ---
-    var BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
+    // ✅ FIX #2: Removed hardcoded BUCKET_URL - now using STORAGE_BUCKET_GS from firebase-init.js
     
     async function uploadOne(file){
-      var storage = getStorage(undefined, BUCKET_URL);
+      // ✅ FIX #2: Use STORAGE_BUCKET_GS from import
+      var storage = getStorage(undefined, STORAGE_BUCKET_GS);
       var safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       var path = "listings/" + listingId + "/photos/" + Date.now() + "_" + safeName;
       var r = ref(storage, path);
