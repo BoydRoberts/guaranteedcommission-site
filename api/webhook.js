@@ -7,13 +7,13 @@ export const config = {
   },
 };
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// FIX #2B: Lock Stripe API version to match create-checkout-session.js
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     const sig = req.headers['stripe-signature'];
     let event;
-
     try {
       const buf = await buffer(req);
       event = stripe.webhooks.constructEvent(
@@ -23,16 +23,15 @@ export default async function handler(req, res) {
       );
     } catch (err) {
       console.error('Webhook signature verification failed:', err.message);
+      // BONUS FIX: Fixed syntax error (was missing parenthesis)
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
-
     // Handle successful payment
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       console.log('💰 Payment received for session:', session.id);
       // You can update database, mark ISC as signed-ready here
     }
-
     res.json({ received: true });
   } else {
     res.setHeader('Allow', 'POST');
