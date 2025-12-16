@@ -215,12 +215,10 @@
     </aside>
   </div>
 
-  <!-- Firebase init -->
-  <script type="module" src="/scripts/firebase-init.js"></script>
-
   <!-- Firestore + Storage logic -->
   <script type="module">
-    import { db } from "/scripts/firebase-init.js";
+    // ✅ FIX #2: Import STORAGE_BUCKET_GS from single source of truth
+    import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
     import {
       doc, getDoc, updateDoc, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -293,6 +291,7 @@
         p.className = "text-sm text-gray-600";
         p.textContent = "No photos yet.";
         grid.appendChild(p);
+        computePhotoHelp();
         return;
       }
 
@@ -454,10 +453,11 @@
       }
     }
 
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
+    // ✅ FIX #2: Removed hardcoded BUCKET_URL - now using STORAGE_BUCKET_GS from firebase-init.js
 
     async function uploadOne(file) {
-      const storage = getStorage(undefined, BUCKET_URL);
+      // ✅ FIX #2: Use STORAGE_BUCKET_GS from import
+      const storage = getStorage(undefined, STORAGE_BUCKET_GS);
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
