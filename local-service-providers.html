@@ -123,11 +123,9 @@
     </section>
   </main>
 
-  <!-- Firebase init -->
-  <script type="module" src="/scripts/firebase-init.js"></script>
-
   <script type="module">
-    import { db } from "/scripts/firebase-init.js";
+    // ✅ FIX #2: Import STORAGE_BUCKET_GS from single source of truth
+    import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
     import {
       addDoc, collection, serverTimestamp, doc, updateDoc, query, where, getDocs
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -210,14 +208,14 @@
     // Stripe Payment Link
     const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_8x2dRb4Gr8N4gnlaM44ow00";
 
-    // Storage bucket
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.appspot.com";
+    // ✅ FIX #2: Removed hardcoded BUCKET_URL - now using STORAGE_BUCKET_GS from firebase-init.js
 
     async function maybeUploadPhoto(draftId) {
       try {
         const file = $('photo')?.files?.[0];
         if (!file) return "";
-        const storage = getStorage(undefined, BUCKET_URL);
+        // ✅ FIX #2: Use STORAGE_BUCKET_GS from import
+        const storage = getStorage(undefined, STORAGE_BUCKET_GS);
         const safe = String(file.name || "service_provider_card").replace(/[^\w\-.]+/g,"_");
         const path = `localServices/${draftId}/card_${Date.now()}_${safe}`;
         const r = ref(storage, path);
