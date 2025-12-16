@@ -26,6 +26,11 @@
         $100 per month per ZIP (1 broker per ZIP). Your brokerage ad displays on all listing detail pages in that ZIP in the "Local Real Estate Brokerage" section.
       </p>
 
+      <!-- Top mode choice -->
+      <div class="flex items-center justify-center gap-3 mt-4">
+        <button id="modeSearchB" class="px-3 py-2 rounded border" style="background-color:#4DA6FF; color:white;">Search by ZIP</button>
+      </div>
+
       <div id="status" class="hidden mt-4 text-sm rounded-lg p-3"></div>
 
       <form id="brokerForm" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4" autocomplete="off">
@@ -70,11 +75,26 @@
 
         <div class="md:col-span-2 flex items-center justify-between mt-2">
           <div class="text-sm text-gray-700">Your total: <span id="total">$100</span> / month</div>
-          <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">
+          <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white">
             Proceed to Checkout
           </button>
         </div>
+
+        <div class="md:col-span-2 text-xs text-gray-600 mt-1">
+          All purchases subject to quality control review. Use "Search by ZIP" to check availability.
+        </div>
       </form>
+
+      <!-- Simple ZIP search area -->
+      <div id="searchArea" class="hidden mt-8 border-t pt-5">
+        <h3 class="font-semibold mb-2">Search Local Brokers by ZIP</h3>
+        <div class="flex items-center gap-2">
+          <input id="searchZip" class="border rounded px-3 py-2 w-40" placeholder="ZIP code">
+          <button id="runZipSearch" class="px-3 py-2 rounded bg-gray-700 text-white">Search</button>
+        </div>
+        <div id="brokersResults" class="mt-4 grid grid-cols-1 gap-3"></div>
+      </div>
+
     </section>
 
     <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mt-4 text-emerald-800">
@@ -83,13 +103,11 @@
     </section>
   </main>
 
-  <!-- Firebase init -->
-  <script type="module" src="/scripts/firebase-init.js"></script>
-
   <script type="module">
-    import { db } from "/scripts/firebase-init.js";
+    // ✅ FIX #2: Import STORAGE_BUCKET_GS from single source of truth
+    import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
     import {
-      addDoc, collection, doc, updateDoc, serverTimestamp
+      addDoc, collection, doc, updateDoc, serverTimestamp, query, where, getDocs
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
       getStorage, ref, uploadBytes, getDownloadURL
@@ -110,6 +128,23 @@
       if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
       return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
     }
+
+    // Mode toggle via query or buttons
+    (function(){
+      const u = new URL(location.href);
+      let mode = u.searchParams.get('mode') || 'apply';
+
+      function show(mode){
+        if (mode === 'search') {
+          $('searchArea').classList.remove('hidden');
+          $('brokerForm')?.classList.remove('hidden');
+          $('searchZip').focus();
+        }
+      }
+
+      show(mode);
+      $('modeSearchB')?.addEventListener('click', ()=>{ location.href='?mode=search'; });
+    })();
 
     // Price label (fixed $100/mo)
     (function(){ $('total').textContent = money(100); })();
@@ -132,15 +167,17 @@
       if (/^\d{5}$/.test(z)) $('zip').value = z;
     })();
 
-    // Stripe Checkout Link (test) — UPDATED
-    const CHECKOUT_LINK_BASE_BROKER = "https://buy.stripe.com/test_28EaEZc8T4wO0on7zS4ow01"; // ← updated
-    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app"; // ✅ corrected bucket
+    // Stripe Checkout Link (test)
+    const CHECKOUT_LINK_BASE_BROKER = "https://buy.stripe.com/test_28EaEZc8T4wO0on7zS4ow01";
+
+    // ✅ FIX #2: Removed hardcoded BUCKET_URL - now using STORAGE_BUCKET_GS from firebase-init.js
 
     async function maybeUploadPhoto(draftId) {
       try {
         const file = $('photo')?.files?.[0];
         if (!file) return "";
-        const storage = getStorage(undefined, BUCKET_URL);
+        // ✅ FIX #2: Use STORAGE_BUCKET_GS from import
+        const storage = getStorage(undefined, STORAGE_BUCKET_GS);
         const safe = String(file.name || "broker_ad").replace(/[^\w\-.]+/g,"_");
         const path = `localBrokers/${draftId}/ad_${Date.now()}_${safe}`;
         const r = ref(storage, path);
@@ -235,6 +272,52 @@
         }
       }
     })();
+
+    // Search by ZIP
+    $('runZipSearch')?.addEventListener('click', async ()=>{
+      const zip = $('searchZip').value.trim();
+      if (!/^\d{5}$/.test(zip)) { setStatus('Enter a valid 5-digit ZIP to search.', false); return; }
+      setStatus('Searching...', true);
+
+      try {
+        // Query Firestore for active brokers in this ZIP
+        const q = query(
+          collection(db, "localBrokers"),
+          where("zip", "==", zip),
+          where("status", "==", "active")
+        );
+        const snapshot = await getDocs(q);
+        
+        const brokers = [];
+        snapshot.forEach(doc => {
+          brokers.push({ id: doc.id, ...doc.data() });
+        });
+
+        const box = $('brokersResults'); 
+        box.innerHTML='';
+        $('status').classList.add('hidden');
+        
+        if (!brokers.length) {
+          box.innerHTML = `<div class="text-sm text-gray-600">No Local Brokers reserved in ${zip} yet. This ZIP is available!</div>`;
+          return;
+        }
+        
+        brokers.forEach(b=>{
+          const card = document.createElement('div');
+          card.className = 'border rounded-lg p-3 bg-white';
+          card.innerHTML = `
+            <div class="text-sm font-semibold">${b.name || 'Brokerage'}</div>
+            <div class="text-xs text-gray-600">${b.contact || ''}</div>
+            <div class="text-xs text-gray-500 mt-1">ZIP: ${b.zip || ''}</div>
+            ${b.website ? `<div class="text-xs text-blue-600 mt-1"><a href="${b.website}" target="_blank" class="hover:underline">${b.website}</a></div>` : ''}
+          `;
+          box.appendChild(card);
+        });
+      } catch (err) {
+        console.error('Search error:', err);
+        setStatus('Search failed. Please try again.', false);
+      }
+    });
   </script>
 </body>
 </html>
