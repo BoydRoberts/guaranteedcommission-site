@@ -1,6 +1,12 @@
 // /scripts/paid-upgrades-handler.js
 // Single source of truth for finalizing paid upgrades after Stripe payment
 // Idempotent - safe to call multiple times using payment_processed flag
+//
+// This handler processes PAID UPGRADES only:
+// - banner, premium, pin, confidential, plus upgrade
+//
+// Commission changes are finalized in signature.html when the seller signs the new ISC.
+// This ensures commission updates happen at the legally correct moment (signature time).
 
 import { db } from "/scripts/firebase-init.js";
 import {
@@ -16,9 +22,14 @@ import {
  * - Reads checkoutData from localStorage
  * - Loads the listing from Firestore
  * - Merges upgrades into paidUpgrades (doesn't overwrite existing)
+ * - Processes: banner, premium, pin, confidential, plus upgrade
  * - Upgrades plan to Plus only if upgradeToPlus is true OR checkoutData.plan is Plus
  * - For commission change, does NOT auto-upgrade to Plus (unless upgradeToPlus is also true)
  * - Marks as processed using localStorage flag
+ * 
+ * NOTE: Commission changes are NOT written to Firestore here. They are finalized
+ * in signature.html when the seller signs the new ISC. This ensures commission
+ * updates happen at the legally correct moment.
  * 
  * @returns {Promise<{processed: boolean, error?: string}>}
  */
@@ -143,25 +154,25 @@ export async function updatePaidUpgradesAfterPayment() {
       console.log('[paid-upgrades] Commission change purchase - NOT auto-upgrading plan');
     }
 
-    // Handle commission change
-    if (upgrades.changeCommission && meta.newCommission && meta.newCommissionType) {
-      updateData.commission = meta.newCommission;
-      updateData.commissionType = meta.newCommissionType;
-      updateData.commissionChangeUsed = true;
-      console.log('[paid-upgrades] Updating commission to:', meta.newCommission, meta.newCommissionType);
-    }
+    // NOTE: Commission change is NOT handled here - it's finalized in signature.html
+    // when the seller signs the new ISC. This handler only processes paid upgrades
+    // (banner, premium, pin, confidential, plus upgrade).
 
-    // Write to Firestore
-    console.log('[paid-upgrades] Writing to Firestore:', updateData);
-    await updateDoc(listingRef, updateData);
+    // Write to Firestore only if something changed (more than just updatedAt)
+    if (Object.keys(updateData).length > 1) {
+      console.log('[paid-upgrades] Writing to Firestore:', updateData);
+      await updateDoc(listingRef, updateData);
+    } else {
+      console.log('[paid-upgrades] Nothing to update in Firestore (skipping write)');
+    }
 
     // Mark as processed (idempotency flag)
     localStorage.setItem(processedKey, 'true');
     console.log('[paid-upgrades] Marked session as processed:', sessionId);
 
     // Clear upgrade flags from checkoutData only if we actually processed something
-    // (i.e., updateData has more than just updatedAt)
-    if (Object.keys(updateData).length > 1) {
+    // (i.e., wrote paidUpgrades or plan to Firestore)
+    if (paidUpgradesChanged || updateData.plan) {
       if (checkoutData.upgrades) {
         checkoutData.upgrades = {
           upgradeToPlus: false,
@@ -174,7 +185,8 @@ export async function updatePaidUpgradesAfterPayment() {
       }
       if (checkoutData.meta) {
         checkoutData.meta.fromSellerDetail = false;
-        checkoutData.meta.fromChangeCommission = false;
+        // NOTE: We do NOT clear fromChangeCommission, newCommission, or newCommissionType here.
+        // Those are cleared by signature.html after the commission is finalized.
       }
       localStorage.setItem('checkoutData', JSON.stringify(checkoutData));
       console.log('[paid-upgrades] Cleared upgrade flags from checkoutData');
