@@ -1,112 +1,221 @@
 // /scripts/paid-upgrades-handler.js
-// Handles updating Firestore with paid upgrades after successful Stripe checkout
-// Include this in signature.html and agent-detail.html
+// Single source of truth for finalizing paid upgrades after Stripe payment
+// Idempotent - safe to call multiple times using payment_processed flag
 
+import { db } from "/scripts/firebase-init.js";
+import {
+  doc, getDoc, updateDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/**
+ * Finalizes paid upgrades after Stripe checkout
+ * 
+ * This function:
+ * - Reads session_id from URL
+ * - Reads lastListingId from localStorage
+ * - Reads checkoutData from localStorage
+ * - Loads the listing from Firestore
+ * - Merges upgrades into paidUpgrades (doesn't overwrite existing)
+ * - Upgrades plan to Plus only if upgradeToPlus is true OR checkoutData.plan is Plus
+ * - For commission change, does NOT auto-upgrade to Plus (unless upgradeToPlus is also true)
+ * - Marks as processed using localStorage flag
+ * 
+ * @returns {Promise<{processed: boolean, error?: string}>}
+ */
 export async function updatePaidUpgradesAfterPayment() {
   try {
-    console.log("[paid-upgrades] Checking for payment success...");
-    
-    // Check if this is a return from Stripe (has session_id in URL)
-    const url = new URL(window.location.href);
-    const sessionId = url.searchParams.get("session_id");
+    // Read session_id from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
     
     if (!sessionId) {
-      console.log("[paid-upgrades] No session_id found, skipping upgrade tracking");
-      return;
+      console.log('[paid-upgrades] No session_id in URL - nothing to process');
+      return { processed: false };
     }
 
-    const listingId = (localStorage.getItem("lastListingId") || "").trim();
+    // Check if already processed (idempotency)
+    const processedKey = `payment_processed:${sessionId}`;
+    if (localStorage.getItem(processedKey) === 'true') {
+      console.log('[paid-upgrades] Already processed session:', sessionId);
+      return { processed: false, alreadyProcessed: true };
+    }
+
+    // Read listingId from localStorage
+    const listingId = localStorage.getItem('lastListingId');
     if (!listingId) {
-      console.warn("[paid-upgrades] No listingId found");
-      return;
+      console.warn('[paid-upgrades] No lastListingId in localStorage');
+      return { processed: false, error: 'No listing ID found' };
     }
 
-    // Get checkout data
-    const getJSON = (k, fb) => { 
-      try { return JSON.parse(localStorage.getItem(k)) ?? fb; } 
-      catch { return fb; } 
-    };
-    const checkoutData = getJSON("checkoutData", {});
-    
-    if (!checkoutData || !checkoutData.upgrades) {
-      console.warn("[paid-upgrades] No checkout data found");
-      return;
+    // Read checkoutData from localStorage
+    let checkoutData = {};
+    try {
+      const checkoutDataRaw = localStorage.getItem('checkoutData');
+      if (checkoutDataRaw) {
+        checkoutData = JSON.parse(checkoutDataRaw);
+      }
+    } catch (e) {
+      console.warn('[paid-upgrades] Could not parse checkoutData:', e);
     }
 
-    // Import Firestore
-    const { db } = await import("/scripts/firebase-init.js");
-    if (!db) {
-      console.warn("[paid-upgrades] Firestore not available");
-      return;
-    }
-    
-    const { doc, getDoc, updateDoc, serverTimestamp } = 
-      await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    console.log('[paid-upgrades] Processing payment for listing:', listingId);
+    console.log('[paid-upgrades] checkoutData:', checkoutData);
 
-    // Check if we've already processed this payment
-    const processingKey = `payment_processed:${sessionId}`;
-    if (localStorage.getItem(processingKey)) {
-      console.log("[paid-upgrades] Payment already processed, skipping");
-      return;
-    }
-
-    // Get current listing data to check if upgrades are already recorded
-    const listingRef = doc(db, "listings", listingId);
+    // Load current listing from Firestore
+    const listingRef = doc(db, 'listings', listingId);
     const listingSnap = await getDoc(listingRef);
     
     if (!listingSnap.exists()) {
-      console.warn("[paid-upgrades] Listing not found:", listingId);
-      return;
+      console.error('[paid-upgrades] Listing not found:', listingId);
+      return { processed: false, error: 'Listing not found' };
     }
 
     const currentData = listingSnap.data();
-    const currentPaidUpgrades = currentData.paidUpgrades || {};
+    const currentPlan = currentData.plan || 'Listed Property Basic';
+    const existingPaidUpgrades = currentData.paidUpgrades || {};
+    
+    console.log('[paid-upgrades] Current plan:', currentPlan);
+    console.log('[paid-upgrades] Existing paidUpgrades:', existingPaidUpgrades);
 
-    // Build paidUpgrades object based on what was purchased
-    const paidUpgrades = {
-      banner: !!checkoutData.upgrades?.banner || !!currentPaidUpgrades.banner,
-      premium: !!checkoutData.upgrades?.premium || !!checkoutData.upgrades?.pin || !!currentPaidUpgrades.premium,
-      pin: !!checkoutData.upgrades?.pin || !!currentPaidUpgrades.pin,
-      confidential: !!checkoutData.upgrades?.confidential || !!currentPaidUpgrades.confidential
-    };
+    // Determine what was purchased from checkoutData
+    const upgrades = checkoutData.upgrades || {};
+    const meta = checkoutData.meta || {};
+    
+    // Build new paidUpgrades object by MERGING with existing
+    const newPaidUpgrades = { ...existingPaidUpgrades };
+    
+    if (upgrades.banner) {
+      newPaidUpgrades.banner = true;
+      console.log('[paid-upgrades] Adding banner upgrade');
+    }
+    
+    if (upgrades.premium) {
+      newPaidUpgrades.premium = true;
+      console.log('[paid-upgrades] Adding premium upgrade');
+    }
+    
+    if (upgrades.pin) {
+      newPaidUpgrades.pin = true;
+      newPaidUpgrades.premium = true; // Pin includes Premium
+      console.log('[paid-upgrades] Adding pin upgrade (includes premium)');
+    }
+    
+    if (upgrades.confidential) {
+      newPaidUpgrades.confidential = true;
+      console.log('[paid-upgrades] Adding confidential upgrade');
+    }
+
+    // Check if paidUpgrades actually changed
+    const paidUpgradesChanged =
+      JSON.stringify(existingPaidUpgrades) !== JSON.stringify(newPaidUpgrades);
 
     // Prepare update object
     const updateData = {
-      paidUpgrades,
       updatedAt: serverTimestamp()
     };
 
-    // If plan was upgraded to Plus, update that too
-    const isFSBOPlan = (p) => typeof p === "string" && p.includes("FSBO");
-    const upgraded = (checkoutData?.plan || "").includes("Listed Property Plus")
-                  || checkoutData?.upgrades?.upgradeToPlus
-                  || checkoutData?.upgrades?.banner
-                  || checkoutData?.upgrades?.premium
-                  || checkoutData?.upgrades?.pin;
-
-    if (upgraded && !isFSBOPlan(checkoutData.plan)) {
-      updateData.plan = "Listed Property Plus";
+    if (paidUpgradesChanged) {
+      updateData.paidUpgrades = newPaidUpgrades;
+      console.log('[paid-upgrades] paidUpgrades changed, will update');
+    } else {
+      console.log('[paid-upgrades] paidUpgrades unchanged, skipping that field');
     }
 
-    // Update the listing document
+    // Handle plan upgrade to Plus
+    // Upgrade to Plus if:
+    // 1. upgradeToPlus was purchased, OR
+    // 2. checkoutData.plan is "Listed Property Plus"
+    // BUT NOT if this was ONLY a commission change (unless upgradeToPlus is also true)
+    
+    const shouldUpgradeToPlusExplicit = upgrades.upgradeToPlus === true;
+    const checkoutPlanIsPlus = checkoutData.plan === 'Listed Property Plus';
+    const isCommissionChangeOnly = upgrades.changeCommission === true && 
+                                    meta.fromChangeCommission === true &&
+                                    !shouldUpgradeToPlusExplicit;
+    
+    if ((shouldUpgradeToPlusExplicit || checkoutPlanIsPlus) && !isCommissionChangeOnly) {
+      if (currentPlan === 'Listed Property Basic') {
+        updateData.plan = 'Listed Property Plus';
+        localStorage.setItem('selectedPlan', 'Listed Property Plus');
+        console.log('[paid-upgrades] Upgrading plan from Basic to Plus');
+      }
+    } else if (isCommissionChangeOnly) {
+      console.log('[paid-upgrades] Commission change purchase - NOT auto-upgrading plan');
+    }
+
+    // Handle commission change
+    if (upgrades.changeCommission && meta.newCommission && meta.newCommissionType) {
+      updateData.commission = meta.newCommission;
+      updateData.commissionType = meta.newCommissionType;
+      updateData.commissionChangeUsed = true;
+      console.log('[paid-upgrades] Updating commission to:', meta.newCommission, meta.newCommissionType);
+    }
+
+    // Write to Firestore
+    console.log('[paid-upgrades] Writing to Firestore:', updateData);
     await updateDoc(listingRef, updateData);
-    
-    // Mark this payment as processed
-    localStorage.setItem(processingKey, "true");
-    
-    console.log("[paid-upgrades] ✅ Successfully updated paidUpgrades:", paidUpgrades);
-    if (updateData.plan) {
-      console.log("[paid-upgrades] ✅ Updated plan to:", updateData.plan);
+
+    // Mark as processed (idempotency flag)
+    localStorage.setItem(processedKey, 'true');
+    console.log('[paid-upgrades] Marked session as processed:', sessionId);
+
+    // Clear upgrade flags from checkoutData only if we actually processed something
+    // (i.e., updateData has more than just updatedAt)
+    if (Object.keys(updateData).length > 1) {
+      if (checkoutData.upgrades) {
+        checkoutData.upgrades = {
+          upgradeToPlus: false,
+          banner: false,
+          premium: false,
+          pin: false,
+          confidential: false,
+          changeCommission: false
+        };
+      }
+      if (checkoutData.meta) {
+        checkoutData.meta.fromSellerDetail = false;
+        checkoutData.meta.fromChangeCommission = false;
+      }
+      localStorage.setItem('checkoutData', JSON.stringify(checkoutData));
+      console.log('[paid-upgrades] Cleared upgrade flags from checkoutData');
+    } else {
+      console.log('[paid-upgrades] Nothing processed, leaving checkoutData unchanged');
     }
 
-    return true;
-  } catch (e) {
-    console.error("[paid-upgrades] Failed to update paid upgrades:", e);
-    return false;
+    return { 
+      processed: true, 
+      upgrades: newPaidUpgrades,
+      plan: updateData.plan || currentPlan
+    };
+
+  } catch (error) {
+    console.error('[paid-upgrades] Error processing payment:', error);
+    return { processed: false, error: error.message };
   }
 }
 
-// Auto-run if imported as a module
+/**
+ * Check if a payment session has already been processed
+ * @param {string} sessionId - Stripe session ID
+ * @returns {boolean}
+ */
+export function isPaymentProcessed(sessionId) {
+  if (!sessionId) return false;
+  return localStorage.getItem(`payment_processed:${sessionId}`) === 'true';
+}
+
+/**
+ * Clear the processed flag for a session (useful for testing)
+ * @param {string} sessionId - Stripe session ID
+ */
+export function clearProcessedFlag(sessionId) {
+  if (sessionId) {
+    localStorage.removeItem(`payment_processed:${sessionId}`);
+    console.log('[paid-upgrades] Cleared processed flag for session:', sessionId);
+  }
+}
+
+// Auto-run if imported as a module (for backward compatibility)
 if (typeof window !== 'undefined') {
   window.updatePaidUpgradesAfterPayment = updatePaidUpgradesAfterPayment;
 }
