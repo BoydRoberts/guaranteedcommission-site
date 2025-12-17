@@ -1,5 +1,5 @@
 <!DOCTYPE html> 
-<!-- index.html - Build 2025-11-28 (fix Basic plan default) -->
+<!-- index.html - Build 2025-12-17 (Issue #4: Smart plan reset - only on fresh start) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -363,6 +363,64 @@
     // Track which plan user explicitly selected this session
     var userSelectedPlanThisSession = null;
 
+    // Session-only: did this tab already initialize the homepage UI?
+    function tabInitialized() {
+      try { return sessionStorage.getItem("gc_home_initialized") === "1"; }
+      catch(e) { return false; }
+    }
+    function markTabInitialized() {
+      try { sessionStorage.setItem("gc_home_initialized", "1"); }
+      catch(e) {}
+    }
+
+    function cameFromFlow() {
+      try {
+        const ref = document.referrer || "";
+        return /\/(login|verify|verify-code|checkout|upsell|signature|seller-detail|agent-detail|agent-invite|listing|search)\.html/i.test(ref);
+      } catch(e) { return false; }
+    }
+
+    function hasActiveFlowState() {
+      try {
+        // Strongest signal: a listing in progress
+        if (localStorage.getItem("lastListingId")) return true;
+
+        // Only treat checkoutData as active if it contains any true upgrades
+        const raw = localStorage.getItem("checkoutData");
+        if (raw) {
+          try {
+            const obj = JSON.parse(raw);
+            const hasUpgrades = obj && obj.upgrades && Object.values(obj.upgrades).some(Boolean);
+            if (hasUpgrades) return true;
+          } catch(e) {}
+        }
+
+        if (localStorage.getItem("nextAfterLogin")) return true;
+        if (localStorage.getItem("loginOrigin")) return true;
+        return false;
+      } catch(e) { return false; }
+    }
+
+    function planToFormMode(plan) {
+      if (plan === "FSBO Plus") return "fsbo";
+      if (plan === "Listed Property Plus") return "plus";
+      return "listed";
+    }
+
+    function getStoredPlan() {
+      const p = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+      return (p === "FSBO Plus" || p === "Listed Property Plus" || p === "Listed Property Basic")
+        ? p
+        : "Listed Property Basic";
+    }
+
+    function setPlan(planName) {
+      localStorage.setItem("selectedPlan", planName);
+      userSelectedPlanThisSession = planName;
+      // session memory only (doesn't leak between tabs)
+      try { sessionStorage.setItem("gc_user_selected_plan", planName); } catch(e) {}
+    }
+
     function openInvestorModal(){ document.getElementById('investorModal').classList.remove('hidden'); }
     function closeInvestorModal(){ document.getElementById('investorModal').classList.add('hidden'); }
     function openPressModal(){ document.getElementById('pressModal').classList.remove('hidden'); }
@@ -376,9 +434,8 @@
     }
 
     function selectPlan(planName){
-      userSelectedPlanThisSession = planName; // Track explicit selection
-      localStorage.setItem("selectedPlan", planName);
-      showForm(planName === "FSBO Plus" ? "fsbo" : (planName === "Listed Property Plus" ? "plus" : "listed"));
+      setPlan(planName);
+      showForm(planToFormMode(planName));
       setTimeout(fitStrip1, 0);
       setTimeout(fitStrip1, 120);
     }
@@ -479,11 +536,23 @@
     })();
 
     window.addEventListener('DOMContentLoaded', function() {
-      // CRITICAL FIX: Always default to Basic on page load
-      // This prevents stale "Listed Property Plus" from polluting new listings
-      showForm('listed');
-      localStorage.setItem('selectedPlan', 'Listed Property Basic');
-      console.log('[index] Page load: Reset selectedPlan to Listed Property Basic');
+      const returning = cameFromFlow() || hasActiveFlowState();
+      const alreadyInit = tabInitialized();
+
+      if (!alreadyInit && !returning) {
+        // True fresh start: hard default to Basic
+        setPlan("Listed Property Basic");
+        showForm("listed");
+        console.log("[index] Fresh start → selectedPlan=Listed Property Basic");
+      } else {
+        // Returning: preserve plan, don't stomp
+        const existing = getStoredPlan();
+        userSelectedPlanThisSession = existing;
+        showForm(planToFormMode(existing));
+        console.log("[index] Return → preserving selectedPlan=", existing);
+      }
+
+      markTabInitialized();
 
       var phoneInput = document.getElementById('agentPhone');
       var phoneError = document.getElementById('phoneError');
