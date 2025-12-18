@@ -5,10 +5,35 @@ document.addEventListener("DOMContentLoaded", function() {
   var $ = function(id) { return document.getElementById(id); };
   var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
 
-  // Stripe (test)
-  var STRIPE_PUBLISHABLE_KEY = "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
+  // Stripe configuration - read from global config (fallback to hardcoded for safety)
+  var STRIPE_PUBLISHABLE_KEY =
+    (window.GC_CONFIG && window.GC_CONFIG.STRIPE_PUBLISHABLE_KEY) ||
+    "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD"; // fallback
+  
+  if (!window.GC_CONFIG || !window.GC_CONFIG.STRIPE_PUBLISHABLE_KEY) {
+    console.warn("[checkout] Missing GC_CONFIG. Using fallback Stripe key.");
+  }
+  
   var stripe = null;
   try { stripe = Stripe(STRIPE_PUBLISHABLE_KEY); } catch (e) { console.error("Stripe init error:", e); }
+
+  // Price IDs - read from global config (fallback to hardcoded for safety)
+  var PRICE_IDS =
+    (window.GC_CONFIG && window.GC_CONFIG.PRICE_IDS) ||
+    {
+      PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
+      FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
+      BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR",
+      PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h",
+      PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
+      CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm",
+      CHANGE_COMMISSION_LISTED: "price_1STqWzPTiT2zuxx0ZKLMFpuE",
+      CHANGE_COMMISSION_FSBO: "price_1STqakPTiT2zuxx0zS0nEjDT"
+    }; // fallback
+  
+  if (!window.GC_CONFIG || !window.GC_CONFIG.PRICE_IDS) {
+    console.warn("[checkout] Missing GC_CONFIG.PRICE_IDS. Using fallback price IDs.");
+  }
 
   // Context
   var formData     = getJSON("formData", {});
@@ -448,17 +473,6 @@ document.addEventListener("DOMContentLoaded", function() {
           return;
         }
 
-        // Price IDs (test)
-        var PRICE_IDS = {
-          PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
-          FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
-          BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR",
-          PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h",
-          PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
-          CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm",
-          CHANGE_COMMISSION_LISTED: "price_1STqWzPTiT2zuxx0ZKLMFpuE",
-          CHANGE_COMMISSION_FSBO: "price_1STqakPTiT2zuxx0zS0nEjDT"
-        };
 
         var promo   = isAgentNovemberPromoActive();
         var isFSBO  = isFSBOPlan(data.plan);
