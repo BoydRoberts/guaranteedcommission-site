@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   }
   const stripe = new Stripe(secret, { apiVersion: "2024-06-20" });
   try {
-    const { lineItems, successUrl, cancelUrl } = req.body || {};
+    const { lineItems, successUrl, cancelUrl, metadata } = req.body || {};
     if (!Array.isArray(lineItems) || !lineItems.length) {
       return res.status(400).json({ error: "No line items" });
     }
@@ -32,7 +32,8 @@ export default async function handler(req, res) {
       line_items: lineItems,
       success_url: successUrl,  // Changed from successUrlWithSession to successUrl
       cancel_url: cancelUrl,
-      billing_address_collection: "auto"
+      billing_address_collection: "auto",
+      metadata: metadata || {} // Pass metadata for webhook fulfillment
     });
     return res.status(200).json({ id: session.id, url: session.url });
   } catch (err) {
