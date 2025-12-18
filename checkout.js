@@ -1,14 +1,14 @@
-// /checkout.js - build 2025-11-26-v5 (force Basic for sellers with no upsells)
+// /checkout.js - build 2025-12-18-v6 (Allow unchecking Plus, fix commission change pricing)
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("[checkout.js] build 2025-11-26-v5 - Force Basic $0 for sellers with no upsells");
+  console.log("[checkout.js] build 2025-12-18-v6 - Allow unchecking Plus, fix commission change pricing");
 
   var $ = function(id) { return document.getElementById(id); };
   var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
 
-  // Stripe configuration - read from global config (fallback to hardcoded for safety)
+  // Stripe configuration
   var STRIPE_PUBLISHABLE_KEY =
     (window.GC_CONFIG && window.GC_CONFIG.STRIPE_PUBLISHABLE_KEY) ||
-    "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD"; // fallback
+    "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
   
   if (!window.GC_CONFIG || !window.GC_CONFIG.STRIPE_PUBLISHABLE_KEY) {
     console.warn("[checkout] Missing GC_CONFIG. Using fallback Stripe key.");
@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var stripe = null;
   try { stripe = Stripe(STRIPE_PUBLISHABLE_KEY); } catch (e) { console.error("Stripe init error:", e); }
 
-  // Price IDs - read from global config (fallback to hardcoded for safety)
+  // Price IDs
   var PRICE_IDS =
     (window.GC_CONFIG && window.GC_CONFIG.PRICE_IDS) ||
     {
@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", function() {
       CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm",
       CHANGE_COMMISSION_LISTED: "price_1STqWzPTiT2zuxx0ZKLMFpuE",
       CHANGE_COMMISSION_FSBO: "price_1STqakPTiT2zuxx0zS0nEjDT"
-    }; // fallback
+    };
   
   if (!window.GC_CONFIG || !window.GC_CONFIG.PRICE_IDS) {
     console.warn("[checkout] Missing GC_CONFIG.PRICE_IDS. Using fallback price IDs.");
@@ -43,16 +43,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
   var isFSBOPlan = function(p) { return typeof p === "string" && p.includes("FSBO"); };
   
-  // Detect seller flow - check formData for seller indicators
-  // Don't rely on planLS which might be stale from previous session
   var hasSellerEmail = !!(formData && (formData.fsboEmail || formData.ownerEmail || formData.sellerEmail));
   var hasAgentData = !!(agentListing && (agentListing.agentEmail || agentListing.brokerage));
   var roleIsAgent = (role === "listing_agent" || role === "buyers_agent");
   
-  // Seller flow if: has seller email, OR not clearly an agent flow
   var likelySellerFlow = hasSellerEmail || (!hasAgentData && !roleIsAgent);
 
-  // Who row (pure display)
+  // Who row
   (function renderWhoRow(){
     if (!$("whoLine")) return;
     var addr = formData.address || "[Full Address]";
@@ -75,7 +72,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (whoRow) whoRow.classList.remove("hidden");
   })();
 
-  // ---- checkoutData normalize
+  // checkoutData normalize
   var data = getJSON("checkoutData", null);
   if (!data) {
     var plan = planLS;
@@ -89,7 +86,6 @@ document.addEventListener("DOMContentLoaded", function() {
       payer: "seller"
     };
   } else {
-    // upgrades -> canonical object
     if (Array.isArray(data.upgrades)) {
       var arr = data.upgrades.map(function(s) { return (s||"").toLowerCase(); });
       data.upgrades = {
@@ -109,7 +105,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
       }
     }
-    // price table
     var defaultPrices = { plus:20, banner:10, premium:10, pin:50, fsbo:100, confidential:100, changeCommissionListed:10, changeCommissionFSBO:50 };
     data.prices = data.prices || {};
     for (var pk in defaultPrices) {
@@ -117,7 +112,6 @@ document.addEventListener("DOMContentLoaded", function() {
         data.prices[pk] = defaultPrices[pk];
       }
     }
-    // base
     if (typeof data.base !== "number") {
       data.base = isFSBOPlan(data.plan) ? data.prices.fsbo
            : (data.plan === "Listed Property Plus") ? (data.prices.plus || 20)
@@ -127,23 +121,18 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!data.meta) data.meta = {};
   }
 
-  // Decide payer (so seller BASIC $0 routes to signature)
   if (likelySellerFlow) {
     data.payer = "seller";
   } else if (!data.payer && role === "listing_agent") {
     data.payer = "agent";
   }
 
-  // ---- HARD RESET for brand-new Basic seller checkouts ----
-  // This ensures stale checkoutData from previous sessions doesn't pollute new Basic listings
-  // KEY FIX: For sellers without explicit upgrade flags, ALWAYS default to Basic
+  // Hard reset for new Basic seller checkouts
   (function hardResetNewBasicSellerCheckout(){
     var ups = data.upgrades || {};
     var hasMetaFlags = data.meta && (data.meta.fromSellerDetail || data.meta.fromChangeCommission);
     var hasUpsells = !!(ups.upgradeToPlus || ups.banner || ups.premium || ups.pin || ups.confidential || ups.changeCommission);
     
-    // If this is a seller flow with NO upsells and NO meta flags, force Basic $0
-    // This catches stale "Listed Property Plus" in localStorage from previous sessions
     if (likelySellerFlow && !hasMetaFlags && !hasUpsells && !isFSBOPlan(planLS)) {
       data.plan = "Listed Property Basic";
       data.base = 0;
@@ -156,14 +145,13 @@ document.addEventListener("DOMContentLoaded", function() {
         confidential: false,
         changeCommission: false
       };
-      data.meta = {}; // wipe any stale junk
+      data.meta = {};
       localStorage.setItem("selectedPlan", "Listed Property Basic");
       localStorage.setItem("checkoutData", JSON.stringify(data));
       console.log("[checkout] Hard reset: Seller with no upsells -> Basic $0");
     }
   })();
 
-  // Agent promo (active all year in 2025, matches agent-detail.html)
   function isAgentNovemberPromoActive() {
     try {
       var now = new Date();
@@ -171,57 +159,52 @@ document.addEventListener("DOMContentLoaded", function() {
     } catch(e) { return false; }
   }
 
-  // Check if Change Commission was initiated from seller-detail
   function isChangeCommissionEnabled() {
     return !!(data.meta && data.meta.fromChangeCommission === true);
   }
 
-  // Pricing + totals
+  // ✅ FIX: Pricing - prevent double-charging Plus during commission changes
   function recompute(d) {
-    // CRITICAL: Always trust the current selection from localStorage first.
-    // This prevents stale data.plan from overriding new Basic selections.
     var freshPlan = (localStorage.getItem("selectedPlan") || "").trim();
     var plan = freshPlan || d.plan || "Listed Property Basic";
     
-    // AGENT BLOCK #4: Agents can never pay for Change Commission (prevent stale data)
     if (d.payer === "agent" && d.upgrades.changeCommission) {
       d.upgrades.changeCommission = false;
     }
 
-    // CHANGE COMMISSION BLOCK: Only charge if enabled from seller-detail
     if (d.upgrades.changeCommission && !isChangeCommissionEnabled()) {
       d.upgrades.changeCommission = false;
     }
     
-    // Check if this is an upgrade from seller-detail (already paid for base plan)
     var isUpgradeFromSellerDetail = !!(d.meta && d.meta.fromSellerDetail === true);
     
-    // Track if user is upgrading from Basic to Plus (need to charge even from seller-detail)
+    // ✅ FIX: Check if this is a commission change flow
+    var isCommissionChangeFlow = isChangeCommissionEnabled();
+    
     var isUpgradingToPlus = !isFSBOPlan(plan) && plan === "Listed Property Basic" && d.upgrades.upgradeToPlus;
     
     var promo = isAgentNovemberPromoActive();
     
-    // Calculate base fee
     var base = 0;
     
-    if (isFSBOPlan(plan)) {
-      // FSBO: $100 unless coming from seller-detail (already paid)
+    // ✅ FIX: For commission changes, ALWAYS set base to $0
+    if (isCommissionChangeFlow) {
+      base = 0;
+      console.log("[checkout] Commission change flow: base = $0");
+    } else if (isFSBOPlan(plan)) {
       base = isUpgradeFromSellerDetail ? 0 : (d.prices.fsbo || 100);
     } else if (isUpgradingToPlus) {
-      // Basic upgrading to Plus: $20 (charge even from seller-detail - this is a NEW purchase)
       base = promo ? 0 : (d.prices.plus || 20);
       plan = "Listed Property Plus";
       localStorage.setItem("selectedPlan", "Listed Property Plus");
     } else if (plan === "Listed Property Plus") {
-      // Already Plus: $0 if from seller-detail (already paid), otherwise $20
       if (isUpgradeFromSellerDetail) {
-        base = 0; // Already paid for Plus
+        base = 0;
       } else {
         var freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
         base = (promo || d.payer === "agent" || freeFlag) ? 0 : (d.prices.plus || 20);
       }
     } else {
-      // Basic (not upgrading): $0
       base = 0;
     }
 
@@ -231,10 +214,8 @@ document.addEventListener("DOMContentLoaded", function() {
     var premiumPrice = promo ? 0 : (d.prices.premium || 10);
     var pinPrice     = promo ? 0 : (d.prices.pin     || 50);
 
-    // Check paidUpgrades to avoid double-charging
     var paidUpgrades = (d.meta && d.meta.paidUpgrades) || {};
     
-    // Only charge for upgrades that aren't already paid
     if (d.upgrades.banner && !paidUpgrades.banner) total += bannerPrice;
     if (d.upgrades.pin && !paidUpgrades.pin) total += pinPrice;
     else if (d.upgrades.premium && !paidUpgrades.premium && !paidUpgrades.pin) total += premiumPrice;
@@ -244,7 +225,6 @@ document.addEventListener("DOMContentLoaded", function() {
       else d.upgrades.confidential = false;
     }
 
-    // Change Commission pricing - ONLY if enabled from seller-detail
     if (d.upgrades.changeCommission && isChangeCommissionEnabled()) {
       var isFSBO = isFSBOPlan(plan);
       var changeCommPrice = isFSBO ? (d.prices.changeCommissionFSBO || 50) : (d.prices.changeCommissionListed || 10);
@@ -260,7 +240,6 @@ document.addEventListener("DOMContentLoaded", function() {
   data = recompute(data);
   localStorage.setItem("checkoutData", JSON.stringify(data));
 
-  // Summary UI
   function renderSummary() {
     var planNameEl = $("planName");
     var basePriceEl = $("basePrice");
@@ -284,7 +263,6 @@ document.addEventListener("DOMContentLoaded", function() {
     else if (data.upgrades.premium) sel.push("Premium Placement ($" + premiumPrice + ")");
     if (isFSBOPlan(data.plan) && data.upgrades.confidential) sel.push("Confidential FSBO Upgrade ($" + data.prices.confidential + ")");
     
-    // AGENT BLOCK #3: Only show Change Commission in summary if ENABLED and seller
     if (data.upgrades.changeCommission && data.payer === "seller" && isChangeCommissionEnabled()) {
       var isFSBO = isFSBOPlan(data.plan);
       var price = isFSBO ? (data.prices.changeCommissionFSBO || 50) : (data.prices.changeCommissionListed || 10);
@@ -313,24 +291,42 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
-  // Toggles (last-chance)
+  // ✅ FIX: ALWAYS show Plus option, allow unchecking (but disable during commission changes)
   function renderLastChance() {
     var box = $("upsellChoices");
     if (!box) return;
 
-    var isBasic = data.plan === "Listed Property Basic";
-    var isFSBO = isFSBOPlan(data.plan);
+    var currentPlan = data.plan || "Listed Property Basic";
+    var isBasic = currentPlan === "Listed Property Basic";
+    var isPlus = currentPlan === "Listed Property Plus";
+    var isFSBO = isFSBOPlan(currentPlan);
     var promo   = isAgentNovemberPromoActive();
+    
+    // ✅ NEW: Check if this is a commission change - disable Plus if so
+    var isCommissionChange = isChangeCommissionEnabled();
 
     var toggles = [];
-    if (isBasic) {
+    
+    // ✅ FIX: ALWAYS show Plus (even if already Plus), but disable during commission changes
+    if (!isFSBO) {
+      var plusLabel = isPlus ? "Listed Property Plus (Current Plan)" : "Upgrade to Listed Property Plus";
+      var plusNote = "";
+      
+      if (isCommissionChange) {
+        plusNote = "(Not available during commission changes)";
+      } else if (isPlus) {
+        plusNote = "(Uncheck to downgrade to Basic)";
+      } else if (promo) {
+        plusNote = "(November promo - free for agents)";
+      }
+      
       toggles.push({
         key:"upgradeToPlus",
-        label:"Upgrade to Listed Property Plus",
+        label: plusLabel,
         price: promo ? 0 : (data.prices.plus || 20),
-        note:  promo ? "(November promo - free for agents)" : "",
-        checked: !!data.upgrades.upgradeToPlus,
-        disabled: false
+        note: plusNote,
+        checked: isPlus || !!data.upgrades.upgradeToPlus,
+        disabled: isCommissionChange  // ✅ Disable during commission changes
       });
     }
 
@@ -346,7 +342,6 @@ document.addEventListener("DOMContentLoaded", function() {
       toggles.push({ key:"confidential", label:"Confidential FSBO Upgrade", price: data.prices.confidential || 100, checked: !!data.upgrades.confidential, disabled: false, note: "" });
     }
 
-    // CHANGE COMMISSION: Show for sellers, but DISABLED unless fromChangeCommission is true
     if (data.payer === "seller") {
       var changeCommPrice = isFSBO ? (data.prices.changeCommissionFSBO || 50) : (data.prices.changeCommissionListed || 10);
       var isEnabled = isChangeCommissionEnabled();
@@ -381,19 +376,21 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     box.innerHTML = html;
 
-    // Wire up checkboxes (only non-disabled ones)
     var checkboxes = box.querySelectorAll("input[type=\"checkbox\"]:not([disabled])");
     for (var j = 0; j < checkboxes.length; j++) {
       checkboxes[j].addEventListener("change", function(e) {
         var k = e.target.getAttribute("data-key");
         var checked = e.target.checked;
         data.upgrades = data.upgrades || {};
+        
+        // ✅ FIX: Handle Plus - allow unchecking
         if (k === "upgradeToPlus") {
           data.upgrades[k] = checked;
           if (checked) {
             data.plan = "Listed Property Plus";
             localStorage.setItem("selectedPlan", "Listed Property Plus");
           } else {
+            // ✅ Uncheck Plus -> revert to Basic
             data.plan = "Listed Property Basic";
             data.base = 0;
             localStorage.setItem("selectedPlan", "Listed Property Basic");
@@ -408,7 +405,6 @@ document.addEventListener("DOMContentLoaded", function() {
         } else if (k === "confidential") {
           data.upgrades.confidential = checked && isFSBOPlan(data.plan);
         } else if (k === "changeCommission") {
-          // Only allow if enabled from seller-detail
           if (isChangeCommissionEnabled()) {
             data.upgrades.changeCommission = checked;
           }
@@ -421,13 +417,11 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
-  // Back
   var backBtnEl = $("backBtn");
   if (backBtnEl) {
     backBtnEl.addEventListener("click", function() { window.location.href = "/upsell.html"; });
   }
 
-  // Pay Now
   var payNowBtnEl = $("payNowBtn");
   if (payNowBtnEl) {
     payNowBtnEl.addEventListener("click", async function() {
@@ -440,11 +434,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
         var listingId = (localStorage.getItem("lastListingId") || "").trim();
         
-        // Determine where to go after payment:
-        // - First listing (initial ISC) -> signature.html
-        // - Commission change -> signature.html (to sign new ISC)
-        // - Regular upgrades from seller-detail -> seller-detail.html (back to intake)
-        // - Agent -> agent-detail.html
         var isCommissionChange = isChangeCommissionEnabled();
         var isUpgradeFromSellerDetail = !!(data.meta && data.meta.fromSellerDetail === true);
         
@@ -452,27 +441,21 @@ document.addEventListener("DOMContentLoaded", function() {
         var successSellerDetail = window.location.origin + "/seller-detail.html" + (listingId ? "?id=" + encodeURIComponent(listingId) + "&session_id={CHECKOUT_SESSION_ID}&upgraded=true" : "?session_id={CHECKOUT_SESSION_ID}&upgraded=true");
         var successAgent = window.location.origin + "/agent-detail.html" + (listingId ? "?id=" + encodeURIComponent(listingId) + "&session_id={CHECKOUT_SESSION_ID}" : "?session_id={CHECKOUT_SESSION_ID}");
 
-        // Determine success URL based on payer and upgrade type
         var successUrl;
         if (data.payer === "agent") {
           successUrl = successAgent;
         } else if (isCommissionChange) {
-          // Commission change requires new ISC signature
           successUrl = successSignature;
         } else if (isUpgradeFromSellerDetail) {
-          // Regular upgrades from seller-detail go back to seller detail
           successUrl = successSellerDetail;
         } else {
-          // First listing checkout (after Box 2) -> signature for initial ISC
           successUrl = successSignature;
         }
 
-        // Zero total -> route immediately
         if ((data.total || 0) <= 0) {
           window.location.href = successUrl;
           return;
         }
-
 
         var promo   = isAgentNovemberPromoActive();
         var isFSBO  = isFSBOPlan(data.plan);
@@ -482,15 +465,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
         var items = [];
 
-        // FSBO base fee
         if (isFSBO && (data.base || 0) > 0) {
           items.push({ price: PRICE_IDS.FSBO_PLUS, quantity: 1 });
         } 
-        // Plus base fee - either already Plus OR upgrading to Plus
-        else if ((isPlus || isUpgradingToPlus) && !promo) {
-          // Charge if: base > 0, OR explicitly upgrading to Plus
+        else if ((isPlus || isUpgradingToPlus) && !promo && !isCommissionChange) {
           var shouldChargePlus = (data.base || 0) > 0 || isUpgradingToPlus;
-          // But don't charge if coming from seller-detail AND NOT upgrading (already paid)
           var isUpgradeFromSellerDetail = !!(data.meta && data.meta.fromSellerDetail === true);
           if (isUpgradeFromSellerDetail && !isUpgradingToPlus) {
             shouldChargePlus = false;
@@ -498,7 +477,6 @@ document.addEventListener("DOMContentLoaded", function() {
           if (shouldChargePlus) items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
         }
 
-        // Check paidUpgrades to avoid double-charging for add-ons
         var paidUpgrades = (data.meta && data.meta.paidUpgrades) || {};
 
         if (data.upgrades.banner && !paidUpgrades.banner && !promo) {
@@ -511,14 +489,12 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         if (isFSBO && data.upgrades.confidential) items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
 
-        // AGENT BLOCK #2: Only charge sellers for commission changes, AND only if enabled
         if (data.upgrades.changeCommission && data.payer === "seller" && isCommissionChange) {
           var priceId = isFSBO ? PRICE_IDS.CHANGE_COMMISSION_FSBO : PRICE_IDS.CHANGE_COMMISSION_LISTED;
           items.push({ price: priceId, quantity: 1 });
         }
 
         if (!items.length && (data.total || 0) > 0) {
-          // Safety: if total > 0 but no items, bill Plus
           items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
         }
 
