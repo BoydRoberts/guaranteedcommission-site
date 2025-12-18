@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- seller-detail.html - Build 2025-12-17 (Issue #3: Use centralized paid-upgrades-handler) -->
+<!-- seller-detail.html - Build 2025-12-18 (Fixed: Prevent Plus from carrying over to commission changes) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -263,9 +263,7 @@
 
   <!-- SELLER PAGE LOGIC (Firestore + Storage) -->
   <script type="module">
-    // ✅ FIX #2: Import STORAGE_BUCKET_GS from single source of truth
     import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
-    // ✅ FIX #3: Import centralized paid upgrades handler
     import { updatePaidUpgradesAfterPayment } from "/scripts/paid-upgrades-handler.js";
     
     import {
@@ -275,10 +273,8 @@
       getStorage, ref, uploadBytes, getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    // ===== Process paid upgrades FIRST (before any other logic) =====
-    // ✅ FIX #3: This runs immediately when the page loads, before boot
+    // Process paid upgrades FIRST (before any other logic)
     (async function() {
-      // Guard against double execution (if page ever gets re-imported)
       if (window.__paidUpgradesHandled) return;
       window.__paidUpgradesHandled = true;
       
@@ -296,7 +292,7 @@
       }
     })();
 
-    // ---- utilities ----
+    // utilities
     var $ = function(id) { return document.getElementById(id); };
     var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
     var setJSON = function(k, v) { localStorage.setItem(k, JSON.stringify(v)); };
@@ -318,7 +314,7 @@
       el.className = ok ? "max-w-6xl mx-auto px-3 mt-2 text-sm text-gray-600" : "max-w-6xl mx-auto px-3 mt-2 text-sm text-red-700";
     }
 
-    // --- Local pros / brokers helpers ---
+    // Local pros / brokers helpers
     function parseZipFromAddress(addr) {
       addr = addr || "";
       var m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
@@ -472,7 +468,7 @@
       strip.style.display = "block";
     }
 
-    // ===== ID context =====
+    // ID context
     function cleanId(raw) {
       var m = String(raw || "").trim().match(/^[A-Za-z0-9_-]+/);
       return m ? m[0] : "";
@@ -496,7 +492,7 @@
       $("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
     }
 
-    // ===== state =====
+    // state
     var plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
     var isFSBO = plan.includes("FSBO");
     var isPlus = (plan === "Listed Property Plus" || isFSBO);
@@ -615,11 +611,8 @@
 
       computePhotoHelp();
     }
-
-    // ✅ FIX #2: Removed hardcoded BUCKET_URL - now using STORAGE_BUCKET_GS from firebase-init.js
     
     async function uploadOne(file){
-      // ✅ FIX #2: Use STORAGE_BUCKET_GS from import
       var storage = getStorage(undefined, STORAGE_BUCKET_GS);
       var safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       var path = "listings/" + listingId + "/photos/" + Date.now() + "_" + safeName;
@@ -638,8 +631,6 @@
           primaryIndex: (typeof primaryIndex === "number" ? primaryIndex : 0),
           updatedAt: serverTimestamp()
         });
-        // Don't refresh entire form - just update photos UI and status
-        // This prevents wiping unsaved form fields (beds, baths, sqft, etc.)
         renderThumbs();
         computePhotoHelp();
         setStatus("Photos saved.", true);
@@ -684,7 +675,7 @@
       });
     }
 
-    // ===== FIELD LOCKING LOGIC =====
+    // FIELD LOCKING LOGIC
     function applyFieldLocking(planName, paidUpgrades) {
       var isFSBO = planName.includes("FSBO");
       var isBasic = planName === "Listed Property Basic";
@@ -692,7 +683,6 @@
       
       paidUpgrades = paidUpgrades || {};
       
-      // --- Description: Only Plus and FSBO can use (Basic cannot purchase this) ---
       var descEl = $("description");
       var descNote = $("descGateNote");
       if (isBasic) {
@@ -703,7 +693,6 @@
         if (descNote) descNote.classList.add("hidden");
       }
       
-      // --- Banner: All plans can unlock if paid ---
       var bannerEl = $("bannerText");
       var bannerNote = $("bannerGateNote");
       var bannerUnlocked = !!paidUpgrades.banner;
@@ -716,7 +705,6 @@
         if (bannerNote) bannerNote.classList.remove("hidden");
       }
       
-      // --- Premium (preferredArea): All plans can unlock if paid (Pin includes Premium) ---
       var premiumEl = $("preferredArea");
       var premiumNote = $("premiumGateNote");
       var premiumUnlocked = !!paidUpgrades.premium || !!paidUpgrades.pin;
@@ -729,7 +717,6 @@
         if (premiumNote) premiumNote.classList.remove("hidden");
       }
       
-      // --- Pin (pinArea): All plans can unlock if paid ---
       var pinEl = $("pinArea");
       var pinNote = $("pinGateNote");
       var pinUnlocked = !!paidUpgrades.pin;
@@ -743,7 +730,7 @@
       }
     }
 
-    // ===== refresh all fields from server =====
+    // refresh all fields from server
     async function refreshFromServer(note){
       if (!listingId) { 
         setStatus("No listing selected (missing id).", false); 
@@ -758,13 +745,11 @@
         }
         var d = snap.data() || {};
 
-        // plan & gates
         plan = d.plan || plan;
         isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
         isFSBO = plan.includes("FSBO");
         maxPhotos = isPlus ? 20 : 1;
 
-        // Get paid upgrades from Firestore
         paidUpgrades = d.paidUpgrades || {};
 
         $("planPill").textContent = plan || "—";
@@ -797,13 +782,11 @@
         photos = Array.isArray(d.photos) ? d.photos.slice(0, maxPhotos) : [];
         primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
 
-        // Apply field locking based on plan and paidUpgrades
         applyFieldLocking(plan, paidUpgrades);
 
         renderThumbs();
         setStatus(note || "Loaded from server.", true);
 
-        // Local pros & broker
         try {
           var zip = d.zip || parseZipFromAddress($("fullAddress").value || "");
           if (zip) {
@@ -822,7 +805,7 @@
       }
     }
 
-    // ===== Save button: write fields to Firestore =====
+    // Save button: write fields to Firestore
     var saveBtn = $("saveBtn");
     if (saveBtn) {
       saveBtn.addEventListener("click", async function(){
@@ -850,7 +833,6 @@
           pinArea: $("pinArea").value || ""
         };
 
-        // Contact fields (Listed only)
         if (!planNow.includes("FSBO")) {
           update.brokerage = $("brokerage").value || "";
           update.agentName = $("agentName").value || "";
@@ -858,7 +840,6 @@
           update.agentPhone = $("agentPhone").value || "";
         }
 
-        // ZIP backfill
         try {
           var curSnap = await getDoc(doc(db, "listings", listingId));
           var cur = curSnap.exists() ? (curSnap.data() || {}) : {};
@@ -884,11 +865,10 @@
       });
     }
 
-    // ==== Upgrades UI wiring ====
+    // Upgrades UI wiring
     (async function wireUpgrades(){
       var checkoutData = getJSON("checkoutData", null) || {};
       
-      // Get current listing data to check what is already paid
       var listingData = {};
       if (listingId) {
         try {
@@ -906,7 +886,6 @@
       var isPlusNow = currentPlan === "Listed Property Plus";
       var isBasicNow = currentPlan === "Listed Property Basic";
 
-      // Check what has been paid for
       var paidUpgradesNow = listingData.paidUpgrades || {};
       var commissionChangeUsed = listingData.commissionChangeUsed || false;
 
@@ -933,7 +912,6 @@
 
       var upgrades = [];
 
-      // Listed Property Basic: show upgrade to Plus
       if (isBasicNow) {
         upgrades.push(row(
           "Listed Property Plus",
@@ -944,7 +922,6 @@
         ));
       }
 
-      // Listed Property Plus: show as current plan
       if (isPlusNow) {
         upgrades.push(row(
           "Listed Property Plus",
@@ -955,23 +932,19 @@
         ));
       }
 
-      // Common upgrades for all plans
       upgrades.push(row("Banner", 10, "banner", paidUpgradesNow.banner));
       upgrades.push(row("Premium Placement", 10, "premium", paidUpgradesNow.premium));
       upgrades.push(row("Pin Placement", 50, "pin", paidUpgradesNow.pin));
 
-      // FSBO-specific upgrades
       if (isFSBONow) {
         upgrades.push(row("Confidential FSBO Upgrade", 100, "confidential", paidUpgradesNow.confidential));
         upgrades.push(row("Change Commission", 50, "changeCommission", commissionChangeUsed, commissionChangeUsed ? "Already Used" : ""));
       } else {
-        // Listed (Basic or Plus)
         upgrades.push(row("Change Commission", 10, "changeCommission", commissionChangeUsed, commissionChangeUsed ? "Already Used" : ""));
       }
 
       box.innerHTML = upgrades.join("");
 
-      // Wire up checkboxes
       var checkboxes = box.querySelectorAll("input[type=\"checkbox\"]");
       for (var i = 0; i < checkboxes.length; i++) {
         checkboxes[i].addEventListener("change", function(e) {
@@ -992,10 +965,8 @@
             checkoutData.upgrades.confidential = checked;
           } else if (k === "changeCommission") {
             if (checked) {
-              // Open modal to get new commission
               openChangeCommissionModal();
               
-              // Wire up the confirm button
               var confirmBtn = document.getElementById("confirmCommissionBtn");
               confirmBtn.onclick = function() {
                 var newComm = document.getElementById("newCommission").value.trim();
@@ -1008,10 +979,11 @@
                 
                 // Store the new commission in checkoutData AND set flags
                 checkoutData.upgrades.changeCommission = true;
+                checkoutData.upgrades.upgradeToPlus = false;  // ✅ NEW LINE ADDED - prevents Plus from carrying over
                 checkoutData.meta = checkoutData.meta || {};
-                checkoutData.meta.fromChangeCommission = true; // THIS enables it in checkout.js
-                checkoutData.meta.fromSellerDetail = true; // Don't charge base fee again
-                checkoutData.meta.paidUpgrades = paidUpgradesNow; // Don't double-charge upgrades
+                checkoutData.meta.fromChangeCommission = true;
+                checkoutData.meta.fromSellerDetail = true;
+                checkoutData.meta.paidUpgrades = paidUpgradesNow;
                 checkoutData.meta.newCommission = newComm;
                 checkoutData.meta.newCommissionType = newType;
                 setJSON("checkoutData", checkoutData);
@@ -1033,16 +1005,13 @@
         });
       }
 
-      // Go to Checkout button
       var checkoutBtn = $("goCheckoutBtn");
       if (checkoutBtn) {
         checkoutBtn.addEventListener("click", async function() {
-          // Set flag so checkout.js knows this is an upgrade from seller-detail, NOT first listing
           var checkoutData = getJSON("checkoutData", {});
           checkoutData.meta = checkoutData.meta || {};
           checkoutData.meta.fromSellerDetail = true;
           
-          // Pass current paidUpgrades so checkout doesn't double-charge
           try {
             if (listingId && db) {
               var snap = await getDoc(doc(db, "listings", listingId));
@@ -1060,7 +1029,7 @@
       }
     })();
 
-    // ===== Boot =====
+    // Boot
     (async function boot(){
       var who = (localStorage.getItem("loggedInEmail") || "").trim();
       $("whoLine").textContent = who ? "Logged in as " + who : "";
@@ -1070,13 +1039,9 @@
         $("fullAddress").value = formData.address;
       }
 
-      // ✅ FIX #3: Removed duplicate paid upgrades processing logic
-      // Now handled by centralized paid-upgrades-handler.js at top of file
-
       await refreshFromServer();
       computePhotoHelp();
 
-      // Load local pros/brokers on boot
       try {
         var addr = $("fullAddress").value || "";
         var zip = parseZipFromAddress(addr);
@@ -1091,9 +1056,6 @@
         console.warn("[local-pros] sidebar/strip skipped:", e);
       }
     })();
-    
-    // ✅ FIX #3: Removed processPaidUpgrades() function entirely
-    // Now using centralized /scripts/paid-upgrades-handler.js
   </script>
 
 </body>
