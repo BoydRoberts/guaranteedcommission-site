@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- signature.html - Build 2025-12-17 (Issue #3: Use centralized paid-upgrades-handler) -->
+<!-- signature.html - Build 2025-12-18 (Commission history: create "Original" entry on first signature) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -75,15 +75,11 @@
 
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    // ✅ FIX #3: Import centralized paid upgrades handler
     import { updatePaidUpgradesAfterPayment } from "/scripts/paid-upgrades-handler.js";
-    
     import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // ===== Process paid upgrades FIRST (before any other logic) =====
-    // ✅ FIX #3: This runs immediately when the page loads, before boot
+    // Process paid upgrades FIRST (before any other logic)
     (async function() {
-      // Guard against double execution (if page ever gets re-imported)
       if (window.__paidUpgradesHandled) return;
       window.__paidUpgradesHandled = true;
       
@@ -129,7 +125,7 @@
       if (a) a.href = `/printable-isc.html?id=${encodeURIComponent(listingId)}`;
     })();
 
-    // Simple ISC builder - NOW accepts optional commission override for commission changes
+    // Simple ISC builder - accepts optional commission override for commission changes
     function buildIscTextFromDoc(d, overrideCommission, overrideCommissionType) {
       const addressFull = (d.address || "").trim();
       const short = addressFull.split(",")[0] || "[short address]";
@@ -237,7 +233,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
       sigInput.addEventListener('blur', check);
       check();
 
-      // Save signature to Firestore, set status:"Active", and ensure ownerEmail for listed flows
+      // ✅ FIXED: Save signature and handle commission history
       $("btnContinue").addEventListener("click", async () => {
         const typed = (sigInput.value || "").trim();
         if (!typed) return;
@@ -255,13 +251,31 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
             updates.ownerEmail = loggedIn;
           }
 
+          // ✅ FIXED: ALWAYS ensure commissionHistory has "Original" entry if empty
+          let currentHistory = d.commissionHistory || [];
+          
+          // If history is empty, create "Original" entry with CURRENT commission from Firestore
+          if (currentHistory.length === 0) {
+            const originalEntry = {
+              commission: d.commission || "",
+              commissionType: d.commissionType || "%",
+              date: todayISO(),
+              label: "Original"
+            };
+            currentHistory = [originalEntry];
+            console.log("[signature] Created Original commission history entry:", originalEntry);
+          }
+
+          // Save the initial history (with Original if it was just created)
+          updates.commissionHistory = currentHistory;
+
           await updateDoc(doc(db, "listings", listingId), updates);
           $("sigSaved").classList.remove("hidden");
 
-          // Check if this is a commission change - update the commission in Firestore
+          // ✅ If this is a commission change, ALSO add "Changed" entry
           if (isCommissionChange && newCommission) {
             try {
-              // Build new history entry
+              // Build new "Changed" history entry
               const newHistoryEntry = {
                 commission: newCommission,
                 commissionType: newCommissionType || "%",
@@ -269,14 +283,11 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
                 label: "Changed"
               };
               
-              // Get existing history
-              const existingHistory = d.commissionHistory || [];
-              
-              // Update Firestore with new commission
+              // Append "Changed" to the history (which now includes "Original")
               await updateDoc(doc(db, "listings", listingId), {
                 commission: newCommission,
                 commissionType: newCommissionType || "%",
-                commissionHistory: [...existingHistory, newHistoryEntry],
+                commissionHistory: [...currentHistory, newHistoryEntry],
                 commissionChangeUsed: true,
                 updatedAt: serverTimestamp()
               });
@@ -317,9 +328,6 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
       });
     })();
   </script>
-
-  <!-- ✅ FIX #3: Removed inline paid upgrades handler (was ~80 lines) -->
-  <!-- Now using centralized /scripts/paid-upgrades-handler.js -->
 
 </body>
 </html>
