@@ -11,7 +11,7 @@
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-2xl bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-11-16a</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-12-17 (centralized Stripe config)</span>
       </div>
       <h1 class="text-2xl font-bold text-center mb-1">Review & Checkout</h1>
       <p class="text-sm text-gray-600 text-center mb-6">Confirm your selections. You'll sign next.</p>
@@ -73,8 +73,11 @@
   <!-- Firebase init include -->
   <script type="module" src="/scripts/firebase-init.js"></script>
   
+  <!-- Stripe config (must load BEFORE checkout.js) -->
+  <script defer src="/scripts/app-config.js"></script>
+  
   <!-- Main checkout logic -->
-  <script src="/checkout.js"></script>
+  <script defer src="/checkout.js"></script>
   
   <script>
     // ----- Back behavior (aligned with sitewide logic) -----
