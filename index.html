@@ -41,8 +41,11 @@
     /* Box 1: justified text with minimal spacing */
     #box1 p { text-align: justify; hyphens: auto; }
     
-    /* Box 3: left-aligned ISC text */
-    #box3 p { text-align: left; hyphens: none; }
+    /* Box 3: justified ISC text by default */
+    #box3 p { text-align: justify; hyphens: auto; }
+    
+    /* Box 3: switch to left-aligned when user starts typing */
+    #box3.typing p { text-align: left; hyphens: none; }
     
     /* Only break overly long emails when necessary to prevent overflow */
     #letterAgentEmail, #fsboEmail { overflow-wrap: break-word; }
@@ -583,6 +586,26 @@
       }
 
       function syncAll(){
+        // ✅ NEW: Switch Box 3 to left-aligned once user starts typing
+        var box3 = document.getElementById('box3');
+        var fsboEmailInput = document.getElementById('fsboEmailInput');
+        var hasTyped = !!(
+          document.getElementById('name').value.trim() ||
+          document.getElementById('address').value.trim() ||
+          document.getElementById('apn').value.trim() ||
+          document.getElementById('brokerage').value.trim() ||
+          document.getElementById('agent').value.trim() ||
+          document.getElementById('agentPhone').value.trim() ||
+          document.getElementById('agentEmail').value.trim() ||
+          document.getElementById('commission').value.trim() ||
+          (fsboEmailInput && fsboEmailInput.value.trim())
+        );
+        if (box3 && hasTyped) {
+          box3.classList.add('typing');
+        } else if (box3) {
+          box3.classList.remove('typing'); // switch back if user clears everything
+        }
+
         var fullAddr = (document.getElementById('address').value || '').trim();
         var short = fullAddr.split(',')[0] || '';
         var nameVal = document.getElementById('name').value || '';
@@ -591,7 +614,6 @@
         var brokerageVal = document.getElementById('brokerage').value || '';
         var agentVal = document.getElementById('agent').value || '';
         var agentEmailVal = document.getElementById('agentEmail').value || '';
-        var fsboEmailInput = document.getElementById('fsboEmailInput');
         var amount = (document.getElementById('commission').value || '').trim();
         var type = document.getElementById('commissionType').value;
         var suffix = type === '%' ? 'of the total purchase price' : '';
