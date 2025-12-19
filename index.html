@@ -602,8 +602,10 @@
         );
         if (box3 && hasTyped) {
           box3.classList.add('typing');
+          box3.classList.add('compact2'); // ✅ Make Box 3 less crowded when typing
         } else if (box3) {
-          box3.classList.remove('typing'); // switch back if user clears everything
+          box3.classList.remove('typing');
+          box3.classList.remove('compact2'); // ✅ Remove compact when cleared
         }
 
         var fullAddr = (document.getElementById('address').value || '').trim();
