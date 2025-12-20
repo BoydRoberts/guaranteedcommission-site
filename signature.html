@@ -99,6 +99,15 @@
 
     const $ = (id)=>document.getElementById(id);
     const todayISO = () => new Date().toISOString().slice(0,10);
+    const now = () => new Date();
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const time12 = (dt) => {
+      let h = dt.getHours();
+      const m = pad2(dt.getMinutes());
+      const ampm = h >= 12 ? "PM" : "AM";
+      h = h % 12; if (h === 0) h = 12;
+      return `${h}:${m} ${ampm}`;
+    };
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
 
     // Resolve listing id: prefer ?id=, else localStorage.lastListingId
@@ -256,11 +265,14 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
           
           // If history is empty, create "Original" entry with CURRENT commission from Firestore
           if (currentHistory.length === 0) {
+            const dt = now();
             const originalEntry = {
               commission: d.commission || "",
               commissionType: d.commissionType || "%",
               date: todayISO(),
-              label: "Original"
+              time: time12(dt),
+              label: "Original",
+              ts: serverTimestamp()
             };
             currentHistory = [originalEntry];
             console.log("[signature] Created Original commission history entry:", originalEntry);
@@ -276,11 +288,14 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
           if (isCommissionChange && newCommission) {
             try {
               // Build new "Changed" history entry
+              const dt2 = now();
               const newHistoryEntry = {
                 commission: newCommission,
                 commissionType: newCommissionType || "%",
                 date: todayISO(),
-                label: "Changed"
+                time: time12(dt2),
+                label: "Changed",
+                ts: serverTimestamp()
               };
               
               // Append "Changed" to the history (which now includes "Original")
