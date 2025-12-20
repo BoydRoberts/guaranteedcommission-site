@@ -151,8 +151,9 @@
           ? `${entry.commission}%`
           : `$${Number(entry.commission).toLocaleString()}`;
 
+        const when = entry.time ? `${entry.date} ${entry.time}` : `${entry.date}`;
         const item = document.createElement("div");
-        item.textContent = `${entry.date} — ${entry.label} — ${commDisplay}`;
+        item.textContent = `${when} — ${entry.label} — ${commDisplay}`;
         list.appendChild(item);
       });
     }
