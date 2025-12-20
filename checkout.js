@@ -417,11 +417,6 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   }
 
-  var backBtnEl = $("backBtn");
-  if (backBtnEl) {
-    backBtnEl.addEventListener("click", function() { window.location.href = "/upsell.html"; });
-  }
-
   var payNowBtnEl = $("payNowBtn");
   if (payNowBtnEl) {
     payNowBtnEl.addEventListener("click", async function() {
