@@ -58,16 +58,8 @@ document.addEventListener("DOMContentLoaded", function() {
     var raw  = (agentListing && agentListing.commission != null) ? agentListing.commission : ((formData && formData.commission != null) ? formData.commission : "");
     var comm = raw ? (type === "$" ? "$" + Math.round(Number(raw)).toLocaleString() : raw + "%") : "[commission]";
 
-    if (isFSBOPlan(planLS)) {
-      var email = formData.fsboEmail || formData.ownerEmail || "[owner/seller email]";
-      var phone = formData.phone || formData.agentPhone || "[owner/seller phone]";
-      $("whoLine").textContent = [addr, name, email, phone, comm].join(" * ");
-    } else {
-      var brokerage = formData.brokerage || "[Listing Brokerage]";
-      var agent     = formData.agent || "[Listing Agent]";
-      var agentPh   = formData.phone || formData.agentPhone || "[Listing Agent phone]";
-      $("whoLine").textContent = [addr, name, brokerage, agent, agentPh, comm].join(" * ");
-    }
+    // ✅ Display only: [name] | [full address] | [commission]
+    $("whoLine").textContent = [name, addr, comm].join(" | ");
     var whoRow = $("whoRow");
     if (whoRow) whoRow.classList.remove("hidden");
   })();
