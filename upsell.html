@@ -65,6 +65,39 @@
       return ['banner','premium','pin'];
     })();
     let idx = 0;
+    
+    // ✅ Read step from URL if present (supports refresh/bookmark)
+    const urlStep = Number(new URL(location.href).searchParams.get('step'));
+    if (!Number.isNaN(urlStep) && urlStep >= 0 && urlStep < steps.length) {
+      idx = urlStep;
+    }
+
+    // ✅ History management for Back button support
+    function pushStepToHistory(stepIndex) {
+      const state = { page: 'upsell', step: stepIndex };
+      const url = new URL(window.location.href);
+      url.searchParams.set('step', stepIndex);
+      history.pushState(state, '', url.toString());
+    }
+
+    // ✅ Initialize first step in history (use replaceState to avoid extra entry)
+    if (!history.state || history.state.page !== 'upsell') {
+      const state = { page: 'upsell', step: idx };  // ✅ Use idx (may be from URL)
+      const url = new URL(window.location.href);
+      url.searchParams.set('step', String(idx));  // ✅ Use idx, not hardcoded 0
+      history.replaceState(state, '', url.toString());
+    } else if (typeof history.state.step === 'number') {
+      idx = history.state.step;
+    }
+
+    // ✅ Handle browser Back button
+    window.addEventListener('popstate', (event) => {
+      if (event.state && event.state.page === 'upsell' && typeof event.state.step === 'number') {
+        idx = event.state.step;
+        renderStep();
+      }
+      // If no valid state, do nothing - let browser handle Back naturally
+    });
 
     const copies = {
       upgrade:      { title:'Upgrade to Listed Property Plus ($20)', body:'Display full property description and up to 20 photos until your home is sold.', price:20, key:'upgradeToPlus' },
@@ -116,11 +149,21 @@
       const sid = steps[idx];
       const c = copies[sid];
       const uiChecked = !!document.querySelector('#ck')?.checked;
-      const final = addSelected ? (uiChecked || true) : uiChecked;
+      const final = uiChecked;  // ✅ FIX: Checkbox state determines selection
 
       if (sid === 'upgrade') {
         data.upgrades.upgradeToPlus = !!final;
-        if (final) { localStorage.setItem('selectedPlan','Listed Property Plus'); data.plan = 'Listed Property Plus'; data.base = 20; }
+        
+        if (final) {
+          localStorage.setItem('selectedPlan', 'Listed Property Plus');
+          data.plan = 'Listed Property Plus';
+          data.base = 20;
+        } else {
+          // ✅ FIX: When unchecking upgrade, revert to Basic
+          localStorage.setItem('selectedPlan', 'Listed Property Basic');
+          data.plan = 'Listed Property Basic';
+          data.base = 0;
+        }
       } else if (sid === 'banner') data.upgrades.banner = !!final;
       else if (sid === 'premium') data.upgrades.premium = !!final;
       else if (sid === 'pin') { data.upgrades.pin = !!final; if (final) data.upgrades.premium = true; }
@@ -130,12 +173,48 @@
     }
 
     function nextStep() {
-      if (idx >= steps.length - 1) { setJSON('checkoutData', data); window.location.href = '/checkout.html'; return; }
-      idx++; renderStep();
+      if (idx >= steps.length - 1) { 
+        setJSON('checkoutData', data); 
+        window.location.href = '/checkout.html'; 
+        return; 
+      }
+      idx++;
+      pushStepToHistory(idx);  // ✅ Add history entry for this step
+      renderStep();
     }
 
-    $('#btnSkip').addEventListener('click', () => { if (idx === steps.length - 1) { setJSON('checkoutData', data); window.location.href = '/checkout.html'; } else { saveCurrent(false); nextStep(); }});
-    $('#btnAdd').addEventListener('click',  () => { saveCurrent(true); if (idx === steps.length - 1) window.location.href = '/checkout.html'; else nextStep(); });
+    $('#btnSkip').addEventListener('click', () => {
+      // Force skip = NOT selected
+      const ck = document.querySelector('#ck');
+      if (ck) ck.checked = false;
+
+      if (idx === steps.length - 1) {
+        setJSON('checkoutData', data);
+        window.location.href = '/checkout.html';
+      } else {
+        saveCurrent(false);
+        nextStep();
+      }
+    });
+
+    $('#btnAdd').addEventListener('click', () => {
+      // Force add = selected
+      const ck = document.querySelector('#ck');
+      if (ck) ck.checked = true;
+
+      saveCurrent(true);
+
+      // If user just upgraded to Plus, reload at step 0 (Banner first)
+      const sid = steps[idx];
+      if (sid === 'upgrade') {
+        // Use replace() to prevent Back button from returning to upgrade step
+        window.location.replace('/upsell.html?step=0&fresh=1');
+        return;
+      }
+
+      if (idx === steps.length - 1) window.location.href = '/checkout.html';
+      else nextStep();
+    });
 
     renderStep();
   </script>
