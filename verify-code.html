@@ -184,6 +184,16 @@
 
       // Mark verified
       safeSet('isVerified', 'true');
+      
+      // ✅ Set loggedInEmail so signature.html can always find it
+      if (target) {
+        safeSet('loggedInEmail', target.toLowerCase());
+        safeSet('isLoggedIn', 'true');
+      }
+      
+      // Clear verification code (one-time use)
+      safeDel('verificationCode');
+      
       setStatus('Verified! Redirecting…', true);
 
       // ROUTING: If they came from Box 2, ALWAYS go to upsell.
