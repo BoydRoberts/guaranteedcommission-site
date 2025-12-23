@@ -249,6 +249,8 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
 
         const isFSBO = (d.plan || "").includes("FSBO");
         const loggedIn = (localStorage.getItem("loggedInEmail") || "").trim().toLowerCase();
+        const verifyTarget = (localStorage.getItem("verifyTarget") || "").trim().toLowerCase();
+        const fallbackEmail = loggedIn || verifyTarget || "";
 
         try {
           const updates = {
@@ -256,8 +258,8 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
             status: "Active",
             updatedAt: serverTimestamp()
           };
-          if (!isFSBO && loggedIn) {
-            updates.ownerEmail = loggedIn;
+          if (fallbackEmail) {
+            updates.ownerEmail = fallbackEmail;
           }
 
           // ✅ FIXED: ALWAYS ensure commissionHistory has "Original" entry if empty
