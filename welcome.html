@@ -182,29 +182,61 @@
     $("bAgentProApply")?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
     $("agentProApply")?.addEventListener('click',  ()=> location.href='/local-professionals.html?mode=apply');
 
-    // Fetch owner/agent lists + all (case-insensitive), then build Agent source from agent OR all
+    // Fetch owner/agent lists with safety net for lastListingId
     async function fetchMyLists() {
       if (!email || !db) return { owner: [], agent: [], all: [] };
 
       const owner = [], agent = [];
+      const lastLid = (localStorage.getItem('lastListingId') || '').trim();
+
+      // Helper: add if not already present
+      function upsert(list, id, data) {
+        if (!id) return;
+        const exists = list.some(x => x.id === id);
+        if (!exists) list.push({ id, ...data });
+      }
 
       try {
-        // Exact matches first
-        const s1 = await getDocs(query(collection(db, "listings"), where("ownerEmail", "==", email), limit(150)));
-        s1.forEach(d => owner.push({ id: d.id, ...d.data() }));
+        // 1) Pull seller-owned listings (case-sensitive, then CI backup)
+        try {
+          const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), limit(50));
+          const snap1 = await getDocs(q1);
+          snap1.forEach(d => upsert(owner, d.id, d.data()));
+        } catch (e) {
+          console.warn("[welcome] ownerEmail query failed:", e);
+        }
 
-        const s2 = await getDocs(query(collection(db, "listings"), where("agentEmail", "==", email), limit(150)));
-        s2.forEach(d => agent.push({ id: d.id, ...d.data() }));
+        // 2) Pull agent-owned listings
+        try {
+          const q2 = query(collection(db, "listings"), where("agentEmail", "==", email), limit(50));
+          const snap2 = await getDocs(q2);
+          snap2.forEach(d => upsert(agent, d.id, d.data()));
+        } catch (e) {
+          console.warn("[welcome] agentEmail query failed:", e);
+        }
 
-        // CI sweep
-        const s3 = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(300)));
-        s3.forEach(d => {
-          const data = d.data() || {};
-          const oe = norm(data.ownerEmail);
-          const ae = norm(data.agentEmail);
-          if (oe && oe === email && !owner.some(x => x.id === d.id)) owner.push({ id: d.id, ...data });
-          if (ae && ae === email && !agent.some(x => x.id === d.id)) agent.push({ id: d.id, ...data });
-        });
+        // 3) ✅ SAFETY NET: Always fetch lastListingId directly
+        if (lastLid) {
+          try {
+            const snap = await getDoc(doc(db, "listings", lastLid));
+            if (snap.exists()) {
+              const data = snap.data();
+              const oe = norm(data.ownerEmail);
+              const ae = norm(data.agentEmail);
+              
+              // Only add if email matches (don't force-add if neither matches - prevents leakage)
+              if (oe === email) {
+                upsert(owner, lastLid, data);
+              }
+              if (ae === email) {
+                upsert(agent, lastLid, data);
+              }
+            }
+          } catch (e) {
+            console.warn("[welcome] lastListingId fetch failed:", e);
+          }
+        }
+
       } catch (e) {
         console.warn("[welcome] fetch error:", e);
       }
@@ -400,4 +432,3 @@
   </script>
 </body>
 </html>
-
