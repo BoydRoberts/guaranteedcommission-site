@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- signature.html - Build 2025-12-18 (Commission history: create "Original" entry on first signature) -->
+<!-- signature.html - Build 2025-12-23 (Commission history w/ time + ownerEmail reliability + deviceKey safety support) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -82,7 +82,7 @@
     (async function() {
       if (window.__paidUpgradesHandled) return;
       window.__paidUpgradesHandled = true;
-      
+
       try {
         const result = await updatePaidUpgradesAfterPayment();
         if (result.processed) {
@@ -98,6 +98,7 @@
     })();
 
     const $ = (id)=>document.getElementById(id);
+
     const todayISO = () => new Date().toISOString().slice(0,10);
     const now = () => new Date();
     const pad2 = (n) => String(n).padStart(2, "0");
@@ -108,6 +109,7 @@
       h = h % 12; if (h === 0) h = 12;
       return `${h}:${m} ${ampm}`;
     };
+
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
 
     // Resolve listing id: prefer ?id=, else localStorage.lastListingId
@@ -138,15 +140,14 @@
     function buildIscTextFromDoc(d, overrideCommission, overrideCommissionType) {
       const addressFull = (d.address || "").trim();
       const short = addressFull.split(",")[0] || "[short address]";
-      const apn = (d.apn || "[APN]");
+      const apn = (d.apn || "").trim();
       const name = (d.ownerName || "[name]");
       const plan = (d.plan || "");
       const isFSBO = plan.includes("FSBO");
 
-      // Use override if provided (for commission changes), otherwise use existing
       const commissionType = overrideCommissionType || d.commissionType || "%";
-      const cVal = overrideCommission || d.commission || "";
-      
+      const cVal = (overrideCommission != null ? overrideCommission : d.commission) || "";
+
       const commissionDisplay = commissionType === "$"
         ? (cVal ? ("$" + Number(cVal).toLocaleString()) : "[commission]")
         : (cVal ? (cVal + "%") : "[commission]");
@@ -157,7 +158,7 @@
         const email = d.ownerEmail || "[owner/seller email]";
         return `To the escrow holder/closing agent,
 
-I, ${name}, am the owner/seller of ${addressFull}${apn?`, # ${apn}`:""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email address is ${email}.
+I, ${name}, am the owner/seller of ${addressFull}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email address is ${email}.
 
 Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission not to exceed ${commissionDisplay}${commissionDisplay ? suffix : ""}.`;
       } else {
@@ -167,7 +168,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
         const email      = d.agentEmail || "[agent email]";
         return `To the escrow holder/closing agent,
 
-I, ${name}, am the owner/seller of ${addressFull}${apn?`, # ${apn}`:""}. ${short} is listed for sale by ${brokerage}, ${agentName}, listing agent, ${phone}, ${email}.
+I, ${name}, am the owner/seller of ${addressFull}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by ${brokerage}, ${agentName}, listing agent, ${phone}, ${email}.
 
 Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${commissionDisplay ? suffix : ""}.`;
       }
@@ -179,7 +180,15 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
       let d = null;
       try {
         const snap = await getDoc(doc(db, "listings", listingId));
-        if (snap.exists()) d = snap.data();
+        if (snap.exists()) {
+          d = snap.data() || {};
+
+          // ✅ OPTIONAL IMPROVEMENT: keep lastListingId + lastListingAddress fresh
+          try {
+            localStorage.setItem("lastListingId", listingId);
+            localStorage.setItem("lastListingAddress", (d.address || "").trim());
+          } catch {}
+        }
       } catch (e) {
         console.warn("[signature] Firestore fetch failed", e);
       }
@@ -191,26 +200,26 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
       const isCommissionChange = !!(checkoutData.meta && checkoutData.meta.fromChangeCommission);
       const newCommission = (checkoutData.meta && checkoutData.meta.newCommission) || null;
       const newCommissionType = (checkoutData.meta && checkoutData.meta.newCommissionType) || null;
-      
+
       console.log("[signature] isCommissionChange:", isCommissionChange);
       console.log("[signature] newCommission:", newCommission, "newCommissionType:", newCommissionType);
 
       // Paint ISC with NEW commission if this is a commission change
-      if (isCommissionChange && newCommission) {
+      if (isCommissionChange && newCommission != null && String(newCommission).trim() !== "") {
         $("iscText").textContent = buildIscTextFromDoc(d, newCommission, newCommissionType);
       } else {
         $("iscText").textContent = buildIscTextFromDoc(d);
       }
-      
+
       $("signWrap").classList.remove("hidden");
 
       // Expected seller name (from Firestore)
       const expected = (d.ownerName || "").trim();
 
-      // Pre-fill the signature input with expected name (still enforces exact match)
       const sigInput = $("signature");
       const btn = $("btnContinue");
       const help = $("sigHelp");
+
       if (expected) {
         sigInput.value = expected; // prefill
       }
@@ -242,15 +251,25 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
       sigInput.addEventListener('blur', check);
       check();
 
-      // ✅ FIXED: Save signature and handle commission history
       $("btnContinue").addEventListener("click", async () => {
         const typed = (sigInput.value || "").trim();
         if (!typed) return;
 
-        const isFSBO = (d.plan || "").includes("FSBO");
+        const plan = String(d.plan || "");
+        const isFSBO = plan.includes("FSBO");
+
         const loggedIn = (localStorage.getItem("loggedInEmail") || "").trim().toLowerCase();
         const verifyTarget = (localStorage.getItem("verifyTarget") || "").trim().toLowerCase();
         const fallbackEmail = loggedIn || verifyTarget || "";
+
+        // ✅ Guarantee identity state BEFORE redirect (helps welcome.html)
+        try {
+          if (fallbackEmail) {
+            localStorage.setItem("loggedInEmail", fallbackEmail);
+            localStorage.setItem("verifyTarget", fallbackEmail);
+            localStorage.setItem("isLoggedIn", "true");
+          }
+        } catch {}
 
         try {
           const updates = {
@@ -258,14 +277,15 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
             status: "Active",
             updatedAt: serverTimestamp()
           };
+
+          // Only write ownerEmail if we actually have one (prevents overwriting with blank)
           if (fallbackEmail) {
             updates.ownerEmail = fallbackEmail;
           }
 
-          // ✅ FIXED: ALWAYS ensure commissionHistory has "Original" entry if empty
-          let currentHistory = d.commissionHistory || [];
-          
-          // If history is empty, create "Original" entry with CURRENT commission from Firestore
+          // Ensure commissionHistory has "Original" entry if empty
+          let currentHistory = Array.isArray(d.commissionHistory) ? d.commissionHistory : [];
+
           if (currentHistory.length === 0) {
             const dt = now();
             const originalEntry = {
@@ -280,67 +300,57 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
             console.log("[signature] Created Original commission history entry:", originalEntry);
           }
 
-          // Save the initial history (with Original if it was just created)
           updates.commissionHistory = currentHistory;
 
           await updateDoc(doc(db, "listings", listingId), updates);
-          $("sigSaved").classList.remove("hidden");
+          $("sigSaved")?.classList.remove("hidden");
 
-          // ✅ If this is a commission change, ALSO add "Changed" entry
-          if (isCommissionChange && newCommission) {
-            try {
-              // Build new "Changed" history entry
-              const dt2 = now();
-              const newHistoryEntry = {
-                commission: newCommission,
-                commissionType: newCommissionType || "%",
-                date: todayISO(),
-                time: time12(dt2),
-                label: "Changed",
-                ts: serverTimestamp()
-              };
-              
-              // Append "Changed" to the history (which now includes "Original")
-              await updateDoc(doc(db, "listings", listingId), {
-                commission: newCommission,
-                commissionType: newCommissionType || "%",
-                commissionHistory: [...currentHistory, newHistoryEntry],
-                commissionChangeUsed: true,
-                updatedAt: serverTimestamp()
-              });
-              
-              console.log("[signature] Commission changed successfully to:", newCommission, newCommissionType);
-              
-              // Clear the commission change flags from checkoutData
-              const updatedCheckoutData = getJSON("checkoutData", {});
-              if (updatedCheckoutData.meta) {
-                delete updatedCheckoutData.meta.newCommission;
-                delete updatedCheckoutData.meta.newCommissionType;
-                delete updatedCheckoutData.meta.fromChangeCommission;
-              }
-              if (updatedCheckoutData.upgrades) {
-                updatedCheckoutData.upgrades.changeCommission = false;
-              }
-              localStorage.setItem("checkoutData", JSON.stringify(updatedCheckoutData));
-              
-            } catch (err) {
-              console.error("[signature] Failed to update commission:", err);
-              alert("Signature saved, but commission update failed. Please contact support.");
+          // If commission change, also append "Changed" entry and update commission fields
+          if (isCommissionChange && newCommission != null && String(newCommission).trim() !== "") {
+            const dt2 = now();
+            const newHistoryEntry = {
+              commission: newCommission,
+              commissionType: newCommissionType || "%",
+              date: todayISO(),
+              time: time12(dt2),
+              label: "Changed",
+              ts: serverTimestamp()
+            };
+
+            await updateDoc(doc(db, "listings", listingId), {
+              commission: newCommission,
+              commissionType: newCommissionType || "%",
+              commissionHistory: [...currentHistory, newHistoryEntry],
+              commissionChangeUsed: true,
+              updatedAt: serverTimestamp()
+            });
+
+            console.log("[signature] Commission changed successfully to:", newCommission, newCommissionType);
+
+            // Clear commission change flags from checkoutData
+            const updatedCheckoutData = getJSON("checkoutData", {});
+            if (updatedCheckoutData.meta) {
+              delete updatedCheckoutData.meta.newCommission;
+              delete updatedCheckoutData.meta.newCommissionType;
+              delete updatedCheckoutData.meta.fromChangeCommission;
             }
+            if (updatedCheckoutData.upgrades) {
+              updatedCheckoutData.upgrades.changeCommission = false;
+            }
+            try { localStorage.setItem("checkoutData", JSON.stringify(updatedCheckoutData)); } catch {}
           }
 
         } catch (e) {
-          console.warn("[signature] save failed; continuing local-only:", e);
+          console.warn("[signature] save failed; continuing redirect anyway:", e);
         }
 
-        // For commission changes, go back to seller-detail; otherwise continue normal flow
+        // Routing
         if (isCommissionChange) {
           window.location.href = "/seller-detail.html?id=" + encodeURIComponent(listingId);
         } else {
-          // Continue to intake / invite path
           window.location.href = isFSBO
-            ? "/seller-detail.html?id=" + encodeURIComponent(listingId)
-            : "/agent-invite.html?id=" + encodeURIComponent(listingId);
+            ? ("/seller-detail.html?id=" + encodeURIComponent(listingId))
+            : ("/agent-invite.html?id=" + encodeURIComponent(listingId));
         }
       });
     })();
