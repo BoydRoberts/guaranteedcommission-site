@@ -96,30 +96,6 @@
           </div>
         </div>
 
-        <!-- Buyer's Agent -->
-        <div id="boxBuyersAgent" class="hidden space-y-4">
-          <div class="border rounded-lg p-4">
-            <h3 class="font-semibold mb-2">Become a Local Professional</h3>
-            <button id="bAgentProApply" class="px-3 py-2 rounded bg-amber-600 text-white text-sm">Apply</button>
-          </div>
-          <div class="border rounded-lg p-4">
-            <h3 class="font-semibold mb-2">Create a new automatic search</h3>
-            <button id="bAgentSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
-          </div>
-        </div>
-
-        <!-- Buyer -->
-        <div id="boxBuyer" class="hidden space-y-4">
-          <div class="border rounded-lg p-4">
-            <h3 class="font-semibold mb-2">Search Local Professionals by ZIP</h3>
-            <button id="buyerProsGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Local Professionals</button>
-          </div>
-          <div class="border rounded-lg p-4">
-            <h3 class="font-semibold mb-2">Search commissions / create auto-email search</h3>
-            <button id="buyerSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
-          </div>
-        </div>
-
         <!-- Other / Fallback -->
         <div id="boxOther" class="hidden space-y-4">
           <div class="border rounded-lg p-4">
@@ -143,21 +119,31 @@
 
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    import {
-      collection, getDocs, query, where, orderBy, limit, doc, getDoc, updateDoc, serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { collection, getDocs, query, where, limit, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id)=>document.getElementById(id);
 
-    // Who + role
-    const emailRaw = (localStorage.getItem('loggedInEmail') || '').trim();
+    // Who + role (fallback to verifyTarget if loggedInEmail missing)
+    const emailRaw = (
+      localStorage.getItem('loggedInEmail') ||
+      localStorage.getItem('verifyTarget') ||
+      ''
+    ).trim();
     const email = emailRaw.toLowerCase();
     let role  = (localStorage.getItem('userRole') || '').trim();
     $("who").textContent = emailRaw || 'there';
 
     const norm = (s)=>String(s||'').trim().toLowerCase();
 
-    // Logout
+    // Debug: log key localStorage values (do NOT remove until this is fixed)
+    console.log("[welcome] emailRaw=", emailRaw,
+                "loggedInEmail=", localStorage.getItem("loggedInEmail"),
+                "verifyTarget=", localStorage.getItem("verifyTarget"),
+                "lastListingId=", localStorage.getItem("lastListingId"),
+                "lastListingAddress=", localStorage.getItem("lastListingAddress"),
+                "gcDeviceKey=", localStorage.getItem("gcDeviceKey"));
+
+    // Logout (DO NOT delete gcDeviceKey)
     $("logoutBtn")?.addEventListener('click', () => {
       try {
         ['isLoggedIn','loggedInEmail','userRole','verificationCode','verifyTarget','nextAfterLogin','nextAfterVerify','lastListingId','lastListingAddress']
@@ -176,28 +162,34 @@
     // Shared buttons
     $("sellerSearchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
     $("agentSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
-    $("bAgentSearchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
-    $("buyerSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
-    $("buyerProsGo")?.addEventListener('click',    ()=> location.href='/local-professionals.html?mode=search');
-    $("bAgentProApply")?.addEventListener('click', ()=> location.href='/local-professionals.html?mode=apply');
+    $("otherSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
     $("agentProApply")?.addEventListener('click',  ()=> location.href='/local-professionals.html?mode=apply');
 
-    // Fetch owner/agent lists with safety net for lastListingId
+    function tsMillis(x) {
+      try {
+        if (!x) return 0;
+        if (typeof x.toMillis === "function") return x.toMillis();
+        if (typeof x.toDate === "function") return x.toDate().getTime();
+        if (typeof x === "number") return x;
+        return 0;
+      } catch (_) { return 0; }
+    }
+
     async function fetchMyLists() {
-      if (!email || !db) return { owner: [], agent: [], all: [] };
+      if (!db) return { owner: [], agent: [], all: [] }; // ✅ only gate on db
 
       const owner = [], agent = [];
       const lastLid = (localStorage.getItem('lastListingId') || '').trim();
+      const myKey = (localStorage.getItem("gcDeviceKey") || "").trim();
 
-      // Helper: add if not already present
       function upsert(list, id, data) {
         if (!id) return;
         const exists = list.some(x => x.id === id);
         if (!exists) list.push({ id, ...data });
       }
 
-      try {
-        // 1) Pull seller-owned listings (case-sensitive, then CI backup)
+      // 1) Email-based queries (ONLY if we have email)
+      if (email) {
         try {
           const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), limit(50));
           const snap1 = await getDocs(q1);
@@ -206,7 +198,6 @@
           console.warn("[welcome] ownerEmail query failed:", e);
         }
 
-        // 2) Pull agent-owned listings
         try {
           const q2 = query(collection(db, "listings"), where("agentEmail", "==", email), limit(50));
           const snap2 = await getDocs(q2);
@@ -214,31 +205,57 @@
         } catch (e) {
           console.warn("[welcome] agentEmail query failed:", e);
         }
+      } else {
+        console.warn("[welcome] No email found. Relying on lastListingId safety net.");
+      }
 
-        // 3) ✅ SAFETY NET: Always fetch lastListingId directly
-        if (lastLid) {
-          try {
-            const snap = await getDoc(doc(db, "listings", lastLid));
-            if (snap.exists()) {
-              const data = snap.data();
+      // 2) SAFETY NET: Always fetch lastListingId (even if email missing)
+      if (lastLid) {
+        try {
+          const snap = await getDoc(doc(db, "listings", lastLid));
+          if (snap.exists()) {
+            const data = snap.data() || {};
+
+            // If email exists, allow normal match too
+            if (email) {
               const oe = norm(data.ownerEmail);
               const ae = norm(data.agentEmail);
-              
-              // Only add if email matches (don't force-add if neither matches - prevents leakage)
-              if (oe === email) {
+              if (oe && oe === email) upsert(owner, lastLid, data);
+              if (ae && ae === email) upsert(agent, lastLid, data);
+            }
+
+            // DeviceKey match (preferred)
+            const docKey = (data.deviceKey || "").trim();
+
+            // Address fallback (ONLY for lastListingId; safe)
+            const snapAddr   = norm(data.address);
+            const lastAddrLS = norm(localStorage.getItem("lastListingAddress"));
+            let formAddrLS = "";
+            try { formAddrLS = norm((JSON.parse(localStorage.getItem("formData") || "{}").address) || ""); } catch {}
+
+            const addrMatches = !!snapAddr && (snapAddr === lastAddrLS || snapAddr === formAddrLS);
+
+            const alreadyHave = owner.some(x=>x.id===lastLid) || agent.some(x=>x.id===lastLid);
+
+            if (!alreadyHave) {
+              if (myKey && docKey && myKey === docKey) {
                 upsert(owner, lastLid, data);
-              }
-              if (ae === email) {
-                upsert(agent, lastLid, data);
+                console.log("[welcome] Safety net: added via deviceKey match:", lastLid);
+              } else if (addrMatches) {
+                upsert(owner, lastLid, data);
+                console.log("[welcome] Safety net: added via address match:", lastLid);
+              } else {
+                console.log("[welcome] Safety net NOT added:", { lastLid, myKey, docKey, snapAddr, lastAddrLS, formAddrLS });
               }
             }
-          } catch (e) {
-            console.warn("[welcome] lastListingId fetch failed:", e);
+          } else {
+            console.warn("[welcome] lastListingId doc not found:", lastLid);
           }
+        } catch (e) {
+          console.warn("[welcome] lastListingId fetch failed:", e);
         }
-
-      } catch (e) {
-        console.warn("[welcome] fetch error:", e);
+      } else {
+        console.warn("[welcome] No lastListingId in localStorage.");
       }
 
       // Dedup all
@@ -246,15 +263,16 @@
       [...owner, ...agent].forEach(it => byId[it.id] = it);
       const all = Object.values(byId);
 
-      // Sort desc by updated/created
+      // Sort: newest first (best effort) ✅ FIXED (no broken ternaries)
       all.sort((a,b) => {
-        const au = a.updatedAt?.toMillis?.() ? a.updatedAt.toMillis() : 0;
-        const bu = b.updatedAt?.toMillis?.() ? b.updatedAt.toMillis() : 0;
-        const ac = a.createdAt?.toMillis?.() ? a.createdAt.toMillis() : 0;
-        const bc = b.createdAt?.toMillis?.() ? b.createdAt.toMillis() : 0;
+        const au = tsMillis(a.updatedAt);
+        const bu = tsMillis(b.updatedAt);
+        const ac = tsMillis(a.createdAt);
+        const bc = tsMillis(b.createdAt);
         return (bu - au) || (bc - ac);
       });
 
+      console.log("[welcome] counts:", { owner: owner.length, agent: agent.length, all: all.length });
       return { owner, agent, all };
     }
 
@@ -298,13 +316,13 @@
         const it = list.find(x => x.id === selectEl.value);
         if (!it) { alert('Pick a listing first.'); return; }
         localStorage.setItem('lastListingId', it.id);
-        const r = (localStorage.getItem('userRole') || '').trim();
-        if (r === 'seller') {
+
+        // Seller edits seller-detail; agents edit agent-detail
+        if (selectEl.id === 'sellerListings') {
+          localStorage.setItem('userRole','seller');
           location.href = '/seller-detail.html?id=' + encodeURIComponent(it.id);
-        } else if (r === 'listing_agent') {
-          location.href = '/agent-detail.html?id=' + encodeURIComponent(it.id);
         } else {
-          // default to agent editor for mixed roles
+          localStorage.setItem('userRole','listing_agent');
           location.href = '/agent-detail.html?id=' + encodeURIComponent(it.id);
         }
       });
@@ -340,12 +358,19 @@
     (async function boot(){
       const { owner, agent, all } = await fetchMyLists();
 
-      // Prefer agent role if any agent matches exist
-      if (role !== 'listing_agent' && agent.length > 0) {
-        try { localStorage.setItem('userRole', 'listing_agent'); role = 'listing_agent'; } catch {}
-      } else if (!role) {
-        // Fallback role selection
-        role = owner.length ? 'seller' : 'listing_agent';
+      // IMPORTANT: if we have anything at all, we should show SELLER UI too
+      const sellerSource = owner.length ? owner.slice() : all.slice();
+      const agentSource  = agent.length ? agent.slice() : all.slice();
+
+      // Decide role (prefer seller if sellerSource has listings)
+      if (!role) {
+        role = sellerSource.length ? 'seller' : (agentSource.length ? 'listing_agent' : 'seller');
+        try { localStorage.setItem('userRole', role); } catch {}
+      }
+
+      // If role is agent but agentSource empty and sellerSource has listings, flip to seller
+      if (role === 'listing_agent' && !agentSource.length && sellerSource.length) {
+        role = 'seller';
         try { localStorage.setItem('userRole', role); } catch {}
       }
 
@@ -354,30 +379,26 @@
       else if (role === 'listing_agent') $('boxAgent').classList.remove('hidden');
       else $('boxOther').classList.remove('hidden');
 
-      // Build Agent dropdown source:
-      // If we have at least 1 strict agent match, use those.
-      // Otherwise, fall back to ALL your listings (so nothing "disappears").
-      const agentSource = agent.length ? agent.slice() : all.slice();
-
-      // Prompt card: show seller prompt if exactly one owner listing; otherwise if one agentSource.
-      if (owner.length === 1 && role === 'seller') {
-        renderPromptCard(owner[0], 'seller');
-        localStorage.setItem('lastListingId', owner[0].id);
+      // Prompt card
+      if (sellerSource.length === 1 && role === 'seller') {
+        renderPromptCard(sellerSource[0], 'seller');
+        localStorage.setItem('lastListingId', sellerSource[0].id);
       } else if (agentSource.length === 1 && role === 'listing_agent') {
         renderPromptCard(agentSource[0], 'agent');
         localStorage.setItem('lastListingId', agentSource[0].id);
       }
 
-      // Fill dropdowns + wire editors
+      // Fill seller dropdown from sellerSource (NOT strictly owner)
       const sellerSel  = $("sellerListings");
       const sellerGo   = $("sellerEditGo");
       const sellerPrev = $("sellerPreview");
       if (sellerSel) {
-        if (owner.length) { $("sellerNoListings")?.classList.add('hidden'); fillDropdown(sellerSel, owner); }
+        if (sellerSource.length) { $("sellerNoListings")?.classList.add('hidden'); fillDropdown(sellerSel, sellerSource); }
         else { $("sellerNoListings")?.classList.remove('hidden'); }
-        wireEditor(sellerSel, sellerGo, sellerPrev, owner);
+        wireEditor(sellerSel, sellerGo, sellerPrev, sellerSource);
       }
 
+      // Fill agent dropdown from agentSource (NOT strictly agent)
       const agentSel  = $("agentListings");
       const agentGo   = $("agentEditGo");
       const agentPrev = $("agentPreview");
@@ -387,7 +408,7 @@
         wireEditor(agentSel, agentGo, agentPrev, agentSource);
       }
 
-      // Table of all
+      // Simple table (optional)
       if (all.length) {
         const host = $("listingsTable");
         const sec  = $("listSection");
@@ -401,27 +422,23 @@
                     <th class="px-3 py-2 text-left">Address</th>
                     <th class="px-3 py-2 text-left">Status</th>
                     <th class="px-3 py-2 text-left">Plan</th>
-                    <th class="px-3 py-2 text-left">Updated</th>
                     <th class="px-3 py-2 text-left">Actions</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y">
                   ${all.map(it=>{
-                      const upd = it.updatedAt?.toDate ? it.updatedAt.toDate() : null;
-                      const upds = upd ? upd.toLocaleDateString() : '';
-                      const href = it.id ? ('/listing.html?id=' + encodeURIComponent(it.id)) : '#';
-                      return `
-                        <tr>
-                          <td class="px-3 py-2">${it.address || ''}</td>
-                          <td class="px-3 py-2">${it.status || 'Draft'}</td>
-                          <td class="px-3 py-2">${it.plan || ''}</td>
-                          <td class="px-3 py-2">${upds}</td>
-                          <td class="px-3 py-2 flex gap-3">
-                            <a class="text-blue-600 underline" href="${href}" target="_blank" rel="noopener">Preview</a>
-                          </td>
-                        </tr>
-                      `;
-                    }).join('')}
+                    const href = it.id ? ('/listing.html?id=' + encodeURIComponent(it.id)) : '#';
+                    return `
+                      <tr>
+                        <td class="px-3 py-2">${it.address || ''}</td>
+                        <td class="px-3 py-2">${it.status || 'Draft'}</td>
+                        <td class="px-3 py-2">${it.plan || ''}</td>
+                        <td class="px-3 py-2 flex gap-3">
+                          <a class="text-blue-600 underline" href="${href}" target="_blank" rel="noopener">Preview</a>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
                 </tbody>
               </table>
             </div>
