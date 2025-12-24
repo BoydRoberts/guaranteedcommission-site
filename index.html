@@ -37,16 +37,16 @@
     #box1.fsbo-compact ul { --tw-space-y-reverse: 0; margin-bottom: calc(0.5rem * var(--tw-space-y-reverse)); }
     #box1.fsbo-compact ul > * + * { margin-top: 0.5rem; }
     #box1.fsbo-compact p.text-base { font-size: 0.875rem; }
-    
+
     /* Box 1: justified text with minimal spacing */
     #box1 p { text-align: justify; hyphens: auto; }
-    
+
     /* Box 3: justified ISC text by default */
     #box3 p { text-align: justify; hyphens: auto; }
-    
+
     /* Box 3: switch to left-aligned when user starts typing */
     #box3.typing p { text-align: left; hyphens: none; }
-    
+
     /* Only break overly long emails when necessary to prevent overflow */
     #fsboEmail { overflow-wrap: break-word; }
 
@@ -434,6 +434,25 @@
       return re.test(s.trim());
     }
 
+    // ✅ SAFE getDeviceKey (never references crypto directly unless it exists)
+    function getDeviceKey() {
+      try {
+        var k = localStorage.getItem("gcDeviceKey");
+        if (!k) {
+          var c = (typeof window !== "undefined") ? window.crypto : null;
+          if (c && typeof c.randomUUID === "function") {
+            k = c.randomUUID();
+          } else {
+            k = "dk_" + Math.random().toString(16).slice(2) + Date.now();
+          }
+          localStorage.setItem("gcDeviceKey", k);
+        }
+        return k;
+      } catch(e) {
+        return "dk_fallback";
+      }
+    }
+
     function selectPlan(planName){
       setPlan(planName);
       showForm(planToFormMode(planName));
@@ -599,7 +618,7 @@
       }
 
       function syncAll(){
-        // ✅ NEW: Switch Box 3 to left-aligned once user starts typing
+        // ✅ Switch Box 3 to left-aligned once user starts typing
         var box3 = document.getElementById('box3');
         var fsboEmailInput = document.getElementById('fsboEmailInput');
         var hasTyped = !!(
@@ -616,7 +635,7 @@
         if (box3 && hasTyped) {
           box3.classList.add('typing');
         } else if (box3) {
-          box3.classList.remove('typing'); // switch back if user clears everything
+          box3.classList.remove('typing');
         }
 
         var fullAddr = (document.getElementById('address').value || '').trim();
@@ -743,15 +762,13 @@
         localStorage.setItem('shortAddress', short);
       }
 
-      // CRITICAL FIX: Determine plan based on what user explicitly selected THIS SESSION
-      // If user didn't click a plan option, default to Basic (for Listed) or FSBO
+      // Determine plan based on what user explicitly selected THIS SESSION
       var plan;
       if (isFSBO) {
         plan = 'FSBO Plus';
       } else if (userSelectedPlanThisSession === 'Listed Property Plus') {
         plan = 'Listed Property Plus';
       } else {
-        // Default to Basic - user either selected Basic or didn't select anything
         plan = 'Listed Property Basic';
       }
 
@@ -813,6 +830,7 @@
             agentPhone: plan.indexOf('FSBO') >= 0 ? "" : (formData.phone || ""),
             agentEmail: plan.indexOf('FSBO') >= 0 ? "" : (formData.agentEmail || ""),
             brokerage: plan.indexOf('FSBO') >= 0 ? "" : (formData.brokerage || ""),
+            deviceKey: getDeviceKey(),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             source: "index.box2"
