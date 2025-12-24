@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- signature.html - Build 2025-12-24 (Commission change snapshot fix + guarded cc=1 parameter) -->
+<!-- signature.html - Build 2025-12-24 (Restore date + commission change snapshot + audit history + paid upgrades safe) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -35,9 +35,7 @@
 
     <!-- Sign UI -->
     <div id="signWrap" class="hidden">
-      <div id="iscText" class="text-sm leading-relaxed whitespace-pre-line text-left">
-        Loading ISC...
-      </div>
+      <div id="iscText" class="text-sm leading-relaxed whitespace-pre-line text-left">Loading ISC...</div>
 
       <div class="mt-6">
         <label class="block mb-2 text-sm font-semibold">Electronic Signature:</label>
@@ -109,29 +107,26 @@
     const newCommissionSnap = (metaSnap && metaSnap.newCommission != null) ? metaSnap.newCommission : null;
     const newCommissionTypeSnap = (metaSnap && metaSnap.newCommissionType) ? metaSnap.newCommissionType : null;
 
-    // ✅ GUARDED: cc=1 only counts if newCommission is present
-    const isCommissionChangeSnap = !!(metaSnap && metaSnap.fromChangeCommission === true) ||
-                                   (ccParam && newCommissionSnap != null && String(newCommissionSnap).trim() !== "");
+    // ✅ GUARDED: cc=1 only counts if newCommission exists
+    const isCommissionChangeSnap =
+      !!(metaSnap && metaSnap.fromChangeCommission === true) ||
+      (ccParam && newCommissionSnap != null && String(newCommissionSnap).trim() !== "");
 
     console.log("[signature] SNAPSHOT isCommissionChange:", isCommissionChangeSnap);
     console.log("[signature] SNAPSHOT newCommission:", newCommissionSnap, "newCommissionType:", newCommissionTypeSnap);
 
-    // Process paid upgrades AFTER snapshot (prevents race)
+    // Process paid upgrades FIRST (but AFTER we captured snapshot)
     (async function() {
       if (window.__paidUpgradesHandled) return;
       window.__paidUpgradesHandled = true;
-
       try {
-        const result = await updatePaidUpgradesAfterPayment();
-        if (result.processed) console.log('[signature] Upgrades processed successfully');
-        else if (result.alreadyProcessed) console.log('[signature] Upgrades already processed');
-        else console.log('[signature] No paid upgrades to process');
+        await updatePaidUpgradesAfterPayment();
       } catch (e) {
         console.warn('[signature] paid-upgrades-handler failed:', e);
       }
     })();
 
-    // If an AGENT somehow reaches this page, send them back to the agent page for this listing
+    // If an AGENT reaches this page, send them back to agent page
     (function guardAgent(){
       try {
         const role = (localStorage.getItem('userRole') || '').trim();
@@ -147,7 +142,6 @@
       if (a) a.href = `/printable-isc.html?id=${encodeURIComponent(listingId)}`;
     })();
 
-    // ISC builder - accepts optional commission override
     function buildIscTextFromDoc(d, overrideCommission, overrideCommissionType) {
       const addressFull = (d.address || "").trim();
       const short = addressFull.split(",")[0] || "[short address]";
@@ -193,7 +187,6 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
         const snap = await getDoc(doc(db, "listings", listingId));
         if (snap.exists()) {
           d = snap.data() || {};
-          // Keep lastListingId + lastListingAddress fresh
           try {
             localStorage.setItem("lastListingId", listingId);
             localStorage.setItem("lastListingAddress", (d.address || "").trim());
@@ -205,7 +198,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
 
       if (!d) { $("invalidBox").classList.remove("hidden"); return; }
 
-      // Render ISC using snapshot commission if commission-change flow
+      // Render ISC (new commission if change flow)
       if (isCommissionChangeSnap && newCommissionSnap != null && String(newCommissionSnap).trim() !== "") {
         $("iscText").textContent = buildIscTextFromDoc(d, newCommissionSnap, newCommissionTypeSnap);
       } else {
@@ -248,7 +241,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
       sigInput.addEventListener('blur', check);
       check();
 
-      $("btnContinue").addEventListener("click", async () => {
+      btn.addEventListener("click", async () => {
         const typed = (sigInput.value || "").trim();
         if (!typed) return;
 
@@ -274,10 +267,9 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
             status: "Active",
             updatedAt: serverTimestamp()
           };
-
           if (fallbackEmail) updates.ownerEmail = fallbackEmail;
 
-          // Ensure commissionHistory has Original entry if empty
+          // Ensure commissionHistory has "Original" entry if empty
           let currentHistory = Array.isArray(d.commissionHistory) ? d.commissionHistory : [];
           if (currentHistory.length === 0) {
             const dt = now();
@@ -296,7 +288,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
           await updateDoc(doc(db, "listings", listingId), updates);
           $("sigSaved")?.classList.remove("hidden");
 
-          // Commission change finalize (append Changed + update commission fields)
+          // Commission change finalize
           if (isCommissionChangeSnap && newCommissionSnap != null && String(newCommissionSnap).trim() !== "") {
             const dt2 = now();
             const changedEntry = {
@@ -316,7 +308,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
               updatedAt: serverTimestamp()
             });
 
-            // Clear commission-change flags AFTER Firestore update succeeds
+            // Clear meta flags after success
             const updatedCheckoutData = getJSON("checkoutData", {});
             if (updatedCheckoutData.meta) {
               delete updatedCheckoutData.meta.newCommission;
@@ -331,10 +323,11 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
           console.warn("[signature] save failed; continuing redirect anyway:", e);
         }
 
+        // Routing
         if (isCommissionChangeSnap) {
-          window.location.href = "/seller-detail.html?id=" + encodeURIComponent(listingId);
+          location.href = "/seller-detail.html?id=" + encodeURIComponent(listingId);
         } else {
-          window.location.href = isFSBO
+          location.href = isFSBO
             ? ("/seller-detail.html?id=" + encodeURIComponent(listingId))
             : ("/agent-invite.html?id=" + encodeURIComponent(listingId));
         }
