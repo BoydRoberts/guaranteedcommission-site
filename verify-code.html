@@ -8,7 +8,6 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <!-- Header -->
   <header class="bg-white shadow">
     <div class="flex justify-between items-center max-w-7xl mx-auto px-4 py-4">
       <a href="/index.html" class="text-xs hover:underline" style="color:#4DA6FF;">Home</a>
@@ -21,25 +20,27 @@
 
   <div class="min-h-[calc(100vh-80px)] flex items-center justify-center px-4">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6">
+
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">verify build 2025-11-29</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">
+          verify build 2025-11-29
+        </span>
       </div>
 
       <h2 class="text-2xl font-bold text-center">Enter Verification Code</h2>
       <p id="who" class="text-sm text-gray-600 text-center mt-1"></p>
 
-      <div id="status" class="hidden mb-4 text-sm rounded-lg p-3 mt-4" role="alert"></div>
+      <div id="status" class="hidden mb-4 text-sm rounded-lg p-3 mt-4"></div>
 
-      <!-- Dev helper: shows current code (test mode) -->
       <div class="mb-4 p-3 rounded bg-yellow-50 text-yellow-800 text-sm">
         <div class="flex items-center justify-between gap-2">
           <span>Dev helper — current 6-digit code:</span>
           <span id="codeBadge" class="font-mono text-base bg-white px-2 py-1 rounded border">------</span>
         </div>
         <div class="mt-2 flex gap-2">
-          <button id="resend" class="px-3 py-1 rounded bg-yellow-600 text-white hover:bg-yellow-700">Resend code</button>
+          <button id="resend" class="px-3 py-1 rounded bg-yellow-600 text-white">Resend code</button>
           <button id="copy" class="px-3 py-1 rounded border">Copy</button>
-          <button id="fill" class="px-3 py-1 rounded border">Fill &amp; Verify</button>
+          <button id="fill" class="px-3 py-1 rounded border">Fill & Verify</button>
         </div>
       </div>
 
@@ -52,39 +53,34 @@
             inputmode="numeric"
             maxlength="6"
             autocomplete="one-time-code"
-            class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono tracking-widest"
+            class="mt-1 w-full border rounded-lg px-3 py-2 font-mono tracking-widest"
             placeholder="••••••"
-            aria-describedby="codeHelp"
           />
-          <p id="codeHelp" class="text-xs text-gray-500 mt-1">Enter digits only.</p>
         </div>
 
         <button type="submit"
-                class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition">
+                class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold">
           Verify
         </button>
       </form>
 
       <p class="text-[11px] text-gray-500 text-center mt-4">
-        We never sell your data. Used only for escrow &amp; identification.
+        We never sell your data. Used only for escrow & identification.
       </p>
     </div>
   </div>
 
   <script>
-    console.log('[verify] build 2025-11-29');
-
-    // ---------- tiny helpers ----------
     const $ = (id) => document.getElementById(id);
-    const statusBox = $('status');
-    const safeGet = (k, fb='') => { try { const v = localStorage.getItem(k); return v ?? fb; } catch { return fb; } };
+    const safeGet = (k, fb='') => { try { return localStorage.getItem(k) ?? fb; } catch { return fb; } };
     const safeSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
     const safeDel = (k) => { try { localStorage.removeItem(k); } catch {} };
 
     function setStatus(msg, ok=false) {
-      statusBox.classList.remove('hidden');
-      statusBox.textContent = msg;
-      statusBox.className = ok
+      const box = $('status');
+      box.classList.remove('hidden');
+      box.textContent = msg;
+      box.className = ok
         ? 'mb-4 text-sm rounded-lg p-3 mt-4 bg-green-50 text-green-700'
         : 'mb-4 text-sm rounded-lg p-3 mt-4 bg-red-50 text-red-700';
     }
@@ -95,16 +91,13 @@
 
     function maskEmail(e) {
       if (!e || !e.includes('@')) return e || '';
-      const [u, d] = e.split('@');
-      const um = u.length <= 2 ? (u[0] || '') + '•' : u[0] + '•'.repeat(Math.max(1, u.length-2)) + u[u.length-1];
-      return um + '@' + d;
+      const [u,d] = e.split('@');
+      return u[0] + '•••@' + d;
     }
 
-    // ---------- bootstrap target + code ----------
     let target = safeGet('verifyTarget') || safeGet('loggedInEmail') || '';
+    let code = safeGet('verificationCode');
 
-    // IMPORTANT: Do NOT overwrite an existing valid 6-digit code.
-    let code = safeGet('verificationCode', '');
     if (!/^\d{6}$/.test(code)) {
       code = generateCode();
       safeSet('verificationCode', code);
@@ -113,102 +106,47 @@
     $('who').textContent = target
       ? `We sent a 6-digit code to ${maskEmail(target)}.`
       : `We sent a 6-digit code.`;
+
     $('codeBadge').textContent = code;
 
-    // ---------- input behavior ----------
-    const codeInput = $('code');
-
-    // Sanitize: keep only digits; auto-submit on 6
-    codeInput.addEventListener('input', (e) => {
-      const digits = (e.target.value || '').replace(/\D/g, '').slice(0, 6);
-      if (e.target.value !== digits) e.target.value = digits;
-      e.target.setCustomValidity('');
-      if (digits.length === 6) {
-        setTimeout(() => $('verifyForm').requestSubmit(), 10);
-      }
-    });
-
-    codeInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        $('verifyForm').requestSubmit();
-      }
-    });
-
-    // ---------- buttons ----------
-    $('resend').addEventListener('click', (e) => {
+    $('verifyForm').addEventListener('submit', (e) => {
       e.preventDefault();
+      const entered = $('code').value.trim();
+
+      if (entered !== safeGet('verificationCode')) {
+        setStatus('Incorrect code.', false);
+        return;
+      }
+
+      safeSet('isVerified','true');
+
+      if (target) {
+        const email = target.toLowerCase();
+        safeSet('loggedInEmail', email);
+        safeSet('verifyTarget', email);   // ✅ improvement
+        safeSet('isLoggedIn','true');
+      }
+
+      safeDel('verificationCode');
+      setStatus('Verified! Redirecting…', true);
+
+      const origin = (safeGet('loginOrigin') || '').toLowerCase();
+      const next = origin === 'box2' ? '/upsell.html' : '/welcome.html';
+
+      setTimeout(() => {
+        safeDel('loginOrigin');
+        location.href = next;
+      }, 350);
+    });
+
+    $('fill').onclick = () => { $('code').value = code; $('verifyForm').requestSubmit(); };
+    $('copy').onclick = async () => navigator.clipboard.writeText(code);
+    $('resend').onclick = () => {
       code = generateCode();
       safeSet('verificationCode', code);
       $('codeBadge').textContent = code;
-      setStatus('A new code has been generated.', true);
-      codeInput.value = '';
-      codeInput.focus();
-    });
-
-    $('copy').addEventListener('click', async (e) => {
-      e.preventDefault();
-      try {
-        await navigator.clipboard.writeText(code);
-        setStatus('Code copied to clipboard.', true);
-      } catch {
-        setStatus('Could not copy. Please type it in.', false);
-      }
-    });
-
-    $('fill').addEventListener('click', (e) => {
-      e.preventDefault();
-      codeInput.value = code;
-      $('verifyForm').requestSubmit();
-    });
-
-    // ---------- verify submit ----------
-    $('verifyForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const entered = (codeInput.value || '').trim();
-      if (!/^\d{6}$/.test(entered)) {
-        codeInput.setCustomValidity('Enter 6 digits');
-        codeInput.reportValidity();
-        return;
-      }
-
-      const saved = safeGet('verificationCode', '');
-      if (!/^\d{6}$/.test(saved)) {
-        setStatus('No code found. Click "Resend code" and try again.', false);
-        return;
-      }
-      if (entered !== saved) {
-        setStatus('Incorrect code. Please try again or click "Resend code".', false);
-        return;
-      }
-
-      // Mark verified
-      safeSet('isVerified', 'true');
-      
-      // ✅ Set loggedInEmail so signature.html can always find it
-      if (target) {
-        safeSet('loggedInEmail', target.toLowerCase());
-        safeSet('isLoggedIn', 'true');
-      }
-      
-      // Clear verification code (one-time use)
-      safeDel('verificationCode');
-      
-      setStatus('Verified! Redirecting…', true);
-
-      // ROUTING: If they came from Box 2, ALWAYS go to upsell.
-      const origin = (safeGet('loginOrigin') || '').trim().toLowerCase();
-      let next = '/welcome.html';
-      if (origin === 'box2') {
-        next = '/upsell.html';
-      }
-
-      // Clear only after deciding (avoid premature loss)
-      setTimeout(() => {
-        safeDel('loginOrigin');
-        window.location.href = next;
-      }, 350);
-    });
+      setStatus('New code generated.', true);
+    };
   </script>
 </body>
 </html>
