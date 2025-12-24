@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- signature.html - Build 2025-12-23 (Commission history w/ time + ownerEmail reliability + deviceKey safety support) -->
+<!-- signature.html - Build 2025-12-24 (Commission change snapshot fix + guarded cc=1 parameter) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -78,25 +78,6 @@
     import { updatePaidUpgradesAfterPayment } from "/scripts/paid-upgrades-handler.js";
     import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // Process paid upgrades FIRST (before any other logic)
-    (async function() {
-      if (window.__paidUpgradesHandled) return;
-      window.__paidUpgradesHandled = true;
-
-      try {
-        const result = await updatePaidUpgradesAfterPayment();
-        if (result.processed) {
-          console.log('[signature] Upgrades processed successfully');
-        } else if (result.alreadyProcessed) {
-          console.log('[signature] Upgrades already processed');
-        } else {
-          console.log('[signature] No paid upgrades to process');
-        }
-      } catch (e) {
-        console.warn('[signature] paid-upgrades-handler failed:', e);
-      }
-    })();
-
     const $ = (id)=>document.getElementById(id);
 
     const todayISO = () => new Date().toISOString().slice(0,10);
@@ -120,6 +101,36 @@
       throw new Error("Missing listing id");
     }
 
+    // ✅ SNAPSHOT checkoutData immediately (before paid-upgrades handler can mutate it)
+    const checkoutDataSnap = getJSON("checkoutData", {});
+    const metaSnap = (checkoutDataSnap && checkoutDataSnap.meta && typeof checkoutDataSnap.meta === "object") ? checkoutDataSnap.meta : {};
+    const ccParam = params.get("cc") === "1";
+
+    const newCommissionSnap = (metaSnap && metaSnap.newCommission != null) ? metaSnap.newCommission : null;
+    const newCommissionTypeSnap = (metaSnap && metaSnap.newCommissionType) ? metaSnap.newCommissionType : null;
+
+    // ✅ GUARDED: cc=1 only counts if newCommission is present
+    const isCommissionChangeSnap = !!(metaSnap && metaSnap.fromChangeCommission === true) ||
+                                   (ccParam && newCommissionSnap != null && String(newCommissionSnap).trim() !== "");
+
+    console.log("[signature] SNAPSHOT isCommissionChange:", isCommissionChangeSnap);
+    console.log("[signature] SNAPSHOT newCommission:", newCommissionSnap, "newCommissionType:", newCommissionTypeSnap);
+
+    // Process paid upgrades AFTER snapshot (prevents race)
+    (async function() {
+      if (window.__paidUpgradesHandled) return;
+      window.__paidUpgradesHandled = true;
+
+      try {
+        const result = await updatePaidUpgradesAfterPayment();
+        if (result.processed) console.log('[signature] Upgrades processed successfully');
+        else if (result.alreadyProcessed) console.log('[signature] Upgrades already processed');
+        else console.log('[signature] No paid upgrades to process');
+      } catch (e) {
+        console.warn('[signature] paid-upgrades-handler failed:', e);
+      }
+    })();
+
     // If an AGENT somehow reaches this page, send them back to the agent page for this listing
     (function guardAgent(){
       try {
@@ -136,7 +147,7 @@
       if (a) a.href = `/printable-isc.html?id=${encodeURIComponent(listingId)}`;
     })();
 
-    // Simple ISC builder - accepts optional commission override for commission changes
+    // ISC builder - accepts optional commission override
     function buildIscTextFromDoc(d, overrideCommission, overrideCommissionType) {
       const addressFull = (d.address || "").trim();
       const short = addressFull.split(",")[0] || "[short address]";
@@ -182,8 +193,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
         const snap = await getDoc(doc(db, "listings", listingId));
         if (snap.exists()) {
           d = snap.data() || {};
-
-          // ✅ OPTIONAL IMPROVEMENT: keep lastListingId + lastListingAddress fresh
+          // Keep lastListingId + lastListingAddress fresh
           try {
             localStorage.setItem("lastListingId", listingId);
             localStorage.setItem("lastListingAddress", (d.address || "").trim());
@@ -195,34 +205,21 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
 
       if (!d) { $("invalidBox").classList.remove("hidden"); return; }
 
-      // Check if this is a commission change - use new commission for ISC
-      const checkoutData = getJSON("checkoutData", {});
-      const isCommissionChange = !!(checkoutData.meta && checkoutData.meta.fromChangeCommission);
-      const newCommission = (checkoutData.meta && checkoutData.meta.newCommission) || null;
-      const newCommissionType = (checkoutData.meta && checkoutData.meta.newCommissionType) || null;
-
-      console.log("[signature] isCommissionChange:", isCommissionChange);
-      console.log("[signature] newCommission:", newCommission, "newCommissionType:", newCommissionType);
-
-      // Paint ISC with NEW commission if this is a commission change
-      if (isCommissionChange && newCommission != null && String(newCommission).trim() !== "") {
-        $("iscText").textContent = buildIscTextFromDoc(d, newCommission, newCommissionType);
+      // Render ISC using snapshot commission if commission-change flow
+      if (isCommissionChangeSnap && newCommissionSnap != null && String(newCommissionSnap).trim() !== "") {
+        $("iscText").textContent = buildIscTextFromDoc(d, newCommissionSnap, newCommissionTypeSnap);
       } else {
         $("iscText").textContent = buildIscTextFromDoc(d);
       }
 
       $("signWrap").classList.remove("hidden");
 
-      // Expected seller name (from Firestore)
       const expected = (d.ownerName || "").trim();
-
       const sigInput = $("signature");
       const btn = $("btnContinue");
       const help = $("sigHelp");
 
-      if (expected) {
-        sigInput.value = expected; // prefill
-      }
+      if (expected) sigInput.value = expected;
 
       function check() {
         const typed = (sigInput.value || "").trim();
@@ -262,7 +259,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
         const verifyTarget = (localStorage.getItem("verifyTarget") || "").trim().toLowerCase();
         const fallbackEmail = loggedIn || verifyTarget || "";
 
-        // ✅ Guarantee identity state BEFORE redirect (helps welcome.html)
+        // Guarantee identity state BEFORE redirect
         try {
           if (fallbackEmail) {
             localStorage.setItem("loggedInEmail", fallbackEmail);
@@ -278,26 +275,20 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
             updatedAt: serverTimestamp()
           };
 
-          // Only write ownerEmail if we actually have one (prevents overwriting with blank)
-          if (fallbackEmail) {
-            updates.ownerEmail = fallbackEmail;
-          }
+          if (fallbackEmail) updates.ownerEmail = fallbackEmail;
 
-          // Ensure commissionHistory has "Original" entry if empty
+          // Ensure commissionHistory has Original entry if empty
           let currentHistory = Array.isArray(d.commissionHistory) ? d.commissionHistory : [];
-
           if (currentHistory.length === 0) {
             const dt = now();
-            const originalEntry = {
+            currentHistory = [{
               commission: d.commission || "",
               commissionType: d.commissionType || "%",
               date: todayISO(),
               time: time12(dt),
               label: "Original",
               ts: serverTimestamp()
-            };
-            currentHistory = [originalEntry];
-            console.log("[signature] Created Original commission history entry:", originalEntry);
+            }];
           }
 
           updates.commissionHistory = currentHistory;
@@ -305,12 +296,12 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
           await updateDoc(doc(db, "listings", listingId), updates);
           $("sigSaved")?.classList.remove("hidden");
 
-          // If commission change, also append "Changed" entry and update commission fields
-          if (isCommissionChange && newCommission != null && String(newCommission).trim() !== "") {
+          // Commission change finalize (append Changed + update commission fields)
+          if (isCommissionChangeSnap && newCommissionSnap != null && String(newCommissionSnap).trim() !== "") {
             const dt2 = now();
-            const newHistoryEntry = {
-              commission: newCommission,
-              commissionType: newCommissionType || "%",
+            const changedEntry = {
+              commission: newCommissionSnap,
+              commissionType: newCommissionTypeSnap || "%",
               date: todayISO(),
               time: time12(dt2),
               label: "Changed",
@@ -318,25 +309,21 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
             };
 
             await updateDoc(doc(db, "listings", listingId), {
-              commission: newCommission,
-              commissionType: newCommissionType || "%",
-              commissionHistory: [...currentHistory, newHistoryEntry],
+              commission: newCommissionSnap,
+              commissionType: newCommissionTypeSnap || "%",
+              commissionHistory: [...currentHistory, changedEntry],
               commissionChangeUsed: true,
               updatedAt: serverTimestamp()
             });
 
-            console.log("[signature] Commission changed successfully to:", newCommission, newCommissionType);
-
-            // Clear commission change flags from checkoutData
+            // Clear commission-change flags AFTER Firestore update succeeds
             const updatedCheckoutData = getJSON("checkoutData", {});
             if (updatedCheckoutData.meta) {
               delete updatedCheckoutData.meta.newCommission;
               delete updatedCheckoutData.meta.newCommissionType;
               delete updatedCheckoutData.meta.fromChangeCommission;
             }
-            if (updatedCheckoutData.upgrades) {
-              updatedCheckoutData.upgrades.changeCommission = false;
-            }
+            if (updatedCheckoutData.upgrades) updatedCheckoutData.upgrades.changeCommission = false;
             try { localStorage.setItem("checkoutData", JSON.stringify(updatedCheckoutData)); } catch {}
           }
 
@@ -344,8 +331,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
           console.warn("[signature] save failed; continuing redirect anyway:", e);
         }
 
-        // Routing
-        if (isCommissionChange) {
+        if (isCommissionChangeSnap) {
           window.location.href = "/seller-detail.html?id=" + encodeURIComponent(listingId);
         } else {
           window.location.href = isFSBO
