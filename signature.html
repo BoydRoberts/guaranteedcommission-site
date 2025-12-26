@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- signature.html - Build 2025-12-24 (Restore date + commission change snapshot + audit history + paid upgrades safe) -->
+<!-- signature.html - Build 2025-12-24 (DEBUG: shows Firestore save error instead of silently redirecting) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -115,7 +115,7 @@
     console.log("[signature] SNAPSHOT isCommissionChange:", isCommissionChangeSnap);
     console.log("[signature] SNAPSHOT newCommission:", newCommissionSnap, "newCommissionType:", newCommissionTypeSnap);
 
-    // Process paid upgrades FIRST (but AFTER we captured snapshot)
+    // Process paid upgrades (but AFTER snapshot)
     (async function() {
       if (window.__paidUpgradesHandled) return;
       window.__paidUpgradesHandled = true;
@@ -180,6 +180,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
     }
 
     (async function boot(){
+      // ✅ UI date display on this page
       $("date").textContent = todayISO();
 
       let d = null;
@@ -285,10 +286,11 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
 
           updates.commissionHistory = currentHistory;
 
+          // ✅ FIRST SAVE (signature + Original history)
           await updateDoc(doc(db, "listings", listingId), updates);
           $("sigSaved")?.classList.remove("hidden");
 
-          // Commission change finalize
+          // ✅ SECOND SAVE (commission change finalize)
           if (isCommissionChangeSnap && newCommissionSnap != null && String(newCommissionSnap).trim() !== "") {
             const dt2 = now();
             const changedEntry = {
@@ -320,10 +322,17 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
           }
 
         } catch (e) {
-          console.warn("[signature] save failed; continuing redirect anyway:", e);
+          console.error("[signature] SAVE FAILED:", e);
+          alert(
+            "ERROR: Could not save signature to Firestore.\n\n" +
+            "Error: " + (e && e.message ? e.message : String(e)) + "\n\n" +
+            "This page will NOT redirect.\n" +
+            "Open the browser console for details."
+          );
+          return; // DON'T redirect if save failed
         }
 
-        // Routing
+        // Routing - only happens if save succeeded
         if (isCommissionChangeSnap) {
           location.href = "/seller-detail.html?id=" + encodeURIComponent(listingId);
         } else {
