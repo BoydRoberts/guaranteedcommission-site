@@ -11,12 +11,12 @@
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-2xl bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-12-17 (centralized Stripe config)</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-12-26 (paidUpgrades sync before checkout.js)</span>
       </div>
       <h1 class="text-2xl font-bold text-center mb-1">Review & Checkout</h1>
       <p class="text-sm text-gray-600 text-center mb-6">Confirm your selections. You'll sign next.</p>
       <div id="whoRow" class="text-center text-xs text-gray-500 mb-5 hidden"><span id="whoLine"></span></div>
-      
+
       <!-- Main Review Section -->
       <section class="bg-white rounded-2xl shadow p-5 mb-5">
         <div class="grid md:grid-cols-2 gap-6">
@@ -38,13 +38,13 @@
           </div>
         </div>
       </section>
-      
+
       <!-- Upsell Section -->
       <section class="rounded-2xl p-4 border mb-6 bg-gray-50">
         <p class="text-sm font-semibold mb-2">Add upgrades before you pay:</p>
         <div id="upsellChoices" class="space-y-2 text-sm"></div>
       </section>
-      
+
       <!-- Action Buttons -->
       <div class="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
         <button id="backBtn" class="px-4 py-2 rounded border hover:bg-gray-50 transition">Back</button>
@@ -57,11 +57,11 @@
           </button>
         </div>
       </div>
-      
+
       <p class="text-[11px] text-gray-500 text-center mt-4">
         You'll be able to electronically sign your Irrevocable Seller Communication at the next step.
       </p>
-      
+
       <!-- Diagnostics -->
       <details class="mt-6">
         <summary class="text-xs cursor-pointer text-gray-600 hover:text-gray-900">Stripe diagnostics</summary>
@@ -69,18 +69,74 @@
       </details>
     </div>
   </div>
-  
+
   <!-- Firebase init include -->
   <script type="module" src="/scripts/firebase-init.js"></script>
-  
-  <!-- Stripe config (must load BEFORE checkout.js) -->
-  <script defer src="/scripts/app-config.js"></script>
-  
-  <!-- Main checkout logic -->
-  <script defer src="/checkout.js"></script>
-  
+
+  <!-- ✅ Race-proof bootstrap: load app-config.js, sync paidUpgrades, THEN load checkout.js -->
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch { return fb; } };
+    const setJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    async function syncPaidUpgradesFromFirestore() {
+      const listingId = (localStorage.getItem("lastListingId") || "").trim();
+      if (!listingId || !db) return;
+
+      try {
+        const snap = await getDoc(doc(db, "listings", listingId));
+        if (!snap.exists()) return;
+
+        const listing = snap.data() || {};
+        const paid = (listing.paidUpgrades && typeof listing.paidUpgrades === "object") ? listing.paidUpgrades : null;
+        if (!paid) return;
+
+        const checkoutData = getJSON("checkoutData", {});
+        checkoutData.meta = checkoutData.meta || {};
+        checkoutData.meta.paidUpgrades = paid;
+        setJSON("checkoutData", checkoutData);
+
+        console.log("[checkout-sync] paidUpgrades synced from Firestore:", paid);
+      } catch (e) {
+        console.warn("[checkout-sync] paidUpgrades sync failed:", e);
+      }
+    }
+
+    (async function bootCheckout() {
+      // 1) Load Stripe config first (so checkout.js can read window.GC_CONFIG if present)
+      try {
+        await loadScript("/scripts/app-config.js");
+      } catch (e) {
+        console.warn("[checkout] app-config.js failed to load; checkout.js will use fallback keys.");
+      }
+
+      // 2) Sync paid upgrades BEFORE checkout.js runs
+      await syncPaidUpgradesFromFirestore();
+
+      // 3) Load checkout.js after sync is complete
+      try {
+        await loadScript("/checkout.js");
+      } catch (e) {
+        console.error("[checkout] checkout.js failed to load:", e);
+        alert("Checkout failed to load. Please refresh.");
+      }
+    })();
+  </script>
+
   <script>
-    // ----- Back behavior (aligned with sitewide logic) -----
+    // Back behavior
     (function wireBack(){
       function goBack() {
         try {
@@ -89,7 +145,6 @@
           if (sameOrigin && ref !== location.href && history.length > 1) {
             history.back();
           } else {
-            // Fallback: send users to Strip 2 search anchor
             location.href = '/index.html#strip2Search';
           }
         } catch (_) {
