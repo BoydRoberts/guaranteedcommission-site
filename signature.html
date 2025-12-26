@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- signature.html - Build 2025-12-24 (DEBUG: shows Firestore save error instead of silently redirecting) -->
+<!-- signature.html - Build 2025-12-26 (Fix: remove serverTimestamp() from commissionHistory array; keep save-error alert) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -180,7 +180,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
     }
 
     (async function boot(){
-      // ✅ UI date display on this page
+      // UI date on this page
       $("date").textContent = todayISO();
 
       let d = null;
@@ -253,7 +253,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
         const verifyTarget = (localStorage.getItem("verifyTarget") || "").trim().toLowerCase();
         const fallbackEmail = loggedIn || verifyTarget || "";
 
-        // Guarantee identity state BEFORE redirect
+        // Keep identity state stable
         try {
           if (fallbackEmail) {
             localStorage.setItem("loggedInEmail", fallbackEmail);
@@ -279,18 +279,17 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
               commissionType: d.commissionType || "%",
               date: todayISO(),
               time: time12(dt),
-              label: "Original",
-              ts: serverTimestamp()
+              label: "Original"
             }];
           }
 
           updates.commissionHistory = currentHistory;
 
-          // ✅ FIRST SAVE (signature + Original history)
+          // Save signature + Original history
           await updateDoc(doc(db, "listings", listingId), updates);
           $("sigSaved")?.classList.remove("hidden");
 
-          // ✅ SECOND SAVE (commission change finalize)
+          // If commission change, append Changed + update commission fields
           if (isCommissionChangeSnap && newCommissionSnap != null && String(newCommissionSnap).trim() !== "") {
             const dt2 = now();
             const changedEntry = {
@@ -298,8 +297,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
               commissionType: newCommissionTypeSnap || "%",
               date: todayISO(),
               time: time12(dt2),
-              label: "Changed",
-              ts: serverTimestamp()
+              label: "Changed"
             };
 
             await updateDoc(doc(db, "listings", listingId), {
@@ -329,10 +327,10 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
             "This page will NOT redirect.\n" +
             "Open the browser console for details."
           );
-          return; // DON'T redirect if save failed
+          return;
         }
 
-        // Routing - only happens if save succeeded
+        // Routing
         if (isCommissionChangeSnap) {
           location.href = "/seller-detail.html?id=" + encodeURIComponent(listingId);
         } else {
