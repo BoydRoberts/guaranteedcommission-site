@@ -37,16 +37,16 @@
     #box1.fsbo-compact ul { --tw-space-y-reverse: 0; margin-bottom: calc(0.5rem * var(--tw-space-y-reverse)); }
     #box1.fsbo-compact ul > * + * { margin-top: 0.5rem; }
     #box1.fsbo-compact p.text-base { font-size: 0.875rem; }
-
+    
     /* Box 1: justified text with minimal spacing */
     #box1 p { text-align: justify; hyphens: auto; }
-
+    
     /* Box 3: justified ISC text by default */
     #box3 p { text-align: justify; hyphens: auto; }
-
+    
     /* Box 3: switch to left-aligned when user starts typing */
     #box3.typing p { text-align: left; hyphens: none; }
-
+    
     /* Only break overly long emails when necessary to prevent overflow */
     #fsboEmail { overflow-wrap: break-word; }
 
@@ -401,13 +401,16 @@
       return (p === "FSBO Plus" || p === "Listed Property Plus" || p === "Listed Property Basic") ? p : "Listed Property Basic";
     }
 
-    function setPlan(planName) {
+    function setPlan(planName, isUserAction) {
       localStorage.setItem("selectedPlan", planName);
-      userSelectedPlanThisSession = planName;
-      // session memory only (doesn't leak between tabs)
-      try {
-        sessionStorage.setItem("gc_user_selected_plan", planName);
-      } catch(e) {}
+      
+      // Only mark as explicit selection if user actively clicked
+      if (isUserAction === true) {
+        userSelectedPlanThisSession = planName;
+        try {
+          sessionStorage.setItem("gc_user_selected_plan", planName);
+        } catch(e) {}
+      }
     }
 
     function openInvestorModal(){
@@ -434,7 +437,6 @@
       return re.test(s.trim());
     }
 
-    // ✅ SAFE getDeviceKey (never references crypto directly unless it exists)
     function getDeviceKey() {
       try {
         var k = localStorage.getItem("gcDeviceKey");
@@ -454,7 +456,7 @@
     }
 
     function selectPlan(planName){
-      setPlan(planName);
+      setPlan(planName, true);  // true = explicit user click
       showForm(planToFormMode(planName));
       setTimeout(fitStrip1, 0);
       setTimeout(fitStrip1, 120);
@@ -567,16 +569,30 @@
       const alreadyInit = tabInitialized();
 
       if (!alreadyInit && !returning) {
-        // True fresh start: hard default to Basic
-        setPlan("Listed Property Basic");
+        // True fresh start: hard default to Basic (not an explicit selection)
+        setPlan("Listed Property Basic", false);
         showForm("listed");
-        console.log("[index] Fresh start → selectedPlan=Listed Property Basic");
+        console.log("[index] Fresh start → selectedPlan=Listed Property Basic (no explicit selection)");
       } else {
-        // Returning: preserve plan, don't stomp
-        const existing = getStoredPlan();
-        userSelectedPlanThisSession = existing;
-        showForm(planToFormMode(existing));
-        console.log("[index] Return → preserving selectedPlan=", existing);
+        // Returning: only show Plus if user explicitly clicked it in THIS TAB
+        let explicit = "";
+        try { 
+          explicit = (sessionStorage.getItem("gc_user_selected_plan") || "").trim(); 
+        } catch(e) {}
+
+        const validPlans = ["Listed Property Basic", "Listed Property Plus", "FSBO Plus"];
+        const isValid = validPlans.indexOf(explicit) >= 0;
+
+        if (isValid) {
+          // User explicitly clicked in this tab - restore and keep everything aligned
+          setPlan(explicit, true);  // keeps localStorage + sessionStorage + userSelectedPlanThisSession aligned
+          showForm(planToFormMode(explicit));
+          console.log("[index] Return → restored explicit selection from sessionStorage:", explicit);
+        } else {
+          // No explicit selection in this tab - default UI to Basic
+          showForm("listed");
+          console.log("[index] Return → no explicit selection, defaulting UI to Basic");
+        }
       }
 
       markTabInitialized();
@@ -618,7 +634,7 @@
       }
 
       function syncAll(){
-        // ✅ Switch Box 3 to left-aligned once user starts typing
+        // ✅ NEW: Switch Box 3 to left-aligned once user starts typing
         var box3 = document.getElementById('box3');
         var fsboEmailInput = document.getElementById('fsboEmailInput');
         var hasTyped = !!(
@@ -635,7 +651,7 @@
         if (box3 && hasTyped) {
           box3.classList.add('typing');
         } else if (box3) {
-          box3.classList.remove('typing');
+          box3.classList.remove('typing'); // switch back if user clears everything
         }
 
         var fullAddr = (document.getElementById('address').value || '').trim();
@@ -762,19 +778,25 @@
         localStorage.setItem('shortAddress', short);
       }
 
-      // Determine plan based on what user explicitly selected THIS SESSION
+      // CRITICAL FIX: Determine plan based on what user explicitly selected THIS SESSION
+      // If user didn't click a plan option, default to Basic (for Listed) or FSBO
       var plan;
       if (isFSBO) {
         plan = 'FSBO Plus';
       } else if (userSelectedPlanThisSession === 'Listed Property Plus') {
         plan = 'Listed Property Plus';
       } else {
+        // Default to Basic - user either selected Basic or didn't select anything
         plan = 'Listed Property Basic';
       }
 
       // Save the correct plan
       localStorage.setItem('selectedPlan', plan);
-      console.log('[index] submitForm: plan =', plan, '(userSelectedPlanThisSession:', userSelectedPlanThisSession, ')');
+      console.log('[index] submitForm: PLAN DECISION');
+      console.log('[index]   - isFSBO:', isFSBO);
+      console.log('[index]   - userSelectedPlanThisSession:', userSelectedPlanThisSession);
+      console.log('[index]   - localStorage.selectedPlan WAS:', localStorage.getItem('selectedPlan'));
+      console.log('[index]   - FINAL plan:', plan);
 
       localStorage.setItem('postSignatureOptions', plan.indexOf('FSBO') >= 0 ? 'fsbo' : 'listed');
       localStorage.setItem('loginOrigin', 'box2');
