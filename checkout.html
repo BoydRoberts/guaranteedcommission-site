@@ -6,16 +6,26 @@
   <title>Review & Checkout | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://js.stripe.com/v3/"></script>
+
+  <!-- Load app config EARLY (do NOT dynamic-insert) -->
+  <script src="/scripts/app-config.js" defer></script>
 </head>
+
 <body class="bg-gray-100 text-gray-900">
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-2xl bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-2">
-        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">checkout build 2025-12-26 (paidUpgrades sync before checkout.js)</span>
+        <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">
+          checkout build 2025-12-26a (race-proof: paidUpgrades sync BEFORE checkout.js executes)
+        </span>
       </div>
-      <h1 class="text-2xl font-bold text-center mb-1">Review & Checkout</h1>
+
+      <h1 class="text-2xl font-bold text-center mb-1">Review &amp; Checkout</h1>
       <p class="text-sm text-gray-600 text-center mb-6">Confirm your selections. You'll sign next.</p>
-      <div id="whoRow" class="text-center text-xs text-gray-500 mb-5 hidden"><span id="whoLine"></span></div>
+
+      <div id="whoRow" class="text-center text-xs text-gray-500 mb-5 hidden">
+        <span id="whoLine"></span>
+      </div>
 
       <!-- Main Review Section -->
       <section class="bg-white rounded-2xl shadow p-5 mb-5">
@@ -30,6 +40,7 @@
               <p class="text-2xl font-extrabold tracking-tight">Total: $<span id="totalAmount">0</span></p>
             </div>
           </div>
+
           <div>
             <p class="text-sm font-semibold mb-1">Selected Upgrades:</p>
             <ul id="selectedList" class="list-disc list-inside text-sm text-gray-700">
@@ -49,10 +60,12 @@
       <div class="mt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
         <button id="backBtn" class="px-4 py-2 rounded border hover:bg-gray-50 transition">Back</button>
         <div class="flex gap-3 justify-end">
-          <a id="goSignatureZero" href="/signature.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition">
+          <a id="goSignatureZero" href="/signature.html"
+             class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700 transition">
             Continue (no payment due)
           </a>
-          <button id="payNowBtn" class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition">
+          <button id="payNowBtn"
+                  class="px-6 py-2 rounded bg-green-600 text-white hover:bg-green-700 shadow-md active:scale-[.99] transition">
             Pay Now with Stripe
           </button>
         </div>
@@ -70,26 +83,18 @@
     </div>
   </div>
 
-  <!-- Firebase init include -->
+  <!-- Firebase init (module scripts are deferred by default) -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
-  <!-- ✅ Race-proof bootstrap: load app-config.js, sync paidUpgrades, THEN load checkout.js -->
+  <!-- ✅ IMPORTANT:
+       This module runs BEFORE /checkout.js (below) because both are deferred and order is preserved.
+       DOMContentLoaded will NOT fire until this module finishes, so checkout.js's DOMContentLoaded handler WILL run. -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch { return fb; } };
     const setJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
-
-    function loadScript(src) {
-      return new Promise((resolve, reject) => {
-        const s = document.createElement("script");
-        s.src = src;
-        s.onload = resolve;
-        s.onerror = reject;
-        document.head.appendChild(s);
-      });
-    }
 
     async function syncPaidUpgradesFromFirestore() {
       const listingId = (localStorage.getItem("lastListingId") || "").trim();
@@ -114,26 +119,11 @@
       }
     }
 
-    (async function bootCheckout() {
-      // 1) Load Stripe config first (so checkout.js can read window.GC_CONFIG if present)
-      try {
-        await loadScript("/scripts/app-config.js");
-      } catch (e) {
-        console.warn("[checkout] app-config.js failed to load; checkout.js will use fallback keys.");
-      }
-
-      // 2) Sync paid upgrades BEFORE checkout.js runs
-      await syncPaidUpgradesFromFirestore();
-
-      // 3) Load checkout.js after sync is complete
-      try {
-        await loadScript("/checkout.js");
-      } catch (e) {
-        console.error("[checkout] checkout.js failed to load:", e);
-        alert("Checkout failed to load. Please refresh.");
-      }
-    })();
+    await syncPaidUpgradesFromFirestore();
   </script>
+
+  <!-- Main checkout logic (MUST be normal/defer so its DOMContentLoaded listener fires reliably) -->
+  <script src="/checkout.js" defer></script>
 
   <script>
     // Back behavior
