@@ -938,9 +938,9 @@
 
       if (isFSBONow) {
         upgrades.push(row("Confidential FSBO Upgrade", 100, "confidential", paidUpgradesNow.confidential));
-        upgrades.push(row("Change Commission", 50, "changeCommission", commissionChangeUsed, commissionChangeUsed ? "Already Used" : ""));
+        upgrades.push(row("Change Commission", 50, "changeCommission", false, ""));  // ✅ Always enabled - allow unlimited changes
       } else {
-        upgrades.push(row("Change Commission", 10, "changeCommission", commissionChangeUsed, commissionChangeUsed ? "Already Used" : ""));
+        upgrades.push(row("Change Commission", 10, "changeCommission", false, ""));  // ✅ Always enabled - allow unlimited changes
       }
 
       box.innerHTML = upgrades.join("");
@@ -979,7 +979,7 @@
                 
                 // Store the new commission in checkoutData AND set flags
                 checkoutData.upgrades.changeCommission = true;
-                checkoutData.upgrades.upgradeToPlus = false;  // ✅ NEW LINE ADDED - prevents Plus from carrying over
+                checkoutData.upgrades.upgradeToPlus = false;  // prevents Plus from carrying over
                 checkoutData.meta = checkoutData.meta || {};
                 checkoutData.meta.fromChangeCommission = true;
                 checkoutData.meta.fromSellerDetail = true;
@@ -988,8 +988,8 @@
                 checkoutData.meta.newCommissionType = newType;
                 setJSON("checkoutData", checkoutData);
                 
-                closeChangeCommissionModal();
-                alert("New commission set. Continue to checkout to complete the change.");
+                // ✅ CHANGE #1: Auto-redirect to checkout (skip return to seller-detail)
+                window.location.href = "/checkout.html";
               };
             } else {
               checkoutData.upgrades.changeCommission = false;
