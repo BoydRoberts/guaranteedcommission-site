@@ -1,6 +1,6 @@
-// /checkout.js - build 2025-12-26 (PaidUpgrades display fix + keep Dec-18 behavior)
+// /checkout.js - build 2025-12-27 (whoLine cosmetic format only)
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("[checkout.js] build 2025-12-26 - PaidUpgrades display fix");
+  console.log("[checkout.js] build 2025-12-27 - whoLine cosmetic");
 
   var $ = function(id) { return document.getElementById(id); };
   var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
@@ -60,13 +60,19 @@ document.addEventListener("DOMContentLoaded", function() {
     if (isFSBOPlan(planLS)) {
       var email = formData.fsboEmail || formData.ownerEmail || "[owner/seller email]";
       var phone = formData.phone || formData.agentPhone || "[owner/seller phone]";
-      $("whoLine").textContent = [addr, name, email, phone, comm].join(" * ");
+      $("whoLine").textContent = 
+        ["", name, addr, ""].join(" * ") + "\n" +
+        ["", phone, email, comm, ""].join(" * ");
     } else {
       var brokerage = formData.brokerage || "[Listing Brokerage]";
       var agent     = formData.agent || "[Listing Agent]";
       var agentPh   = formData.phone || formData.agentPhone || "[Listing Agent phone]";
-      $("whoLine").textContent = [addr, name, brokerage, agent, agentPh, comm].join(" * ");
+      var agentEmail = formData.agentEmail || "[Listing Agent email]";
+      $("whoLine").textContent = 
+        ["", name, addr, ""].join(" * ") + "\n" +
+        ["", agent, brokerage, agentPh, agentEmail, comm, ""].join(" * ");
     }
+    $("whoLine").style.whiteSpace = "pre-line";
     var whoRow = $("whoRow");
     if (whoRow) whoRow.classList.remove("hidden");
   })();
