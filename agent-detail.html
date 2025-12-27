@@ -191,7 +191,7 @@
 
         <div class="pt-2 grid grid-cols-2 gap-2">
           <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
-          <a id="goPreviewBtn" href="#" target="_blank" class="text-center px-4 py-2 rounded bg-green-600 text-white">Preview Full Listing Detail</a>
+          <a id="goPreviewBtn" href="#" target="_blank" class="text-center px-4 py-2 rounded bg-[#4DA6FF] hover:bg-blue-500 text-white">Preview Full Listing Detail</a>
         </div>
       </form>
     </section>
@@ -207,7 +207,7 @@
         <p class="text-sm text-gray-600 mt-2">
           Listing agents can upgrade to <strong>Listed Property Plus</strong>, add <strong>Banner</strong>, <strong>Premium</strong>, and <strong>Pin Placement</strong> for <strong>FREE</strong> during <span id="promoMonth2">November</span> 2025.
         </p>
-        <button id="applyPromoBtn" class="mt-3 w-full bg-blue-600 text-white px-3 py-2 rounded disabled:opacity-50">
+        <button id="applyPromoBtn" class="mt-3 w-full bg-[#4DA6FF] hover:bg-blue-500 text-white px-3 py-2 rounded disabled:opacity-50">
           Apply <span id="promoMonth3">November</span> Free Upgrades
         </button>
         <p id="promoNote" class="text-xs text-gray-500 mt-2"></p>
@@ -215,10 +215,12 @@
     </aside>
   </div>
 
+  <!-- Firebase init -->
+  <script type="module" src="/scripts/firebase-init.js"></script>
+
   <!-- Firestore + Storage logic -->
   <script type="module">
-    // ✅ FIX #2: Import STORAGE_BUCKET_GS from single source of truth
-    import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
+    import { db } from "/scripts/firebase-init.js";
     import {
       doc, getDoc, updateDoc, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -291,7 +293,6 @@
         p.className = "text-sm text-gray-600";
         p.textContent = "No photos yet.";
         grid.appendChild(p);
-        computePhotoHelp();
         return;
       }
 
@@ -453,11 +454,10 @@
       }
     }
 
-    // ✅ FIX #2: Removed hardcoded BUCKET_URL - now using STORAGE_BUCKET_GS from firebase-init.js
+    const BUCKET_URL = "gs://guaranteedcommission-d4d91.firebasestorage.app";
 
     async function uploadOne(file) {
-      // ✅ FIX #2: Use STORAGE_BUCKET_GS from import
-      const storage = getStorage(undefined, STORAGE_BUCKET_GS);
+      const storage = getStorage(undefined, BUCKET_URL);
       const safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
       const path = `listings/${listingId}/photos/${Date.now()}_${safeName}`;
       const r = ref(storage, path);
