@@ -607,7 +607,7 @@
     })();
 
     /* Header Video Sizer:
-       - Desktop: Height = title block height, Width = 16:9 ratio (capped 220-420px)
+       - Desktop: Height = title block height, Width = EXACT 16:9 ratio (NO caps) ✅ fixes side black bars
        - Mobile: Let CSS handle it (full width, 16:9 aspect ratio)
     */
     function sizeHeaderVideo(){
@@ -628,12 +628,8 @@
         var h = Math.round(titleBlock.getBoundingClientRect().height);
         if (!h || h < 40) return;
 
-        // 16:9 width based on height, with caps
+        // ✅ EXACT 16:9 width based on height (no caps)
         var w = Math.round(h * (16 / 9));
-        var MAX_W = 420;
-        var MIN_W = 220;
-        if (w > MAX_W) w = MAX_W;
-        if (w < MIN_W) w = MIN_W;
 
         frame.style.height = h + 'px';
         frame.style.width = w + 'px';
