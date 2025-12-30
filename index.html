@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2025-12-29 (Header refinements: Founder label + true centering) -->
+<!-- index.html - Build 2025-12-30 (Video: exact Box 1 alignment + FOUNDER MESSAGE + mobile full-width) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -69,25 +69,17 @@
     #box3.compact3 p { font-size:.85rem; }
 
     /* --- Header YouTube video styling --- */
-    #headerVideoWrap {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-    }
-
     #headerVideoFrame {
-      display: block;              /* ✅ keeps label truly "under" the frame */
-      margin: 0 auto;              /* ✅ centers frame inside its column */
       border: 0;
       border-radius: 10px;
       box-shadow: 0 1px 6px rgba(0,0,0,.12);
       background: #000;
     }
 
-    /* Mobile: full-width 16:9 video */
+    /* Mobile: full-width 16:9 video, centered */
     @media (max-width: 767px) {
       #headerVideoWrap {
-        width: 100%;
+        display: flex;
         justify-content: center;
       }
       #headerVideoFrame {
@@ -101,47 +93,39 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <!-- HEADER (Video aligned with Box 1, mobile full-width below title) -->
+  <!-- HEADER: Title truly centered; video absolutely positioned to align with Box 1 -->
   <header class="bg-white shadow">
-    <div class="max-w-7xl mx-auto px-4 py-4">
-      <!-- Flex layout matches Strip 1: justify-center, gap-6, three 1/3 columns -->
-      <div class="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-6">
+    <div class="max-w-7xl mx-auto px-4 py-4 md:relative">
 
-        <!-- LEFT: YouTube video (order-2 on mobile = below title, order-1 on desktop = left) -->
-        <div id="headerVideoWrap" class="w-full md:w-1/3 order-2 md:order-1" aria-label="Header video">
-          <div class="w-full">
-            <iframe
-              id="headerVideoFrame"
-              title="GuaranteedCommission.com video"
-              src="https://www.youtube.com/embed/3PtTT17ILXY?rel=0&modestbranding=1"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowfullscreen
-            ></iframe>
-
-            <!-- ✅ FOUNDER MESSAGE truly under the video -->
-            <div class="mt-1 text-[10px] font-semibold tracking-widest text-center leading-none" style="color:#4DA6FF;">
-              FOUNDER MESSAGE
-            </div>
-          </div>
+      <!-- TITLE BLOCK: Always truly centered (determines header height) -->
+      <div class="text-center" id="headerTitleBlock">
+        <div class="flex items-end justify-center gap-0">
+          <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+          <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
         </div>
-
-        <!-- CENTER: Logo + Title + Subtitle -->
-        <div class="text-center w-full md:w-1/3 order-1 md:order-2" id="headerTitleBlock">
-          <!-- ✅ Re-centered: remove the logo negative margin that was pushing the whole row slightly right -->
-          <div class="inline-flex items-end justify-center">
-            <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain mr-1" />
-            <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
-          </div>
-
-          <!-- ✅ Centered subtitle, one line -->
-          <p class="block w-full text-sm text-red-600 font-semibold mt-1 whitespace-nowrap text-center">
-            Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.
-          </p>
-        </div>
-
-        <!-- RIGHT: Empty for symmetry (hidden on mobile, order-3 on desktop) -->
-        <div class="hidden md:block md:w-1/3 md:order-3"></div>
+        <p class="text-sm text-red-600 font-semibold mt-1 whitespace-nowrap">
+          Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.
+        </p>
       </div>
+
+      <!-- VIDEO: Below title on mobile; absolute left on desktop (aligns with Box 1) -->
+      <div id="headerVideoWrap" 
+           class="mt-4 md:mt-0 md:absolute md:left-4 md:top-1/2 md:-translate-y-1/2"
+           aria-label="Header video">
+        <div>
+          <iframe
+            id="headerVideoFrame"
+            title="GuaranteedCommission.com video"
+            src="https://www.youtube.com/embed/3PtTT17ILXY?rel=0&modestbranding=1"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+          ></iframe>
+          <div class="mt-1 text-[10px] font-semibold tracking-widest leading-none" style="color:#4DA6FF;">
+            FOUNDER MESSAGE
+          </div>
+        </div>
+      </div>
+
     </div>
   </header>
 
@@ -619,7 +603,7 @@
     })();
 
     /* Header Video Sizer:
-       - Desktop: Height = title block height, Width = EXACT 16:9 ratio (NO caps)
+       - Desktop: Height = title block height, Width = EXACT 16:9 ratio (no caps)
        - Mobile: Let CSS handle it (full width, 16:9 aspect ratio)
     */
     function sizeHeaderVideo(){
@@ -652,12 +636,10 @@
       const alreadyInit = tabInitialized();
 
       if (!alreadyInit && !returning) {
-        // True fresh start: hard default to Basic (not an explicit selection)
         setPlan("Listed Property Basic", false);
         showForm("listed");
         console.log("[index] Fresh start → selectedPlan=Listed Property Basic (no explicit selection)");
       } else {
-        // Returning: only show Plus if user explicitly clicked it in THIS TAB
         let explicit = "";
         try {
           explicit = (sessionStorage.getItem("gc_user_selected_plan") || "").trim();
@@ -734,8 +716,11 @@
           document.getElementById('commission').value.trim() ||
           (fsboEmailInput && fsboEmailInput.value.trim())
         );
-        if (box3 && hasTyped) box3.classList.add('typing');
-        else if (box3) box3.classList.remove('typing');
+        if (box3 && hasTyped) {
+          box3.classList.add('typing');
+        } else if (box3) {
+          box3.classList.remove('typing');
+        }
 
         var fullAddr = (document.getElementById('address').value || '').trim();
         var short = fullAddr.split(',')[0] || '';
@@ -825,7 +810,6 @@
         addressEl.classList.remove('border-red-500');
       }
 
-      // Clear stale session data for new listing
       try {
         var keysToRemove = ['agentListing','checkoutData','intakeFollowups','lastListingAddress','signature','signedISC'];
         for(var k=0;k<keysToRemove.length;k++){
@@ -882,11 +866,6 @@
           var addDoc = firestore.addDoc;
           var collection = firestore.collection;
           var serverTimestamp = firestore.serverTimestamp;
-          var getDocs = firestore.getDocs;
-          var query = firestore.query;
-          var where = firestore.where;
-          var orderBy = firestore.orderBy;
-          var limit = firestore.limit;
 
           var listingsCol = collection(db, "listings");
 
@@ -911,7 +890,7 @@
             source: "index.box2"
           };
 
-          var ref = await firestore.addDoc(listingsCol, payload);
+          var ref = await addDoc(listingsCol, payload);
 
           localStorage.setItem("lastListingId", ref.id);
           localStorage.setItem("lastListingAddress", payload.address || "");
@@ -1261,4 +1240,3 @@
 
 </body>
 </html>
-
