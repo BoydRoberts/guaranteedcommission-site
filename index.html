@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2025-12-29 (Video: exact Box 1 alignment + mobile full-width) -->
+<!-- index.html - Build 2025-12-29 (Header refinements: Founder label + true centering) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -37,16 +37,16 @@
     #box1.fsbo-compact ul { --tw-space-y-reverse: 0; margin-bottom: calc(0.5rem * var(--tw-space-y-reverse)); }
     #box1.fsbo-compact ul > * + * { margin-top: 0.5rem; }
     #box1.fsbo-compact p.text-base { font-size: 0.875rem; }
-    
+
     /* Box 1: justified text with minimal spacing */
     #box1 p { text-align: justify; hyphens: auto; }
-    
+
     /* Box 3: justified ISC text by default */
     #box3 p { text-align: justify; hyphens: auto; }
-    
+
     /* Box 3: switch to left-aligned when user starts typing */
     #box3.typing p { text-align: left; hyphens: none; }
-    
+
     /* Only break overly long emails when necessary to prevent overflow */
     #fsboEmail { overflow-wrap: break-word; }
 
@@ -76,6 +76,8 @@
     }
 
     #headerVideoFrame {
+      display: block;              /* ✅ keeps label truly "under" the frame */
+      margin: 0 auto;              /* ✅ centers frame inside its column */
       border: 0;
       border-radius: 10px;
       box-shadow: 0 1px 6px rgba(0,0,0,.12);
@@ -116,22 +118,23 @@
               allowfullscreen
             ></iframe>
 
-            <!-- ✅ NEW: Founder label -->
-            <div class="mt-1 text-[10px] font-semibold tracking-widest text-center" style="color:#4DA6FF;">
+            <!-- ✅ FOUNDER MESSAGE truly under the video -->
+            <div class="mt-1 text-[10px] font-semibold tracking-widest text-center leading-none" style="color:#4DA6FF;">
               FOUNDER MESSAGE
             </div>
           </div>
         </div>
 
-        <!-- CENTER: Logo + Title + Subtitle (order-1 on mobile = first, order-2 on desktop = center) -->
+        <!-- CENTER: Logo + Title + Subtitle -->
         <div class="text-center w-full md:w-1/3 order-1 md:order-2" id="headerTitleBlock">
-          <div class="flex items-end justify-center gap-0">
-            <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+          <!-- ✅ Re-centered: remove the logo negative margin that was pushing the whole row slightly right -->
+          <div class="inline-flex items-end justify-center">
+            <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain mr-1" />
             <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
           </div>
 
-          <!-- ✅ UPDATED: smaller font + force one line -->
-          <p class="text-sm text-red-600 font-semibold mt-1 px-2 whitespace-nowrap">
+          <!-- ✅ Centered subtitle, one line -->
+          <p class="block w-full text-sm text-red-600 font-semibold mt-1 whitespace-nowrap text-center">
             Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.
           </p>
         </div>
@@ -454,7 +457,7 @@
 
     function setPlan(planName, isUserAction) {
       localStorage.setItem("selectedPlan", planName);
-      
+
       // Only mark as explicit selection if user actively clicked
       if (isUserAction === true) {
         userSelectedPlanThisSession = planName;
@@ -649,13 +652,15 @@
       const alreadyInit = tabInitialized();
 
       if (!alreadyInit && !returning) {
+        // True fresh start: hard default to Basic (not an explicit selection)
         setPlan("Listed Property Basic", false);
         showForm("listed");
         console.log("[index] Fresh start → selectedPlan=Listed Property Basic (no explicit selection)");
       } else {
+        // Returning: only show Plus if user explicitly clicked it in THIS TAB
         let explicit = "";
-        try { 
-          explicit = (sessionStorage.getItem("gc_user_selected_plan") || "").trim(); 
+        try {
+          explicit = (sessionStorage.getItem("gc_user_selected_plan") || "").trim();
         } catch(e) {}
 
         const validPlans = ["Listed Property Basic", "Listed Property Plus", "FSBO Plus"];
@@ -729,11 +734,8 @@
           document.getElementById('commission').value.trim() ||
           (fsboEmailInput && fsboEmailInput.value.trim())
         );
-        if (box3 && hasTyped) {
-          box3.classList.add('typing');
-        } else if (box3) {
-          box3.classList.remove('typing');
-        }
+        if (box3 && hasTyped) box3.classList.add('typing');
+        else if (box3) box3.classList.remove('typing');
 
         var fullAddr = (document.getElementById('address').value || '').trim();
         var short = fullAddr.split(',')[0] || '';
@@ -823,6 +825,7 @@
         addressEl.classList.remove('border-red-500');
       }
 
+      // Clear stale session data for new listing
       try {
         var keysToRemove = ['agentListing','checkoutData','intakeFollowups','lastListingAddress','signature','signedISC'];
         for(var k=0;k<keysToRemove.length;k++){
@@ -886,25 +889,6 @@
           var limit = firestore.limit;
 
           var listingsCol = collection(db, "listings");
-          var existingId = "";
-          try {
-            var exactSnap = await getDocs(query(listingsCol, where("address","==", addrVal), limit(5)));
-            exactSnap.forEach(function(d){
-              if (!existingId) existingId = d.id;
-            });
-          } catch(e) {}
-
-          if (!existingId) {
-            try {
-              var recentSnap = await getDocs(query(listingsCol, orderBy("createdAt","desc"), limit(50)));
-              var addrLower = addrVal.toLowerCase();
-              recentSnap.forEach(function(d){
-                var data = d.data() || {};
-                var a = (data.address || '').toLowerCase();
-                if (!existingId && a === addrLower) existingId = d.id;
-              });
-            } catch(e) {}
-          }
 
           var payload = {
             address: formData.address,
@@ -927,7 +911,7 @@
             source: "index.box2"
           };
 
-          var ref = await addDoc(listingsCol, payload);
+          var ref = await firestore.addDoc(listingsCol, payload);
 
           localStorage.setItem("lastListingId", ref.id);
           localStorage.setItem("lastListingAddress", payload.address || "");
@@ -1277,3 +1261,4 @@
 
 </body>
 </html>
+
