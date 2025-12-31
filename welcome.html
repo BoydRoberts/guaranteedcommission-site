@@ -25,12 +25,10 @@
       <h2 class="text-xl font-bold mb-1">Hi <span id="who">there</span></h2>
       <p class="text-sm text-gray-600 mb-4">What would you like to do next?</p>
 
-      <!-- Seller/Agent prompt (we'll show exactly one when it's obvious) -->
       <div id="promptHost" class="mb-4"></div>
 
       <div id="roleBoxes" class="space-y-4">
 
-        <!-- Seller -->
         <div id="boxSeller" class="hidden space-y-4">
           <div class="border rounded-lg p-4">
             <h3 class="font-semibold mb-2">Enter a new listing</h3>
@@ -56,9 +54,7 @@
                 <a id="sellerPreview" class="px-3 py-2 rounded border text-sm" href="#" target="_blank" rel="noopener">Preview</a>
               </div>
             </div>
-            <p id="sellerNoListings" class="hidden text-sm text-gray-700 mt-2">
-              No listings found for your account.
-            </p>
+            <p id="sellerNoListings" class="hidden text-sm text-gray-700 mt-2">No listings found for your account.</p>
           </div>
 
           <div class="border rounded-lg p-4">
@@ -67,12 +63,11 @@
           </div>
         </div>
 
-        <!-- Listing Agent -->
         <div id="boxAgent" class="hidden space-y-4">
           <div class="border rounded-lg p-4">
             <h3 class="font-semibold mb-2">Edit a current listing</h3>
             <div id="agentEditRow" class="flex flex-col gap-2 md:flex-row md:items-center">
-              <select id="agentListings" class="border rounded px-2 py-2 text-sm grow" title="Listings you can edit">
+              <select id="agentListings" class="border rounded px-2 py-2 text-sm grow">
                 <option value="">Select your listing…</option>
               </select>
               <div class="flex gap-2">
@@ -80,9 +75,7 @@
                 <a id="agentPreview" class="px-3 py-2 rounded border text-sm" href="#" target="_blank" rel="noopener">Preview</a>
               </div>
             </div>
-            <p id="agentNoListings" class="hidden text-sm text-gray-700 mt-2">
-              No listings found for your account.
-            </p>
+            <p id="agentNoListings" class="hidden text-sm text-gray-700 mt-2">No listings found for your account.</p>
           </div>
 
           <div class="border rounded-lg p-4">
@@ -96,7 +89,6 @@
           </div>
         </div>
 
-        <!-- Other / Fallback -->
         <div id="boxOther" class="hidden space-y-4">
           <div class="border rounded-lg p-4">
             <h3 class="font-semibold mb-2">Search commissions</h3>
@@ -107,14 +99,12 @@
       </div>
     </section>
 
-    <!-- Listing table -->
     <section id="listSection" class="mt-6 bg-white rounded-2xl shadow p-6 hidden">
       <h3 class="font-semibold mb-2">Your listings</h3>
       <div id="listingsTable" class="text-sm text-gray-800"></div>
     </section>
   </main>
 
-  <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
   <script type="module">
@@ -122,28 +112,15 @@
     import { collection, getDocs, query, where, limit, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id)=>document.getElementById(id);
+    const norm = (s)=>String(s||'').trim().toLowerCase();
 
-    // Who + role (fallback to verifyTarget if loggedInEmail missing)
-    const emailRaw = (
-      localStorage.getItem('loggedInEmail') ||
-      localStorage.getItem('verifyTarget') ||
-      ''
-    ).trim();
-    const email = emailRaw.toLowerCase();
+    const emailRaw = (localStorage.getItem('loggedInEmail') || localStorage.getItem('verifyTarget') || '').trim();
+    const emailLower = norm(emailRaw);
     let role  = (localStorage.getItem('userRole') || '').trim();
     $("who").textContent = emailRaw || 'there';
 
-    const norm = (s)=>String(s||'').trim().toLowerCase();
+    console.log("[welcome] emailRaw=", emailRaw, "emailLower=", emailLower, "role=", role);
 
-    // Debug: log key localStorage values (do NOT remove until this is fixed)
-    console.log("[welcome] emailRaw=", emailRaw,
-                "loggedInEmail=", localStorage.getItem("loggedInEmail"),
-                "verifyTarget=", localStorage.getItem("verifyTarget"),
-                "lastListingId=", localStorage.getItem("lastListingId"),
-                "lastListingAddress=", localStorage.getItem("lastListingAddress"),
-                "gcDeviceKey=", localStorage.getItem("gcDeviceKey"));
-
-    // Logout (DO NOT delete gcDeviceKey)
     $("logoutBtn")?.addEventListener('click', () => {
       try {
         ['isLoggedIn','loggedInEmail','userRole','verificationCode','verifyTarget','nextAfterLogin','nextAfterVerify','lastListingId','lastListingAddress']
@@ -159,7 +136,6 @@
       window.scrollTo(0,0);
     });
 
-    // Shared buttons
     $("sellerSearchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
     $("agentSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
     $("otherSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
@@ -176,86 +152,53 @@
     }
 
     async function fetchMyLists() {
-      if (!db) return { owner: [], agent: [], all: [] }; // ✅ only gate on db
+      if (!db) return { owner: [], agent: [], all: [] };
 
       const owner = [], agent = [];
       const lastLid = (localStorage.getItem('lastListingId') || '').trim();
-      const myKey = (localStorage.getItem("gcDeviceKey") || "").trim();
 
       function upsert(list, id, data) {
         if (!id) return;
-        const exists = list.some(x => x.id === id);
-        if (!exists) list.push({ id, ...data });
+        if (!list.some(x => x.id === id)) list.push({ id, ...data });
       }
 
-      // 1) Email-based queries (ONLY if we have email)
-      if (email) {
+      // ✅ Primary: LOWERCASE fields (case-insensitive)
+      if (emailLower) {
         try {
-          const q1 = query(collection(db, "listings"), where("ownerEmail", "==", email), limit(50));
+          const q1 = query(collection(db, "listings"), where("ownerEmailLower", "==", emailLower), limit(50));
           const snap1 = await getDocs(q1);
           snap1.forEach(d => upsert(owner, d.id, d.data()));
-        } catch (e) {
-          console.warn("[welcome] ownerEmail query failed:", e);
-        }
+        } catch (e) { console.warn("[welcome] ownerEmailLower query failed:", e); }
 
         try {
-          const q2 = query(collection(db, "listings"), where("agentEmail", "==", email), limit(50));
+          const q2 = query(collection(db, "listings"), where("agentEmailLower", "==", emailLower), limit(50));
           const snap2 = await getDocs(q2);
           snap2.forEach(d => upsert(agent, d.id, d.data()));
-        } catch (e) {
-          console.warn("[welcome] agentEmail query failed:", e);
-        }
-      } else {
-        console.warn("[welcome] No email found. Relying on lastListingId safety net.");
+        } catch (e) { console.warn("[welcome] agentEmailLower query failed:", e); }
+
+        // ✅ Legacy fallback: old fields (for old docs that don't have lower fields yet)
+        try {
+          const q1b = query(collection(db, "listings"), where("ownerEmail", "==", emailLower), limit(50));
+          const snap1b = await getDocs(q1b);
+          snap1b.forEach(d => upsert(owner, d.id, d.data()));
+        } catch (e) {}
+
+        try {
+          const q2b = query(collection(db, "listings"), where("agentEmail", "==", emailLower), limit(50));
+          const snap2b = await getDocs(q2b);
+          snap2b.forEach(d => upsert(agent, d.id, d.data()));
+        } catch (e) {}
       }
 
-      // 2) SAFETY NET: Always fetch lastListingId (even if email missing)
+      // Safety net: lastListingId fetch
       if (lastLid) {
         try {
           const snap = await getDoc(doc(db, "listings", lastLid));
           if (snap.exists()) {
             const data = snap.data() || {};
-
-            // If email exists, allow normal match too
-            if (email) {
-              const oe = norm(data.ownerEmail);
-              const ae = norm(data.agentEmail);
-              if (oe && oe === email) upsert(owner, lastLid, data);
-              if (ae && ae === email) upsert(agent, lastLid, data);
-            }
-
-            // DeviceKey match (preferred)
-            const docKey = (data.deviceKey || "").trim();
-
-            // Address fallback (ONLY for lastListingId; safe)
-            const snapAddr   = norm(data.address);
-            const lastAddrLS = norm(localStorage.getItem("lastListingAddress"));
-            let formAddrLS = "";
-            try { formAddrLS = norm((JSON.parse(localStorage.getItem("formData") || "{}").address) || ""); } catch {}
-
-            const addrMatches = !!snapAddr && (snapAddr === lastAddrLS || snapAddr === formAddrLS);
-
-            const alreadyHave = owner.some(x=>x.id===lastLid) || agent.some(x=>x.id===lastLid);
-
-            if (!alreadyHave) {
-              if (myKey && docKey && myKey === docKey) {
-                upsert(owner, lastLid, data);
-                console.log("[welcome] Safety net: added via deviceKey match:", lastLid);
-              } else if (addrMatches) {
-                upsert(owner, lastLid, data);
-                console.log("[welcome] Safety net: added via address match:", lastLid);
-              } else {
-                console.log("[welcome] Safety net NOT added:", { lastLid, myKey, docKey, snapAddr, lastAddrLS, formAddrLS });
-              }
-            }
-          } else {
-            console.warn("[welcome] lastListingId doc not found:", lastLid);
+            if (!owner.some(x=>x.id===lastLid) && !agent.some(x=>x.id===lastLid)) upsert(owner, lastLid, data);
           }
-        } catch (e) {
-          console.warn("[welcome] lastListingId fetch failed:", e);
-        }
-      } else {
-        console.warn("[welcome] No lastListingId in localStorage.");
+        } catch {}
       }
 
       // Dedup all
@@ -263,7 +206,6 @@
       [...owner, ...agent].forEach(it => byId[it.id] = it);
       const all = Object.values(byId);
 
-      // Sort: newest first (best effort) ✅ FIXED (no broken ternaries)
       all.sort((a,b) => {
         const au = tsMillis(a.updatedAt);
         const bu = tsMillis(b.updatedAt);
@@ -317,7 +259,6 @@
         if (!it) { alert('Pick a listing first.'); return; }
         localStorage.setItem('lastListingId', it.id);
 
-        // Seller edits seller-detail; agents edit agent-detail
         if (selectEl.id === 'sellerListings') {
           localStorage.setItem('userRole','seller');
           location.href = '/seller-detail.html?id=' + encodeURIComponent(it.id);
@@ -328,7 +269,7 @@
       });
     }
 
-    function renderPromptCard(it, mode /* 'seller' | 'agent' */) {
+    function renderPromptCard(it, mode) {
       const host = $("promptHost");
       if (!host || !it) return;
       const addr = it.address || 'Your listing';
@@ -344,7 +285,6 @@
             <div>
               <div class="font-semibold">Continue your listing</div>
               <div class="text-sm text-gray-700 mt-0.5">${addr}</div>
-              <div class="text-xs text-gray-500 mt-1">${mode === 'agent' ? 'You are the listing agent on this property.' : 'You are the seller on this property.'}</div>
             </div>
             <div class="flex gap-2">
               <a href="${editHref}" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</a>
@@ -358,37 +298,26 @@
     (async function boot(){
       const { owner, agent, all } = await fetchMyLists();
 
-      // IMPORTANT: if we have anything at all, we should show SELLER UI too
       const sellerSource = owner.length ? owner.slice() : all.slice();
       const agentSource  = agent.length ? agent.slice() : all.slice();
 
-      // Decide role (prefer seller if sellerSource has listings)
       if (!role) {
         role = sellerSource.length ? 'seller' : (agentSource.length ? 'listing_agent' : 'seller');
         try { localStorage.setItem('userRole', role); } catch {}
       }
 
-      // If role is agent but agentSource empty and sellerSource has listings, flip to seller
       if (role === 'listing_agent' && !agentSource.length && sellerSource.length) {
         role = 'seller';
         try { localStorage.setItem('userRole', role); } catch {}
       }
 
-      // Show correct box
       if (role === 'seller') $('boxSeller').classList.remove('hidden');
       else if (role === 'listing_agent') $('boxAgent').classList.remove('hidden');
       else $('boxOther').classList.remove('hidden');
 
-      // Prompt card
-      if (sellerSource.length === 1 && role === 'seller') {
-        renderPromptCard(sellerSource[0], 'seller');
-        localStorage.setItem('lastListingId', sellerSource[0].id);
-      } else if (agentSource.length === 1 && role === 'listing_agent') {
-        renderPromptCard(agentSource[0], 'agent');
-        localStorage.setItem('lastListingId', agentSource[0].id);
-      }
+      if (sellerSource.length === 1 && role === 'seller') renderPromptCard(sellerSource[0], 'seller');
+      else if (agentSource.length === 1 && role === 'listing_agent') renderPromptCard(agentSource[0], 'agent');
 
-      // Fill seller dropdown from sellerSource (NOT strictly owner)
       const sellerSel  = $("sellerListings");
       const sellerGo   = $("sellerEditGo");
       const sellerPrev = $("sellerPreview");
@@ -398,7 +327,6 @@
         wireEditor(sellerSel, sellerGo, sellerPrev, sellerSource);
       }
 
-      // Fill agent dropdown from agentSource (NOT strictly agent)
       const agentSel  = $("agentListings");
       const agentGo   = $("agentEditGo");
       const agentPrev = $("agentPreview");
@@ -408,7 +336,6 @@
         wireEditor(agentSel, agentGo, agentPrev, agentSource);
       }
 
-      // Simple table (optional)
       if (all.length) {
         const host = $("listingsTable");
         const sec  = $("listSection");
