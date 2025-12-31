@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- signature.html - Build 2025-12-26 (Fix: remove serverTimestamp() from commissionHistory array; keep save-error alert) -->
+<!-- signature.html - Build 2025-12-30 (Add ownerEmailLower for case-insensitive email matching) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -268,7 +268,12 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
             status: "Active",
             updatedAt: serverTimestamp()
           };
-          if (fallbackEmail) updates.ownerEmail = fallbackEmail;
+
+          // ✅ Save both ownerEmail and ownerEmailLower for case-insensitive matching
+          if (fallbackEmail) {
+            updates.ownerEmail = fallbackEmail;
+            updates.ownerEmailLower = fallbackEmail.trim().toLowerCase();
+          }
 
           // Ensure commissionHistory has "Original" entry if empty
           let currentHistory = Array.isArray(d.commissionHistory) ? d.commissionHistory : [];
