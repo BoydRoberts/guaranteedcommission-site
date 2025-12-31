@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2025-12-30 (Email normalization: agentEmailLower/ownerEmailLower saved on create) -->
+<!-- index.html - Build 2025-12-31 (Scalable counter using stats/publicCounts doc) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -86,11 +86,73 @@
         max-width: 100%;
       }
     }
+
+    /* --- Header Counter Box (mirrors video/listing tile styling) --- */
+    #headerCounterBox {
+      background: #fff;
+      border-radius: 0.75rem;
+      box-shadow: 0 1px 6px rgba(0,0,0,.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Allow label to overflow container width */
+    #headerCounterWrap > div {
+      overflow: visible;
+    }
+
+    /* Rolling number animation container */
+    .gc-counter-digit {
+      display: inline-block;
+      overflow: hidden;
+      height: 1.5em;
+      line-height: 1.5em;
+      vertical-align: bottom;
+    }
+
+    .gc-counter-digit-inner {
+      display: inline-block;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .gc-counter-digit-inner.rolling {
+      animation: rollUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes rollUp {
+      0% {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+      100% {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    /* Mobile: counter stacks below, centered */
+    @media (max-width: 767px) {
+      #headerCounterWrap {
+        display: flex;
+        justify-content: center;
+        margin-top: 1rem;
+      }
+      #headerCounterWrap > div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: auto !important;
+      }
+      #headerCounterBox {
+        padding: 0.75rem 1.5rem;
+      }
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <!-- HEADER: Title truly centered; video absolutely positioned to align with Box 1 -->
+  <!-- HEADER: Title truly centered; video left, counter right (absolute positioned) -->
   <header class="bg-white shadow">
     <div class="max-w-7xl mx-auto px-4 py-4 md:relative">
 
@@ -117,8 +179,22 @@
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowfullscreen
           ></iframe>
-          <div class="mt-1 text-[10px] font-semibold tracking-widest leading-none" style="color:#4DA6FF;">
-            FOUNDER MESSAGE
+          <div class="mt-1 text-[8px] font-semibold tracking-widest leading-none text-center" style="color:#4DA6FF;">
+            FOUNDER'S MESSAGE
+          </div>
+        </div>
+      </div>
+
+      <!-- COUNTER: Below video on mobile; absolute right on desktop (aligns with Box 3) -->
+      <div id="headerCounterWrap"
+           class="md:absolute md:right-4 md:top-1/2 md:-translate-y-1/2"
+           aria-label="Guaranteed commissions counter">
+        <div class="flex flex-col items-center">
+          <div id="headerCounterBox">
+            <span id="counterDisplay" class="text-2xl font-bold text-gray-800">0</span>
+          </div>
+          <div class="mt-1 text-[8px] font-semibold tracking-widest leading-none whitespace-nowrap" style="color:#4DA6FF;">
+            GUARANTEED COMMISSIONS
           </div>
         </div>
       </div>
@@ -551,12 +627,18 @@
     function sizeHeaderVideo(){
       try {
         var frame = document.getElementById('headerVideoFrame');
+        var counterBox = document.getElementById('headerCounterBox');
         var titleBlock = document.getElementById('headerTitleBlock');
+        
         if (!frame || !titleBlock) return;
 
         if (window.innerWidth < 768) {
           frame.style.width = '';
           frame.style.height = '';
+          if (counterBox) {
+            counterBox.style.width = '';
+            counterBox.style.height = '';
+          }
           return;
         }
 
@@ -567,7 +649,13 @@
 
         frame.style.height = h + 'px';
         frame.style.width = w + 'px';
-      } catch(e) {}
+
+        // Size counter box to exactly match video
+        if (counterBox) {
+          counterBox.style.height = h + 'px';
+          counterBox.style.width = w + 'px';
+        }
+      } catch(e) { console.warn('[sizeHeaderVideo]', e); }
     }
 
     window.addEventListener('DOMContentLoaded', function() {
@@ -599,7 +687,6 @@
 
       sizeHeaderVideo();
       setTimeout(sizeHeaderVideo, 80);
-      window.addEventListener('resize', function(){ sizeHeaderVideo(); });
 
       var phoneInput = document.getElementById('agentPhone');
       var phoneError = document.getElementById('phoneError');
@@ -704,6 +791,7 @@
       fitStrip1();
       setTimeout(fitStrip1, 150);
       window.addEventListener('resize', fitStrip1);
+      window.addEventListener('resize', sizeHeaderVideo);
     });
 
     async function submitForm(){
@@ -1177,6 +1265,72 @@
         var emptyEl = document.getElementById('tilesEmpty');
         if(emptyEl) emptyEl.classList.remove('hidden');
       }
+    })();
+  </script>
+
+  <!-- Real-time Guaranteed Commissions Counter (scalable: listens to single stats doc) -->
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    (function initCounter() {
+      const counterDisplay = document.getElementById('counterDisplay');
+      if (!counterDisplay || !db) return;
+
+      let currentCount = 0;
+
+      // Rolling animation function
+      function animateCountChange(newCount) {
+        if (newCount === currentCount) return;
+
+        const oldStr = String(currentCount);
+        const newStr = String(newCount);
+
+        // Build HTML with rolling digits
+        let html = '';
+        for (let i = 0; i < newStr.length; i++) {
+          const newDigit = newStr[i];
+          const oldDigit = i < oldStr.length ? oldStr[i] : '';
+          const needsAnimation = newDigit !== oldDigit || newStr.length !== oldStr.length;
+
+          if (needsAnimation) {
+            html += `<span class="gc-counter-digit"><span class="gc-counter-digit-inner rolling">${newDigit}</span></span>`;
+          } else {
+            html += `<span class="gc-counter-digit"><span class="gc-counter-digit-inner">${newDigit}</span></span>`;
+          }
+        }
+
+        counterDisplay.innerHTML = html;
+        currentCount = newCount;
+
+        // Remove animation class after animation completes
+        setTimeout(() => {
+          const rollingEls = counterDisplay.querySelectorAll('.rolling');
+          rollingEls.forEach(el => el.classList.remove('rolling'));
+        }, 450);
+      }
+
+      // Listen to single stats document (scalable: 1 doc read per visitor)
+      // Document: stats/publicCounts → { guaranteedCommissionsCount: N }
+      const statsDocRef = doc(db, "stats", "publicCounts");
+
+      const unsubscribe = onSnapshot(statsDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const count = Number(data.guaranteedCommissionsCount) || 0;
+          animateCountChange(count);
+        } else {
+          // Doc doesn't exist yet - show 0
+          animateCountChange(0);
+        }
+      }, (error) => {
+        console.warn("[counter] Firestore listener error:", error);
+      });
+
+      // Clean up on page unload
+      window.addEventListener('beforeunload', () => {
+        if (unsubscribe) unsubscribe();
+      });
     })();
   </script>
 
