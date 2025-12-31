@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2025-12-30 (Video: exact Box 1 alignment + FOUNDER MESSAGE + mobile full-width) -->
+<!-- index.html - Build 2025-12-30 (Email normalization: agentEmailLower/ownerEmailLower saved on create) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -78,10 +78,7 @@
 
     /* Mobile: full-width 16:9 video, centered */
     @media (max-width: 767px) {
-      #headerVideoWrap {
-        display: flex;
-        justify-content: center;
-      }
+      #headerVideoWrap { display:flex; justify-content:center; }
       #headerVideoFrame {
         width: 100% !important;
         height: auto !important;
@@ -109,7 +106,7 @@
       </div>
 
       <!-- VIDEO: Below title on mobile; absolute left on desktop (aligns with Box 1) -->
-      <div id="headerVideoWrap" 
+      <div id="headerVideoWrap"
            class="mt-4 md:mt-0 md:absolute md:left-4 md:top-1/2 md:-translate-y-1/2"
            aria-label="Header video">
         <div>
@@ -198,11 +195,9 @@
 
   <div style="background-color:#4DA6FF;">
     <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
-
       <!-- BOX 1 -->
       <div id="box1" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm flex flex-col">
         <h2 class="gc-title">Commission Communication Menu</h2>
-
         <ul class="gc-body-top-box1 space-y-3 flex-1">
           <li>
             <div onclick="selectPlan('Listed Property Basic')" class="cursor-pointer">
@@ -239,19 +234,15 @@
       <!-- BOX 2 -->
       <div id="formBlock" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm compact2 flex flex-col">
         <h2 id="formTitle" class="gc-title tracking-tight">Listed Property Communication Form</h2>
-
         <form id="listingForm" class="space-y-2 flex flex-col flex-1" autocomplete="off">
           <input type="text" id="name" placeholder="Owner/Seller Name" class="w-full border py-1.5 px-2 rounded gc-form-offset" required>
-
           <input type="text" id="address" placeholder="Full Property Address (Street, City, ST 12345)" class="w-full border py-1.5 px-2 rounded" autocomplete="street-address" spellcheck="false" required>
 
-          <!-- APN ROW (hidden for Basic/Plus, shown for FSBO) -->
           <div id="apnRow" class="hidden">
             <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border py-1.5 px-2 rounded">
           </div>
 
           <input type="text" id="agent" placeholder="Listing Agent" class="w-full border py-1.5 px-2 rounded">
-
           <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border py-1.5 px-2 rounded">
 
           <div id="listedPhoneRow">
@@ -274,7 +265,6 @@
             </select>
           </div>
 
-          <!-- bottom-anchored button -->
           <div class="text-center mt-auto">
             <button type="button" onclick="submitForm()"
                     class="bg-[#4DA6FF] hover:bg-blue-500 text-white px-3 py-2 rounded mt-2 text-sm font-semibold"
@@ -289,7 +279,6 @@
       <div id="box3" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm flex flex-col">
         <h2 class="gc-title">Irrevocable Seller Communication</h2>
 
-        <!-- LISTED ISC -->
         <div id="iscTextListed" class="gc-body-top-box3 flex flex-col flex-1">
           <p>To the escrow holder/closing agent,</p>
           <p class="mt-2">
@@ -314,7 +303,6 @@
           </div>
         </div>
 
-        <!-- FSBO ISC -->
         <div id="iscTextFSBO" class="gc-body-top-box3 hidden flex flex-col flex-1">
           <p>To the escrow holder/closing agent,</p>
           <p class="mt-2">
@@ -381,18 +369,12 @@
     // Track which plan user explicitly selected this session
     var userSelectedPlanThisSession = null;
 
-    // Session-only: did this tab already initialize the homepage UI?
     function tabInitialized() {
-      try {
-        return sessionStorage.getItem("gc_home_initialized") === "1";
-      } catch(e) {
-        return false;
-      }
+      try { return sessionStorage.getItem("gc_home_initialized") === "1"; }
+      catch(e) { return false; }
     }
     function markTabInitialized() {
-      try {
-        sessionStorage.setItem("gc_home_initialized", "1");
-      } catch(e) {}
+      try { sessionStorage.setItem("gc_home_initialized", "1"); } catch(e) {}
     }
 
     function cameFromFlow() {
@@ -406,10 +388,8 @@
 
     function hasActiveFlowState() {
       try {
-        // Strongest signal: a listing in progress
         if (localStorage.getItem("lastListingId")) return true;
 
-        // Only treat checkoutData as active if it contains any true upgrades
         const raw = localStorage.getItem("checkoutData");
         if (raw) {
           try {
@@ -423,9 +403,7 @@
         if (localStorage.getItem("loginOrigin")) return true;
 
         return false;
-      } catch(e) {
-        return false;
-      }
+      } catch(e) { return false; }
     }
 
     function planToFormMode(plan) {
@@ -441,33 +419,18 @@
 
     function setPlan(planName, isUserAction) {
       localStorage.setItem("selectedPlan", planName);
-
-      // Only mark as explicit selection if user actively clicked
       if (isUserAction === true) {
         userSelectedPlanThisSession = planName;
-        try {
-          sessionStorage.setItem("gc_user_selected_plan", planName);
-        } catch(e) {}
+        try { sessionStorage.setItem("gc_user_selected_plan", planName); } catch(e) {}
       }
     }
 
-    function openInvestorModal(){
-      document.getElementById('investorModal').classList.remove('hidden');
-    }
-    function closeInvestorModal(){
-      document.getElementById('investorModal').classList.add('hidden');
-    }
+    function openInvestorModal(){ document.getElementById('investorModal').classList.remove('hidden'); }
+    function closeInvestorModal(){ document.getElementById('investorModal').classList.add('hidden'); }
 
-    function openPressModal(){
-      document.getElementById('pressModal').classList.remove('hidden');
-    }
-    function closePressModal(){
-      document.getElementById('pressModal').classList.add('hidden');
-    }
-
-    function submitPressForm(){
-      document.getElementById('pressConfirmation').classList.remove('hidden');
-    }
+    function openPressModal(){ document.getElementById('pressModal').classList.remove('hidden'); }
+    function closePressModal(){ document.getElementById('pressModal').classList.add('hidden'); }
+    function submitPressForm(){ document.getElementById('pressConfirmation').classList.remove('hidden'); }
 
     function isValidFullAddress(s) {
       if (!s) return false;
@@ -480,21 +443,16 @@
         var k = localStorage.getItem("gcDeviceKey");
         if (!k) {
           var c = (typeof window !== "undefined") ? window.crypto : null;
-          if (c && typeof c.randomUUID === "function") {
-            k = c.randomUUID();
-          } else {
-            k = "dk_" + Math.random().toString(16).slice(2) + Date.now();
-          }
+          if (c && typeof c.randomUUID === "function") k = c.randomUUID();
+          else k = "dk_" + Math.random().toString(16).slice(2) + Date.now();
           localStorage.setItem("gcDeviceKey", k);
         }
         return k;
-      } catch(e) {
-        return "dk_fallback";
-      }
+      } catch(e) { return "dk_fallback"; }
     }
 
     function selectPlan(planName){
-      setPlan(planName, true);  // true = explicit user click
+      setPlan(planName, true);
       showForm(planToFormMode(planName));
       setTimeout(fitStrip1, 0);
       setTimeout(fitStrip1, 120);
@@ -519,13 +477,11 @@
         agentInput.style.display = 'none';
         agentEmailInput.style.display = 'none';
         fsboEmailRow.classList.remove('hidden');
-        // FSBO: SHOW Parcel/APN
         if (apnRow) apnRow.classList.remove('hidden');
 
         document.getElementById('iscTextListed').classList.add('hidden');
         document.getElementById('iscTextFSBO').classList.remove('hidden');
 
-        // Make Box 1 smaller in FSBO mode
         box1.classList.add('fsbo-compact');
       } else {
         title.textContent = (type === 'plus' ? 'Listed Property Plus Communication Form' : 'Listed Property Communication Form');
@@ -535,13 +491,11 @@
         agentInput.style.display = 'block';
         agentEmailInput.style.display = 'block';
         fsboEmailRow.classList.add('hidden');
-        // Listed Basic/Plus: HIDE Parcel/APN
         if (apnRow) apnRow.classList.add('hidden');
 
         document.getElementById('iscTextListed').classList.remove('hidden');
         document.getElementById('iscTextFSBO').classList.add('hidden');
 
-        // Remove compact styling from Box 1 when not FSBO
         box1.classList.remove('fsbo-compact');
       }
     }
@@ -552,18 +506,14 @@
       var b3 = document.getElementById('box3');
       if (!b1 || !b2 || !b3) return;
 
-      [b1, b2, b3].forEach(function(b){
-        b.style.height = 'auto';
-      });
+      [b1, b2, b3].forEach(function(b){ b.style.height = 'auto'; });
 
       var h1 = Math.max(b1.scrollHeight, b1.getBoundingClientRect().height);
       var h2 = Math.max(b2.scrollHeight, b2.getBoundingClientRect().height);
       var h3 = Math.max(b3.scrollHeight, b3.getBoundingClientRect().height);
       var target = Math.max(h1, h2, h3);
 
-      [b1, b2, b3].forEach(function(b){
-        b.style.height = target + 'px';
-      });
+      [b1, b2, b3].forEach(function(b){ b.style.height = target + 'px'; });
 
       function ensureFits(el){
         var tiers = ['compact','compact2','compact3'];
@@ -580,9 +530,7 @@
         b2.scrollHeight, b2.getBoundingClientRect().height,
         b3.scrollHeight, b3.getBoundingClientRect().height
       );
-      [b1, b2, b3].forEach(function(b){
-        b.style.height = t2 + 'px';
-      });
+      [b1, b2, b3].forEach(function(b){ b.style.height = t2 + 'px'; });
     }
 
     (function observeStrip1(){
@@ -594,36 +542,27 @@
       }
       if (!els.length) return;
 
-      var mo = new MutationObserver(function(){
-        fitStrip1();
-      });
+      var mo = new MutationObserver(function(){ fitStrip1(); });
       for(var j=0;j<els.length;j++){
         mo.observe(els[j], { childList:true, subtree:true, characterData:true });
       }
     })();
 
-    /* Header Video Sizer:
-       - Desktop: Height = title block height, Width = EXACT 16:9 ratio (no caps)
-       - Mobile: Let CSS handle it (full width, 16:9 aspect ratio)
-    */
     function sizeHeaderVideo(){
       try {
         var frame = document.getElementById('headerVideoFrame');
         var titleBlock = document.getElementById('headerTitleBlock');
         if (!frame || !titleBlock) return;
 
-        // Mobile breakpoint (matches Tailwind's md: 768px)
         if (window.innerWidth < 768) {
           frame.style.width = '';
           frame.style.height = '';
           return;
         }
 
-        // Desktop: match title block height
         var h = Math.round(titleBlock.getBoundingClientRect().height);
         if (!h || h < 40) return;
 
-        // Exact 16:9 width based on height
         var w = Math.round(h * (16 / 9));
 
         frame.style.height = h + 'px';
@@ -641,9 +580,7 @@
         console.log("[index] Fresh start → selectedPlan=Listed Property Basic (no explicit selection)");
       } else {
         let explicit = "";
-        try {
-          explicit = (sessionStorage.getItem("gc_user_selected_plan") || "").trim();
-        } catch(e) {}
+        try { explicit = (sessionStorage.getItem("gc_user_selected_plan") || "").trim(); } catch(e) {}
 
         const validPlans = ["Listed Property Basic", "Listed Property Plus", "FSBO Plus"];
         const isValid = validPlans.indexOf(explicit) >= 0;
@@ -662,9 +599,7 @@
 
       sizeHeaderVideo();
       setTimeout(sizeHeaderVideo, 80);
-      window.addEventListener('resize', function(){
-        sizeHeaderVideo();
-      });
+      window.addEventListener('resize', function(){ sizeHeaderVideo(); });
 
       var phoneInput = document.getElementById('agentPhone');
       var phoneError = document.getElementById('phoneError');
@@ -716,11 +651,8 @@
           document.getElementById('commission').value.trim() ||
           (fsboEmailInput && fsboEmailInput.value.trim())
         );
-        if (box3 && hasTyped) {
-          box3.classList.add('typing');
-        } else if (box3) {
-          box3.classList.remove('typing');
-        }
+        if (box3 && hasTyped) box3.classList.add('typing');
+        else if (box3) box3.classList.remove('typing');
 
         var fullAddr = (document.getElementById('address').value || '').trim();
         var short = fullAddr.split(',')[0] || '';
@@ -845,19 +777,20 @@
       }
 
       var plan;
-      if (isFSBO) {
-        plan = 'FSBO Plus';
-      } else if (userSelectedPlanThisSession === 'Listed Property Plus') {
-        plan = 'Listed Property Plus';
-      } else {
-        plan = 'Listed Property Basic';
-      }
+      if (isFSBO) plan = 'FSBO Plus';
+      else if (userSelectedPlanThisSession === 'Listed Property Plus') plan = 'Listed Property Plus';
+      else plan = 'Listed Property Basic';
 
       localStorage.setItem('selectedPlan', plan);
 
       localStorage.setItem('postSignatureOptions', plan.indexOf('FSBO') >= 0 ? 'fsbo' : 'listed');
       localStorage.setItem('loginOrigin', 'box2');
       localStorage.setItem('nextAfterLogin', '/verify-code.html');
+
+      // ✅ Email normalization (used for Firestore fields)
+      function normEmail(v){
+        return String(v || '').trim().toLowerCase();
+      }
 
       try {
         var db = window.gc && window.gc.db;
@@ -869,6 +802,9 @@
 
           var listingsCol = collection(db, "listings");
 
+          var agentEmailRaw = plan.indexOf('FSBO') >= 0 ? "" : (formData.agentEmail || "");
+          var ownerEmailRaw = plan.indexOf('FSBO') >= 0 ? (formData.fsboEmail || "") : "";
+
           var payload = {
             address: formData.address,
             shortAddress: (formData.address.split(",")[0] || "").trim(),
@@ -877,14 +813,22 @@
             status: "Draft",
             commission: formData.commission || "",
             commissionType: formData.commissionType || "%",
+
             ownerName: formData.name || "",
-            ownerEmail: plan.indexOf('FSBO') >= 0 ? (formData.fsboEmail || "") : "",
+            ownerEmail: ownerEmailRaw,
+            ownerEmailLower: normEmail(ownerEmailRaw),
+
             ownerPhone: plan.indexOf('FSBO') >= 0 ? (formData.phone || "") : "",
+
             agentName: plan.indexOf('FSBO') >= 0 ? "" : (formData.agent || ""),
             agentPhone: plan.indexOf('FSBO') >= 0 ? "" : (formData.phone || ""),
-            agentEmail: plan.indexOf('FSBO') >= 0 ? "" : (formData.agentEmail || ""),
+
+            agentEmail: agentEmailRaw,
+            agentEmailLower: normEmail(agentEmailRaw),
+
             brokerage: plan.indexOf('FSBO') >= 0 ? "" : (formData.brokerage || ""),
             deviceKey: getDeviceKey(),
+
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             source: "index.box2"
@@ -895,6 +839,8 @@
           localStorage.setItem("lastListingId", ref.id);
           localStorage.setItem("lastListingAddress", payload.address || "");
           localStorage.setItem('formData:' + ref.id, JSON.stringify(formData));
+        } else {
+          console.warn("[firestore] db not available - skipped server save");
         }
       } catch (err) {
         console.error("[firestore] Save failed:", err);
@@ -1055,7 +1001,7 @@
         var svg = function(a){
           return a ?
             '<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>' :
-            '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+            '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 0 0 0 0-7.78z"/></svg>';
         };
 
         var favId = 'fav:' + (id || address);
@@ -1143,9 +1089,7 @@
       var go = function() {
         var q = (box.value || '').trim();
         localStorage.setItem('lastSearch', q);
-        if (!q) {
-          return;
-        }
+        if (!q) return;
         window.location.href = '/search.html?q=' + encodeURIComponent(q);
       };
 
@@ -1223,9 +1167,7 @@
         renderStrip2TilesFrom(items, lastQ);
 
         if (grid && grid.children.length === 0) {
-          try {
-            localStorage.removeItem('lastSearch');
-          } catch(e) {}
+          try { localStorage.removeItem('lastSearch'); } catch(e) {}
           renderStrip2TilesFrom(items, '');
           if (empty) empty.classList.add('hidden');
         }
