@@ -14,14 +14,13 @@
     <div class="w-full max-w-xl bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
         <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">
-          agent-invite build 2025-11-29 (removed back arrows)
+          agent-invite build 2025-12-30 (agentEmailLower for case-insensitive matching)
         </span>
       </div>
 
       <h1 class="text-2xl font-bold text-center">Who Will Complete the Listing?</h1>
       <p id="addrLine" class="text-sm text-gray-600 text-center mt-1"></p>
 
-      <!-- Current Price (optional but helpful for the tile) -->
       <div class="mt-4">
         <label for="currentPrice" class="block text-sm font-semibold">Current Price</label>
         <input
@@ -40,7 +39,6 @@
       <div id="notice" class="hidden mt-4 text-sm rounded-lg p-3 bg-yellow-50 text-yellow-800"></div>
 
       <div class="mt-6 grid gap-6 md:grid-cols-2">
-        <!-- Invite Agent -->
         <section class="border rounded-xl p-4 flex flex-col h-full">
           <h2 class="font-semibold mb-2">Invite my agent to complete listing</h2>
           <p class="text-sm text-gray-600 mb-3">
@@ -64,7 +62,6 @@
           </button>
         </section>
 
-        <!-- Seller Completes -->
         <section class="border rounded-xl p-4 flex flex-col h-full">
           <h2 class="font-semibold mb-2">I will complete the listing myself</h2>
           <p class="text-sm text-gray-600 mb-3">
@@ -88,7 +85,6 @@
     </div>
   </div>
 
-  <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
   <script type="module">
@@ -96,64 +92,39 @@
     import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id) => document.getElementById(id);
-    const getJSON = (k, fb) => {
-      try { return JSON.parse(localStorage.getItem(k)) ?? fb; }
-      catch { return fb; }
-    };
+    const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 
-    // Read plan + form data
     const plan        = (localStorage.getItem("selectedPlan") || "").trim();
     const formData    = getJSON("formData", {});
     const agentListing= getJSON("agentListing", {});
 
-    // FSBO skips this page entirely (no listing agent flow)
     if (plan === "FSBO Plus") {
       localStorage.setItem("nextAfterVerify", "/seller-detail.html");
       window.location.replace("/seller-detail.html");
     }
 
-    // Paint address line
     const addr = formData.address || localStorage.getItem("shortAddress") || "";
-    if (addr) {
-      const al = $("addrLine");
-      if (al) al.textContent = addr;
-    }
+    if (addr) { const al = $("addrLine"); if (al) al.textContent = addr; }
 
-    // Prefill agent email if we captured it earlier
     const preAgentEmail = (formData.agentEmail || "").trim();
-    if (preAgentEmail) {
-      const el = $("agentEmail");
-      if (el) el.value = preAgentEmail;
+    if (preAgentEmail) { const el = $("agentEmail"); if (el) el.value = preAgentEmail; }
+
+    if (agentListing && typeof agentListing.price !== "undefined" && agentListing.price !== null && String(agentListing.price).trim() !== "") {
+      const cp = $("currentPrice"); if (cp) cp.value = agentListing.price;
     }
 
-    // Prefill Current Price from agentListing if present
-    if (
-      agentListing &&
-      typeof agentListing.price !== "undefined" &&
-      agentListing.price !== null &&
-      String(agentListing.price).trim() !== ""
-    ) {
-      const cp = $("currentPrice");
-      if (cp) cp.value = agentListing.price;
-    }
-
-    // If user previously tried inviting an agent but bailed, show a small notice
     const lastInvited = localStorage.getItem("agentInviteEmail");
     if (lastInvited) {
       const n = $("notice");
-      if (n) {
-        n.textContent = "Previous agent email on file: " + lastInvited;
-        n.classList.remove("hidden");
-      }
+      if (n) { n.textContent = "Previous agent email on file: " + lastInvited; n.classList.remove("hidden"); }
     }
 
-    // Save price to BOTH localStorage AND Firestore
+    function normEmail(v){ return String(v||"").trim().toLowerCase(); }
+
     async function saveCurrentPrice() {
       try {
-        const cp = $("currentPrice");
-        if (!cp) return;
-
+        const cp = $("currentPrice"); if (!cp) return;
         const raw = cp.value;
         let priceVal = null;
         if (raw !== null && raw !== undefined && String(raw).trim() !== "") {
@@ -161,33 +132,23 @@
           priceVal = isFinite(n) ? n : null;
         }
 
-        // Save to localStorage (agentListing)
         const current = getJSON("agentListing", {});
-        if (priceVal === null) delete current.price;
-        else current.price = priceVal;
+        if (priceVal === null) delete current.price; else current.price = priceVal;
         setJSON("agentListing", current);
 
-        // Save to localStorage (formData) for consistency
         const fd = getJSON("formData", {});
-        if (priceVal === null) delete fd.price;
-        else fd.price = priceVal;
+        if (priceVal === null) delete fd.price; else fd.price = priceVal;
         setJSON("formData", fd);
 
-        // Save to Firestore immediately if we have a listingId
         const listingId = (localStorage.getItem("lastListingId") || "").trim();
         if (listingId && db && priceVal !== null) {
-          await updateDoc(doc(db, "listings", listingId), {
-            price: priceVal,
-            updatedAt: serverTimestamp()
-          });
-          console.log("[agent-invite] Price saved to Firestore:", priceVal);
+          await updateDoc(doc(db, "listings", listingId), { price: priceVal, updatedAt: serverTimestamp() });
         }
       } catch (e) {
         console.warn("[agent-invite] could not save current price:", e);
       }
     }
 
-    // Auto-save price on input/change/blur
     const cpInput = $("currentPrice");
     if (cpInput) {
       cpInput.addEventListener("input",  saveCurrentPrice);
@@ -195,16 +156,16 @@
       cpInput.addEventListener("blur",   saveCurrentPrice);
     }
 
-    // Write the invited agent email into Firestore so agent can see the listing
+    // ✅ UPDATED: also write agentEmailLower
     async function writeAgentToFirestore(agentEmail) {
       try {
         const id = (localStorage.getItem("lastListingId") || "").trim();
         if (!id) return false;
-        const update = {
-          agentEmail,
+        await updateDoc(doc(db, "listings", id), {
+          agentEmail: agentEmail,
+          agentEmailLower: normEmail(agentEmail),
           updatedAt: serverTimestamp()
-        };
-        await updateDoc(doc(db, "listings", id), update);
+        });
         return true;
       } catch (e) {
         console.warn("[agent-invite] Firestore update failed:", e);
@@ -212,13 +173,10 @@
       }
     }
 
-    // Invite flow – store locally, write to Firestore, send seller to Welcome
     const inviteBtn = $("inviteBtn");
     if (inviteBtn) {
       inviteBtn.addEventListener("click", async (e) => {
         e.preventDefault();
-
-        // Save price first (to localStorage AND Firestore)
         await saveCurrentPrice();
 
         const emailEl = $("agentEmail");
@@ -231,30 +189,21 @@
           return;
         }
 
-        // Persist locally
         localStorage.setItem("agentInviteEmail", email);
         try {
           const fd = getJSON("formData", {});
           fd.agentEmail = email;
           setJSON("formData", fd);
-        } catch (err) {
-          console.warn("[agent-invite] could not save agent email to formData:", err);
-        }
+        } catch {}
 
-        // Write to Firestore
         const ok = await writeAgentToFirestore(email);
-        if (!ok) {
-          alert("Invite saved locally, but we could not update the server right now. Your agent may not see the listing yet.");
-        } else {
-          alert("Your agent has been invited. We will return you to your Welcome page.");
-        }
+        if (!ok) alert("Invite saved locally, but we could not update the server right now.");
+        else alert("Your agent has been invited. We will return you to your Welcome page.");
 
-        // Seller returns to Welcome
         window.location.href = "/welcome.html";
       });
     }
 
-    // Seller completes – ensure we persist price before navigating
     const sellerBtn = $("sellerContinue");
     if (sellerBtn) {
       sellerBtn.addEventListener("click", async (e) => {
