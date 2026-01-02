@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Build: 2026-01-02 (Em dash to hyphen consistency fix) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -193,11 +194,11 @@
     }
     function openEmail(address, url) {
       const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
-      const body = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
+      const body = encodeURIComponent(`${address ? (address + " - ") : ""}commission posted with photos.\n\n${url}`);
       window.location.href = `mailto:?subject=${subject}&body=${body}`;
     }
     function openText(address, url) {
-      const msg = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
+      const msg = encodeURIComponent(`${address ? (address + " - ") : ""}commission posted with photos.\n\n${url}`);
       window.location.href = `sms:&body=${msg}`;
     }
 
@@ -419,7 +420,7 @@
           </div>
           <div class="text-sm font-medium">${address || "[full address]"}</div>
           <div class="text-[12px] text-gray-600">
-            ${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}
+            ${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' - '+agentName : ''}${agentPhone ? ' - '+agentPhone : ''}
           </div>
           <div class="text-[12px] text-gray-500 text-center tile-stats">
             Viewed ${views.toLocaleString()} time${views===1?'':'s'} | Liked ${likes.toLocaleString()} time${likes===1?'':'s'}
@@ -640,4 +641,3 @@
   </script>
 </body>
 </html>
-
