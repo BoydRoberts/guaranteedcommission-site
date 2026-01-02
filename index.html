@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2025-12-31 (Scalable counter using stats/publicCounts doc) -->
+<!-- index.html - Build 2026-01-02 (Task A: Shared tile renderer) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -14,13 +14,13 @@
 
     .font-cursive { font-family: 'Brush Script MT', cursive; }
 
-    /* --- Strip 2 tile styles --- */
+    /* --- Strip 2 tile styles (shared with tile-renderer.js) --- */
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
-    .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+    .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
 
-    .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+    .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); cursor:pointer; }
     .gc-share-left { left:10px; }
     .gc-share-right{ right:10px; }
 
@@ -441,6 +441,10 @@
     </div>
   </footer>
 
+  <!-- ====================================================================
+       INLINE SCRIPT: Form logic, plan selection, ISC sync, modals, layout
+       NOTE: Tile rendering moved to /scripts/tile-renderer.js
+       ==================================================================== -->
   <script>
     // Track which plan user explicitly selected this session
     var userSelectedPlanThisSession = null;
@@ -939,214 +943,11 @@
       window.location.href = "/login.html";
     }
 
-    function fmtUSD(n){
-      var v = Number(n||0);
-      return v ? ("$"+v.toLocaleString()) : "$-";
-    }
-
-    function shareLimitOk() {
-      try {
-        var day = new Date().toISOString().slice(0,10);
-        var key = 'shareCount:' + day;
-        var n = Number(localStorage.getItem(key) || 0);
-        if (n >= 5) return false;
-        localStorage.setItem(key, String(n + 1));
-        return true;
-      } catch(e) {
-        return true;
-      }
-    }
-
-    function buildListingUrlById(id) {
-      return window.location.origin + '/listing.html?id=' + encodeURIComponent(id);
-    }
-
-    function openEmail(address, url) {
-      var subject = encodeURIComponent(address ? 'Listing: ' + address : 'Listing');
-      var body = encodeURIComponent((address ? (address + " - ") : "") + 'commission posted with photos.\n\n' + url);
-      var a = document.createElement('a');
-      a.href = 'mailto:?subject=' + subject + '&body=' + body;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function(){
-        try { document.body.removeChild(a); } catch(e){}
-      }, 0);
-    }
-
-    function openText(address, url) {
-      var msg = encodeURIComponent((address ? (address + " - ") : "") + 'commission posted with photos.\n\n' + url);
-      window.location.href = 'sms:&body=' + msg;
-    }
-
-    function commissionDollars(price, val, type){
-      var p = Number(price||0), c = Number(val||0);
-      if(!c) return null;
-      if(type === '$') return Math.round(c);
-      if(p) return Math.round(p*(c/100));
-      return null;
-    }
-
-    function renderTile(data){
-      var id = data.id || "";
-      var address = data.address || "[full address]";
-      var price = data.price;
-      var commission = data.commission;
-      var commissionType = data.commissionType || "%";
-      var bannerText = data.bannerText || "";
-      var photos = data.photos || [];
-      var primaryIndex = data.primaryIndex || 0;
-      var status = data.status || "Active";
-      var brokerage = data.brokerage || "[listing brokerage]";
-      var agentName = data.agentName || "";
-      var agentPhone = data.agentPhone || "";
-      var plan = data.plan || "Listed Property Basic";
-      var bedrooms = data.bedrooms;
-      var bathrooms = data.bathrooms;
-      var sqft = data.sqft;
-      var propertyType = data.propertyType || "";
-      var views = data.views || 0;
-      var likes = data.likes || 0;
-
-      var calc = commissionDollars(price, commission, commissionType);
-      var line1Left = fmtUSD(price);
-      var line1Mid = commission ? (commissionType === '%' ? commission + '%' : '$' + Number(commission).toLocaleString()) : '-';
-      var line1Right = (calc != null) ? '$' + calc.toLocaleString() : '-';
-
-      var img = (Array.isArray(photos) && photos.length ? photos[primaryIndex||0] : "");
-      var typeSeg = propertyType ? ' | ' + propertyType : '';
-
-      var card = document.createElement('article');
-      card.className = "gc-tile cursor-pointer";
-      card.onclick = function() {
-        if (id) {
-          window.location.href = '/listing.html?id=' + encodeURIComponent(id);
-        } else {
-          var slug = encodeURIComponent(address);
-          window.location.href = '/listing.html?addr=' + slug;
-        }
-      };
-
-      var brokerageDisplay = (plan||'').indexOf('FSBO') >= 0 ? 'FOR SALE BY OWNER' : (brokerage||'[listing brokerage]').toUpperCase();
-
-      card.innerHTML =
-        '<div class="relative">' +
-          '<img class="gc-photo" src="' + (img || '') + '" alt="Listing photo">' +
-          (bannerText ? '<div class="gc-ribbon">' + bannerText + '</div>' : '') +
-          '<button type="button" class="gc-heart" aria-label="Like">' +
-            '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2" aria-hidden="true">' +
-              '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/>' +
-            '</svg>' +
-          '</button>' +
-          '<button type="button" class="gc-share gc-share-left" data-share="email">Share Email</button>' +
-          '<button type="button" class="gc-share gc-share-right" data-share="text">Share Text</button>' +
-        '</div>' +
-        '<div class="p-3 space-y-2">' +
-          '<div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">' +
-            '<div class="truncate">' + line1Left + '</div>' +
-            '<div class="truncate text-red-600">Commission ' + line1Mid + ' | ' + line1Right + '</div>' +
-          '</div>' +
-          '<div class="text-[12px] text-gray-700">' +
-            (bedrooms != null ? bedrooms : '-') + ' bds | ' +
-            (bathrooms != null ? bathrooms : '-') + ' ba | ' +
-            (sqft ? Number(sqft).toLocaleString() : '-') + ' sqft' + typeSeg + ' | ' + status +
-          '</div>' +
-          '<div class="text-sm font-medium">' + address + '</div>' +
-          '<div class="text-[12px] text-gray-600">' +
-            brokerageDisplay +
-            (agentName ? ' - ' + agentName : '') +
-            (agentPhone ? ' - ' + agentPhone : '') +
-          '</div>' +
-          '<div class="text-[12px] text-gray-500 text-center" data-stats>' +
-            'Viewed ' + Number(views||0).toLocaleString() + ' time' + (Number(views||0)===1?'':'s') +
-            ' | Liked ' + Number(likes||0).toLocaleString() + ' time' + (Number(likes||0)===1?'':'s') +
-          '</div>' +
-        '</div>';
-
-      var heart = card.querySelector(".gc-heart");
-      var statsEl = card.querySelector("[data-stats]");
-
-      if (heart) {
-        var KEY = 'gcFavorites';
-        var favs = function(){
-          try { return JSON.parse(localStorage.getItem(KEY)||'[]'); }
-          catch(e) { return []; }
-        };
-        var setF = function(a){
-          try { localStorage.setItem(KEY, JSON.stringify(a||[])); }
-          catch(e) {}
-        };
-        var isFav = function(id2){
-          return favs().indexOf(id2) >= 0;
-        };
-        var tog = function(id2){
-          var a=favs();
-          var i=a.indexOf(id2);
-          if(i>=0)a.splice(i,1); else a.push(id2);
-          setF(a);
-          return a.indexOf(id2)>=0;
-        };
-        var svg = function(a){
-          return a ?
-            '<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>' :
-            '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 0 0 0 0-7.78z"/></svg>';
-        };
-
-        var favId = 'fav:' + (id || address);
-        heart.innerHTML = svg(isFav(favId));
-
-        heart.addEventListener("click", async function(e){
-          e.preventDefault();
-          e.stopPropagation();
-
-          var nowLiked = tog(favId);
-          heart.innerHTML = svg(nowLiked);
-
-          if (id && nowLiked) {
-            var onceKey = 'likedOnce:' + id;
-            if (!localStorage.getItem(onceKey) && window.gcIncLike) {
-              try {
-                await window.gcIncLike(id);
-                localStorage.setItem(onceKey,'1');
-
-                var currentLikes = Number(likes||0) + 1;
-                var v = Number(views||0);
-                if (statsEl) {
-                  statsEl.textContent =
-                    'Viewed ' + v.toLocaleString() + ' time' + (v===1?'':'s') +
-                    ' | Liked ' + currentLikes.toLocaleString() + ' time' + (currentLikes===1?'':'s');
-                }
-              } catch(err) {}
-            }
-          }
-        });
-      }
-
-      var emailBtn = card.querySelector('[data-share="email"]');
-      var textBtn = card.querySelector('[data-share="text"]');
-      var shareUrl = id ?
-        (window.location.origin + '/listing.html?id=' + encodeURIComponent(id)) :
-        (window.location.origin + '/listing.html?addr=' + encodeURIComponent(address));
-
-      if (emailBtn) {
-        emailBtn.addEventListener('click', function(e){
-          e.preventDefault();
-          e.stopPropagation();
-          if (!shareLimitOk()) return;
-          openEmail(address, shareUrl);
-        });
-      }
-      if (textBtn) {
-        textBtn.addEventListener('click', function(e){
-          e.preventDefault();
-          e.stopPropagation();
-          if (!shareLimitOk()) return;
-          openText(address, shareUrl);
-        });
-      }
-
-      return card;
-    }
+    /* ========================================
+       Strip 2 Tiles: Uses shared tile-renderer.js
+       Placeholder set here, actual renderer loaded via module
+       ======================================== */
+    window.gcRenderTile = null;
 
     function renderStrip2TilesFrom(list, filterText){
       filterText = filterText || "";
@@ -1166,7 +967,9 @@
 
       empty.classList.add('hidden');
       for(var i=0;i<arr.length;i++){
-        grid.appendChild(renderTile(arr[i]));
+        if (window.gcRenderTile) {
+          grid.appendChild(window.gcRenderTile(arr[i]));
+        }
       }
     }
 
@@ -1191,8 +994,10 @@
     }
   </script>
 
+  <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
+  <!-- Like increment function: SINGLE SOURCE OF TRUTH for all tile likes -->
   <script type="module">
     import { doc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -1206,9 +1011,18 @@
     };
   </script>
 
+  <!-- Strip 2 Tiles: Load from Firestore using shared tile-renderer.js -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { renderTile } from "/scripts/tile-renderer.js";
+
+    // Wire shared renderer to use gcIncLike for like increments
+    window.gcRenderTile = function(data) {
+      return renderTile(data, {
+        onLikeIncrement: window.gcIncLike
+      });
+    };
 
     (async function loadTilesFromFirestore(){
       try {
