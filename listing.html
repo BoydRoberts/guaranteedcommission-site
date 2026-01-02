@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Build: 2026-01-02 (Em dash to hyphen consistency fix) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -83,7 +84,7 @@
           </div>
           <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
           <div id="tileAddress" class="text-sm font-medium">[full address]</div>
-          <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROAGE] — [listing agent] — [agent phone]</div>
+          <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] - [listing agent] - [agent phone]</div>
           <!-- Centered "Viewed N times | Liked M times" -->
           <div id="tileStats" class="text-[12px] text-gray-500 text-center">Viewed — | Liked —</div>
         </div>
@@ -306,7 +307,7 @@
     // More reliable mailto
     function openEmail(address, url) {
       const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
-      const body = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
+      const body = encodeURIComponent(`${address ? (address + " - ") : ""}commission posted with photos.\n\n${url}`);
       const a = document.createElement('a');
       a.href = `mailto:?subject=${subject}&body=${body}`;
       a.style.display = 'none';
@@ -315,7 +316,7 @@
       setTimeout(() => { try { document.body.removeChild(a); } catch {} }, 0);
     }
     function openText(address, url) {
-      const msg = encodeURIComponent(`${address ? (address + " — ") : ""}commission posted with photos.\n\n${url}`);
+      const msg = encodeURIComponent(`${address ? (address + " - ") : ""}commission posted with photos.\n\n${url}`);
       window.location.href = `sms:&body=${msg}`;
     }
 
@@ -662,7 +663,7 @@
         $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
         $("tileFacts").textContent = `${bds || "—"} bds | ${ba || "—"} ba | ${sqft || "—"} sqft${pType ? " | "+pType : ""} | ${status}`;
         $("tileAddress").textContent = address || "[full address]";
-        $("tileContact").textContent = `${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : brokerage).toUpperCase()}${agentName ? ' — '+agentName : ''}${agentPhone ? ' — '+agentPhone : ''}`;
+        $("tileContact").textContent = `${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : brokerage).toUpperCase()}${agentName ? ' - '+agentName : ''}${agentPhone ? ' - '+agentPhone : ''}`;
 
         document.getElementById("topRow")?.classList.remove("hidden");
 
