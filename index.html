@@ -1015,7 +1015,7 @@
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { renderTile } from "/scripts/tile-renderer.js";
+    import { renderTile } from "/tile-renderer.js";
 
     // Wire shared renderer to use gcIncLike for like increments
     window.gcRenderTile = function(data) {
