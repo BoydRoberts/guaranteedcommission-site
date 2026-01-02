@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-02 (Em dash to hyphen consistency fix) -->
+<!-- Build: 2026-01-02 (Task A: Shared tile renderer) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -22,17 +22,14 @@
     .banner { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:8px; }
     .banner .btn { border-radius:8px; padding:.5rem .75rem; font-size:.875rem; }
 
-    /* Tile look (align with listing page) */
-    .tile-photo { width:100%; height: 16rem; object-fit: cover; background:#e5e7eb; }
-    .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
-    .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
-    .card { background:#fff; border-radius:1rem; box-shadow:0 1px 6px rgba(0,0,0,.08); overflow:hidden; }
-    .tile-body { padding:1rem; }
-
-    /* Share buttons overlay (bottom left/right on photo) */
-    .share-btn { position:absolute; bottom:12px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
-    .share-left { left:12px; }
-    .share-right{ right:12px; }
+    /* Tile styles (shared with tile-renderer.js) */
+    .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
+    .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
+    .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
+    .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
+    .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); cursor:pointer; }
+    .gc-share-left { left:10px; }
+    .gc-share-right{ right:10px; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -171,7 +168,12 @@
   <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
-  <script>
+  <!-- Main search module -->
+  <script type="module">
+    import { db } from "/scripts/firebase-init.js";
+    import { collection, query, orderBy, getDocs, limit, doc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { renderTile } from "/scripts/tile-renderer.js";
+
     // Mapbox token
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
     if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -181,25 +183,18 @@
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
-    // Share helpers (silent 5/day/device limit)
-    function shareLimitOk() {
+    // Like increment helper
+    async function incrementLikeOnce(listingId) {
       try {
-        const day = new Date().toISOString().slice(0,10);
-        const key = 'shareCount:' + day;
-        const n = Number(localStorage.getItem(key) || 0);
-        if (n >= 5) { alert("Please log in to continue sharing."); return false; }
-        localStorage.setItem(key, String(n + 1));
+        const onceKey = 'likedOnce:' + listingId;
+        if (localStorage.getItem(onceKey)) return false;
+        await updateDoc(doc(db, "listings", listingId), { likes: increment(1), updatedAt: serverTimestamp() });
+        localStorage.setItem(onceKey, '1');
         return true;
-      } catch { return true; }
-    }
-    function openEmail(address, url) {
-      const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
-      const body = encodeURIComponent(`${address ? (address + " - ") : ""}commission posted with photos.\n\n${url}`);
-      window.location.href = `mailto:?subject=${subject}&body=${body}`;
-    }
-    function openText(address, url) {
-      const msg = encodeURIComponent(`${address ? (address + " - ") : ""}commission posted with photos.\n\n${url}`);
-      window.location.href = `sms:&body=${msg}`;
+      } catch (e) {
+        console.warn('[likes] increment failed', e);
+        return false;
+      }
     }
 
     // Filters & pills
@@ -332,130 +327,6 @@
       return record;
     }
 
-    /* -------- Likes helper (increment once on first device-like) -------- */
-    async function incrementLikeOnce(listingId) {
-      try {
-        const onceKey = 'likedOnce:' + listingId;
-        if (localStorage.getItem(onceKey)) return false;
-        const { updateDoc, doc, serverTimestamp, increment } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-        await updateDoc(doc(gc.db, "listings", listingId), { likes: increment(1), updatedAt: serverTimestamp() });
-        localStorage.setItem(onceKey, '1');
-        return true;
-      } catch (e) {
-        console.warn('[likes] increment failed', e);
-        return false;
-      }
-    }
-
-    // Unified tile renderer with viewed/liked + share overlay
-    function money(n){ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; }
-    function commissionAmount(price, commission, type) {
-      const p = Number(price||0), c = Number(commission||0);
-      if (!c) return 0;
-      return type === '$' ? Math.round(c) : (p ? Math.round(p * (c/100)) : 0);
-    }
-    function wireHeart(btn, keyId, onFirstLike) {
-      const KEY='gcFavorites';
-      const favs = ()=>{ try { return JSON.parse(localStorage.getItem(KEY)||'[]'); } catch { return []; } };
-      const setF = a=>{ try { localStorage.setItem(KEY, JSON.stringify(a||[])); } catch {} };
-      const isFav = id => favs().includes(id);
-      const tog = id => { const a=favs(); const i=a.indexOf(id); if(i>=0)a.splice(i,1); else a.push(id); setF(a); return a.includes(id); };
-      const svg = a => a
-        ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="#dc2626"><path d="M12 21s-6.716-4.584-9.428-7.296C.858 12.99.5 11.8.5 10.5.5 7.462 2.962 5 6 5c1.74 0 3.41.81 4.5 2.09C11.59 5.81 13.26 5 15 5c3.038 0 5.5 2.462 5.5 5.5 0 1.3-.358 2.49-2.072 3.204C18.716 16.416 12 21 12 21z"/></svg>`
-        : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
-      btn.innerHTML = svg(isFav(keyId));
-      btn.onclick = async (e)=> {
-        e.preventDefault();
-        const nowLiked = tog(keyId);
-        btn.innerHTML = svg(nowLiked);
-        if (nowLiked && typeof onFirstLike === 'function') onFirstLike();
-      };
-    }
-    function renderTileDoc(doc){
-      const id = doc.id;
-      const address = String(doc.address || "").trim();
-      const banner  = String(doc.bannerText || "");
-      const plan    = String(doc.plan || "Listed Property Basic");
-      const status  = String(doc.status || "Active");
-      const pType   = String(doc.propertyType || "");
-      const bds     = doc.bedrooms ?? "—";
-      const ba      = doc.bathrooms ?? "—";
-      const sqft    = doc.sqft ? Number(doc.sqft).toLocaleString() : "—";
-      const price   = (typeof doc.price === "number") ? doc.price : (Number(doc.price)||0);
-      const cType   = (doc.commissionType === "%" || doc.commissionType === "$") ? doc.commissionType : "%";
-      const cRaw    = doc.commission ?? "";
-      const cAmt    = commissionAmount(price, cRaw, cType);
-      const cPctLbl = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
-      const brokerage = doc.brokerage || (plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
-      const agentName = doc.agentName || "";
-      const agentPhone= doc.agentPhone || "";
-
-      const photos = Array.isArray(doc.photos) ? doc.photos.filter(u=>typeof u==="string"&&u) : [];
-      let pIdx = (typeof doc.primaryIndex === "number") ? doc.primaryIndex : 0;
-      if (pIdx<0 || pIdx>=photos.length) pIdx = 0;
-      const primaryPhoto = photos[pIdx] || "";
-
-      const views = Number(doc.views || 0);
-      const likes = Number(doc.likes || 0);
-
-      const card = document.createElement("article");
-      card.className = "card relative cursor-pointer";
-      card.onclick = () => { window.location.href = `/listing.html?id=${encodeURIComponent(id)}`; };
-
-      card.innerHTML = `
-        <div class="relative">
-          <img class="tile-photo" alt="Listing photo" src="${primaryPhoto}">
-          ${banner ? `<div class="tile-banner">${banner}</div>` : ``}
-          <button type="button" class="heart-btn" aria-label="Like"></button>
-          <button type="button" class="share-btn share-left"  data-share="email">Share Email</button>
-          <button type="button" class="share-btn share-right" data-share="text">Share Text</button>
-        </div>
-        <div class="tile-body space-y-1">
-          <div class="flex items-center justify-between text-[16px] sm:text-[18px] font-semibold">
-            <div class="truncate">${price ? money(price) : "$—"}</div>
-            <div class="truncate text-red-600">Commission ${cPctLbl} | ${cAmt ? money(cAmt) : "$—"}</div>
-          </div>
-          <div class="text-[12px] text-gray-700">
-            ${bds} bds | ${ba} ba | ${sqft} sqft${pType ? " | " + pType : ""} | ${status}
-          </div>
-          <div class="text-sm font-medium">${address || "[full address]"}</div>
-          <div class="text-[12px] text-gray-600">
-            ${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : (brokerage||"[listing brokerage]")).toUpperCase()}${agentName ? ' - '+agentName : ''}${agentPhone ? ' - '+agentPhone : ''}
-          </div>
-          <div class="text-[12px] text-gray-500 text-center tile-stats">
-            Viewed ${views.toLocaleString()} time${views===1?'':'s'} | Liked ${likes.toLocaleString()} time${likes===1?'':'s'}
-          </div>
-        </div>
-      `;
-
-      // Like button with server increment once
-      const heart = card.querySelector(".heart-btn");
-      const statsEl = card.querySelector(".tile-stats");
-      if (heart) {
-        wireHeart(heart, `fav:${id}`, async () => {
-          const did = await incrementLikeOnce(id);
-          if (did && statsEl) {
-            const newLikes = likes + 1;
-            statsEl.textContent = `Viewed ${views.toLocaleString()} time${views===1?'':'s'} | Liked ${newLikes.toLocaleString()} time${newLikes===1?'':'s'}`;
-          }
-        });
-      }
-
-      // Share buttons (overlay)
-      const shareUrl = window.location.origin + '/listing.html?id=' + encodeURIComponent(id);
-      card.querySelectorAll("[data-share]").forEach(btn=>{
-        btn.addEventListener('click', (e)=>{
-          e.preventDefault(); e.stopPropagation();
-          if (!shareLimitOk()) return;
-          const kind = btn.getAttribute("data-share");
-          if (kind === "email") openEmail(address, shareUrl);
-          else openText(address, shareUrl);
-        });
-      });
-
-      return card;
-    }
-
     // Show/hide save banner
     function showSaveBanner(show) {
       const banner = document.getElementById('saveBanner');
@@ -468,132 +339,6 @@
         if (conf)  conf.classList.add('hidden');
       }
     }
-
-    // Main boot
-    (async function boot(){
-      const grid = $("grid");
-      const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
-      $("qBox").value = qParam;
-      $("qLabel").textContent = qParam ? `Showing results for "${qParam}"` : 'Showing all listings';
-      localStorage.setItem('lastSearch', qParam);
-
-      const lastFilters = getJSON('lastFilters', {});
-      writeFiltersToUI(lastFilters);
-      renderPills(lastFilters);
-
-      await initMap(qParam);
-
-      // Firestore fetch (ONLY real data)
-      let docs = [];
-      try {
-        const { db } = await import("/scripts/firebase-init.js");
-        const { collection, query, orderBy, getDocs, limit } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
-        const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
-        snap.forEach(d => {
-          const data = d.data() || {};
-          // hide drafts unless signed or active
-          const signed = !!(data.signedISC && typeof data.signedISC === 'object' && data.signedISC.date);
-          const isActive = String(data.status || '').toLowerCase() === 'active';
-          if (!signed && !isActive) return;
-          docs.push({ id: d.id, ...data });
-        });
-      } catch (e) {
-        console.warn("[search] Firestore fetch failed:", e);
-      }
-
-      // Apply filters + query
-      const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
-
-      // Render tiles
-      grid.innerHTML = '';
-      if (!filtered.length) {
-        grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
-      } else {
-        filtered.forEach(doc => grid.appendChild(renderTileDoc(doc)));
-      }
-
-      addMarkers(filtered);
-
-      // Email banner
-      showSaveBanner(true);
-
-      // Search button
-      $("applyBtn").onclick = () => {
-        const q = $("qBox").value.trim();
-        localStorage.setItem('lastSearch', q);
-        location.href = `/search.html?q=${encodeURIComponent(q)}`;
-      };
-
-      // Filters
-      $("applyFiltersBtn").onclick = () => {
-        const f = readFiltersFromUI();
-        setJSON('lastFilters', f);
-        renderPills(f);
-        const q = $("qBox").value.trim();
-        const refiltered = docs.filter(d => matchesFilters(d, q, f));
-        $("qLabel").textContent = q ? `Showing results for "${q}"` : 'Showing all listings';
-        grid.innerHTML = '';
-        if (!refiltered.length) grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
-        else refiltered.forEach(doc => grid.appendChild(renderTileDoc(doc)));
-        addMarkers(refiltered);
-        showSaveBanner(true);
-      };
-
-      $("clearFiltersBtn").onclick = () => {
-        setJSON('lastFilters', {});
-        document.querySelectorAll('#filtersPanel input, #filtersPanel select').forEach(el => el.value = '');
-        renderPills({});
-        const q = $("qBox").value.trim();
-        const refiltered = docs.filter(d => matchesFilters(d, q, {}));
-        grid.innerHTML = '';
-        if (!refiltered.length) grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
-        else refiltered.forEach(doc => grid.appendChild(renderTileDoc(doc)));
-        addMarkers(refiltered);
-        showSaveBanner(true);
-      };
-
-      // Saved searches dropdown
-      const dd = $("savedSearchesDropdown");
-      dd.onchange = () => {
-        const id = dd.value;
-        if (!id) return;
-        const arr = getSavedSearches();
-        const sel = arr.find(s => s.id === id);
-        if (!sel) return;
-        $("qBox").value = sel.q || '';
-        writeFiltersToUI(sel.filters || {});
-        renderPills(sel.filters || {});
-        const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
-        $("qLabel").textContent = sel.q ? `Showing results for "${sel.q}"` : 'Showing all listings';
-        grid.innerHTML = '';
-        if (!refiltered.length) grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
-        else refiltered.forEach(doc => grid.appendChild(renderTileDoc(doc)));
-        addMarkers(refiltered);
-        showSaveBanner(true);
-      };
-
-      // Open filters/prompt via query params
-      (function(){
-        const u = new URL(location.href);
-        if (u.searchParams.get('open') === 'filters') {
-          document.getElementById('filtersPanel')?.setAttribute('open','');
-        }
-        if (u.searchParams.get('prompt') === 'save') {
-          showSaveBanner(true);
-        }
-      })();
-
-      refreshSavedDropdown();
-
-      // Save banner buttons
-      $('saveYesBtn').addEventListener('click', () => {
-        const q = $("qBox").value.trim();
-        const filters = readFiltersFromUI();
-        const rec = saveCurrentSearch('', q, filters, { alerts: true, lastSent: Date.now() });
-        if (rec) $('saveConfirmed').classList.remove('hidden');
-      });
-      $('saveNoBtn').addEventListener('click', () => { showSaveBanner(false); });
-    })();
 
     // Apply filters against a Firestore doc
     function matchesFilters(doc, qtext, f){
@@ -638,6 +383,134 @@
 
       return true;
     }
+
+    // Render tiles using shared renderer
+    function renderTiles(grid, items) {
+      grid.innerHTML = '';
+      if (!items.length) {
+        grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
+        return;
+      }
+      items.forEach(item => {
+        const tile = renderTile(item, {
+          onLikeIncrement: incrementLikeOnce
+        });
+        grid.appendChild(tile);
+      });
+    }
+
+    // Main boot
+    (async function boot(){
+      const grid = $("grid");
+      const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
+      $("qBox").value = qParam;
+      $("qLabel").textContent = qParam ? `Showing results for "${qParam}"` : 'Showing all listings';
+      localStorage.setItem('lastSearch', qParam);
+
+      const lastFilters = getJSON('lastFilters', {});
+      writeFiltersToUI(lastFilters);
+      renderPills(lastFilters);
+
+      await initMap(qParam);
+
+      // Firestore fetch (ONLY real data)
+      let docs = [];
+      try {
+        const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
+        snap.forEach(d => {
+          const data = d.data() || {};
+          // hide drafts unless signed or active
+          const signed = !!(data.signedISC && typeof data.signedISC === 'object' && data.signedISC.date);
+          const isActive = String(data.status || '').toLowerCase() === 'active';
+          if (!signed && !isActive) return;
+          docs.push({ id: d.id, ...data });
+        });
+      } catch (e) {
+        console.warn("[search] Firestore fetch failed:", e);
+      }
+
+      // Apply filters + query
+      const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
+
+      // Render tiles using shared renderer
+      renderTiles(grid, filtered);
+
+      addMarkers(filtered);
+
+      // Email banner
+      showSaveBanner(true);
+
+      // Search button
+      $("applyBtn").onclick = () => {
+        const q = $("qBox").value.trim();
+        localStorage.setItem('lastSearch', q);
+        location.href = `/search.html?q=${encodeURIComponent(q)}`;
+      };
+
+      // Filters
+      $("applyFiltersBtn").onclick = () => {
+        const f = readFiltersFromUI();
+        setJSON('lastFilters', f);
+        renderPills(f);
+        const q = $("qBox").value.trim();
+        const refiltered = docs.filter(d => matchesFilters(d, q, f));
+        $("qLabel").textContent = q ? `Showing results for "${q}"` : 'Showing all listings';
+        renderTiles(grid, refiltered);
+        addMarkers(refiltered);
+        showSaveBanner(true);
+      };
+
+      $("clearFiltersBtn").onclick = () => {
+        setJSON('lastFilters', {});
+        document.querySelectorAll('#filtersPanel input, #filtersPanel select').forEach(el => el.value = '');
+        renderPills({});
+        const q = $("qBox").value.trim();
+        const refiltered = docs.filter(d => matchesFilters(d, q, {}));
+        renderTiles(grid, refiltered);
+        addMarkers(refiltered);
+        showSaveBanner(true);
+      };
+
+      // Saved searches dropdown
+      const dd = $("savedSearchesDropdown");
+      dd.onchange = () => {
+        const id = dd.value;
+        if (!id) return;
+        const arr = getSavedSearches();
+        const sel = arr.find(s => s.id === id);
+        if (!sel) return;
+        $("qBox").value = sel.q || '';
+        writeFiltersToUI(sel.filters || {});
+        renderPills(sel.filters || {});
+        const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
+        $("qLabel").textContent = sel.q ? `Showing results for "${sel.q}"` : 'Showing all listings';
+        renderTiles(grid, refiltered);
+        addMarkers(refiltered);
+        showSaveBanner(true);
+      };
+
+      // Open filters/prompt via query params
+      (function(){
+        const u = new URL(location.href);
+        if (u.searchParams.get('open') === 'filters') {
+          document.getElementById('filtersPanel')?.setAttribute('open','');
+        }
+        if (u.searchParams.get('prompt') === 'save') {
+          showSaveBanner(true);
+        }
+      })();
+
+      refreshSavedDropdown();
+
+      // Save banner buttons
+      $('saveYesBtn').addEventListener('click', () => {
+        const q = $("qBox").value.trim();
+        const filters = readFiltersFromUI();
+        const rec = saveCurrentSearch('', q, filters, { alerts: true, lastSent: Date.now() });
+        if (rec) $('saveConfirmed').classList.remove('hidden');
+      });
+      $('saveNoBtn').addEventListener('click', () => { showSaveBanner(false); });
+    })();
   </script>
 </body>
 </html>
