@@ -372,12 +372,17 @@
     let markers = []; // Track markers for removal
     let markerMap = {}; // Map listing ID → marker element for hover sync
     let allListingsWithCoords = []; // Store listings with geocoded coords for viewport sync
-    const geocodeCache = {}; // Session-level cache: address → [lng, lat]
+    const geocodeCache = {}; // Session-level cache: address → {coords, placeName}
     const CAN_HOVER = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+    
+    // Search area constraints for geocoding
+    let SEARCH_CENTER = null; // [lng, lat]
+    let SEARCH_BBOX = null;   // [minLng, minLat, maxLng, maxLat]
 
-    // Generate safe unique key for listing
+    // Generate safe unique key for listing (stable, normalized)
     function getListingKey(item) {
-      return item.id || encodeURIComponent((item.address || '').trim());
+      if (item.id) return String(item.id);
+      return String(item.address || '').trim().toLowerCase();
     }
 
     // Format price for marker (abbreviated: $1.2M, $850K, etc.)
@@ -399,8 +404,17 @@
         && (latNum !== 0 || lngNum !== 0); // Reject 0,0 as likely invalid
     }
 
+    // Check if coords fall inside search bbox
+    function isInsideSearchBbox(coords) {
+      if (!SEARCH_BBOX || !coords) return true; // No constraint = allow
+      const [lng, lat] = coords;
+      const [minLng, minLat, maxLng, maxLat] = SEARCH_BBOX;
+      // No padding for now - strict bbox constraint
+      return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat;
+    }
+
     // Geocode with cache (avoids re-geocoding same address)
-    // Uses types=address to get rooftop location, not city/neighborhood centroid
+    // Uses types=address with bbox + proximity to constrain to search area
     // Accepts optional searchArea to append when address looks incomplete
     async function geocodeAddress(addr, searchArea = '') {
       if (!addr || !MAPBOX_TOKEN) return null;
@@ -427,7 +441,20 @@
       }
       
       try {
-        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(queryAddr)}.json?limit=1&types=address&autocomplete=false&access_token=${MAPBOX_TOKEN}`);
+        // Build URL with bbox + proximity constraints
+        let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(queryAddr)}.json?limit=1&types=address&autocomplete=false&country=us&access_token=${MAPBOX_TOKEN}`;
+        
+        // Add bbox constraint if we have search bounds
+        if (SEARCH_BBOX) {
+          url += `&bbox=${SEARCH_BBOX.join(',')}`;
+        }
+        
+        // Add proximity bias to search center
+        if (SEARCH_CENTER) {
+          url += `&proximity=${SEARCH_CENTER.join(',')}`;
+        }
+        
+        const resp = await fetch(url);
         const data = await resp.json();
         const feature = data?.features?.[0];
         
@@ -438,6 +465,24 @@
         }
         
         const coords = feature.center;
+        
+        // City-name validation: require place_name to contain search area (only for place names, not ZIPs)
+        if (searchArea && feature.place_name) {
+          const hasLetters = /[a-zA-Z]/.test(searchArea);
+          const searchLower = searchArea.toLowerCase();
+          const placeLower = feature.place_name.toLowerCase();
+          if (hasLetters && !placeLower.includes(searchLower)) {
+            console.warn(`[geocode] rejected: "${addr}" → "${feature.place_name}" (wrong city, expected "${searchArea}")`);
+            return null;
+          }
+        }
+        
+        // Sanity check: reject if coords fall outside search bbox
+        if (coords && !isInsideSearchBbox(coords)) {
+          console.warn(`[geocode] rejected: "${addr}" → "${feature.place_name}" (outside search bbox)`);
+          return null;
+        }
+        
         if (coords) {
           // Always store as object {coords, placeName}
           geocodeCache[cacheKey] = { coords, placeName: feature.place_name || '' };
@@ -469,6 +514,26 @@
       const geo = await geocodeWithBounds(q);
       const center = geo?.center || [-117.7854, 33.5427]; // Default: Laguna Beach area
       
+      // Save search constraints for address geocoding
+      SEARCH_CENTER = geo?.center || null;
+      
+      // Normalize bbox to ensure correct order (minLng < maxLng, minLat < maxLat)
+      if (geo?.bounds) {
+        let [a, b, c, d] = geo.bounds;
+        SEARCH_BBOX = [Math.min(a, c), Math.min(b, d), Math.max(a, c), Math.max(b, d)];
+      } else {
+        SEARCH_BBOX = null;
+      }
+      
+      // Log bbox in human terms for debugging
+      if (SEARCH_BBOX) {
+        const [minLng, minLat, maxLng, maxLat] = SEARCH_BBOX;
+        const widthMiles = ((maxLng - minLng) * 54.6).toFixed(1); // ~54.6 miles per degree at this latitude
+        const heightMiles = ((maxLat - minLat) * 69).toFixed(1); // ~69 miles per degree
+        console.log(`[map] Search bbox: ${widthMiles}mi × ${heightMiles}mi`, { minLng, minLat, maxLng, maxLat });
+      }
+      console.log('[map] Search constraints:', { center: SEARCH_CENTER, bbox: SEARCH_BBOX });
+      
       map = new mapboxgl.Map({ 
         container: 'mapCanvas', 
         style: 'mapbox://styles/mapbox/streets-v12', 
@@ -477,9 +542,9 @@
       });
       map.addControl(new mapboxgl.NavigationControl());
       
-      // Fit to city/area bounds if available
-      if (geo?.bounds) {
-        const b = geo.bounds; // [minLng, minLat, maxLng, maxLat]
+      // Fit to city/area bounds if available (use normalized SEARCH_BBOX)
+      if (SEARCH_BBOX) {
+        const b = SEARCH_BBOX;
         map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 50, maxZoom: 14 });
       }
       
@@ -584,6 +649,23 @@
         markers.push(marker);
         markerMap[listingKey] = el; // Store reference for hover sync
       }
+
+      // TEMPORARILY DISABLED: Fit map to marker bounds
+      // Re-enable after geocoding is verified correct
+      /*
+      if (allListingsWithCoords.length >= 2) {
+        const lngs = allListingsWithCoords.map(l => l._lng);
+        const lats = allListingsWithCoords.map(l => l._lat);
+        const markerBounds = [
+          [Math.min(...lngs), Math.min(...lats)],
+          [Math.max(...lngs), Math.max(...lats)]
+        ];
+        map.fitBounds(markerBounds, { padding: 60, maxZoom: 16 });
+      } else if (allListingsWithCoords.length === 1) {
+        map.setCenter([allListingsWithCoords[0]._lng, allListingsWithCoords[0]._lat]);
+        map.setZoom(15);
+      }
+      */
 
       // After markers are added, sync tiles to current viewport
       syncTilesToViewport();
