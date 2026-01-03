@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-02 (Task B.1: Zillow-style 50/50 layout) -->
+<!-- Build: 2026-01-02 (Task C: Fit to bounds, price markers, map-tile sync) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -87,6 +87,37 @@
       .search-results #grid {
         grid-template-columns: 1fr;
       }
+    }
+
+    /* === Price Marker Styles (Zillow-style) === */
+    .price-marker {
+      background: #fff;
+      border: 2px solid #dc2626;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #dc2626;
+      white-space: nowrap;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+    .price-marker:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,.3);
+      z-index: 10;
+    }
+    .price-marker::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-top: 8px solid #dc2626;
     }
   </style>
 </head>
@@ -309,47 +340,141 @@
 
     // Map helpers
     let map;
-    async function geocodeCenter(q){
-      if (!MAPBOX_TOKEN) return null;
+    let markers = []; // Track markers for removal
+    let allListingsWithCoords = []; // Store listings with geocoded coords for viewport sync
+
+    // Format price for marker (abbreviated: $1.2M, $850K, etc.)
+    function formatPriceShort(price) {
+      const p = Number(price || 0);
+      if (!p) return '$-';
+      if (p >= 1000000) return '$' + (p / 1000000).toFixed(p % 1000000 === 0 ? 0 : 1) + 'M';
+      if (p >= 1000) return '$' + Math.round(p / 1000) + 'K';
+      return '$' + p.toLocaleString();
+    }
+
+    // Geocode with bounds support (for fit-to-city)
+    async function geocodeWithBounds(q) {
+      if (!MAPBOX_TOKEN || !q) return null;
       try {
         const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
         const data = await resp.json();
-        return data?.features?.[0]?.center || null;
+        const feature = data?.features?.[0];
+        if (!feature) return null;
+        return {
+          center: feature.center,
+          bounds: feature.bbox || null // [minLng, minLat, maxLng, maxLat]
+        };
       } catch { return null; }
     }
-    async function initMap(q){
-      const center = (q && await geocodeCenter(q)) || [-117.7854, 33.5427];
-      map = new mapboxgl.Map({ container: 'mapCanvas', style: 'mapbox://styles/mapbox/streets-v12', center, zoom: 12.5 });
+
+    // Initialize map with fit-to-bounds
+    async function initMap(q) {
+      const geo = await geocodeWithBounds(q);
+      const center = geo?.center || [-117.7854, 33.5427]; // Default: Laguna Beach area
+      
+      map = new mapboxgl.Map({ 
+        container: 'mapCanvas', 
+        style: 'mapbox://styles/mapbox/streets-v12', 
+        center, 
+        zoom: 12 
+      });
       map.addControl(new mapboxgl.NavigationControl());
+      
+      // Fit to city/area bounds if available
+      if (geo?.bounds) {
+        const b = geo.bounds; // [minLng, minLat, maxLng, maxLat]
+        map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 50, maxZoom: 14 });
+      }
+      
       setTimeout(() => map.resize(), 100); // Fix for flex layout rendering
       return center;
     }
-    async function addMarkers(items){
+
+    // Clear all markers
+    function clearMarkers() {
+      markers.forEach(m => m.remove());
+      markers = [];
+    }
+
+    // Add price markers and store coords for viewport sync
+    async function addMarkers(items) {
       if (!map) return;
-      for (const it of items.slice(0, 50)) {
+      clearMarkers();
+      allListingsWithCoords = [];
+
+      for (const it of items.slice(0, 100)) {
         const addr = (it?.address || '').trim();
         if (!addr) continue;
-        try {
-          const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
-          const data = await resp.json();
-          const c = data?.features?.[0]?.center;
-          if (!c) continue;
-          const el = document.createElement("div");
-          el.style.width = "10px"; el.style.height = "10px";
-          el.style.background = "#dc2626"; el.style.border = "2px solid #fff";
-          el.style.borderRadius = "50%"; el.style.boxShadow = "0 1px 2px rgba(0,0,0,.3)";
-          el.title = (addr||'');
-          new mapboxgl.Marker(el).setLngLat(c).addTo(map);
-          el.addEventListener("click", () => {
-            if (it.id) {
-              window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
-            } else {
-              const slug = encodeURIComponent(addr);
-              window.location.href = `/listing.html?addr=${slug}`;
-            }
-          });
-        } catch {}
+        
+        // Check if listing already has lat/lng (future: store in Firestore)
+        let coords = null;
+        if (it.lat && it.lng) {
+          coords = [it.lng, it.lat];
+        } else {
+          // Geocode the address
+          try {
+            const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+            const data = await resp.json();
+            coords = data?.features?.[0]?.center;
+          } catch {}
+        }
+        
+        if (!coords) continue;
+
+        // Store listing with coords for viewport sync
+        allListingsWithCoords.push({ ...it, _lng: coords[0], _lat: coords[1] });
+
+        // Create price marker element
+        const el = document.createElement('div');
+        el.className = 'price-marker';
+        el.textContent = formatPriceShort(it.price);
+        el.title = addr;
+
+        // Click to open listing
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (it.id) {
+            window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
+          } else {
+            window.location.href = `/listing.html?addr=${encodeURIComponent(addr)}`;
+          }
+        });
+
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat(coords)
+          .addTo(map);
+        markers.push(marker);
       }
+
+      // After markers are added, sync tiles to current viewport
+      syncTilesToViewport();
+    }
+
+    // Sync tiles to map viewport (only show listings visible on map)
+    function syncTilesToViewport() {
+      if (!map || !allListingsWithCoords.length) return;
+      
+      const bounds = map.getBounds();
+      const visibleListings = allListingsWithCoords.filter(it => {
+        return bounds.contains([it._lng, it._lat]);
+      });
+
+      const grid = $('grid');
+      renderTiles(grid, visibleListings);
+      
+      // Update count in header
+      const qParam = $('qBox').value.trim();
+      const count = visibleListings.length;
+      $('qLabel').textContent = qParam 
+        ? `Showing ${count} result${count !== 1 ? 's' : ''} for "${qParam}"` 
+        : `Showing ${count} listing${count !== 1 ? 's' : ''}`;
+    }
+
+    // Wire up map move/zoom events for sync
+    function wireMapSync() {
+      if (!map) return;
+      map.on('moveend', syncTilesToViewport);
+      map.on('zoomend', syncTilesToViewport);
     }
 
     // Saved searches
@@ -472,6 +597,7 @@
       renderPills(lastFilters);
 
       await initMap(qParam);
+      wireMapSync(); // Enable pan/zoom → tile sync
 
       // Firestore fetch (ONLY real data)
       let docs = [];
@@ -492,10 +618,8 @@
       // Apply filters + query
       const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
 
-      // Render tiles using shared renderer
-      renderTiles(grid, filtered);
-
-      addMarkers(filtered);
+      // Add markers (also syncs tiles to viewport)
+      await addMarkers(filtered);
 
       // Email banner
       showSaveBanner(true);
@@ -508,32 +632,29 @@
       };
 
       // Filters
-      $("applyFiltersBtn").onclick = () => {
+      $("applyFiltersBtn").onclick = async () => {
         const f = readFiltersFromUI();
         setJSON('lastFilters', f);
         renderPills(f);
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, f));
-        $("qLabel").textContent = q ? `Showing results for "${q}"` : 'Showing all listings';
-        renderTiles(grid, refiltered);
-        addMarkers(refiltered);
+        await addMarkers(refiltered); // Also syncs tiles to viewport
         showSaveBanner(true);
       };
 
-      $("clearFiltersBtn").onclick = () => {
+      $("clearFiltersBtn").onclick = async () => {
         setJSON('lastFilters', {});
         document.querySelectorAll('#filtersPanel input, #filtersPanel select').forEach(el => el.value = '');
         renderPills({});
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, {}));
-        renderTiles(grid, refiltered);
-        addMarkers(refiltered);
+        await addMarkers(refiltered); // Also syncs tiles to viewport
         showSaveBanner(true);
       };
 
       // Saved searches dropdown
       const dd = $("savedSearchesDropdown");
-      dd.onchange = () => {
+      dd.onchange = async () => {
         const id = dd.value;
         if (!id) return;
         const arr = getSavedSearches();
@@ -543,9 +664,7 @@
         writeFiltersToUI(sel.filters || {});
         renderPills(sel.filters || {});
         const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
-        $("qLabel").textContent = sel.q ? `Showing results for "${sel.q}"` : 'Showing all listings';
-        renderTiles(grid, refiltered);
-        addMarkers(refiltered);
+        await addMarkers(refiltered); // Also syncs tiles to viewport
         showSaveBanner(true);
       };
 
