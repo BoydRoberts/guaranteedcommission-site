@@ -389,18 +389,64 @@
       return '$' + p.toLocaleString();
     }
 
+    // Validate lat/lng values
+    function isValidLatLng(lat, lng) {
+      const latNum = Number(lat);
+      const lngNum = Number(lng);
+      return !isNaN(latNum) && !isNaN(lngNum) 
+        && latNum >= -90 && latNum <= 90 
+        && lngNum >= -180 && lngNum <= 180
+        && (latNum !== 0 || lngNum !== 0); // Reject 0,0 as likely invalid
+    }
+
     // Geocode with cache (avoids re-geocoding same address)
-    async function geocodeAddress(addr) {
+    // Uses types=address to get rooftop location, not city/neighborhood centroid
+    // Accepts optional searchArea to append when address looks incomplete
+    async function geocodeAddress(addr, searchArea = '') {
       if (!addr || !MAPBOX_TOKEN) return null;
-      const key = addr.toLowerCase().trim();
-      if (geocodeCache[key]) return geocodeCache[key];
+      
+      // Build best geocode query string
+      let queryAddr = addr.trim();
+      const hasComma = queryAddr.includes(',');
+      const hasState = /,\s*(CA|California)/i.test(queryAddr);
+      
+      // If address looks incomplete, append search area context
+      if (!hasComma && searchArea) {
+        queryAddr = `${queryAddr}, ${searchArea}`;
+      } else if (hasComma && !hasState) {
+        queryAddr = `${queryAddr}, CA`; // MVP assumption: California
+      }
+      
+      const cacheKey = queryAddr.toLowerCase().trim();
+      
+      // Check cache - normalize if old format (array) found
+      const cached = geocodeCache[cacheKey];
+      if (cached) {
+        if (Array.isArray(cached)) return { coords: cached, placeName: '' };
+        return cached; // {coords, placeName}
+      }
+      
       try {
-        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(queryAddr)}.json?limit=1&types=address&autocomplete=false&access_token=${MAPBOX_TOKEN}`);
         const data = await resp.json();
-        const coords = data?.features?.[0]?.center || null;
-        if (coords) geocodeCache[key] = coords;
-        return coords;
-      } catch { return null; }
+        const feature = data?.features?.[0];
+        
+        // Verify we got an actual address result
+        if (!feature || !feature.place_type?.includes('address')) {
+          console.warn(`[geocode] skipped: "${addr}" query: "${queryAddr}" (no address match)`);
+          return null;
+        }
+        
+        const coords = feature.center;
+        if (coords) {
+          // Always store as object {coords, placeName}
+          geocodeCache[cacheKey] = { coords, placeName: feature.place_name || '' };
+        }
+        return coords ? geocodeCache[cacheKey] : null;
+      } catch (e) { 
+        console.warn('[geocode] error:', addr, e);
+        return null; 
+      }
     }
 
     // Geocode with bounds support (for fit-to-city)
@@ -473,7 +519,7 @@
     }
 
     // Add price markers and store coords for viewport sync
-    async function addMarkers(items) {
+    async function addMarkers(items, searchArea = '') {
       if (!map) return;
       clearMarkers();
       allListingsWithCoords = [];
@@ -482,13 +528,19 @@
         const addr = (it?.address || '').trim();
         if (!addr) continue;
         
-        // Check if listing already has lat/lng (future: stored in Firestore)
+        // Check if listing already has valid lat/lng (future: stored in Firestore)
         let coords = null;
-        if (it.lat && it.lng) {
-          coords = [it.lng, it.lat];
+        let matchedPlace = addr; // For tooltip debugging
+        
+        if (isValidLatLng(it.lat, it.lng)) {
+          coords = [Number(it.lng), Number(it.lat)];
         } else {
-          // Use cached geocode or fetch new
-          coords = await geocodeAddress(addr);
+          // Use cached geocode or fetch new (pass searchArea for context)
+          const geoResult = await geocodeAddress(addr, searchArea);
+          if (geoResult) {
+            coords = geoResult.coords;
+            matchedPlace = geoResult.placeName || addr;
+          }
         }
         
         if (!coords) continue;
@@ -501,7 +553,8 @@
         const el = document.createElement('div');
         el.className = 'price-marker';
         el.textContent = formatPriceShort(it.price);
-        el.title = addr;
+        // Debug tooltip: shows input → matched address
+        el.title = `${addr} → ${matchedPlace}`;
         const listingKey = getListingKey(it);
         el.dataset.listingId = listingKey;
 
@@ -736,7 +789,7 @@
       const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
 
       // Add markers (also syncs tiles to viewport)
-      await addMarkers(filtered);
+      await addMarkers(filtered, qParam);
 
       // Email banner
       showSaveBanner(true);
@@ -755,7 +808,7 @@
         renderPills(f);
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, f));
-        await addMarkers(refiltered); // Also syncs tiles to viewport
+        await addMarkers(refiltered, q); // Also syncs tiles to viewport
         showSaveBanner(true);
       };
 
@@ -765,7 +818,7 @@
         renderPills({});
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, {}));
-        await addMarkers(refiltered); // Also syncs tiles to viewport
+        await addMarkers(refiltered, q); // Also syncs tiles to viewport
         showSaveBanner(true);
       };
 
@@ -781,7 +834,7 @@
         writeFiltersToUI(sel.filters || {});
         renderPills(sel.filters || {});
         const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
-        await addMarkers(refiltered); // Also syncs tiles to viewport
+        await addMarkers(refiltered, sel.q || ''); // Also syncs tiles to viewport
         showSaveBanner(true);
       };
 
