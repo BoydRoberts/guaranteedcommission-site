@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-02 (Task C: Fit to bounds, price markers, map-tile sync) -->
+<!-- Build: 2026-01-02 (Task D: Geocode cache, hover sync, production polish) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -106,13 +106,19 @@
       white-space: nowrap;
       cursor: pointer;
       box-shadow: 0 2px 6px rgba(0,0,0,.25);
-      transition: transform 0.15s, box-shadow 0.15s;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
       position: relative;
     }
     .price-marker:hover {
       transform: scale(1.1);
       box-shadow: 0 4px 12px rgba(0,0,0,.3);
       z-index: 10;
+    }
+    .price-marker.highlighted {
+      background: #dc2626;
+      color: #fff;
+      transform: scale(1.15);
+      z-index: 20;
     }
     .price-marker::after {
       content: '';
@@ -123,6 +129,24 @@
       border-left: 8px solid transparent;
       border-right: 8px solid transparent;
       border-top: 8px solid #dc2626;
+    }
+
+    /* Tile hover highlight */
+    .gc-tile.highlighted {
+      outline: 3px solid #dc2626;
+      outline-offset: 2px;
+      box-shadow: 0 4px 12px rgba(220,38,38,.3);
+    }
+
+    /* Mobile: disable hover effects (touch-safe) */
+    @media (hover: none) {
+      .price-marker:hover {
+        transform: none;
+        box-shadow: 0 2px 6px rgba(0,0,0,.25);
+      }
+      .gc-tile:hover {
+        outline: none;
+      }
     }
   </style>
 </head>
@@ -346,7 +370,15 @@
     // Map helpers
     let map;
     let markers = []; // Track markers for removal
+    let markerMap = {}; // Map listing ID → marker element for hover sync
     let allListingsWithCoords = []; // Store listings with geocoded coords for viewport sync
+    const geocodeCache = {}; // Session-level cache: address → [lng, lat]
+    const CAN_HOVER = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+
+    // Generate safe unique key for listing
+    function getListingKey(item) {
+      return item.id || encodeURIComponent((item.address || '').trim());
+    }
 
     // Format price for marker (abbreviated: $1.2M, $850K, etc.)
     function formatPriceShort(price) {
@@ -355,6 +387,20 @@
       if (p >= 1000000) return '$' + (p / 1000000).toFixed(p % 1000000 === 0 ? 0 : 1) + 'M';
       if (p >= 1000) return '$' + Math.round(p / 1000) + 'K';
       return '$' + p.toLocaleString();
+    }
+
+    // Geocode with cache (avoids re-geocoding same address)
+    async function geocodeAddress(addr) {
+      if (!addr || !MAPBOX_TOKEN) return null;
+      const key = addr.toLowerCase().trim();
+      if (geocodeCache[key]) return geocodeCache[key];
+      try {
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const data = await resp.json();
+        const coords = data?.features?.[0]?.center || null;
+        if (coords) geocodeCache[key] = coords;
+        return coords;
+      } catch { return null; }
     }
 
     // Geocode with bounds support (for fit-to-city)
@@ -399,6 +445,31 @@
     function clearMarkers() {
       markers.forEach(m => m.remove());
       markers = [];
+      markerMap = {};
+    }
+
+    // Highlight marker by listing ID
+    function highlightMarker(listingId, highlight) {
+      const el = markerMap[listingId];
+      if (el) {
+        if (highlight) {
+          el.classList.add('highlighted');
+        } else {
+          el.classList.remove('highlighted');
+        }
+      }
+    }
+
+    // Highlight tile by listing ID
+    function highlightTile(listingId, highlight) {
+      const tile = document.querySelector(`[data-listing-id="${listingId}"]`);
+      if (tile) {
+        if (highlight) {
+          tile.classList.add('highlighted');
+        } else {
+          tile.classList.remove('highlighted');
+        }
+      }
     }
 
     // Add price markers and store coords for viewport sync
@@ -411,29 +482,38 @@
         const addr = (it?.address || '').trim();
         if (!addr) continue;
         
-        // Check if listing already has lat/lng (future: store in Firestore)
+        // Check if listing already has lat/lng (future: stored in Firestore)
         let coords = null;
         if (it.lat && it.lng) {
           coords = [it.lng, it.lat];
         } else {
-          // Geocode the address
-          try {
-            const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
-            const data = await resp.json();
-            coords = data?.features?.[0]?.center;
-          } catch {}
+          // Use cached geocode or fetch new
+          coords = await geocodeAddress(addr);
         }
         
         if (!coords) continue;
 
         // Store listing with coords for viewport sync
-        allListingsWithCoords.push({ ...it, _lng: coords[0], _lat: coords[1] });
+        const listingWithCoords = { ...it, _lng: coords[0], _lat: coords[1] };
+        allListingsWithCoords.push(listingWithCoords);
 
         // Create price marker element
         const el = document.createElement('div');
         el.className = 'price-marker';
         el.textContent = formatPriceShort(it.price);
         el.title = addr;
+        const listingKey = getListingKey(it);
+        el.dataset.listingId = listingKey;
+
+        // Hover marker → highlight tile (only on hover-capable devices)
+        if (CAN_HOVER) {
+          el.addEventListener('mouseenter', () => {
+            highlightTile(listingKey, true);
+          });
+          el.addEventListener('mouseleave', () => {
+            highlightTile(listingKey, false);
+          });
+        }
 
         // Click to open listing
         el.addEventListener('click', (e) => {
@@ -449,6 +529,7 @@
           .setLngLat(coords)
           .addTo(map);
         markers.push(marker);
+        markerMap[listingKey] = el; // Store reference for hover sync
       }
 
       // After markers are added, sync tiles to current viewport
@@ -465,14 +546,15 @@
       });
 
       const grid = $('grid');
-      renderTiles(grid, visibleListings);
+      renderTilesWithHover(grid, visibleListings);
       
       // Update count in header
       const qParam = $('qBox').value.trim();
       const count = visibleListings.length;
+      const total = allListingsWithCoords.length;
       $('qLabel').textContent = qParam 
-        ? `Showing ${count} result${count !== 1 ? 's' : ''} for "${qParam}"` 
-        : `Showing ${count} listing${count !== 1 ? 's' : ''}`;
+        ? `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} in map area for "${qParam}"` 
+        : `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} in map area`;
     }
 
     // Wire up map move/zoom events for sync
@@ -585,6 +667,36 @@
         const tile = renderTile(item, {
           onLikeIncrement: incrementLikeOnce
         });
+        grid.appendChild(tile);
+      });
+    }
+
+    // Render tiles with hover handlers for map marker sync
+    function renderTilesWithHover(grid, items) {
+      grid.innerHTML = '';
+      if (!items.length) {
+        grid.innerHTML = `<div class="text-sm text-gray-500">No listings in this map area. Pan or zoom out to see more.</div>`;
+        return;
+      }
+      items.forEach(item => {
+        const tile = renderTile(item, {
+          onLikeIncrement: incrementLikeOnce
+        });
+        
+        // Add data attribute for hover targeting
+        const listingKey = getListingKey(item);
+        tile.dataset.listingId = listingKey;
+        
+        // Hover tile → highlight corresponding map marker (only on hover-capable devices)
+        if (CAN_HOVER) {
+          tile.addEventListener('mouseenter', () => {
+            highlightMarker(listingKey, true);
+          });
+          tile.addEventListener('mouseleave', () => {
+            highlightMarker(listingKey, false);
+          });
+        }
+        
         grid.appendChild(tile);
       });
     }
