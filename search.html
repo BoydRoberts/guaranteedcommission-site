@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-02 (Task D: Geocode cache, hover sync, production polish) -->
+<!-- Build: 2026-01-04 (Task D+fix: tight bbox, reliable rooftop geocoding, no OC drift) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -33,128 +33,83 @@
     .gc-share-right{ right:10px; }
 
     /* === Zillow-style 50/50 Layout === */
-    .search-layout {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-    .search-header {
-      flex-shrink: 0;
-    }
-    .search-body {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
-    .search-map {
-      width: 50%;
-      height: 100%;
-      flex-shrink: 0;
-    }
-    .search-map #mapCanvas {
-      width: 100%;
-      height: 100%;
-    }
-    .search-results {
-      width: 50%;
-      height: 100%;
-      overflow-y: auto;
-      background: #f3f4f6;
-      padding: 1rem;
-    }
-    .search-results #grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-    }
+    .search-layout { display:flex; flex-direction:column; height:100vh; }
+    .search-header { flex-shrink:0; }
+    .search-body { flex:1; display:flex; overflow:hidden; }
+    .search-map { width:50%; height:100%; flex-shrink:0; }
+    .search-map #mapCanvas { width:100%; height:100%; }
+    .search-results { width:50%; height:100%; overflow-y:auto; background:#f3f4f6; padding:1rem; }
+    .search-results #grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
 
     /* Mobile: stack vertically */
     @media (max-width: 1023px) {
-      .search-body {
-        flex-direction: column;
-      }
-      .search-map {
-        width: 100%;
-        height: 300px;
-        flex-shrink: 0;
-      }
-      .search-results {
-        width: 100%;
-        height: auto;
-        flex: 1;
-        overflow-y: auto;
-      }
-      .search-results #grid {
-        grid-template-columns: 1fr;
-      }
+      .search-body { flex-direction:column; }
+      .search-map { width:100%; height:300px; flex-shrink:0; }
+      .search-results { width:100%; height:auto; flex:1; overflow-y:auto; }
+      .search-results #grid { grid-template-columns:1fr; }
     }
 
     /* === Price Marker Styles (Zillow-style) === */
-    .price-marker {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: max-content;
-      max-width: 120px;
-      background: #fff;
-      border: 2px solid #dc2626;
-      border-radius: 8px;
-      padding: 4px 8px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #dc2626;
-      white-space: nowrap;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,.25);
-      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
-      position: relative;
+    .price-marker{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:max-content;
+      max-width:120px;
+      background:#fff;
+      border:2px solid #dc2626;
+      border-radius:8px;
+      padding:4px 8px;
+      font-size:12px;
+      font-weight:700;
+      color:#dc2626;
+      white-space:nowrap;
+      cursor:pointer;
+      box-shadow:0 2px 6px rgba(0,0,0,.25);
+      transition:transform .15s, box-shadow .15s, background .15s;
+      position:relative;
     }
-    .price-marker:hover {
-      transform: scale(1.1);
-      box-shadow: 0 4px 12px rgba(0,0,0,.3);
-      z-index: 10;
+    .price-marker:hover{
+      transform:scale(1.1);
+      box-shadow:0 4px 12px rgba(0,0,0,.3);
+      z-index:10;
     }
-    .price-marker.highlighted {
-      background: #dc2626;
-      color: #fff;
-      transform: scale(1.15);
-      z-index: 20;
+    .price-marker.highlighted{
+      background:#dc2626;
+      color:#fff;
+      transform:scale(1.15);
+      z-index:20;
     }
-    .price-marker::after {
-      content: '';
-      position: absolute;
-      bottom: -8px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-left: 8px solid transparent;
-      border-right: 8px solid transparent;
-      border-top: 8px solid #dc2626;
+    .price-marker::after{
+      content:'';
+      position:absolute;
+      bottom:-8px;
+      left:50%;
+      transform:translateX(-50%);
+      border-left:8px solid transparent;
+      border-right:8px solid transparent;
+      border-top:8px solid #dc2626;
     }
 
     /* Tile hover highlight */
-    .gc-tile.highlighted {
-      outline: 3px solid #dc2626;
-      outline-offset: 2px;
-      box-shadow: 0 4px 12px rgba(220,38,38,.3);
+    .gc-tile.highlighted{
+      outline:3px solid #dc2626;
+      outline-offset:2px;
+      box-shadow:0 4px 12px rgba(220,38,38,.3);
     }
 
     /* Mobile: disable hover effects (touch-safe) */
-    @media (hover: none) {
-      .price-marker:hover {
-        transform: none;
-        box-shadow: 0 2px 6px rgba(0,0,0,.25);
-      }
-      .gc-tile:hover {
-        outline: none;
-      }
+    @media (hover:none) {
+      .price-marker:hover { transform:none; box-shadow:0 2px 6px rgba(0,0,0,.25); }
+      .gc-tile:hover { outline:none; }
     }
   </style>
 </head>
+
 <body class="search-layout text-gray-900">
 
   <!-- Search Header (fixed top) -->
   <div class="search-header">
-    <!-- Header -->
     <header class="bg-white shadow">
       <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
         <a href="/index.html" class="text-sm hover:underline" style="color:#4DA6FF;">Home</a>
@@ -169,119 +124,113 @@
       </div>
     </header>
 
-  <!-- Query & Controls -->
-  <section class="bg-white border-y">
-    <div class="max-w-7xl mx-auto px-4 py-4">
-      <div class="flex flex-col items-center gap-3">
+    <!-- Query & Controls -->
+    <section class="bg-white border-y">
+      <div class="max-w-7xl mx-auto px-4 py-4">
+        <div class="flex flex-col items-center gap-3">
 
-        <!-- Query + Saved dropdown -->
-        <div class="w-full md:w-3/4 lg:w-2/3 flex items-center gap-2">
-          <input id="qBox" class="border rounded px-3 py-2 w-full" placeholder="City, neighborhood, or ZIP">
-          <button id="applyBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Search</button>
-          <select id="savedSearchesDropdown" class="border rounded px-2 py-2 text-sm">
-            <option value="">Saved Searches</option>
-          </select>
-          <button id="saveSearchBtn" class="px-3 py-2 border rounded text-sm">Save Search</button>
+          <div class="w-full md:w-3/4 lg:w-2/3 flex items-center gap-2">
+            <input id="qBox" class="border rounded px-3 py-2 w-full" placeholder="City, neighborhood, or ZIP">
+            <button id="applyBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Search</button>
+            <select id="savedSearchesDropdown" class="border rounded px-2 py-2 text-sm">
+              <option value="">Saved Searches</option>
+            </select>
+            <button id="saveSearchBtn" class="px-3 py-2 border rounded text-sm">Save Search</button>
+          </div>
+
+          <div id="activePills" class="flex flex-wrap mt-1"></div>
+
+          <details id="filtersPanel" class="w-full md:w-3/4 lg:w-2/3">
+            <summary class="flex items-center justify-between cursor-pointer select-none px-2 py-2 text-sm text-gray-700">
+              <span class="font-semibold">Advanced filters</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" class="transition">
+                <path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/>
+              </svg>
+            </summary>
+
+            <div class="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
+              <div>
+                <label class="block text-gray-600 mb-1">Min Price ($)</label>
+                <input id="priceMin" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="500000">
+              </div>
+              <div>
+                <label class="block text-gray-600 mb-1">Max Price ($)</label>
+                <input id="priceMax" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="2500000">
+              </div>
+              <div>
+                <label class="block text-gray-600 mb-1">Min Beds</label>
+                <input id="bedsMin" type="number" min="0" step="1" class="w-full border rounded px-2 py-1" placeholder="3">
+              </div>
+              <div>
+                <label class="block text-gray-600 mb-1">Min Baths</label>
+                <input id="bathsMin" type="number" min="0" step="0.5" class="w-full border rounded px-2 py-1" placeholder="2">
+              </div>
+              <div>
+                <label class="block text-gray-600 mb-1">Status</label>
+                <select id="status" class="w-full border rounded px-2 py-1">
+                  <option value="">Any</option>
+                  <option>Active</option>
+                  <option>In Contract</option>
+                  <option>Sold</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-gray-600 mb-1">Property Type</label>
+                <select id="propType" class="w-full border rounded px-2 py-1">
+                  <option value="">Any</option>
+                  <option>Single Family</option>
+                  <option>Condo</option>
+                  <option>Townhouse</option>
+                  <option>Multi-Family</option>
+                  <option>Land</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-gray-600 mb-1">Min Commission %</label>
+                <input id="commPctMin" type="number" min="0" step="0.25" class="w-full border rounded px-2 py-1" placeholder="2.5">
+              </div>
+              <div>
+                <label class="block text-gray-600 mb-1">Min Commission $</label>
+                <input id="commUsdMin" type="number" min="0" step="5000" class="w-full border rounded px-2 py-1" placeholder="20000">
+              </div>
+            </div>
+
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+              <button id="applyFiltersBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Apply filters</button>
+              <button id="clearFiltersBtn" class="px-3 py-2 rounded border">Clear</button>
+              <span class="text-xs text-gray-500 ml-2">Filters and last search are remembered.</span>
+            </div>
+          </details>
+
+          <div id="saveBanner" class="w-full md:w-3/4 lg:w-2/3 banner p-3 mt-2">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div class="text-sm">
+                <strong>Email these results?</strong> We'll send today's matches now and alert you when new listings appear.
+              </div>
+              <div class="flex gap-2">
+                <button id="saveYesBtn" class="btn bg-indigo-600 text-white">Yes, email & alert me</button>
+                <button id="saveNoBtn" class="btn border">Not now</button>
+              </div>
+            </div>
+
+            <div id="saveLoginNeeded" class="hidden mt-2 text-sm text-amber-800">
+              Please <a href="/login.html" class="underline">log in</a> to save searches and get alerts.
+            </div>
+            <div id="saveConfirmed" class="hidden mt-2 text-sm text-green-800">
+              Saved. We'll email these results now and alert you when new ones appear.
+            </div>
+          </div>
+
         </div>
-
-        <!-- Active filter pills -->
-        <div id="activePills" class="flex flex-wrap mt-1"></div>
-
-        <!-- Advanced filters -->
-        <details id="filtersPanel" class="w-full md:w-3/4 lg:w-2/3">
-          <summary class="flex items-center justify-between cursor-pointer select-none px-2 py-2 text-sm text-gray-700">
-            <span class="font-semibold">Advanced filters</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" class="transition"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
-          </summary>
-
-          <div class="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
-            <div>
-              <label class="block text-gray-600 mb-1">Min Price ($)</label>
-              <input id="priceMin" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="500000">
-            </div>
-            <div>
-              <label class="block text-gray-600 mb-1">Max Price ($)</label>
-              <input id="priceMax" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="2500000">
-            </div>
-            <div>
-              <label class="block text-gray-600 mb-1">Min Beds</label>
-              <input id="bedsMin" type="number" min="0" step="1" class="w-full border rounded px-2 py-1" placeholder="3">
-            </div>
-            <div>
-              <label class="block text-gray-600 mb-1">Min Baths</label>
-              <input id="bathsMin" type="number" min="0" step="0.5" class="w-full border rounded px-2 py-1" placeholder="2">
-            </div>
-            <div>
-              <label class="block text-gray-600 mb-1">Status</label>
-              <select id="status" class="w-full border rounded px-2 py-1">
-                <option value="">Any</option>
-                <option>Active</option>
-                <option>In Contract</option>
-                <option>Sold</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-gray-600 mb-1">Property Type</label>
-              <select id="propType" class="w-full border rounded px-2 py-1">
-                <option value="">Any</option>
-                <option>Single Family</option>
-                <option>Condo</option>
-                <option>Townhouse</option>
-                <option>Multi-Family</option>
-                <option>Land</option>
-                <option>Other</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-gray-600 mb-1">Min Commission %</label>
-              <input id="commPctMin" type="number" min="0" step="0.25" class="w-full border rounded px-2 py-1" placeholder="2.5">
-            </div>
-            <div>
-              <label class="block text-gray-600 mb-1">Min Commission $</label>
-              <input id="commUsdMin" type="number" min="0" step="5000" class="w-full border rounded px-2 py-1" placeholder="20000">
-            </div>
-          </div>
-
-          <div class="mt-4 flex flex-wrap items-center gap-2">
-            <button id="applyFiltersBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Apply filters</button>
-            <button id="clearFiltersBtn" class="px-3 py-2 rounded border">Clear</button>
-            <span class="text-xs text-gray-500 ml-2">Filters and last search are remembered.</span>
-          </div>
-        </details>
-
-        <!-- Email/alerts banner -->
-        <div id="saveBanner" class="w-full md:w-3/4 lg:w-2/3 banner p-3 mt-2">
-          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div class="text-sm">
-              <strong>Email these results?</strong> We'll send today's matches now and alert you when new listings appear.
-            </div>
-            <div class="flex gap-2">
-              <button id="saveYesBtn" class="btn bg-indigo-600 text-white">Yes, email & alert me</button>
-              <button id="saveNoBtn" class="btn border">Not now</button>
-            </div>
-          </div>
-
-          <div id="saveLoginNeeded" class="hidden mt-2 text-sm text-amber-800">
-            Please <a href="/login.html" class="underline">log in</a> to save searches and get alerts.
-          </div>
-          <div id="saveConfirmed" class="hidden mt-2 text-sm text-green-800">
-            Saved. We'll email these results now and alert you when new ones appear.
-          </div>
-        </div>
-
       </div>
-    </div>
-  </section>
+    </section>
   </div><!-- /.search-header -->
 
   <!-- Body: 50/50 Map left, Tiles right (Zillow-style) -->
   <div class="search-body">
-    <div class="search-map">
-      <div id="mapCanvas"></div>
-    </div>
-    <div class="search-results">
-      <div id="grid"></div>
-    </div>
+    <div class="search-map"><div id="mapCanvas"></div></div>
+    <div class="search-results"><div id="grid"></div></div>
   </div>
 
   <!-- Firebase init -->
@@ -302,6 +251,8 @@
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 
+    const CAN_HOVER = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+
     // Like increment helper
     async function incrementLikeOnce(listingId) {
       try {
@@ -316,7 +267,43 @@
       }
     }
 
-    // Filters & pills
+    // === Manual tight bboxes (keeps map tight; avoids OC-wide default views) ===
+    const CITY_BBOXES = {
+      'laguna beach': [-117.82, 33.51, -117.76, 33.59],
+      'newport beach': [-117.95, 33.58, -117.85, 33.66],
+      'dana point': [-117.72, 33.44, -117.66, 33.50],
+      'laguna niguel': [-117.73, 33.50, -117.67, 33.56],
+      'san clemente': [-117.65, 33.40, -117.58, 33.48],
+      'irvine': [-117.86, 33.62, -117.70, 33.74],
+      'costa mesa': [-117.94, 33.62, -117.86, 33.70],
+      'huntington beach': [-118.02, 33.64, -117.94, 33.74],
+    };
+
+    // Zip-to-bbox shortcuts (helps ZIP-only searches)
+    const ZIP_BBOXES = {
+      '92651': CITY_BBOXES['laguna beach'],
+    };
+
+    function normStr(s){ return String(s || '').trim().toLowerCase(); }
+    function hasLetters(s){ return /[a-z]/i.test(String(s || '')); }
+
+    function getManualBbox(searchQuery){
+      if (!searchQuery) return null;
+      let s = normStr(searchQuery);
+
+      // if it's a ZIP, use ZIP_BBOXES
+      const zip = (s.match(/\b\d{5}\b/) || [])[0];
+      if (zip && ZIP_BBOXES[zip]) return ZIP_BBOXES[zip];
+
+      // otherwise strip ", CA..." and ZIPs and normalize spaces
+      s = s.replace(/,.*$/, '').trim();
+      s = s.replace(/\b\d{5}(-\d{4})?\b/g, '').trim();
+      s = s.replace(/\s+/g, ' ').trim();
+
+      return CITY_BBOXES[s] || null;
+    }
+
+    // === Filters UI ===
     function readFiltersFromUI() {
       const val = (id) => (document.getElementById(id)?.value || '').trim();
       const num = (id) => {
@@ -367,25 +354,236 @@
       if (filters.commUsdMin) pill(`$${Number(filters.commUsdMin).toLocaleString()}+ comm`,'commUsdMin');
     }
 
-    // Map helpers
+    function matchesFilters(docu, qtext, f){
+      const address = (docu.address || '').toLowerCase();
+      if (qtext && !address.includes(qtext.toLowerCase().trim())) return false;
+
+      const price = Number(docu.price || 0);
+      if (f.priceMin && price && price < f.priceMin) return false;
+      if (f.priceMax && price && price > f.priceMax) return false;
+
+      const beds = Number(docu.bedrooms || 0);
+      const baths = Number(docu.bathrooms || 0);
+      if (f.bedsMin && beds < f.bedsMin) return false;
+      if (f.bathsMin && baths < f.bathsMin) return false;
+
+      if (f.status) {
+        const normalized = (String(docu.status||'').toLowerCase()==='in_contract') ? 'In Contract' : (docu.status||'');
+        if (normalized !== f.status) return false;
+      }
+
+      if (f.propType) {
+        const type = String(docu.propertyType || '').toLowerCase();
+        if (!type || type !== f.propType.toLowerCase()) return false;
+      }
+
+      const commType = docu.commissionType || '%';
+      const commVal = Number(docu.commission || 0);
+      if (f.commPctMin) {
+        if (commType === '%' && commVal < f.commPctMin) return false;
+        if (commType === '$') {
+          const p = Number(docu.price || 0);
+          if (p && (commVal / p * 100) < f.commPctMin) return false;
+        }
+      }
+      if (f.commUsdMin) {
+        if (commType === '$' && commVal < f.commUsdMin) return false;
+        if (commType === '%') {
+          const p = Number(docu.price || 0);
+          if (p && Math.round(p * (commVal/100)) < f.commUsdMin) return false;
+        }
+      }
+
+      return true;
+    }
+
+    // === Map + markers + sync ===
     let map;
-    let markers = []; // Track markers for removal
-    let markerMap = {}; // Map listing ID → marker element for hover sync
-    let allListingsWithCoords = []; // Store listings with geocoded coords for viewport sync
-    const geocodeCache = {}; // Session-level cache: address → {coords, placeName}
-    const CAN_HOVER = window.matchMedia && window.matchMedia('(hover: hover)').matches;
-    
-    // Search area constraints for geocoding
+    let markers = [];
+    let markerMap = {}; // listingKey -> marker element
+    let allListingsWithCoords = [];
+
+    // Search constraints used for bbox/proximity in geocoding
     let SEARCH_CENTER = null; // [lng, lat]
     let SEARCH_BBOX = null;   // [minLng, minLat, maxLng, maxLat]
 
-    // Generate safe unique key for listing (stable, normalized)
-    function getListingKey(item) {
+    // Session cache for geocoding results
+    const geocodeCache = {}; // cacheKey -> {coords:[lng,lat], placeName:''}
+
+    function getListingKey(item){
       if (item.id) return String(item.id);
       return String(item.address || '').trim().toLowerCase();
     }
 
-    // Format price for marker (abbreviated: $1.2M, $850K, etc.)
+    function isValidLatLng(lat, lng) {
+      const latNum = Number(lat);
+      const lngNum = Number(lng);
+      return !isNaN(latNum) && !isNaN(lngNum)
+        && latNum >= -90 && latNum <= 90
+        && lngNum >= -180 && lngNum <= 180
+        && (latNum !== 0 || lngNum !== 0);
+    }
+
+    function isInsideBbox(coords, bbox){
+      if (!bbox || !coords) return true;
+      const [lng, lat] = coords;
+      const [minLng, minLat, maxLng, maxLat] = bbox;
+      return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat;
+    }
+
+    function needsCA(addr) {
+      const a = String(addr || '');
+      const hasState2 = /,\s*[A-Z]{2}\b/.test(a);          // ", CA"
+      const hasStateWord = /\bcalifornia\b/i.test(a);      // "California"
+      const hasZip = /\b\d{5}(-\d{4})?\b/.test(a);         // 92651
+      return !(hasState2 || hasStateWord || hasZip);
+    }
+
+    function shouldEnforceCityName(searchArea){
+      const s = String(searchArea || '').trim();
+      if (!s) return false;
+      if (!hasLetters(s)) return false; // don't enforce for ZIP-only
+      return s.length >= 3;
+    }
+
+    function cityToken(searchArea){
+      // "Laguna Beach, CA" -> "laguna beach"
+      const s = String(searchArea || '').split(',')[0];
+      return normStr(s);
+    }
+
+    function bboxCenter(bbox){
+      const [minLng, minLat, maxLng, maxLat] = bbox;
+      return [(minLng + maxLng)/2, (minLat + maxLat)/2];
+    }
+
+    async function geocodeWithBounds(q){
+      if (!MAPBOX_TOKEN || !q) return null;
+      try {
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const data = await resp.json();
+        const feature = data?.features?.[0];
+        if (!feature) return null;
+        return { center: feature.center, bounds: feature.bbox || null };
+      } catch {
+        return null;
+      }
+    }
+
+    // Core: return {coords, placeName} or null
+    async function geocodeAddress(addr, searchArea=''){
+      if (!addr || !MAPBOX_TOKEN) return null;
+
+      let queryAddr = String(addr).trim();
+
+      // If address looks like "31541 Coast Hwy" (no comma), append searchArea
+      if (!queryAddr.includes(',') && searchArea) {
+        queryAddr = `${queryAddr}, ${searchArea}`;
+      }
+
+      // Add CA only if missing obvious state/zip
+      if (needsCA(queryAddr)) queryAddr = `${queryAddr}, CA`;
+
+      const cacheKey = normStr(queryAddr);
+      const cached = geocodeCache[cacheKey];
+      if (cached) return cached;
+
+      try {
+        let url =
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(queryAddr)}.json` +
+          `?limit=5&types=address&autocomplete=false&country=us&access_token=${MAPBOX_TOKEN}`;
+
+        // Constrain/bias to search area
+        if (SEARCH_BBOX && Array.isArray(SEARCH_BBOX) && SEARCH_BBOX.length === 4) url += `&bbox=${SEARCH_BBOX.join(',')}`;
+        if (SEARCH_CENTER && Array.isArray(SEARCH_CENTER) && SEARCH_CENTER.length === 2) url += `&proximity=${SEARCH_CENTER.join(',')}`;
+
+        const resp = await fetch(url);
+        const data = await resp.json();
+        const features = data?.features || [];
+
+        if (!features.length) {
+          console.warn(`[geocode] NO RESULT: "${addr}" query="${queryAddr}"`);
+          return null;
+        }
+
+        const needCity = shouldEnforceCityName(searchArea) ? cityToken(searchArea) : '';
+
+        // Pick first candidate that is an address AND inside bbox AND city matches (if enforced)
+        for (const f of features) {
+          if (!f?.place_type?.includes('address')) continue;
+          const coords = f.center;
+          if (!coords || coords.length !== 2) continue;
+
+          if (SEARCH_BBOX && !isInsideBbox(coords, SEARCH_BBOX)) continue;
+
+          if (needCity) {
+            const placeLower = normStr(f.place_name);
+            if (!placeLower.includes(needCity)) continue;
+          }
+
+          geocodeCache[cacheKey] = { coords, placeName: f.place_name || '' };
+          return geocodeCache[cacheKey];
+        }
+
+        // Nothing acceptable
+        console.warn(`[geocode] NO ACCEPTABLE CANDIDATE: "${addr}" query="${queryAddr}"`);
+        return null;
+
+      } catch (e) {
+        console.warn(`[geocode] ERROR: "${addr}" query="${queryAddr}"`, e);
+        return null;
+      }
+    }
+
+    async function initMap(q){
+      const manualBbox = getManualBbox(q);
+      const geo = await geocodeWithBounds(q);
+
+      if (manualBbox) {
+        SEARCH_BBOX = manualBbox;
+        SEARCH_CENTER = bboxCenter(manualBbox);
+        console.log('[map] Using MANUAL bbox for:', q, SEARCH_BBOX);
+      } else if (geo?.bounds) {
+        // normalize bbox order
+        let [a,b,c,d] = geo.bounds;
+        SEARCH_BBOX = [Math.min(a,c), Math.min(b,d), Math.max(a,c), Math.max(b,d)];
+        SEARCH_CENTER = geo.center || bboxCenter(SEARCH_BBOX);
+        console.log('[map] Using MAPBOX bbox for:', q, SEARCH_BBOX);
+      } else {
+        SEARCH_BBOX = null;
+        SEARCH_CENTER = geo?.center || [-117.7854, 33.5427];
+        console.log('[map] No bbox available; using center:', SEARCH_CENTER);
+      }
+
+      const center = SEARCH_CENTER || [-117.7854, 33.5427];
+
+      map = new mapboxgl.Map({
+        container: 'mapCanvas',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center,
+        zoom: 13.5
+      });
+      map.addControl(new mapboxgl.NavigationControl());
+
+      // Fit to bbox if available (keeps map tight)
+      if (SEARCH_BBOX) {
+        const b = SEARCH_BBOX;
+        map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 50, maxZoom: 15 });
+      }
+
+      // Flex-layout rendering fix
+      setTimeout(() => { try { map.resize(); } catch(e){} }, 120);
+
+      return center;
+    }
+
+    function clearMarkers(){
+      markers.forEach(m => m.remove());
+      markers = [];
+      markerMap = {};
+      allListingsWithCoords = [];
+    }
+
     function formatPriceShort(price) {
       const p = Number(price || 0);
       if (!p) return '$-';
@@ -394,312 +592,119 @@
       return '$' + p.toLocaleString();
     }
 
-    // Validate lat/lng values
-    function isValidLatLng(lat, lng) {
-      const latNum = Number(lat);
-      const lngNum = Number(lng);
-      return !isNaN(latNum) && !isNaN(lngNum) 
-        && latNum >= -90 && latNum <= 90 
-        && lngNum >= -180 && lngNum <= 180
-        && (latNum !== 0 || lngNum !== 0); // Reject 0,0 as likely invalid
-    }
-
-    // Check if coords fall inside search bbox
-    function isInsideSearchBbox(coords) {
-      if (!SEARCH_BBOX || !coords) return true; // No constraint = allow
-      const [lng, lat] = coords;
-      const [minLng, minLat, maxLng, maxLat] = SEARCH_BBOX;
-      // No padding for now - strict bbox constraint
-      return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat;
-    }
-
-    // Geocode with cache (avoids re-geocoding same address)
-    // Uses types=address with bbox + proximity to constrain to search area
-    // Accepts optional searchArea to append when address looks incomplete
-    async function geocodeAddress(addr, searchArea = '') {
-      if (!addr || !MAPBOX_TOKEN) return null;
-      
-      // Build best geocode query string
-      let queryAddr = addr.trim();
-      const hasComma = queryAddr.includes(',');
-      const hasState = /,\s*(CA|California)/i.test(queryAddr);
-      
-      // If address looks incomplete, append search area context
-      if (!hasComma && searchArea) {
-        queryAddr = `${queryAddr}, ${searchArea}`;
-      } else if (hasComma && !hasState) {
-        queryAddr = `${queryAddr}, CA`; // MVP assumption: California
-      }
-      
-      const cacheKey = queryAddr.toLowerCase().trim();
-      
-      // Check cache - normalize if old format (array) found
-      const cached = geocodeCache[cacheKey];
-      if (cached) {
-        if (Array.isArray(cached)) return { coords: cached, placeName: '' };
-        return cached; // {coords, placeName}
-      }
-      
-      try {
-        // Build URL with bbox + proximity constraints
-        let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(queryAddr)}.json?limit=1&types=address&autocomplete=false&country=us&access_token=${MAPBOX_TOKEN}`;
-        
-        // Add bbox constraint if we have search bounds
-        if (SEARCH_BBOX) {
-          url += `&bbox=${SEARCH_BBOX.join(',')}`;
-        }
-        
-        // Add proximity bias to search center
-        if (SEARCH_CENTER) {
-          url += `&proximity=${SEARCH_CENTER.join(',')}`;
-        }
-        
-        const resp = await fetch(url);
-        const data = await resp.json();
-        const feature = data?.features?.[0];
-        
-        // Verify we got an actual address result
-        if (!feature || !feature.place_type?.includes('address')) {
-          console.warn(`[geocode] skipped: "${addr}" query: "${queryAddr}" (no address match)`);
-          return null;
-        }
-        
-        const coords = feature.center;
-        
-        // City-name validation: require place_name to contain search area (only for place names, not ZIPs)
-        if (searchArea && feature.place_name) {
-          const hasLetters = /[a-zA-Z]/.test(searchArea);
-          const searchLower = searchArea.toLowerCase();
-          const placeLower = feature.place_name.toLowerCase();
-          if (hasLetters && !placeLower.includes(searchLower)) {
-            console.warn(`[geocode] rejected: "${addr}" → "${feature.place_name}" (wrong city, expected "${searchArea}")`);
-            return null;
-          }
-        }
-        
-        // Sanity check: reject if coords fall outside search bbox
-        if (coords && !isInsideSearchBbox(coords)) {
-          console.warn(`[geocode] rejected: "${addr}" → "${feature.place_name}" (outside search bbox)`);
-          return null;
-        }
-        
-        if (coords) {
-          // Always store as object {coords, placeName}
-          geocodeCache[cacheKey] = { coords, placeName: feature.place_name || '' };
-        }
-        return coords ? geocodeCache[cacheKey] : null;
-      } catch (e) { 
-        console.warn('[geocode] error:', addr, e);
-        return null; 
-      }
-    }
-
-    // Geocode with bounds support (for fit-to-city)
-    async function geocodeWithBounds(q) {
-      if (!MAPBOX_TOKEN || !q) return null;
-      try {
-        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
-        const data = await resp.json();
-        const feature = data?.features?.[0];
-        if (!feature) return null;
-        return {
-          center: feature.center,
-          bounds: feature.bbox || null // [minLng, minLat, maxLng, maxLat]
-        };
-      } catch { return null; }
-    }
-
-    // Initialize map with fit-to-bounds
-    async function initMap(q) {
-      const geo = await geocodeWithBounds(q);
-      const center = geo?.center || [-117.7854, 33.5427]; // Default: Laguna Beach area
-      
-      // Save search constraints for address geocoding
-      SEARCH_CENTER = geo?.center || null;
-      
-      // Normalize bbox to ensure correct order (minLng < maxLng, minLat < maxLat)
-      if (geo?.bounds) {
-        let [a, b, c, d] = geo.bounds;
-        SEARCH_BBOX = [Math.min(a, c), Math.min(b, d), Math.max(a, c), Math.max(b, d)];
-      } else {
-        SEARCH_BBOX = null;
-      }
-      
-      // Log bbox in human terms for debugging
-      if (SEARCH_BBOX) {
-        const [minLng, minLat, maxLng, maxLat] = SEARCH_BBOX;
-        const widthMiles = ((maxLng - minLng) * 54.6).toFixed(1); // ~54.6 miles per degree at this latitude
-        const heightMiles = ((maxLat - minLat) * 69).toFixed(1); // ~69 miles per degree
-        console.log(`[map] Search bbox: ${widthMiles}mi × ${heightMiles}mi`, { minLng, minLat, maxLng, maxLat });
-      }
-      console.log('[map] Search constraints:', { center: SEARCH_CENTER, bbox: SEARCH_BBOX });
-      
-      map = new mapboxgl.Map({ 
-        container: 'mapCanvas', 
-        style: 'mapbox://styles/mapbox/streets-v12', 
-        center, 
-        zoom: 12 
-      });
-      map.addControl(new mapboxgl.NavigationControl());
-      
-      // Fit to city/area bounds if available (use normalized SEARCH_BBOX)
-      if (SEARCH_BBOX) {
-        const b = SEARCH_BBOX;
-        map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 50, maxZoom: 14 });
-      }
-      
-      setTimeout(() => map.resize(), 100); // Fix for flex layout rendering
-      return center;
-    }
-
-    // Clear all markers
-    function clearMarkers() {
-      markers.forEach(m => m.remove());
-      markers = [];
-      markerMap = {};
-    }
-
-    // Highlight marker by listing ID
-    function highlightMarker(listingId, highlight) {
+    function highlightMarker(listingId, on){
       const el = markerMap[listingId];
-      if (el) {
-        if (highlight) {
-          el.classList.add('highlighted');
-        } else {
-          el.classList.remove('highlighted');
-        }
-      }
+      if (!el) return;
+      el.classList.toggle('highlighted', !!on);
     }
 
-    // Highlight tile by listing ID
-    function highlightTile(listingId, highlight) {
+    function highlightTile(listingId, on){
       const tile = document.querySelector(`[data-listing-id="${listingId}"]`);
-      if (tile) {
-        if (highlight) {
-          tile.classList.add('highlighted');
-        } else {
-          tile.classList.remove('highlighted');
-        }
-      }
+      if (!tile) return;
+      tile.classList.toggle('highlighted', !!on);
     }
 
-    // Add price markers and store coords for viewport sync
-    async function addMarkers(items, searchArea = '') {
+    async function addMarkers(items, searchArea=''){
       if (!map) return;
       clearMarkers();
-      allListingsWithCoords = [];
 
-      for (const it of items.slice(0, 100)) {
+      // cap markers for MVP
+      const subset = items.slice(0, 100);
+
+      for (const it of subset) {
         const addr = (it?.address || '').trim();
         if (!addr) continue;
-        
-        // Check if listing already has valid lat/lng (future: stored in Firestore)
+
         let coords = null;
-        let matchedPlace = addr; // For tooltip debugging
-        
+        let matchedPlace = addr;
+
         if (isValidLatLng(it.lat, it.lng)) {
           coords = [Number(it.lng), Number(it.lat)];
         } else {
-          // Use cached geocode or fetch new (pass searchArea for context)
-          const geoResult = await geocodeAddress(addr, searchArea);
-          if (geoResult) {
-            coords = geoResult.coords;
-            matchedPlace = geoResult.placeName || addr;
+          const geoRes = await geocodeAddress(addr, searchArea);
+          if (geoRes) {
+            coords = geoRes.coords;
+            matchedPlace = geoRes.placeName || addr;
           }
         }
-        
+
         if (!coords) continue;
 
-        // Store listing with coords for viewport sync
-        const listingWithCoords = { ...it, _lng: coords[0], _lat: coords[1] };
-        allListingsWithCoords.push(listingWithCoords);
+        const listingKey = getListingKey(it);
+        allListingsWithCoords.push({ ...it, _lng: coords[0], _lat: coords[1] });
 
-        // Create price marker element
         const el = document.createElement('div');
         el.className = 'price-marker';
         el.textContent = formatPriceShort(it.price);
-        // Debug tooltip: shows input → matched address
         el.title = `${addr} → ${matchedPlace}`;
-        const listingKey = getListingKey(it);
         el.dataset.listingId = listingKey;
 
-        // Hover marker → highlight tile (only on hover-capable devices)
         if (CAN_HOVER) {
-          el.addEventListener('mouseenter', () => {
-            highlightTile(listingKey, true);
-          });
-          el.addEventListener('mouseleave', () => {
-            highlightTile(listingKey, false);
-          });
+          el.addEventListener('mouseenter', () => highlightTile(listingKey, true));
+          el.addEventListener('mouseleave', () => highlightTile(listingKey, false));
         }
 
-        // Click to open listing
         el.addEventListener('click', (e) => {
           e.stopPropagation();
-          if (it.id) {
-            window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
-          } else {
-            window.location.href = `/listing.html?addr=${encodeURIComponent(addr)}`;
-          }
+          if (it.id) window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
+          else window.location.href = `/listing.html?addr=${encodeURIComponent(addr)}`;
         });
 
         const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
           .setLngLat(coords)
           .addTo(map);
+
         markers.push(marker);
-        markerMap[listingKey] = el; // Store reference for hover sync
+        markerMap[listingKey] = el;
       }
 
-      // TEMPORARILY DISABLED: Fit map to marker bounds
-      // Re-enable after geocoding is verified correct
-      /*
-      if (allListingsWithCoords.length >= 2) {
-        const lngs = allListingsWithCoords.map(l => l._lng);
-        const lats = allListingsWithCoords.map(l => l._lat);
-        const markerBounds = [
-          [Math.min(...lngs), Math.min(...lats)],
-          [Math.max(...lngs), Math.max(...lats)]
-        ];
-        map.fitBounds(markerBounds, { padding: 60, maxZoom: 16 });
-      } else if (allListingsWithCoords.length === 1) {
-        map.setCenter([allListingsWithCoords[0]._lng, allListingsWithCoords[0]._lat]);
-        map.setZoom(15);
-      }
-      */
-
-      // After markers are added, sync tiles to current viewport
+      // Render tiles initially based on current viewport
       syncTilesToViewport();
     }
 
-    // Sync tiles to map viewport (only show listings visible on map)
-    function syncTilesToViewport() {
-      if (!map || !allListingsWithCoords.length) return;
-      
-      const bounds = map.getBounds();
-      const visibleListings = allListingsWithCoords.filter(it => {
-        return bounds.contains([it._lng, it._lat]);
-      });
+    function renderTilesWithHover(grid, items) {
+      grid.innerHTML = '';
+      if (!items.length) {
+        grid.innerHTML = `<div class="text-sm text-gray-500">No listings in this map area. Pan or zoom out to see more.</div>`;
+        return;
+      }
+      items.forEach(item => {
+        const tile = renderTile(item, { onLikeIncrement: incrementLikeOnce });
+        const listingKey = getListingKey(item);
+        tile.dataset.listingId = listingKey;
 
-      const grid = $('grid');
-      renderTilesWithHover(grid, visibleListings);
-      
-      // Update count in header
+        if (CAN_HOVER) {
+          tile.addEventListener('mouseenter', () => highlightMarker(listingKey, true));
+          tile.addEventListener('mouseleave', () => highlightMarker(listingKey, false));
+        }
+
+        grid.appendChild(tile);
+      });
+    }
+
+    function syncTilesToViewport(){
+      if (!map) return;
+      const bounds = map.getBounds();
+
+      const visible = allListingsWithCoords.filter(it => bounds.contains([it._lng, it._lat]));
+      renderTilesWithHover($('grid'), visible);
+
       const qParam = $('qBox').value.trim();
-      const count = visibleListings.length;
+      const count = visible.length;
       const total = allListingsWithCoords.length;
-      $('qLabel').textContent = qParam 
-        ? `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} in map area for "${qParam}"` 
+
+      $('qLabel').textContent = qParam
+        ? `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} in map area for "${qParam}"`
         : `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} in map area`;
     }
 
-    // Wire up map move/zoom events for sync
-    function wireMapSync() {
+    function wireMapSync(){
       if (!map) return;
       map.on('moveend', syncTilesToViewport);
       map.on('zoomend', syncTilesToViewport);
     }
 
-    // Saved searches
+    // === Saved searches (local) ===
     function getSavedSearches(){ return getJSON('savedSearches', []); }
     function setSavedSearches(arr){ setJSON('savedSearches', arr); }
     function refreshSavedDropdown(){
@@ -711,7 +716,8 @@
         dd.appendChild(opt);
       });
     }
-    function saveCurrentSearch(name, q, filters, opts={}){
+
+    function saveCurrentSearch(name, q, filters, opts={}) {
       const email = (localStorage.getItem('loggedInEmail') || '').trim();
       if (!email && opts.alerts) {
         $('saveLoginNeeded').classList.remove('hidden');
@@ -734,7 +740,6 @@
       return record;
     }
 
-    // Show/hide save banner
     function showSaveBanner(show) {
       const banner = document.getElementById('saveBanner');
       if (!banner) return;
@@ -747,98 +752,8 @@
       }
     }
 
-    // Apply filters against a Firestore doc
-    function matchesFilters(doc, qtext, f){
-      const address = (doc.address || '').toLowerCase();
-      if (qtext && !address.includes(qtext.toLowerCase().trim())) return false;
-
-      const price = Number(doc.price || 0);
-      if (f.priceMin && price && price < f.priceMin) return false;
-      if (f.priceMax && price && price > f.priceMax) return false;
-
-      const beds = Number(doc.bedrooms || 0);
-      const baths = Number(doc.bathrooms || 0);
-      if (f.bedsMin && beds < f.bedsMin) return false;
-      if (f.bathsMin && baths < f.bathsMin) return false;
-
-      if (f.status) {
-        const normalized = (String(doc.status||'').toLowerCase()==='in_contract') ? 'In Contract' : (doc.status||'');
-        if (normalized !== f.status) return false;
-      }
-
-      if (f.propType) {
-        const type = String(doc.propertyType || '').toLowerCase();
-        if (!type || type !== f.propType.toLowerCase()) return false;
-      }
-
-      const commType = doc.commissionType || '%';
-      const commVal = Number(doc.commission || 0);
-      if (f.commPctMin) {
-        if (commType === '%' && commVal < f.commPctMin) return false;
-        if (commType === '$') {
-          const p = Number(doc.price || 0);
-          if (p && (commVal / p * 100) < f.commPctMin) return false;
-        }
-      }
-      if (f.commUsdMin) {
-        if (commType === '$' && commVal < f.commUsdMin) return false;
-        if (commType === '%') {
-          const p = Number(doc.price || 0);
-          if (p && Math.round(p * (commVal/100)) < f.commUsdMin) return false;
-        }
-      }
-
-      return true;
-    }
-
-    // Render tiles using shared renderer
-    function renderTiles(grid, items) {
-      grid.innerHTML = '';
-      if (!items.length) {
-        grid.innerHTML = `<div class="text-sm text-gray-500">No results. Try a different search.</div>`;
-        return;
-      }
-      items.forEach(item => {
-        const tile = renderTile(item, {
-          onLikeIncrement: incrementLikeOnce
-        });
-        grid.appendChild(tile);
-      });
-    }
-
-    // Render tiles with hover handlers for map marker sync
-    function renderTilesWithHover(grid, items) {
-      grid.innerHTML = '';
-      if (!items.length) {
-        grid.innerHTML = `<div class="text-sm text-gray-500">No listings in this map area. Pan or zoom out to see more.</div>`;
-        return;
-      }
-      items.forEach(item => {
-        const tile = renderTile(item, {
-          onLikeIncrement: incrementLikeOnce
-        });
-        
-        // Add data attribute for hover targeting
-        const listingKey = getListingKey(item);
-        tile.dataset.listingId = listingKey;
-        
-        // Hover tile → highlight corresponding map marker (only on hover-capable devices)
-        if (CAN_HOVER) {
-          tile.addEventListener('mouseenter', () => {
-            highlightMarker(listingKey, true);
-          });
-          tile.addEventListener('mouseleave', () => {
-            highlightMarker(listingKey, false);
-          });
-        }
-        
-        grid.appendChild(tile);
-      });
-    }
-
-    // Main boot
+    // === Boot ===
     (async function boot(){
-      const grid = $("grid");
       const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
       $("qBox").value = qParam;
       $("qLabel").textContent = qParam ? `Showing results for "${qParam}"` : 'Showing all listings';
@@ -849,7 +764,7 @@
       renderPills(lastFilters);
 
       await initMap(qParam);
-      wireMapSync(); // Enable pan/zoom → tile sync
+      wireMapSync();
 
       // Firestore fetch (ONLY real data)
       let docs = [];
@@ -857,7 +772,6 @@
         const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
         snap.forEach(d => {
           const data = d.data() || {};
-          // hide drafts unless signed or active
           const signed = !!(data.signedISC && typeof data.signedISC === 'object' && data.signedISC.date);
           const isActive = String(data.status || '').toLowerCase() === 'active';
           if (!signed && !isActive) return;
@@ -867,10 +781,10 @@
         console.warn("[search] Firestore fetch failed:", e);
       }
 
-      // Apply filters + query
+      // Apply query+filters
       const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
 
-      // Add markers (also syncs tiles to viewport)
+      // Add markers + tiles
       await addMarkers(filtered, qParam);
 
       // Email banner
@@ -883,14 +797,14 @@
         location.href = `/search.html?q=${encodeURIComponent(q)}`;
       };
 
-      // Filters
+      // Filters buttons
       $("applyFiltersBtn").onclick = async () => {
         const f = readFiltersFromUI();
         setJSON('lastFilters', f);
         renderPills(f);
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, f));
-        await addMarkers(refiltered, q); // Also syncs tiles to viewport
+        await addMarkers(refiltered, q);
         showSaveBanner(true);
       };
 
@@ -900,11 +814,12 @@
         renderPills({});
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, {}));
-        await addMarkers(refiltered, q); // Also syncs tiles to viewport
+        await addMarkers(refiltered, q);
         showSaveBanner(true);
       };
 
       // Saved searches dropdown
+      refreshSavedDropdown();
       const dd = $("savedSearchesDropdown");
       dd.onchange = async () => {
         const id = dd.value;
@@ -916,22 +831,16 @@
         writeFiltersToUI(sel.filters || {});
         renderPills(sel.filters || {});
         const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
-        await addMarkers(refiltered, sel.q || ''); // Also syncs tiles to viewport
+        await addMarkers(refiltered, sel.q || '');
         showSaveBanner(true);
       };
 
-      // Open filters/prompt via query params
+      // Optional: open filters/prompt via query params
       (function(){
         const u = new URL(location.href);
-        if (u.searchParams.get('open') === 'filters') {
-          document.getElementById('filtersPanel')?.setAttribute('open','');
-        }
-        if (u.searchParams.get('prompt') === 'save') {
-          showSaveBanner(true);
-        }
+        if (u.searchParams.get('open') === 'filters') document.getElementById('filtersPanel')?.setAttribute('open','');
+        if (u.searchParams.get('prompt') === 'save') showSaveBanner(true);
       })();
-
-      refreshSavedDropdown();
 
       // Save banner buttons
       $('saveYesBtn').addEventListener('click', () => {
@@ -941,6 +850,7 @@
         if (rec) $('saveConfirmed').classList.remove('hidden');
       });
       $('saveNoBtn').addEventListener('click', () => { showSaveBanner(false); });
+
     })();
   </script>
 </body>
