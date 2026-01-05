@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-05 (REVERSE: dot-only markers restored; keep Tasks A/B/D; NO price labels) -->
+<!-- Build: 2026-01-05 (Task D fix: KEEP dot geocoding, add always-on price label without changing coordinates) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -32,7 +32,7 @@
     .gc-share-left { left:10px; }
     .gc-share-right{ right:10px; }
 
-    /* === Task B: 50/50 layout === */
+    /* === Task B: Zillow-style 50/50 layout === */
     .search-layout { display:flex; flex-direction:column; height:100vh; }
     .search-header { flex-shrink:0; }
     .search-body { flex:1; display:flex; overflow:hidden; }
@@ -48,26 +48,55 @@
       .search-results #grid { grid-template-columns:1fr; }
     }
 
-    /* === DOT marker (exactly like your old working version) === */
+    /* === Marker UI: DOT is the anchor; price label is just a label (no pointer triangle) === */
+    .gc-marker {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+      cursor: pointer;
+      transform: translateY(-0.5px); /* tiny nudge, doesn't change coords */
+    }
     .gc-dot {
       width: 10px;
       height: 10px;
+      border-radius: 9999px;
       background: #dc2626;
       border: 2px solid #fff;
-      border-radius: 9999px;
       box-shadow: 0 1px 2px rgba(0,0,0,.3);
-      cursor: pointer;
+      flex: 0 0 auto;
     }
-
-    .gc-dot.highlighted {
-      transform: scale(1.35);
-      box-shadow: 0 2px 10px rgba(220,38,38,.35);
+    .gc-price {
+      background: #fff;
+      border: 2px solid #dc2626;
+      color: #dc2626;
+      font-weight: 800;
+      font-size: 12px;
+      line-height: 1;
+      padding: 5px 8px;
+      border-radius: 9999px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+      white-space: nowrap;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .gc-marker.highlighted .gc-price {
+      background: #dc2626;
+      color: #fff;
+    }
+    .gc-marker.highlighted .gc-dot {
+      background: #b91c1c;
     }
 
     .gc-tile.highlighted{
       outline:3px solid #dc2626;
       outline-offset:2px;
       box-shadow:0 4px 12px rgba(220,38,38,.3);
+    }
+
+    @media (hover:none) {
+      .gc-tile:hover { outline:none; }
     }
   </style>
 </head>
@@ -169,12 +198,15 @@
 
           <div id="saveBanner" class="w-full md:w-3/4 lg:w-2/3 banner p-3 mt-2">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div class="text-sm"><strong>Email these results?</strong> We'll send today's matches now and alert you when new listings appear.</div>
+              <div class="text-sm">
+                <strong>Email these results?</strong> We'll send today's matches now and alert you when new listings appear.
+              </div>
               <div class="flex gap-2">
                 <button id="saveYesBtn" class="btn bg-indigo-600 text-white">Yes, email & alert me</button>
                 <button id="saveNoBtn" class="btn border">Not now</button>
               </div>
             </div>
+
             <div id="saveLoginNeeded" class="hidden mt-2 text-sm text-amber-800">
               Please <a href="/login.html" class="underline">log in</a> to save searches and get alerts.
             </div>
@@ -197,11 +229,13 @@
   <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
+  <!-- Main module -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, orderBy, getDocs, limit, doc as fdoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { renderTile } from "/tile-renderer.js";
 
+    // Mapbox token (unchanged)
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
     if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -211,6 +245,7 @@
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const CAN_HOVER = window.matchMedia && window.matchMedia('(hover: hover)').matches;
 
+    // ===== Likes (kept) =====
     async function incrementLikeOnce(listingId) {
       try {
         const onceKey = 'likedOnce:' + listingId;
@@ -224,6 +259,7 @@
       }
     }
 
+    // ===== Filters & pills (kept) =====
     function readFiltersFromUI() {
       const val = (id) => (document.getElementById(id)?.value || '').trim();
       const num = (id) => {
@@ -317,6 +353,7 @@
       return true;
     }
 
+    // ===== Saved searches (kept) =====
     function getSavedSearches(){ return getJSON('savedSearches', []); }
     function setSavedSearches(arr){ setJSON('savedSearches', arr); }
     function refreshSavedDropdown(){
@@ -329,22 +366,60 @@
       });
     }
 
+    function saveCurrentSearch(name, q, filters, opts={}) {
+      const email = (localStorage.getItem('loggedInEmail') || '').trim();
+      if (!email && opts.alerts) {
+        $('saveLoginNeeded').classList.remove('hidden');
+        return null;
+      }
+      const arr = getSavedSearches();
+      const record = {
+        id: 'ss_' + Date.now(),
+        name: name || (q || 'Search') + ' #' + (arr.length+1),
+        q, filters,
+        email: email || '',
+        alerts: !!opts.alerts,
+        lastSent: opts.lastSent || null,
+        lastChecked: Date.now()
+      };
+      arr.unshift(record);
+      setSavedSearches(arr);
+      refreshSavedDropdown();
+      $("savedSearchesDropdown").value = record.id;
+      return record;
+    }
+
     function showSaveBanner(show) {
       const banner = document.getElementById('saveBanner');
       if (!banner) return;
       banner.style.display = show ? 'block' : 'none';
+      if (!show) {
+        const login = document.getElementById('saveLoginNeeded');
+        const conf  = document.getElementById('saveConfirmed');
+        if (login) login.classList.add('hidden');
+        if (conf)  conf.classList.add('hidden');
+      }
     }
 
-    // ===== Map + markers =====
+    // ===== Map + markers + viewport sync (DOT GEOCODING PRESERVED) =====
     let map;
     let markers = [];
-    let markerMap = {};
+    let markerMap = {}; // listingKey -> marker element
     let allListingsWithCoords = [];
 
-    const geocodeCache = new Map(); // exact address -> [lng,lat] or null
+    // cache keyed by exact address string (pre-A behavior)
+    const geocodeCache = new Map(); // address -> [lng,lat] OR null
 
     function getListingKey(it){
       return it?.id ? String(it.id) : String(it?.address || '').trim().toLowerCase();
+    }
+
+    function formatPriceShort(price) {
+      const p = Number(price || 0);
+      if (!p) return '$-';
+      if (p >= 1000000) return '$' + (p / 1000000).toFixed(p % 1000000 === 0 ? 0 : 1) + 'M';
+      if (p >= 1000) return '$' + Math.round(p / 1000) + 'K';
+      return '$' + p.toLocaleString();
     }
 
     async function geocodeCenter(q){
@@ -358,7 +433,12 @@
 
     async function initMap(q){
       const center = (q && await geocodeCenter(q)) || [-117.7854, 33.5427];
-      map = new mapboxgl.Map({ container:'mapCanvas', style:'mapbox://styles/mapbox/streets-v12', center, zoom: 12.5 });
+      map = new mapboxgl.Map({
+        container: 'mapCanvas',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center,
+        zoom: 12.5
+      });
       map.addControl(new mapboxgl.NavigationControl());
       setTimeout(() => { try { map.resize(); } catch(e){} }, 120);
       return center;
@@ -371,21 +451,23 @@
       allListingsWithCoords = [];
     }
 
+    // EXACT address geocode (pre-A behavior) — NO bbox/proximity/rewrites.
     async function geocodeExactAddress(addr){
       const a = String(addr || '').trim();
       if (!a) return null;
       if (geocodeCache.has(a)) return geocodeCache.get(a);
+
       try {
         const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(a)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
         const data = await resp.json();
         const c = data?.features?.[0]?.center || null;
-        const out = (c && Array.isArray(c) && c.length===2) ? c : null;
-        geocodeCache.set(a, out);
-        return out;
-      } catch {
-        geocodeCache.set(a, null);
-        return null;
-      }
+        if (c && Array.isArray(c) && c.length === 2) {
+          geocodeCache.set(a, c);
+          return c;
+        }
+      } catch {}
+      geocodeCache.set(a, null);
+      return null;
     }
 
     function highlightMarker(listingKey, on){
@@ -400,7 +482,7 @@
       tile.classList.toggle('highlighted', !!on);
     }
 
-    async function addDotMarkers(items){
+    async function addMarkersWithDotPrice(items){
       if (!map) return;
       clearMarkers();
 
@@ -416,27 +498,40 @@
         const listingKey = getListingKey(it);
         allListingsWithCoords.push({ ...it, _lng: coords[0], _lat: coords[1] });
 
-        const el = document.createElement('div');
-        el.className = 'gc-dot';
-        el.title = addr;
+        // Composite marker: DOT is at the coordinate; label extends to the right.
+        const wrap = document.createElement('div');
+        wrap.className = 'gc-marker';
+        wrap.dataset.listingId = listingKey;
+        wrap.title = addr;
+
+        const dot = document.createElement('span');
+        dot.className = 'gc-dot';
+
+        const price = document.createElement('span');
+        price.className = 'gc-price';
+        price.textContent = formatPriceShort(it.price);
+
+        wrap.appendChild(dot);
+        wrap.appendChild(price);
 
         if (CAN_HOVER) {
-          el.addEventListener('mouseenter', () => highlightTile(listingKey, true));
-          el.addEventListener('mouseleave', () => highlightTile(listingKey, false));
+          wrap.addEventListener('mouseenter', () => highlightTile(listingKey, true));
+          wrap.addEventListener('mouseleave', () => highlightTile(listingKey, false));
         }
 
-        el.addEventListener('click', (e) => {
+        wrap.addEventListener('click', (e) => {
           e.stopPropagation();
           if (it.id) window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
           else window.location.href = `/listing.html?addr=${encodeURIComponent(addr)}`;
         });
 
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        // Anchor LEFT so the dot (leftmost visual) is the coordinate.
+        const marker = new mapboxgl.Marker({ element: wrap, anchor: 'left' })
           .setLngLat(coords)
           .addTo(map);
 
         markers.push(marker);
-        markerMap[listingKey] = el;
+        markerMap[listingKey] = wrap;
       }
 
       syncTilesToViewport();
@@ -457,7 +552,6 @@
           tile.addEventListener('mouseenter', () => highlightMarker(listingKey, true));
           tile.addEventListener('mouseleave', () => highlightMarker(listingKey, false));
         }
-
         grid.appendChild(tile);
       });
     }
@@ -465,6 +559,7 @@
     function syncTilesToViewport(){
       if (!map) return;
       const bounds = map.getBounds();
+
       const visible = allListingsWithCoords.filter(it => bounds.contains([it._lng, it._lat]));
       renderTilesWithHover($('grid'), visible);
 
@@ -496,6 +591,7 @@
       await initMap(qParam);
       wireMapSync();
 
+      // Firestore fetch (ONLY real data)
       let docs = [];
       try {
         const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
@@ -511,23 +607,26 @@
       }
 
       const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
-      await addDotMarkers(filtered);
+
+      await addMarkersWithDotPrice(filtered);
 
       showSaveBanner(true);
 
+      // Search button
       $("applyBtn").onclick = () => {
         const q = $("qBox").value.trim();
         localStorage.setItem('lastSearch', q);
         location.href = `/search.html?q=${encodeURIComponent(q)}`;
       };
 
+      // Filters
       $("applyFiltersBtn").onclick = async () => {
         const f = readFiltersFromUI();
         setJSON('lastFilters', f);
         renderPills(f);
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, f));
-        await addDotMarkers(refiltered);
+        await addMarkersWithDotPrice(refiltered);
         showSaveBanner(true);
       };
 
@@ -537,10 +636,11 @@
         renderPills({});
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, {}));
-        await addDotMarkers(refiltered);
+        await addMarkersWithDotPrice(refiltered);
         showSaveBanner(true);
       };
 
+      // Saved searches
       refreshSavedDropdown();
       const dd = $("savedSearchesDropdown");
       dd.onchange = async () => {
@@ -553,9 +653,26 @@
         writeFiltersToUI(sel.filters || {});
         renderPills(sel.filters || {});
         const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
-        await addDotMarkers(refiltered);
+        await addMarkersWithDotPrice(refiltered);
         showSaveBanner(true);
       };
+
+      // Optional query params
+      (function(){
+        const u = new URL(location.href);
+        if (u.searchParams.get('open') === 'filters') document.getElementById('filtersPanel')?.setAttribute('open','');
+        if (u.searchParams.get('prompt') === 'save') showSaveBanner(true);
+      })();
+
+      // Save banner buttons
+      $('saveYesBtn').addEventListener('click', () => {
+        const q = $("qBox").value.trim();
+        const filters = readFiltersFromUI();
+        const rec = saveCurrentSearch('', q, filters, { alerts: true, lastSent: Date.now() });
+        if (rec) $('saveConfirmed').classList.remove('hidden');
+      });
+      $('saveNoBtn').addEventListener('click', () => { showSaveBanner(false); });
+
     })();
   </script>
 </body>
