@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-05 (Task D finish: restore proven dot markers + keep Tasks A/B/C/D behaviors) -->
+<!-- Build: 2026-01-05 (Task D stable + price pills: same geocode coords, different marker DOM) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -27,7 +27,7 @@
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
-    .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
+    .gc-heart { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
     .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); cursor:pointer; }
     .gc-share-left { left:10px; }
     .gc-share-right{ right:10px; }
@@ -39,7 +39,7 @@
     .search-map { width:50%; height:100%; flex-shrink:0; background:#fff; }
     .search-map #mapCanvas { width:100%; height:100%; }
     .search-results { width:50%; height:100%; overflow-y:auto; background:#f3f4f6; padding:1rem; }
-    .search-results #grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
+    .search-results #grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:1rem; }
 
     @media (max-width: 1023px) {
       .search-body { flex-direction:column; }
@@ -48,20 +48,51 @@
       .search-results #grid { grid-template-columns:1fr; }
     }
 
-    /* === Marker dot styles (RESTORED proven behavior) === */
-    .gc-dot {
-      width: 10px;
-      height: 10px;
-      background: #dc2626;
-      border: 2px solid #fff;
-      border-radius: 50%;
-      box-shadow: 0 1px 2px rgba(0,0,0,.3);
-      cursor: pointer;
+    /* === Price pill markers (using SAME coords as the working dots) === */
+    .gc-price-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:max-content;
+      max-width:140px;
+      padding:4px 8px;
+
+      background:#fff;
+      border:2px solid #dc2626;
+      border-radius:10px;
+
+      font-size:12px;
+      font-weight:800;
+      color:#dc2626;
+      white-space:nowrap;
+
+      cursor:pointer;
+      box-shadow:0 2px 6px rgba(0,0,0,.25);
+      transition:transform .15s, box-shadow .15s, background .15s;
+
+      position:relative;
       transform: translateZ(0);
     }
-    .gc-dot.highlighted {
-      transform: scale(1.6);
-      box-shadow: 0 3px 10px rgba(0,0,0,.35);
+    .gc-price-pill:hover{
+      transform:scale(1.08);
+      box-shadow:0 4px 12px rgba(0,0,0,.3);
+      z-index:10;
+    }
+    .gc-price-pill.highlighted{
+      background:#dc2626;
+      color:#fff;
+      transform:scale(1.12);
+      z-index:20;
+    }
+    .gc-price-pill::after{
+      content:'';
+      position:absolute;
+      bottom:-8px;
+      left:50%;
+      transform:translateX(-50%);
+      border-left:8px solid transparent;
+      border-right:8px solid transparent;
+      border-top:8px solid #dc2626;
     }
 
     .gc-tile.highlighted{
@@ -71,7 +102,7 @@
     }
 
     @media (hover:none) {
-      .gc-dot.highlighted { transform: none; }
+      .gc-price-pill:hover { transform:none; box-shadow:0 2px 6px rgba(0,0,0,.25); }
       .gc-tile:hover { outline:none; }
     }
   </style>
@@ -368,16 +399,24 @@
       }
     }
 
-    // ===== Map + markers + viewport sync (DOTS) =====
+    // ===== Map + markers + viewport sync (same correct coords, now price pills) =====
     let map;
     let markers = [];
-    let markerMap = {}; // listingKey -> dot element
+    let markerMap = {}; // listingKey -> marker element
     let allListingsWithCoords = [];
 
     const geocodeCache = new Map(); // exact address -> [lng,lat] or null
 
     function getListingKey(it){
       return it?.id ? String(it.id) : String(it?.address || '').trim().toLowerCase();
+    }
+
+    function formatPriceShort(price) {
+      const p = Number(price || 0);
+      if (!p) return '$-';
+      if (p >= 1000000) return '$' + (p / 1000000).toFixed(p % 1000000 === 0 ? 0 : 1) + 'M';
+      if (p >= 1000) return '$' + Math.round(p / 1000) + 'K';
+      return '$' + p.toLocaleString();
     }
 
     async function geocodeCenter(q){
@@ -433,7 +472,7 @@
       tile.classList.toggle('highlighted', !!on);
     }
 
-    async function addDotMarkers(items){
+    async function addPricePillMarkers(items){
       if (!map) return;
       clearMarkers();
 
@@ -450,7 +489,8 @@
         allListingsWithCoords.push({ ...it, _lng: coords[0], _lat: coords[1] });
 
         const el = document.createElement('div');
-        el.className = 'gc-dot';
+        el.className = 'gc-price-pill';
+        el.textContent = formatPriceShort(it.price);
         el.title = addr;
         el.dataset.listingId = listingKey;
 
@@ -465,7 +505,7 @@
           else window.location.href = `/listing.html?addr=${encodeURIComponent(addr)}`;
         });
 
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
           .setLngLat(coords)
           .addTo(map);
 
@@ -545,7 +585,7 @@
       }
 
       const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
-      await addDotMarkers(filtered);
+      await addPricePillMarkers(filtered);
 
       showSaveBanner(true);
 
@@ -561,7 +601,7 @@
         renderPills(f);
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, f));
-        await addDotMarkers(refiltered);
+        await addPricePillMarkers(refiltered);
         showSaveBanner(true);
       };
 
@@ -571,7 +611,7 @@
         renderPills({});
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, {}));
-        await addDotMarkers(refiltered);
+        await addPricePillMarkers(refiltered);
         showSaveBanner(true);
       };
 
@@ -587,7 +627,7 @@
         writeFiltersToUI(sel.filters || {});
         renderPills(sel.filters || {});
         const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
-        await addDotMarkers(refiltered);
+        await addPricePillMarkers(refiltered);
         showSaveBanner(true);
       };
 
