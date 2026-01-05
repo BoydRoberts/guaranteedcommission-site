@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-04 (Task D+fix: VERIFIED rooftop-ish markers only; no fake correlations) -->
+<!-- Build: 2026-01-05 (Fix v2: restore dot-accurate geocoding, keep Tasks A/B/C, add address-only geocode + debug) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -27,29 +27,28 @@
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
-    .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
+    .gc-heart { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
     .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); cursor:pointer; }
     .gc-share-left { left:10px; }
     .gc-share-right{ right:10px; }
 
-    /* === Zillow-style 50/50 Layout === */
+    /* === Task B: Zillow-style 50/50 layout === */
     .search-layout { display:flex; flex-direction:column; height:100vh; }
     .search-header { flex-shrink:0; }
     .search-body { flex:1; display:flex; overflow:hidden; }
-    .search-map { width:50%; height:100%; flex-shrink:0; }
+    .search-map { width:50%; height:100%; flex-shrink:0; background:#fff; }
     .search-map #mapCanvas { width:100%; height:100%; }
     .search-results { width:50%; height:100%; overflow-y:auto; background:#f3f4f6; padding:1rem; }
-    .search-results #grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
+    .search-results #grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:1rem; }
 
-    /* Mobile: stack vertically */
     @media (max-width: 1023px) {
       .search-body { flex-direction:column; }
-      .search-map { width:100%; height:300px; flex-shrink:0; }
-      .search-results { width:100%; height:auto; flex:1; overflow-y:auto; }
+      .search-map { width:100%; height:300px; }
+      .search-results { width:100%; height:auto; flex:1; }
       .search-results #grid { grid-template-columns:1fr; }
     }
 
-    /* === Price Marker Styles (Zillow-style) === */
+    /* === Task C: price markers (DOM only) === */
     .price-marker{
       display:inline-flex;
       align-items:center;
@@ -69,17 +68,8 @@
       transition:transform .15s, box-shadow .15s, background .15s;
       position:relative;
     }
-    .price-marker:hover{
-      transform:scale(1.1);
-      box-shadow:0 4px 12px rgba(0,0,0,.3);
-      z-index:10;
-    }
-    .price-marker.highlighted{
-      background:#dc2626;
-      color:#fff;
-      transform:scale(1.15);
-      z-index:20;
-    }
+    .price-marker:hover{ transform:scale(1.08); box-shadow:0 4px 12px rgba(0,0,0,.3); z-index:10; }
+    .price-marker.highlighted{ background:#dc2626; color:#fff; transform:scale(1.12); z-index:20; }
     .price-marker::after{
       content:'';
       position:absolute;
@@ -91,14 +81,12 @@
       border-top:8px solid #dc2626;
     }
 
-    /* Tile hover highlight */
     .gc-tile.highlighted{
       outline:3px solid #dc2626;
       outline-offset:2px;
       box-shadow:0 4px 12px rgba(220,38,38,.3);
     }
 
-    /* Mobile: disable hover effects (touch-safe) */
     @media (hover:none) {
       .price-marker:hover { transform:none; box-shadow:0 2px 6px rgba(0,0,0,.25); }
       .gc-tile:hover { outline:none; }
@@ -108,7 +96,7 @@
 
 <body class="search-layout text-gray-900">
 
-  <!-- Search Header -->
+  <!-- Header -->
   <div class="search-header">
     <header class="bg-white shadow">
       <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -143,9 +131,7 @@
           <details id="filtersPanel" class="w-full md:w-3/4 lg:w-2/3">
             <summary class="flex items-center justify-between cursor-pointer select-none px-2 py-2 text-sm text-gray-700">
               <span class="font-semibold">Advanced filters</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" class="transition">
-                <path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/>
-              </svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" class="transition"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
             </summary>
 
             <div class="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
@@ -205,15 +191,12 @@
 
           <div id="saveBanner" class="w-full md:w-3/4 lg:w-2/3 banner p-3 mt-2">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div class="text-sm">
-                <strong>Email these results?</strong> We'll send today's matches now and alert you when new listings appear.
-              </div>
+              <div class="text-sm"><strong>Email these results?</strong> We'll send today's matches now and alert you when new listings appear.</div>
               <div class="flex gap-2">
                 <button id="saveYesBtn" class="btn bg-indigo-600 text-white">Yes, email & alert me</button>
                 <button id="saveNoBtn" class="btn border">Not now</button>
               </div>
             </div>
-
             <div id="saveLoginNeeded" class="hidden mt-2 text-sm text-amber-800">
               Please <a href="/login.html" class="underline">log in</a> to save searches and get alerts.
             </div>
@@ -238,7 +221,7 @@
 
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    import { collection, query, orderBy, getDocs, limit, doc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { collection, query, orderBy, getDocs, limit, doc as fdoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { renderTile } from "/tile-renderer.js";
 
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
@@ -250,14 +233,16 @@
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const CAN_HOVER = window.matchMedia && window.matchMedia('(hover: hover)').matches;
 
-    // =========
-    // MVP: likes
-    // =========
+    // Toggle debug by running in console:
+    // localStorage.setItem("gcDebugGeo","1"); location.reload();
+    // localStorage.removeItem("gcDebugGeo"); location.reload();
+    const DEBUG_GEO = (localStorage.getItem("gcDebugGeo") === "1");
+
     async function incrementLikeOnce(listingId) {
       try {
         const onceKey = 'likedOnce:' + listingId;
         if (localStorage.getItem(onceKey)) return false;
-        await updateDoc(doc(db, "listings", listingId), { likes: increment(1), updatedAt: serverTimestamp() });
+        await updateDoc(fdoc(db, "listings", listingId), { likes: increment(1), updatedAt: serverTimestamp() });
         localStorage.setItem(onceKey, '1');
         return true;
       } catch (e) {
@@ -266,49 +251,6 @@
       }
     }
 
-    // =========
-    // Tight bboxes (map view) – doesn’t “force” geocoding; only helps initial view + optional bbox pass
-    // =========
-    const CITY_BBOXES = {
-      'laguna beach': [-117.82, 33.51, -117.76, 33.59],
-      'newport beach': [-117.95, 33.58, -117.85, 33.66],
-      'dana point': [-117.72, 33.44, -117.66, 33.50],
-      'laguna niguel': [-117.73, 33.50, -117.67, 33.56],
-      'san clemente': [-117.65, 33.40, -117.58, 33.48],
-      'irvine': [-117.86, 33.62, -117.70, 33.74],
-      'costa mesa': [-117.94, 33.62, -117.86, 33.70],
-      'huntington beach': [-118.02, 33.64, -117.94, 33.74],
-    };
-
-    const ZIP_BBOXES = {
-      '92651': CITY_BBOXES['laguna beach'],
-    };
-
-    function normStr(s){ return String(s || '').trim().toLowerCase(); }
-    function hasLetters(s){ return /[a-z]/i.test(String(s || '')); }
-
-    function getManualBbox(searchQuery){
-      if (!searchQuery) return null;
-      let s = normStr(searchQuery);
-
-      const zip = (s.match(/\b\d{5}\b/) || [])[0];
-      if (zip && ZIP_BBOXES[zip]) return ZIP_BBOXES[zip];
-
-      s = s.replace(/,.*$/, '').trim();
-      s = s.replace(/\b\d{5}(-\d{4})?\b/g, '').trim();
-      s = s.replace(/\s+/g, ' ').trim();
-
-      return CITY_BBOXES[s] || null;
-    }
-
-    function bboxCenter(bbox){
-      const [minLng, minLat, maxLng, maxLat] = bbox;
-      return [(minLng + maxLng)/2, (minLat + maxLat)/2];
-    }
-
-    // =========
-    // Filters UI
-    // =========
     function readFiltersFromUI() {
       const val = (id) => (document.getElementById(id)?.value || '').trim();
       const num = (id) => {
@@ -402,380 +344,6 @@
       return true;
     }
 
-    // =========
-    // Map + markers + sync
-    // =========
-    let map;
-    let markers = [];
-    let markerMap = {}; // listingKey -> marker element
-    let allListingsWithCoords = [];
-
-    let SEARCH_CENTER = null; // [lng, lat]
-    let SEARCH_BBOX = null;   // [minLng, minLat, maxLng, maxLat]
-    const geocodeCache = {};  // cacheKey -> {coords:[lng,lat], placeName:''}
-
-    function getListingKey(item){
-      if (item.id) return String(item.id);
-      return String(item.address || '').trim().toLowerCase();
-    }
-
-    function isValidLatLng(lat, lng) {
-      const latNum = Number(lat);
-      const lngNum = Number(lng);
-      return !isNaN(latNum) && !isNaN(lngNum)
-        && latNum >= -90 && latNum <= 90
-        && lngNum >= -180 && lngNum <= 180
-        && (latNum !== 0 || lngNum !== 0);
-    }
-
-    function isInsideBbox(coords, bbox){
-      if (!bbox || !coords) return true;
-      const [lng, lat] = coords;
-      const [minLng, minLat, maxLng, maxLat] = bbox;
-      return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat;
-    }
-
-    function needsCA(addr) {
-      const a = String(addr || '');
-      const hasState2 = /,\s*[A-Z]{2}\b/.test(a);
-      const hasStateWord = /\bcalifornia\b/i.test(a);
-      const hasZip = /\b\d{5}(-\d{4})?\b/.test(a);
-      return !(hasState2 || hasStateWord || hasZip);
-    }
-
-    function shouldEnforceCityName(searchArea){
-      const s = String(searchArea || '').trim();
-      if (!s) return false;
-      if (!hasLetters(s)) return false; // don’t enforce for ZIP-only
-      return s.length >= 3;
-    }
-
-    function cityToken(searchArea){
-      const s = String(searchArea || '').split(',')[0];
-      return normStr(s);
-    }
-
-    // --- street normalization for verifying “same house” ---
-    const STREET_EQUIV = [
-      [/[\.\,]/g, ' '],
-      [/\s+/g, ' '],
-      [/\bhighway\b/g, 'hwy'],
-      [/\bhiway\b/g, 'hwy'],
-      [/\broute\b/g, 'rt'],
-      [/\bstreet\b/g, 'st'],
-      [/\bavenue\b/g, 'ave'],
-      [/\bboulevard\b/g, 'blvd'],
-      [/\bdrive\b/g, 'dr'],
-      [/\broad\b/g, 'rd'],
-      [/\blane\b/g, 'ln'],
-      [/\bcourt\b/g, 'ct'],
-      [/\bplace\b/g, 'pl'],
-      [/\bterrace\b/g, 'ter'],
-      [/\bparkway\b/g, 'pkwy'],
-      [/\bnorth\b/g, 'n'],
-      [/\bsouth\b/g, 's'],
-      [/\beast\b/g, 'e'],
-      [/\bwest\b/g, 'w'],
-    ];
-
-    function normalizeStreet(s){
-      let t = normStr(s);
-      for (const [re, rep] of STREET_EQUIV) t = t.replace(re, rep);
-      t = t.replace(/\s+/g, ' ').trim();
-      return t;
-    }
-
-    function parseStreetParts(fullAddr){
-      const first = String(fullAddr || '').split(',')[0].trim();
-      const m = first.match(/^\s*(\d+)\s+(.*)\s*$/);
-      if (!m) return { num: '', street: normalizeStreet(first) };
-      return { num: m[1], street: normalizeStreet(m[2]) };
-    }
-
-    function placeHasSameHouse(inputAddr, placeName){
-      const a = parseStreetParts(inputAddr);
-      const p = parseStreetParts(placeName);
-      // Must match street number if we have one
-      if (a.num && p.num && a.num !== p.num) return false;
-      if (a.num && !p.num) return false;
-
-      // Street name: require substantial overlap
-      // Example: "coast hwy" should match "coast hwy"
-      if (!a.street) return true;
-      if (!p.street) return false;
-
-      // simple contains either way
-      if (p.street.includes(a.street) || a.street.includes(p.street)) return true;
-
-      // token overlap check
-      const aTokens = a.street.split(' ').filter(Boolean);
-      const pTokens = p.street.split(' ').filter(Boolean);
-      const setP = new Set(pTokens);
-      let hit = 0;
-      for (const tok of aTokens) if (setP.has(tok)) hit++;
-      // require at least 2 token hits for longer streets, 1 for short
-      const need = aTokens.length >= 3 ? 2 : 1;
-      return hit >= need;
-    }
-
-    async function geocodeWithBounds(q){
-      if (!MAPBOX_TOKEN || !q) return null;
-      try {
-        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
-        const data = await resp.json();
-        const feature = data?.features?.[0];
-        if (!feature) return null;
-        return { center: feature.center, bounds: feature.bbox || null };
-      } catch {
-        return null;
-      }
-    }
-
-    // Pass 1: optional bbox/proximity; Pass 2: no bbox/proximity if pass1 fails
-    async function geocodeAddressVerified(addr, searchArea=''){
-      if (!addr || !MAPBOX_TOKEN) return null;
-
-      let queryAddr = String(addr).trim();
-      if (!queryAddr.includes(',') && searchArea) queryAddr = `${queryAddr}, ${searchArea}`;
-      if (needsCA(queryAddr)) queryAddr = `${queryAddr}, CA`;
-
-      const cacheKey = normStr(queryAddr);
-      if (geocodeCache[cacheKey]) return geocodeCache[cacheKey];
-
-      const needCity = shouldEnforceCityName(searchArea) ? cityToken(searchArea) : '';
-
-      async function fetchCandidates(useConstraints){
-        let url =
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(queryAddr)}.json` +
-          `?limit=5&types=address&autocomplete=false&country=us&access_token=${MAPBOX_TOKEN}`;
-
-        if (useConstraints) {
-          if (SEARCH_BBOX && Array.isArray(SEARCH_BBOX) && SEARCH_BBOX.length === 4) url += `&bbox=${SEARCH_BBOX.join(',')}`;
-          if (SEARCH_CENTER && Array.isArray(SEARCH_CENTER) && SEARCH_CENTER.length === 2) url += `&proximity=${SEARCH_CENTER.join(',')}`;
-        }
-
-        const resp = await fetch(url);
-        const data = await resp.json();
-        return data?.features || [];
-      }
-
-      function acceptFeature(f){
-        if (!f?.place_type?.includes('address')) return false;
-        const coords = f.center;
-        if (!coords || coords.length !== 2) return false;
-
-        // if we have a bbox, require inside bbox (for view locality), but don’t “force” wrong house:
-        if (SEARCH_BBOX && !isInsideBbox(coords, SEARCH_BBOX)) return false;
-
-        if (needCity) {
-          const pl = normStr(f.place_name);
-          if (!pl.includes(needCity)) return false;
-        }
-
-        // critical: must match same house (street num + street)
-        if (!placeHasSameHouse(addr, f.place_name || '')) return false;
-
-        return true;
-      }
-
-      // Try with constraints first
-      let features = [];
-      try {
-        features = await fetchCandidates(true);
-      } catch(e) {
-        features = [];
-      }
-
-      let chosen = features.find(acceptFeature) || null;
-
-      // If failed, retry WITHOUT constraints (bbox can cause wrong match)
-      if (!chosen) {
-        try {
-          const features2 = await fetchCandidates(false);
-          chosen = features2.find(acceptFeature) || null;
-        } catch(e) {
-          chosen = null;
-        }
-      }
-
-      if (!chosen) {
-        console.warn(`[geocode] NO VERIFIED MATCH: "${addr}" query="${queryAddr}"`);
-        return null;
-      }
-
-      const result = { coords: chosen.center, placeName: chosen.place_name || '' };
-      geocodeCache[cacheKey] = result;
-      return result;
-    }
-
-    async function initMap(q){
-      const manualBbox = getManualBbox(q);
-      const geo = await geocodeWithBounds(q);
-
-      if (manualBbox) {
-        SEARCH_BBOX = manualBbox;
-        SEARCH_CENTER = bboxCenter(manualBbox);
-        console.log('[map] Using MANUAL bbox for:', q, SEARCH_BBOX);
-      } else if (geo?.bounds) {
-        let [a,b,c,d] = geo.bounds;
-        SEARCH_BBOX = [Math.min(a,c), Math.min(b,d), Math.max(a,c), Math.max(b,d)];
-        SEARCH_CENTER = geo.center || bboxCenter(SEARCH_BBOX);
-        console.log('[map] Using MAPBOX bbox for:', q, SEARCH_BBOX);
-      } else {
-        SEARCH_BBOX = null;
-        SEARCH_CENTER = geo?.center || [-117.7854, 33.5427];
-        console.log('[map] No bbox available; using center:', SEARCH_CENTER);
-      }
-
-      const center = SEARCH_CENTER || [-117.7854, 33.5427];
-
-      map = new mapboxgl.Map({
-        container: 'mapCanvas',
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center,
-        zoom: 13.5
-      });
-      map.addControl(new mapboxgl.NavigationControl());
-
-      if (SEARCH_BBOX) {
-        const b = SEARCH_BBOX;
-        map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 50, maxZoom: 15 });
-      }
-
-      setTimeout(() => { try { map.resize(); } catch(e){} }, 120);
-      return center;
-    }
-
-    function clearMarkers(){
-      markers.forEach(m => m.remove());
-      markers = [];
-      markerMap = {};
-      allListingsWithCoords = [];
-    }
-
-    function formatPriceShort(price) {
-      const p = Number(price || 0);
-      if (!p) return '$-';
-      if (p >= 1000000) return '$' + (p / 1000000).toFixed(p % 1000000 === 0 ? 0 : 1) + 'M';
-      if (p >= 1000) return '$' + Math.round(p / 1000) + 'K';
-      return '$' + p.toLocaleString();
-    }
-
-    function highlightMarker(listingId, on){
-      const el = markerMap[listingId];
-      if (!el) return;
-      el.classList.toggle('highlighted', !!on);
-    }
-
-    function highlightTile(listingId, on){
-      const tile = document.querySelector(`[data-listing-id="${listingId}"]`);
-      if (!tile) return;
-      tile.classList.toggle('highlighted', !!on);
-    }
-
-    async function addMarkers(items, searchArea=''){
-      if (!map) return;
-      clearMarkers();
-
-      const subset = items.slice(0, 100);
-
-      for (const it of subset) {
-        const addr = (it?.address || '').trim();
-        if (!addr) continue;
-
-        let coords = null;
-        let matchedPlace = addr;
-
-        if (isValidLatLng(it.lat, it.lng)) {
-          coords = [Number(it.lng), Number(it.lat)];
-          matchedPlace = addr;
-        } else {
-          const geoRes = await geocodeAddressVerified(addr, searchArea);
-          if (geoRes) {
-            coords = geoRes.coords;
-            matchedPlace = geoRes.placeName || addr;
-          }
-        }
-
-        // IMPORTANT: If we can’t verify, we DO NOT place a marker.
-        if (!coords) continue;
-
-        const listingKey = getListingKey(it);
-        allListingsWithCoords.push({ ...it, _lng: coords[0], _lat: coords[1] });
-
-        const el = document.createElement('div');
-        el.className = 'price-marker';
-        el.textContent = formatPriceShort(it.price);
-        el.title = `${addr} → ${matchedPlace}`;
-        el.dataset.listingId = listingKey;
-
-        if (CAN_HOVER) {
-          el.addEventListener('mouseenter', () => highlightTile(listingKey, true));
-          el.addEventListener('mouseleave', () => highlightTile(listingKey, false));
-        }
-
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (it.id) window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
-          else window.location.href = `/listing.html?addr=${encodeURIComponent(addr)}`;
-        });
-
-        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
-          .setLngLat(coords)
-          .addTo(map);
-
-        markers.push(marker);
-        markerMap[listingKey] = el;
-      }
-
-      syncTilesToViewport();
-    }
-
-    function renderTilesWithHover(grid, items) {
-      grid.innerHTML = '';
-      if (!items.length) {
-        grid.innerHTML = `<div class="text-sm text-gray-500">No listings in this map area. Pan or zoom out to see more.</div>`;
-        return;
-      }
-      items.forEach(item => {
-        const tile = renderTile(item, { onLikeIncrement: incrementLikeOnce });
-        const listingKey = getListingKey(item);
-        tile.dataset.listingId = listingKey;
-
-        if (CAN_HOVER) {
-          tile.addEventListener('mouseenter', () => highlightMarker(listingKey, true));
-          tile.addEventListener('mouseleave', () => highlightMarker(listingKey, false));
-        }
-
-        grid.appendChild(tile);
-      });
-    }
-
-    function syncTilesToViewport(){
-      if (!map) return;
-      const bounds = map.getBounds();
-
-      const visible = allListingsWithCoords.filter(it => bounds.contains([it._lng, it._lat]));
-      renderTilesWithHover($('grid'), visible);
-
-      const qParam = $('qBox').value.trim();
-      const count = visible.length;
-      const total = allListingsWithCoords.length;
-
-      $('qLabel').textContent = qParam
-        ? `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} in map area for "${qParam}"`
-        : `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} in map area`;
-    }
-
-    function wireMapSync(){
-      if (!map) return;
-      map.on('moveend', syncTilesToViewport);
-      map.on('zoomend', syncTilesToViewport);
-    }
-
-    // =========
-    // Saved searches (local)
-    // =========
     function getSavedSearches(){ return getJSON('savedSearches', []); }
     function setSavedSearches(arr){ setJSON('savedSearches', arr); }
     function refreshSavedDropdown(){
@@ -787,8 +355,7 @@
         dd.appendChild(opt);
       });
     }
-
-    function saveCurrentSearch(name, q, filters, opts={}) {
+    function saveCurrentSearch(name, q, filters, opts={}){
       const email = (localStorage.getItem('loggedInEmail') || '').trim();
       if (!email && opts.alerts) {
         $('saveLoginNeeded').classList.remove('hidden');
@@ -823,9 +390,192 @@
       }
     }
 
-    // =========
-    // Boot
-    // =========
+    // ===== Map + markers =====
+    let map;
+    let markers = [];
+    let markerMap = {}; // listingKey -> marker element
+    let allListingsWithCoords = [];
+    const geocodeCache = new Map(); // exact address -> {coords:[lng,lat], placeName:''}
+
+    function formatPriceShort(price) {
+      const p = Number(price || 0);
+      if (!p) return '$-';
+      if (p >= 1000000) return '$' + (p / 1000000).toFixed(p % 1000000 === 0 ? 0 : 1) + 'M';
+      if (p >= 1000) return '$' + Math.round(p / 1000) + 'K';
+      return '$' + p.toLocaleString();
+    }
+
+    function getListingKey(it){
+      return it?.id ? String(it.id) : String(it?.address || '').trim().toLowerCase();
+    }
+
+    async function geocodeCenter(q){
+      if (!MAPBOX_TOKEN || !q) return null;
+      try {
+        const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
+        const data = await resp.json();
+        return data?.features?.[0]?.center || null;
+      } catch {
+        return null;
+      }
+    }
+
+    async function initMap(q){
+      const center = (q && await geocodeCenter(q)) || [-117.7854, 33.5427];
+      map = new mapboxgl.Map({
+        container: 'mapCanvas',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center,
+        zoom: 12.5
+      });
+      map.addControl(new mapboxgl.NavigationControl());
+      setTimeout(() => { try { map.resize(); } catch(e){} }, 120);
+      return center;
+    }
+
+    function clearMarkers(){
+      markers.forEach(m => m.remove());
+      markers = [];
+      markerMap = {};
+      allListingsWithCoords = [];
+    }
+
+    // KEY: exact address, address-only results, no bbox/proximity
+    async function geocodeExactAddress(addr){
+      const a = String(addr || '').trim();
+      if (!a) return null;
+      if (geocodeCache.has(a)) return geocodeCache.get(a);
+
+      try {
+        const url =
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(a)}.json` +
+          `?limit=1&types=address&autocomplete=false&country=us&access_token=${MAPBOX_TOKEN}`;
+
+        const resp = await fetch(url);
+        const data = await resp.json();
+        const f = data?.features?.[0];
+        const coords = f?.center || null;
+
+        if (coords && Array.isArray(coords) && coords.length === 2) {
+          const out = { coords, placeName: (f?.place_name || '') };
+          geocodeCache.set(a, out);
+
+          if (DEBUG_GEO) {
+            console.log('[geo]', a, '=>', out.placeName, out.coords);
+          }
+
+          return out;
+        }
+
+        if (DEBUG_GEO) console.warn('[geo] no coords for', a, data);
+      } catch (e) {
+        if (DEBUG_GEO) console.warn('[geo] error for', a, e);
+      }
+      return null;
+    }
+
+    function highlightMarker(listingKey, on){
+      const el = markerMap[listingKey];
+      if (!el) return;
+      el.classList.toggle('highlighted', !!on);
+    }
+
+    function highlightTile(listingKey, on){
+      const tile = document.querySelector(`[data-listing-id="${listingKey}"]`);
+      if (!tile) return;
+      tile.classList.toggle('highlighted', !!on);
+    }
+
+    async function addPriceMarkers(items){
+      if (!map) return;
+      clearMarkers();
+
+      const subset = items.slice(0, 100);
+
+      for (const it of subset) {
+        const addr = (it?.address || '').trim();
+        if (!addr) continue;
+
+        const geo = await geocodeExactAddress(addr);
+        if (!geo) continue;
+
+        const coords = geo.coords;
+        const matched = geo.placeName || addr;
+
+        const listingKey = getListingKey(it);
+        allListingsWithCoords.push({ ...it, _lng: coords[0], _lat: coords[1] });
+
+        const el = document.createElement('div');
+        el.className = 'price-marker';
+        el.textContent = formatPriceShort(it.price);
+
+        // Tooltip shows what Mapbox matched (critical for debugging)
+        el.title = DEBUG_GEO ? `${addr}  →  ${matched}` : addr;
+
+        el.dataset.listingId = listingKey;
+
+        if (CAN_HOVER) {
+          el.addEventListener('mouseenter', () => highlightTile(listingKey, true));
+          el.addEventListener('mouseleave', () => highlightTile(listingKey, false));
+        }
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (it.id) window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
+          else window.location.href = `/listing.html?addr=${encodeURIComponent(addr)}`;
+        });
+
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat(coords)
+          .addTo(map);
+
+        markers.push(marker);
+        markerMap[listingKey] = el;
+      }
+
+      syncTilesToViewport();
+    }
+
+    function renderTilesWithHover(grid, items){
+      grid.innerHTML = '';
+      if (!items.length) {
+        grid.innerHTML = `<div class="text-sm text-gray-500">No listings in this map area. Pan or zoom out to see more.</div>`;
+        return;
+      }
+      items.forEach(it => {
+        const tile = renderTile(it, { onLikeIncrement: incrementLikeOnce });
+        const listingKey = getListingKey(it);
+        tile.dataset.listingId = listingKey;
+
+        if (CAN_HOVER) {
+          tile.addEventListener('mouseenter', () => highlightMarker(listingKey, true));
+          tile.addEventListener('mouseleave', () => highlightMarker(listingKey, false));
+        }
+        grid.appendChild(tile);
+      });
+    }
+
+    function syncTilesToViewport(){
+      if (!map) return;
+      const bounds = map.getBounds();
+      const visible = allListingsWithCoords.filter(it => bounds.contains([it._lng, it._lat]));
+      renderTilesWithHover($('grid'), visible);
+
+      const q = $('qBox').value.trim();
+      const count = visible.length;
+      const total = allListingsWithCoords.length;
+      $('qLabel').textContent = q
+        ? `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} in map area for "${q}"`
+        : `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} in map area`;
+    }
+
+    function wireMapSync(){
+      if (!map) return;
+      map.on('moveend', syncTilesToViewport);
+      map.on('zoomend', syncTilesToViewport);
+    }
+
+    // ===== Boot =====
     (async function boot(){
       const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
       $("qBox").value = qParam;
@@ -839,6 +589,7 @@
       await initMap(qParam);
       wireMapSync();
 
+      // Load from Firestore
       let docs = [];
       try {
         const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
@@ -854,8 +605,8 @@
       }
 
       const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
-      await addMarkers(filtered, qParam);
 
+      await addPriceMarkers(filtered);
       showSaveBanner(true);
 
       $("applyBtn").onclick = () => {
@@ -870,7 +621,7 @@
         renderPills(f);
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, f));
-        await addMarkers(refiltered, q);
+        await addPriceMarkers(refiltered);
         showSaveBanner(true);
       };
 
@@ -880,7 +631,7 @@
         renderPills({});
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, {}));
-        await addMarkers(refiltered, q);
+        await addPriceMarkers(refiltered);
         showSaveBanner(true);
       };
 
@@ -896,7 +647,7 @@
         writeFiltersToUI(sel.filters || {});
         renderPills(sel.filters || {});
         const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
-        await addMarkers(refiltered, sel.q || '');
+        await addPriceMarkers(refiltered);
         showSaveBanner(true);
       };
 
