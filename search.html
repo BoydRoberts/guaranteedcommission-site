@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-06 (National: fitBounds + Strip1 outline + dot-anchored price label; keep Tasks A/B/C/D) -->
+<!-- Build: 2026-01-06 (National: fitBounds for ANY city/ZIP + dot-anchored price label; keep Tasks A/B/C/D) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -236,9 +236,6 @@
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
     if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
-    // Strip1 / brand color for boundary outline
-    const GC_STRIP1_COLOR = "#4DA6FF";
-
     const $ = (id) => document.getElementById(id);
     const getParam = (k) => new URL(location.href).searchParams.get(k);
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
@@ -469,72 +466,6 @@
       return null;
     }
 
-    // === Zillow-style search boundary outline (bbox-based, Strip1 blue) ===
-    const BBOX_SOURCE_ID = "gc-search-bbox-src";
-    const BBOX_FILL_ID   = "gc-search-bbox-fill";
-    const BBOX_LINE_ID   = "gc-search-bbox-line";
-
-    function bboxToPolygon(b) {
-      // b: [minLng, minLat, maxLng, maxLat]
-      const minLng = b[0], minLat = b[1], maxLng = b[2], maxLat = b[3];
-      return {
-        type: "Feature",
-        geometry: {
-          type: "Polygon",
-          coordinates: [[
-            [minLng, minLat],
-            [maxLng, minLat],
-            [maxLng, maxLat],
-            [minLng, maxLat],
-            [minLng, minLat]
-          ]]
-        },
-        properties: {}
-      };
-    }
-
-    function removeSearchBoundary() {
-      if (!map) return;
-      try {
-        if (map.getLayer(BBOX_LINE_ID)) map.removeLayer(BBOX_LINE_ID);
-        if (map.getLayer(BBOX_FILL_ID)) map.removeLayer(BBOX_FILL_ID);
-        if (map.getSource(BBOX_SOURCE_ID)) map.removeSource(BBOX_SOURCE_ID);
-      } catch(e) {}
-    }
-
-    function drawSearchBoundary(bbox) {
-      if (!map || !bbox) return;
-      removeSearchBoundary();
-
-      const feature = bboxToPolygon(bbox);
-      map.addSource(BBOX_SOURCE_ID, {
-        type: "geojson",
-        data: feature
-      });
-
-      // Subtle fill (Zillow-ish) + crisp outline
-      map.addLayer({
-        id: BBOX_FILL_ID,
-        type: "fill",
-        source: BBOX_SOURCE_ID,
-        paint: {
-          "fill-color": GC_STRIP1_COLOR,
-          "fill-opacity": 0.06
-        }
-      });
-
-      map.addLayer({
-        id: BBOX_LINE_ID,
-        type: "line",
-        source: BBOX_SOURCE_ID,
-        paint: {
-          "line-color": GC_STRIP1_COLOR,
-          "line-width": 2,
-          "line-opacity": 0.95
-        }
-      });
-    }
-
     function highlightMarker(listingKey, on){
       const wrap = markerMap[listingKey];
       if (!wrap) return;
@@ -570,23 +501,17 @@
       });
       map.addControl(new mapboxgl.NavigationControl());
 
-      map.on("load", () => {
-        // Clean any prior boundary (safety)
-        removeSearchBoundary();
+      // Nationwide “show whole city with padding”:
+      // Fit to bbox when available, otherwise center+zoom.
+      if (bbox) {
+        const b = bbox; // [minLng, minLat, maxLng, maxLat]
+        map.fitBounds([[b[0], b[1]], [b[2], b[3]]], {
+          padding: 70,
+          maxZoom: 12.8,
+          duration: 0
+        });
+      }
 
-        // Fit to bbox with padding, and draw boundary in Strip1 color
-        if (bbox) {
-          const b = bbox; // [minLng, minLat, maxLng, maxLat]
-          map.fitBounds([[b[0], b[1]], [b[2], b[3]]], {
-            padding: 80,
-            maxZoom: 12.8,
-            duration: 0
-          });
-          drawSearchBoundary(b);
-        }
-      });
-
-      // Flex-layout rendering fix
       setTimeout(() => { try { map.resize(); } catch(e){} }, 140);
       return center;
     }
@@ -724,6 +649,7 @@
       }
 
       const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
+
       await addDotPriceMarkers(filtered);
 
       showSaveBanner(true);
