@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-06 (National: fitBounds for ANY city/ZIP + dot-anchored price label; keep Tasks A/B/C/D) -->
+<!-- Build: 2026-01-06 (Task C polish: city/ZIP bbox outline + padded default view; keeps Tasks A/B/C/D intact) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -14,9 +14,11 @@
   <style>
     html, body { height: 100%; }
     .mapboxgl-canvas { outline: none; }
+    details[open] summary svg { transform: rotate(180deg); }
+
+    /* Pills */
     .pill { display:inline-flex; align-items:center; gap:4px; background:#f3f4f6; border-radius:9999px; padding:2px 10px; font-size:13px; margin:2px; }
     .pill button { background:none; border:none; color:#555; font-size:14px; cursor:pointer; line-height:1; }
-    details[open] summary svg { transform: rotate(180deg); }
 
     /* Email/alerts banner */
     #saveBanner { display:none; }
@@ -27,7 +29,7 @@
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
-    .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
+    .gc-heart { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
     .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); cursor:pointer; }
     .gc-share-left { left:10px; }
     .gc-share-right{ right:10px; }
@@ -39,7 +41,7 @@
     .search-map { width:50%; height:100%; flex-shrink:0; background:#fff; }
     .search-map #mapCanvas { width:100%; height:100%; }
     .search-results { width:50%; height:100%; overflow-y:auto; background:#f3f4f6; padding:1rem; }
-    .search-results #grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:1rem; }
+    .search-results #grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
 
     @media (max-width: 1023px) {
       .search-body { flex-direction:column; }
@@ -48,48 +50,43 @@
       .search-results #grid { grid-template-columns:1fr; }
     }
 
-    /* === Marker: dot is truth, price label is attached (no pointer triangle) === */
-    .gc-marker-wrap { position:relative; width:0; height:0; }
-    .gc-marker-dot {
-      position:absolute;
-      width:10px; height:10px;
-      background:#dc2626;
-      border:2px solid #fff;
-      border-radius:9999px;
-      box-shadow:0 1px 2px rgba(0,0,0,.3);
-      left:0; top:0;
-      transform: translate(-50%, -50%);
-      cursor:pointer;
+    /* === Task C: marker visual (DOT IS THE TRUTH + price text) === */
+    .gc-map-marker {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
     }
-    .gc-marker-label {
-      position:absolute;
-      left:10px;
-      top:0;
-      transform: translate(0, -50%);
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      background:#fff;
-      border:2px solid #dc2626;
-      border-radius:9999px;
-      padding:2px 8px;
-      font-size:12px;
-      font-weight:700;
-      color:#dc2626;
-      white-space:nowrap;
-      box-shadow:0 2px 6px rgba(0,0,0,.18);
-      cursor:pointer;
-      user-select:none;
+    .gc-map-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+      background: #dc2626;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,.3);
+      flex: 0 0 auto;
     }
-
-    .gc-marker-wrap.highlighted .gc-marker-label {
-      background:#dc2626;
-      color:#fff;
+    .gc-map-price {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 9999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #111827;
+      box-shadow: 0 1px 3px rgba(0,0,0,.12);
+      max-width: 120px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .gc-marker-wrap.highlighted .gc-marker-dot {
-      box-shadow:0 3px 10px rgba(220,38,38,.45);
+    .gc-map-marker.highlighted .gc-map-price {
+      border-color: #dc2626;
+      box-shadow: 0 2px 6px rgba(220,38,38,.25);
     }
 
+    /* Tile hover highlight (Task D polish) */
     .gc-tile.highlighted{
       outline:3px solid #dc2626;
       outline-offset:2px;
@@ -104,7 +101,7 @@
 
 <body class="search-layout text-gray-900">
 
-  <!-- Header -->
+  <!-- Header / Controls -->
   <div class="search-header">
     <header class="bg-white shadow">
       <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -120,7 +117,6 @@
       </div>
     </header>
 
-    <!-- Query & Controls -->
     <section class="bg-white border-y">
       <div class="max-w-7xl mx-auto px-4 py-4">
         <div class="flex flex-col items-center gap-3">
@@ -199,7 +195,9 @@
 
           <div id="saveBanner" class="w-full md:w-3/4 lg:w-2/3 banner p-3 mt-2">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div class="text-sm"><strong>Email these results?</strong> We'll send today's matches now and alert you when new listings appear.</div>
+              <div class="text-sm">
+                <strong>Email these results?</strong> We'll send today's matches now and alert you when new listings appear.
+              </div>
               <div class="flex gap-2">
                 <button id="saveYesBtn" class="btn bg-indigo-600 text-white">Yes, email & alert me</button>
                 <button id="saveNoBtn" class="btn border">Not now</button>
@@ -400,33 +398,27 @@
     // ===== Map + markers + viewport sync =====
     let map;
     let markers = [];
-    let markerMap = {}; // listingKey -> marker wrap element
+    let markerMap = {};         // listingKey -> marker root element
     let allListingsWithCoords = [];
 
-    const geocodeCache = new Map(); // exact address -> [lng, lat] or null
+    // bbox for the current search (for outline)
+    let SEARCH_BBOX = null;     // [minLng, minLat, maxLng, maxLat]
 
-    function formatPriceShort(price) {
-      const p = Number(price || 0);
-      if (!p) return '$-';
-      if (p >= 1000000) return '$' + (p / 1000000).toFixed(p % 1000000 === 0 ? 0 : 1) + 'M';
-      if (p >= 1000) return '$' + Math.round(p / 1000) + 'K';
-      return '$' + p.toLocaleString();
-    }
+    // geocode cache keyed by exact address string
+    const geocodeCache = new Map(); // address -> [lng,lat] or null
 
     function getListingKey(it){
       return it?.id ? String(it.id) : String(it?.address || '').trim().toLowerCase();
     }
 
-    function isValidLatLng(lat, lng) {
-      const latNum = Number(lat);
-      const lngNum = Number(lng);
-      return !isNaN(latNum) && !isNaN(lngNum)
-        && latNum >= -90 && latNum <= 90
-        && lngNum >= -180 && lngNum <= 180
-        && (latNum !== 0 || lngNum !== 0);
+    function moneyShort(n){
+      const v = Number(n || 0);
+      if (!v) return '$—';
+      if (v >= 1000000) return '$' + (v/1000000).toFixed(v % 1000000 === 0 ? 0 : 1) + 'M';
+      if (v >= 1000) return '$' + Math.round(v/1000) + 'K';
+      return '$' + v.toLocaleString();
     }
 
-    // Nationwide: get bbox/center for ANY query string
     async function geocodeWithBounds(q){
       if (!MAPBOX_TOKEN || !q) return null;
       try {
@@ -440,6 +432,80 @@
       }
     }
 
+    function bboxToPolygon(b) {
+      return {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [[
+            [b[0], b[1]],
+            [b[2], b[1]],
+            [b[2], b[3]],
+            [b[0], b[3]],
+            [b[0], b[1]]
+          ]]
+        }
+      };
+    }
+
+    function drawSearchBbox(b) {
+      if (!map) return;
+
+      // remove old layers/source if present
+      if (map.getLayer('gc-search-bbox-line')) map.removeLayer('gc-search-bbox-line');
+      if (map.getLayer('gc-search-bbox-fill')) map.removeLayer('gc-search-bbox-fill');
+      if (map.getSource('gc-search-bbox')) map.removeSource('gc-search-bbox');
+
+      if (!b || !Array.isArray(b) || b.length !== 4) return;
+
+      map.addSource('gc-search-bbox', { type: 'geojson', data: bboxToPolygon(b) });
+
+      map.addLayer({
+        id: 'gc-search-bbox-fill',
+        type: 'fill',
+        source: 'gc-search-bbox',
+        paint: { 'fill-color': '#dc2626', 'fill-opacity': 0.08 }
+      });
+
+      map.addLayer({
+        id: 'gc-search-bbox-line',
+        type: 'line',
+        source: 'gc-search-bbox',
+        paint: { 'line-color': '#dc2626', 'line-width': 2 }
+      });
+    }
+
+    async function initMap(q){
+      const geo = await geocodeWithBounds(q);
+      const center = (geo && geo.center) ? geo.center : [-117.7854, 33.5427];
+      SEARCH_BBOX = (geo && geo.bbox && Array.isArray(geo.bbox) && geo.bbox.length === 4) ? geo.bbox : null;
+
+      map = new mapboxgl.Map({
+        container: 'mapCanvas',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center,
+        zoom: 12.5
+      });
+      map.addControl(new mapboxgl.NavigationControl());
+
+      map.on('load', () => {
+        // Draw bbox outline (if any)
+        if (SEARCH_BBOX) drawSearchBbox(SEARCH_BBOX);
+
+        // Show whole area with padding (Task C default-view polish)
+        if (SEARCH_BBOX) {
+          const b = SEARCH_BBOX;
+          map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 80, maxZoom: 13.5 });
+        }
+
+        // flex layout resize safety
+        setTimeout(() => { try { map.resize(); } catch(e){} }, 120);
+      });
+
+      return center;
+    }
+
     function clearMarkers(){
       markers.forEach(m => m.remove());
       markers = [];
@@ -447,7 +513,7 @@
       allListingsWithCoords = [];
     }
 
-    // Exact address geocoding (the “dot worked” approach)
+    // Restore the original “dot worked” approach: exact address -> Mapbox -> center
     async function geocodeExactAddress(addr){
       const a = String(addr || '').trim();
       if (!a) return null;
@@ -467,53 +533,14 @@
     }
 
     function highlightMarker(listingKey, on){
-      const wrap = markerMap[listingKey];
-      if (!wrap) return;
-      wrap.classList.toggle('highlighted', !!on);
+      const el = markerMap[listingKey];
+      if (!el) return;
+      el.classList.toggle('highlighted', !!on);
     }
-
     function highlightTile(listingKey, on){
       const tile = document.querySelector(`[data-listing-id="${listingKey}"]`);
       if (!tile) return;
       tile.classList.toggle('highlighted', !!on);
-    }
-
-    async function initMap(q){
-      // Default (no search): USA center
-      const DEFAULT_CENTER = [-98.5795, 39.8283];
-      const DEFAULT_ZOOM = 4.2;
-
-      let center = DEFAULT_CENTER;
-      let bbox = null;
-
-      const qTrim = String(q || '').trim();
-      if (qTrim) {
-        const geo = await geocodeWithBounds(qTrim);
-        if (geo?.center) center = geo.center;
-        if (geo?.bbox && Array.isArray(geo.bbox) && geo.bbox.length === 4) bbox = geo.bbox;
-      }
-
-      map = new mapboxgl.Map({
-        container: 'mapCanvas',
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center,
-        zoom: qTrim ? 11.5 : DEFAULT_ZOOM
-      });
-      map.addControl(new mapboxgl.NavigationControl());
-
-      // Nationwide “show whole city with padding”:
-      // Fit to bbox when available, otherwise center+zoom.
-      if (bbox) {
-        const b = bbox; // [minLng, minLat, maxLng, maxLat]
-        map.fitBounds([[b[0], b[1]], [b[2], b[3]]], {
-          padding: 70,
-          maxZoom: 12.8,
-          duration: 0
-        });
-      }
-
-      setTimeout(() => { try { map.resize(); } catch(e){} }, 140);
-      return center;
     }
 
     async function addDotPriceMarkers(items){
@@ -526,55 +553,46 @@
         const addr = (it?.address || '').trim();
         if (!addr) continue;
 
-        // Prefer stored coords if you later add them to Firestore
-        let coords = null;
-        if (isValidLatLng(it.lat, it.lng)) {
-          coords = [Number(it.lng), Number(it.lat)];
-        } else {
-          coords = await geocodeExactAddress(addr);
-        }
+        const coords = await geocodeExactAddress(addr);
         if (!coords) continue;
 
         const listingKey = getListingKey(it);
         allListingsWithCoords.push({ ...it, _lng: coords[0], _lat: coords[1] });
 
-        // Build marker DOM: dot pinned to coordinate, label sits to the right
-        const wrap = document.createElement('div');
-        wrap.className = 'gc-marker-wrap';
-        wrap.dataset.listingId = listingKey;
-        wrap.title = addr;
+        // DOT + PRICE TEXT (dot remains the visual truth)
+        const root = document.createElement('div');
+        root.className = 'gc-map-marker';
+        root.dataset.listingId = listingKey;
+        root.title = addr;
 
-        const dot = document.createElement('div');
-        dot.className = 'gc-marker-dot';
+        const dot = document.createElement('span');
+        dot.className = 'gc-map-dot';
 
-        const label = document.createElement('div');
-        label.className = 'gc-marker-label';
-        label.textContent = formatPriceShort(it.price);
+        const price = document.createElement('span');
+        price.className = 'gc-map-price';
+        price.textContent = moneyShort(it.price);
 
-        // Clicking dot OR label goes to listing
-        const goListing = (e) => {
+        root.appendChild(dot);
+        root.appendChild(price);
+
+        if (CAN_HOVER) {
+          root.addEventListener('mouseenter', () => highlightTile(listingKey, true));
+          root.addEventListener('mouseleave', () => highlightTile(listingKey, false));
+        }
+
+        root.addEventListener('click', (e) => {
           e.stopPropagation();
           if (it.id) window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
           else window.location.href = `/listing.html?addr=${encodeURIComponent(addr)}`;
-        };
-        dot.addEventListener('click', goListing);
-        label.addEventListener('click', goListing);
+        });
 
-        // Hover sync
-        if (CAN_HOVER) {
-          wrap.addEventListener('mouseenter', () => highlightTile(listingKey, true));
-          wrap.addEventListener('mouseleave', () => highlightTile(listingKey, false));
-        }
-
-        wrap.appendChild(dot);
-        wrap.appendChild(label);
-
-        const marker = new mapboxgl.Marker({ element: wrap, anchor: 'center' })
+        // Anchor center keeps the DOT centered on the coordinate
+        const marker = new mapboxgl.Marker({ element: root, anchor: 'center' })
           .setLngLat(coords)
           .addTo(map);
 
         markers.push(marker);
-        markerMap[listingKey] = wrap;
+        markerMap[listingKey] = root;
       }
 
       syncTilesToViewport();
@@ -650,6 +668,7 @@
 
       const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
 
+      // Markers + tiles
       await addDotPriceMarkers(filtered);
 
       showSaveBanner(true);
@@ -699,7 +718,7 @@
         showSaveBanner(true);
       };
 
-      // Optional query params
+      // Optional params
       (function(){
         const u = new URL(location.href);
         if (u.searchParams.get('open') === 'filters') document.getElementById('filtersPanel')?.setAttribute('open','');
