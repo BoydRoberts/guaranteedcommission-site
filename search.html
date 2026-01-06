@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-05 (Task D fix: KEEP dot geocoding, add always-on price label without changing coordinates) -->
+<!-- Build: 2026-01-06 (National: fitBounds for ANY city/ZIP + dot-anchored price label; keep Tasks A/B/C/D) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -27,7 +27,7 @@
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
-    .gc-heart { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
+    .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
     .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); cursor:pointer; }
     .gc-share-left { left:10px; }
     .gc-share-right{ right:10px; }
@@ -48,45 +48,46 @@
       .search-results #grid { grid-template-columns:1fr; }
     }
 
-    /* === Marker UI: DOT is the anchor; price label is just a label (no pointer triangle) === */
-    .gc-marker {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      user-select: none;
-      cursor: pointer;
-      transform: translateY(-0.5px); /* tiny nudge, doesn't change coords */
+    /* === Marker: dot is truth, price label is attached (no pointer triangle) === */
+    .gc-marker-wrap { position:relative; width:0; height:0; }
+    .gc-marker-dot {
+      position:absolute;
+      width:10px; height:10px;
+      background:#dc2626;
+      border:2px solid #fff;
+      border-radius:9999px;
+      box-shadow:0 1px 2px rgba(0,0,0,.3);
+      left:0; top:0;
+      transform: translate(-50%, -50%);
+      cursor:pointer;
     }
-    .gc-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 9999px;
-      background: #dc2626;
-      border: 2px solid #fff;
-      box-shadow: 0 1px 2px rgba(0,0,0,.3);
-      flex: 0 0 auto;
+    .gc-marker-label {
+      position:absolute;
+      left:10px;
+      top:0;
+      transform: translate(0, -50%);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      background:#fff;
+      border:2px solid #dc2626;
+      border-radius:9999px;
+      padding:2px 8px;
+      font-size:12px;
+      font-weight:700;
+      color:#dc2626;
+      white-space:nowrap;
+      box-shadow:0 2px 6px rgba(0,0,0,.18);
+      cursor:pointer;
+      user-select:none;
     }
-    .gc-price {
-      background: #fff;
-      border: 2px solid #dc2626;
-      color: #dc2626;
-      font-weight: 800;
-      font-size: 12px;
-      line-height: 1;
-      padding: 5px 8px;
-      border-radius: 9999px;
-      box-shadow: 0 2px 6px rgba(0,0,0,.25);
-      white-space: nowrap;
-      max-width: 140px;
-      overflow: hidden;
-      text-overflow: ellipsis;
+
+    .gc-marker-wrap.highlighted .gc-marker-label {
+      background:#dc2626;
+      color:#fff;
     }
-    .gc-marker.highlighted .gc-price {
-      background: #dc2626;
-      color: #fff;
-    }
-    .gc-marker.highlighted .gc-dot {
-      background: #b91c1c;
+    .gc-marker-wrap.highlighted .gc-marker-dot {
+      box-shadow:0 3px 10px rgba(220,38,38,.45);
     }
 
     .gc-tile.highlighted{
@@ -198,15 +199,12 @@
 
           <div id="saveBanner" class="w-full md:w-3/4 lg:w-2/3 banner p-3 mt-2">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div class="text-sm">
-                <strong>Email these results?</strong> We'll send today's matches now and alert you when new listings appear.
-              </div>
+              <div class="text-sm"><strong>Email these results?</strong> We'll send today's matches now and alert you when new listings appear.</div>
               <div class="flex gap-2">
                 <button id="saveYesBtn" class="btn bg-indigo-600 text-white">Yes, email & alert me</button>
                 <button id="saveNoBtn" class="btn border">Not now</button>
               </div>
             </div>
-
             <div id="saveLoginNeeded" class="hidden mt-2 text-sm text-amber-800">
               Please <a href="/login.html" class="underline">log in</a> to save searches and get alerts.
             </div>
@@ -229,13 +227,12 @@
   <!-- Firebase init -->
   <script type="module" src="/scripts/firebase-init.js"></script>
 
-  <!-- Main module -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, orderBy, getDocs, limit, doc as fdoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { renderTile } from "/tile-renderer.js";
 
-    // Mapbox token (unchanged)
+    // Mapbox token
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
     if (MAPBOX_TOKEN && window.mapboxgl) mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -245,7 +242,7 @@
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const CAN_HOVER = window.matchMedia && window.matchMedia('(hover: hover)').matches;
 
-    // ===== Likes (kept) =====
+    // ===== Likes =====
     async function incrementLikeOnce(listingId) {
       try {
         const onceKey = 'likedOnce:' + listingId;
@@ -259,7 +256,7 @@
       }
     }
 
-    // ===== Filters & pills (kept) =====
+    // ===== Filters =====
     function readFiltersFromUI() {
       const val = (id) => (document.getElementById(id)?.value || '').trim();
       const num = (id) => {
@@ -353,7 +350,7 @@
       return true;
     }
 
-    // ===== Saved searches (kept) =====
+    // ===== Saved searches (local) =====
     function getSavedSearches(){ return getJSON('savedSearches', []); }
     function setSavedSearches(arr){ setJSON('savedSearches', arr); }
     function refreshSavedDropdown(){
@@ -365,8 +362,7 @@
         dd.appendChild(opt);
       });
     }
-
-    function saveCurrentSearch(name, q, filters, opts={}) {
+    function saveCurrentSearch(name, q, filters, opts={}){
       const email = (localStorage.getItem('loggedInEmail') || '').trim();
       if (!email && opts.alerts) {
         $('saveLoginNeeded').classList.remove('hidden');
@@ -401,18 +397,13 @@
       }
     }
 
-    // ===== Map + markers + viewport sync (DOT GEOCODING PRESERVED) =====
+    // ===== Map + markers + viewport sync =====
     let map;
     let markers = [];
-    let markerMap = {}; // listingKey -> marker element
+    let markerMap = {}; // listingKey -> marker wrap element
     let allListingsWithCoords = [];
 
-    // cache keyed by exact address string (pre-A behavior)
-    const geocodeCache = new Map(); // address -> [lng,lat] OR null
-
-    function getListingKey(it){
-      return it?.id ? String(it.id) : String(it?.address || '').trim().toLowerCase();
-    }
+    const geocodeCache = new Map(); // exact address -> [lng, lat] or null
 
     function formatPriceShort(price) {
       const p = Number(price || 0);
@@ -422,26 +413,31 @@
       return '$' + p.toLocaleString();
     }
 
-    async function geocodeCenter(q){
+    function getListingKey(it){
+      return it?.id ? String(it.id) : String(it?.address || '').trim().toLowerCase();
+    }
+
+    function isValidLatLng(lat, lng) {
+      const latNum = Number(lat);
+      const lngNum = Number(lng);
+      return !isNaN(latNum) && !isNaN(lngNum)
+        && latNum >= -90 && latNum <= 90
+        && lngNum >= -180 && lngNum <= 180
+        && (latNum !== 0 || lngNum !== 0);
+    }
+
+    // Nationwide: get bbox/center for ANY query string
+    async function geocodeWithBounds(q){
       if (!MAPBOX_TOKEN || !q) return null;
       try {
         const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
         const data = await resp.json();
-        return data?.features?.[0]?.center || null;
-      } catch { return null; }
-    }
-
-    async function initMap(q){
-      const center = (q && await geocodeCenter(q)) || [-117.7854, 33.5427];
-      map = new mapboxgl.Map({
-        container: 'mapCanvas',
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center,
-        zoom: 12.5
-      });
-      map.addControl(new mapboxgl.NavigationControl());
-      setTimeout(() => { try { map.resize(); } catch(e){} }, 120);
-      return center;
+        const f = data?.features?.[0];
+        if (!f) return null;
+        return { center: f.center || null, bbox: f.bbox || null };
+      } catch {
+        return null;
+      }
     }
 
     function clearMarkers(){
@@ -451,7 +447,7 @@
       allListingsWithCoords = [];
     }
 
-    // EXACT address geocode (pre-A behavior) — NO bbox/proximity/rewrites.
+    // Exact address geocoding (the “dot worked” approach)
     async function geocodeExactAddress(addr){
       const a = String(addr || '').trim();
       if (!a) return null;
@@ -471,9 +467,9 @@
     }
 
     function highlightMarker(listingKey, on){
-      const el = markerMap[listingKey];
-      if (!el) return;
-      el.classList.toggle('highlighted', !!on);
+      const wrap = markerMap[listingKey];
+      if (!wrap) return;
+      wrap.classList.toggle('highlighted', !!on);
     }
 
     function highlightTile(listingKey, on){
@@ -482,7 +478,45 @@
       tile.classList.toggle('highlighted', !!on);
     }
 
-    async function addMarkersWithDotPrice(items){
+    async function initMap(q){
+      // Default (no search): USA center
+      const DEFAULT_CENTER = [-98.5795, 39.8283];
+      const DEFAULT_ZOOM = 4.2;
+
+      let center = DEFAULT_CENTER;
+      let bbox = null;
+
+      const qTrim = String(q || '').trim();
+      if (qTrim) {
+        const geo = await geocodeWithBounds(qTrim);
+        if (geo?.center) center = geo.center;
+        if (geo?.bbox && Array.isArray(geo.bbox) && geo.bbox.length === 4) bbox = geo.bbox;
+      }
+
+      map = new mapboxgl.Map({
+        container: 'mapCanvas',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center,
+        zoom: qTrim ? 11.5 : DEFAULT_ZOOM
+      });
+      map.addControl(new mapboxgl.NavigationControl());
+
+      // Nationwide “show whole city with padding”:
+      // Fit to bbox when available, otherwise center+zoom.
+      if (bbox) {
+        const b = bbox; // [minLng, minLat, maxLng, maxLat]
+        map.fitBounds([[b[0], b[1]], [b[2], b[3]]], {
+          padding: 70,
+          maxZoom: 12.8,
+          duration: 0
+        });
+      }
+
+      setTimeout(() => { try { map.resize(); } catch(e){} }, 140);
+      return center;
+    }
+
+    async function addDotPriceMarkers(items){
       if (!map) return;
       clearMarkers();
 
@@ -492,41 +526,50 @@
         const addr = (it?.address || '').trim();
         if (!addr) continue;
 
-        const coords = await geocodeExactAddress(addr);
+        // Prefer stored coords if you later add them to Firestore
+        let coords = null;
+        if (isValidLatLng(it.lat, it.lng)) {
+          coords = [Number(it.lng), Number(it.lat)];
+        } else {
+          coords = await geocodeExactAddress(addr);
+        }
         if (!coords) continue;
 
         const listingKey = getListingKey(it);
         allListingsWithCoords.push({ ...it, _lng: coords[0], _lat: coords[1] });
 
-        // Composite marker: DOT is at the coordinate; label extends to the right.
+        // Build marker DOM: dot pinned to coordinate, label sits to the right
         const wrap = document.createElement('div');
-        wrap.className = 'gc-marker';
+        wrap.className = 'gc-marker-wrap';
         wrap.dataset.listingId = listingKey;
         wrap.title = addr;
 
-        const dot = document.createElement('span');
-        dot.className = 'gc-dot';
+        const dot = document.createElement('div');
+        dot.className = 'gc-marker-dot';
 
-        const price = document.createElement('span');
-        price.className = 'gc-price';
-        price.textContent = formatPriceShort(it.price);
+        const label = document.createElement('div');
+        label.className = 'gc-marker-label';
+        label.textContent = formatPriceShort(it.price);
 
-        wrap.appendChild(dot);
-        wrap.appendChild(price);
+        // Clicking dot OR label goes to listing
+        const goListing = (e) => {
+          e.stopPropagation();
+          if (it.id) window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
+          else window.location.href = `/listing.html?addr=${encodeURIComponent(addr)}`;
+        };
+        dot.addEventListener('click', goListing);
+        label.addEventListener('click', goListing);
 
+        // Hover sync
         if (CAN_HOVER) {
           wrap.addEventListener('mouseenter', () => highlightTile(listingKey, true));
           wrap.addEventListener('mouseleave', () => highlightTile(listingKey, false));
         }
 
-        wrap.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (it.id) window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
-          else window.location.href = `/listing.html?addr=${encodeURIComponent(addr)}`;
-        });
+        wrap.appendChild(dot);
+        wrap.appendChild(label);
 
-        // Anchor LEFT so the dot (leftmost visual) is the coordinate.
-        const marker = new mapboxgl.Marker({ element: wrap, anchor: 'left' })
+        const marker = new mapboxgl.Marker({ element: wrap, anchor: 'center' })
           .setLngLat(coords)
           .addTo(map);
 
@@ -559,7 +602,6 @@
     function syncTilesToViewport(){
       if (!map) return;
       const bounds = map.getBounds();
-
       const visible = allListingsWithCoords.filter(it => bounds.contains([it._lng, it._lat]));
       renderTilesWithHover($('grid'), visible);
 
@@ -591,7 +633,7 @@
       await initMap(qParam);
       wireMapSync();
 
-      // Firestore fetch (ONLY real data)
+      // Load from Firestore
       let docs = [];
       try {
         const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
@@ -608,7 +650,7 @@
 
       const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
 
-      await addMarkersWithDotPrice(filtered);
+      await addDotPriceMarkers(filtered);
 
       showSaveBanner(true);
 
@@ -626,7 +668,7 @@
         renderPills(f);
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, f));
-        await addMarkersWithDotPrice(refiltered);
+        await addDotPriceMarkers(refiltered);
         showSaveBanner(true);
       };
 
@@ -636,7 +678,7 @@
         renderPills({});
         const q = $("qBox").value.trim();
         const refiltered = docs.filter(d => matchesFilters(d, q, {}));
-        await addMarkersWithDotPrice(refiltered);
+        await addDotPriceMarkers(refiltered);
         showSaveBanner(true);
       };
 
@@ -653,7 +695,7 @@
         writeFiltersToUI(sel.filters || {});
         renderPills(sel.filters || {});
         const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
-        await addMarkersWithDotPrice(refiltered);
+        await addDotPriceMarkers(refiltered);
         showSaveBanner(true);
       };
 
