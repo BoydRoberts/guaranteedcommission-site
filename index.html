@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2026-01-02 (Task A: Shared tile renderer) -->
+<!-- index.html - Build 2026-01-07 (Task E: Truly non-blocking background geocode) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -446,6 +446,73 @@
        NOTE: Tile rendering moved to /scripts/tile-renderer.js
        ==================================================================== -->
   <script>
+    // =========================================================================
+    // TASK E: Mapbox geocoding for lat/lng at listing creation
+    // Non-blocking: uses timeout, never blocks listing creation
+    // =========================================================================
+    var MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
+    var GEO_TIMEOUT_MS = 3000; // 3 second timeout - don't block creation
+
+    /**
+     * Geocode a full address using Mapbox with timeout.
+     * Returns { lat, lng, placeName, status, provider } or failure object.
+     * Works nationwide - no bbox constraints.
+     * NEVER blocks listing creation - returns gracefully on timeout/error.
+     */
+    async function geocodeAddress(address) {
+      var failResult = {
+        lat: null,
+        lng: null,
+        placeName: null,
+        status: "failed",
+        provider: "mapbox"
+      };
+
+      if (!address || !MAPBOX_TOKEN) {
+        failResult.status = "skipped";
+        return failResult;
+      }
+
+      try {
+        var url = "https://api.mapbox.com/geocoding/v5/mapbox.places/" +
+                  encodeURIComponent(address) +
+                  ".json?limit=1&access_token=" + MAPBOX_TOKEN;
+
+        // Race between fetch and timeout - never block more than GEO_TIMEOUT_MS
+        var fetchPromise = fetch(url);
+        var timeoutPromise = new Promise(function(_, reject) {
+          setTimeout(function() { reject(new Error("timeout")); }, GEO_TIMEOUT_MS);
+        });
+
+        var resp = await Promise.race([fetchPromise, timeoutPromise]);
+        if (!resp.ok) {
+          failResult.status = "http_error";
+          return failResult;
+        }
+
+        var data = await resp.json();
+        var feature = data && data.features && data.features[0];
+        if (!feature || !feature.center) {
+          failResult.status = "no_results";
+          return failResult;
+        }
+
+        // Mapbox returns [lng, lat]
+        return {
+          lng: feature.center[0],
+          lat: feature.center[1],
+          placeName: feature.place_name || null,
+          status: "ok",
+          provider: "mapbox"
+        };
+      } catch (e) {
+        console.warn("[geocodeAddress] failed:", e.message || e);
+        failResult.status = (e.message === "timeout") ? "timeout" : "error";
+        return failResult;
+      }
+    }
+    // =========================================================================
+
     // Track which plan user explicitly selected this session
     var userSelectedPlanThisSession = null;
 
@@ -891,12 +958,18 @@
           var addDoc = firestore.addDoc;
           var collection = firestore.collection;
           var serverTimestamp = firestore.serverTimestamp;
+          var updateDoc = firestore.updateDoc;
+          var doc = firestore.doc;
 
           var listingsCol = collection(db, "listings");
 
           var agentEmailRaw = plan.indexOf('FSBO') >= 0 ? "" : (formData.agentEmail || "");
           var ownerEmailRaw = plan.indexOf('FSBO') >= 0 ? (formData.fsboEmail || "") : "";
 
+          // =========================================================================
+          // TASK E: Create listing IMMEDIATELY (no geo fields yet)
+          // Geo fields will be added by background updateDoc after redirect
+          // =========================================================================
           var payload = {
             address: formData.address,
             shortAddress: (formData.address.split(",")[0] || "").trim(),
@@ -921,6 +994,9 @@
             brokerage: plan.indexOf('FSBO') >= 0 ? "" : (formData.brokerage || ""),
             deviceKey: getDeviceKey(),
 
+            // TASK E: Initialize geo fields as pending (background will fill)
+            geoStatus: "pending",
+
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             source: "index.box2"
@@ -931,6 +1007,35 @@
           localStorage.setItem("lastListingId", ref.id);
           localStorage.setItem("lastListingAddress", payload.address || "");
           localStorage.setItem('formData:' + ref.id, JSON.stringify(formData));
+
+          // =========================================================================
+          // TASK E: Fire-and-forget background geocode + updateDoc
+          // User is already redirected - this runs in background
+          // =========================================================================
+          (async function backgroundGeocode() {
+            try {
+              var geoResult = await geocodeAddress(formData.address);
+              var geoUpdate = {
+                lat: geoResult.lat,
+                lng: geoResult.lng,
+                geoStatus: geoResult.status,
+                geoProvider: geoResult.provider
+              };
+              // Only add these fields if we have values (cleaner Firestore docs)
+              if (geoResult.placeName) {
+                geoUpdate.geoPlaceName = geoResult.placeName;
+              }
+              if (geoResult.status === "ok") {
+                geoUpdate.geoUpdatedAt = serverTimestamp();
+              }
+              await updateDoc(doc(db, "listings", ref.id), geoUpdate);
+              console.log("[Task E] Background geocode complete:", geoResult.status);
+            } catch (e) {
+              console.warn("[Task E] Background geocode failed:", e);
+            }
+          })();
+          // =========================================================================
+
         } else {
           console.warn("[firestore] db not available - skipped server save");
         }
@@ -940,7 +1045,13 @@
         return;
       }
 
-      window.location.href = "/login.html";
+      // =========================================================================
+      // TASK E: Small delay before redirect to let background geocode start
+      // 250ms is imperceptible to user but lets fetch + updateDoc fire
+      // =========================================================================
+      setTimeout(function() {
+        window.location.href = "/login.html";
+      }, 250);
     }
 
     /* ========================================
