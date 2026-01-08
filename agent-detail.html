@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-02 (Agent Promo: All months 2026-2027 enabled) -->
+<!-- agent-detail.html - Build 2026-01-07 (Task E: Non-blocking geocode with timeout + metadata) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -228,6 +228,119 @@
       getStorage, ref, uploadBytes, getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
+    // =========================================================================
+    // TASK E: Mapbox geocoding for lat/lng (matches index.html pattern)
+    // Non-blocking with timeout, includes metadata fields
+    // =========================================================================
+    const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
+    const GEO_TIMEOUT_MS = 3000; // 3 second timeout
+
+    /**
+     * Geocode a full address using Mapbox with timeout.
+     * Returns { lat, lng, placeName, status, provider } or failure object.
+     * Works nationwide - no bbox constraints.
+     * NEVER blocks page load - returns gracefully on timeout/error.
+     */
+    async function geocodeAddress(address) {
+      const failResult = {
+        lat: null,
+        lng: null,
+        placeName: null,
+        status: "failed",
+        provider: "mapbox"
+      };
+
+      if (!address || !MAPBOX_TOKEN) {
+        failResult.status = "skipped";
+        return failResult;
+      }
+
+      try {
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?limit=1&access_token=${MAPBOX_TOKEN}`;
+
+        // Race between fetch and timeout - never block more than GEO_TIMEOUT_MS
+        const fetchPromise = fetch(url);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("timeout")), GEO_TIMEOUT_MS);
+        });
+
+        const resp = await Promise.race([fetchPromise, timeoutPromise]);
+        if (!resp.ok) {
+          failResult.status = "http_error";
+          return failResult;
+        }
+
+        const data = await resp.json();
+        const feature = data?.features?.[0];
+        if (!feature?.center) {
+          failResult.status = "no_results";
+          return failResult;
+        }
+
+        // Mapbox returns [lng, lat]
+        return {
+          lng: feature.center[0],
+          lat: feature.center[1],
+          placeName: feature.place_name || null,
+          status: "ok",
+          provider: "mapbox"
+        };
+      } catch (e) {
+        console.warn("[geocodeAddress] failed:", e.message || e);
+        failResult.status = (e.message === "timeout") ? "timeout" : "error";
+        return failResult;
+      }
+    }
+
+    /**
+     * TASK E: Ensure the listing has lat/lng. If missing, geocode and save with metadata.
+     * Returns true if coordinates were added, false if already existed or failed.
+     */
+    async function ensureLatLng(listingId, address) {
+      if (!listingId || !address) return false;
+      try {
+        const snap = await getDoc(doc(db, "listings", listingId));
+        if (!snap.exists()) return false;
+        const d = snap.data() || {};
+        
+        // Check if lat/lng already exist and geoStatus is "ok"
+        const hasLat = typeof d.lat === "number" && !isNaN(d.lat);
+        const hasLng = typeof d.lng === "number" && !isNaN(d.lng);
+        if (hasLat && hasLng && d.geoStatus === "ok") {
+          console.log("[Task E] Listing already has lat/lng:", d.lat, d.lng);
+          return false;
+        }
+        
+        // Geocode and save with metadata
+        console.log("[Task E] Missing or incomplete lat/lng, geocoding address:", address);
+        const geo = await geocodeAddress(address);
+        
+        const geoUpdate = {
+          lat: geo.lat,
+          lng: geo.lng,
+          geoStatus: geo.status,
+          geoProvider: geo.provider,
+          updatedAt: serverTimestamp()
+        };
+        
+        // Only add optional fields if they have values (cleaner Firestore docs)
+        if (geo.placeName) {
+          geoUpdate.geoPlaceName = geo.placeName;
+        }
+        if (geo.status === "ok") {
+          geoUpdate.geoUpdatedAt = serverTimestamp();
+        }
+        
+        await updateDoc(doc(db, "listings", listingId), geoUpdate);
+        console.log("[Task E] Saved geo data:", geo.status, geo.lat, geo.lng);
+        return geo.status === "ok";
+      } catch (e) {
+        console.warn("[Task E] ensureLatLng failed:", e);
+        return false;
+      }
+    }
+    // =========================================================================
+
     // ----- helpers -----
     const $ = (id) => document.getElementById(id);
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
@@ -428,6 +541,14 @@
 
         renderThumbs();
         setStatus(note || "Loaded from server.", true);
+
+        // =========================================================================
+        // TASK E: Ensure lat/lng exists on page load (NON-BLOCKING)
+        // Fire-and-forget: don't await, let it run in background
+        // =========================================================================
+        ensureLatLng(listingId, d.address);
+        // =========================================================================
+
       } catch (e) {
         console.warn("[agent-detail] refresh failed:", e);
         setStatus("Could not load from server.", false);
@@ -532,6 +653,14 @@
 
       try {
         await updateDoc(doc(db, "listings", listingId), payload);
+
+        // =========================================================================
+        // TASK E: Ensure lat/lng exists on save (NON-BLOCKING)
+        // Fire-and-forget: runs in background while refreshFromServer proceeds
+        // =========================================================================
+        ensureLatLng(listingId, $("fullAddress").value);
+        // =========================================================================
+
         await refreshFromServer("Saved to server.");
         alert("Saved.");
       } catch (e) {
