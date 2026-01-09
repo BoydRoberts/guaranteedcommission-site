@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-01-09 (Restored: Branded header + Zillow-style filter bar; Tasks A/B/C/D/E preserved) -->
+<!-- search.html - Build 2026-01-09 (Firebase Auth gating + Firestore saved searches) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -143,30 +143,36 @@
     }
     .filter-apply-btn:hover { opacity:0.9; }
 
-    /* Active filter pills */
-    .filter-pill {
-      display:inline-flex;
-      align-items:center;
-      gap:4px;
-      padding:4px 10px;
-      font-size:12px;
-      font-weight:500;
-      background:#e0f2fe;
-      color:#0369a1;
-      border-radius:9999px;
-      margin-right:6px;
+    /* Saved search autocomplete dropdown */
+    .search-autocomplete {
+      position:absolute;
+      top:100%;
+      left:0;
+      right:0;
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-top:none;
+      border-radius:0 0 8px 8px;
+      box-shadow:0 4px 12px rgba(0,0,0,.1);
+      max-height:200px;
+      overflow-y:auto;
+      z-index:200;
+      display:none;
     }
-    .filter-pill button {
-      background:none;
-      border:none;
-      color:#0369a1;
-      font-size:14px;
-      line-height:1;
+    .search-autocomplete.show { display:block; }
+    .search-autocomplete-item {
+      padding:10px 12px;
       cursor:pointer;
-      padding:0;
-      margin-left:2px;
+      font-size:14px;
+      border-bottom:1px solid #f3f4f6;
     }
-    .filter-pill button:hover { color:#dc2626; }
+    .search-autocomplete-item:last-child { border-bottom:none; }
+    .search-autocomplete-item:hover { background:#f3f4f6; }
+    .search-autocomplete-item .saved-label {
+      font-size:11px;
+      color:#4DA6FF;
+      margin-left:8px;
+    }
   </style>
 </head>
 
@@ -188,7 +194,7 @@
 
           <div class="flex items-center gap-4">
             <a href="/advertise.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Advertise</a>
-            <a href="/login.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Log In</a>
+            <a href="/login.html" id="authLink" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Log In</a>
           </div>
         </div>
       </div>
@@ -202,8 +208,9 @@
         <div class="flex flex-wrap items-center gap-2">
 
           <!-- Search Input (far left, Zillow-style bigger) -->
-          <div class="w-[320px]">
-            <input id="qBox" type="text" class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:border-[#4DA6FF]" placeholder="City, ZIP, or Saved Search">
+          <div class="w-[320px] relative">
+            <input id="qBox" type="text" class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:border-[#4DA6FF]" placeholder="City, ZIP, or Saved Search" autocomplete="off">
+            <div id="searchAutocomplete" class="search-autocomplete"></div>
           </div>
 
           <!-- For Sale Dropdown -->
@@ -365,9 +372,6 @@
           </button>
         </div>
 
-        <!-- Active Pills -->
-        <div id="activePills" class="flex flex-wrap items-center mt-2 px-1"></div>
-
       </div>
     </section>
   </div>
@@ -379,11 +383,13 @@
   </div>
 
   <!-- Firebase init -->
-  <script type="module" src="/scripts/firebase-init.js"></script>
-
   <script type="module">
-    import { db } from "/scripts/firebase-init.js";
-    import { collection, query, orderBy, getDocs, limit, doc as fdoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { auth, db } from "/scripts/firebase-init.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { 
+      collection, query, orderBy, getDocs, limit, doc as fdoc, updateDoc, increment, serverTimestamp,
+      addDoc, deleteDoc, where
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { renderTile } from "/tile-renderer.js";
 
     // Mapbox token
@@ -395,6 +401,57 @@
     const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const CAN_HOVER = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+
+    // ===== Auth State =====
+    let currentUser = null;
+    let userSavedSearches = [];
+
+    function updateAuthUI() {
+      const authLink = $('authLink');
+      if (currentUser) {
+        authLink.textContent = 'Log Out';
+        authLink.href = '#';
+        authLink.onclick = async (e) => {
+          e.preventDefault();
+          const { signOut } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+          await signOut(auth);
+          window.location.reload();
+        };
+      } else {
+        authLink.textContent = 'Log In';
+        authLink.href = '/login.html';
+        authLink.onclick = null;
+      }
+    }
+
+    // ===== Auth Gating =====
+    function requireAuth(actionType, callback) {
+      if (currentUser) {
+        callback();
+      } else {
+        // Store pending action and redirect to login
+        const q = $("qBox").value.trim();
+        const filters = readFiltersFromUI();
+        const name = $("searchNameInput")?.value.trim() || '';
+        
+        sessionStorage.setItem('pendingAction', JSON.stringify({
+          type: actionType,
+          q,
+          filters,
+          name
+        }));
+        
+        window.location.href = '/login.html';
+      }
+    }
+
+    // ===== Phone Normalization =====
+    function normalizePhoneE164(s) {
+      const digits = (s || '').replace(/\D/g, '');
+      if (digits.length === 10) return '+1' + digits;
+      if (digits.length === 11 && digits.startsWith('1')) return '+' + digits;
+      return null;
+    }
 
     // ===== Filter Dropdown UI =====
     (function wireFilterDropdowns() {
@@ -412,6 +469,7 @@
 
       document.addEventListener('click', () => {
         dropdowns.forEach(d => d.classList.remove('open'));
+        $('searchAutocomplete').classList.remove('show');
       });
 
       document.querySelectorAll('.filter-panel').forEach(panel => {
@@ -502,30 +560,6 @@
       });
     }
 
-    function renderPills(filters) {
-      const pillsBox = $("activePills");
-      pillsBox.innerHTML = '';
-
-      function pill(label, key) {
-        const el = document.createElement('div');
-        el.className = 'filter-pill';
-        el.innerHTML = `<span>${label}</span><button aria-label="Clear">&times;</button>`;
-        el.querySelector('button').onclick = () => {
-          const input = document.getElementById(key);
-          if (input) input.value = '';
-          applyAllFilters();
-        };
-        pillsBox.appendChild(el);
-      }
-
-      if (filters.priceMin) pill(`$${Number(filters.priceMin).toLocaleString()}+`, 'priceMin');
-      if (filters.priceMax) pill(`Up to $${Number(filters.priceMax).toLocaleString()}`, 'priceMax');
-      if (filters.bedsMin) pill(`${filters.bedsMin}+ beds`, 'bedsMin');
-      if (filters.bathsMin) pill(`${filters.bathsMin}+ baths`, 'bathsMin');
-      if (filters.status) pill(filters.status, 'status');
-      if (filters.propType) pill(filters.propType, 'propType');
-    }
-
     function matchesFilters(docu, qtext, f) {
       const address = (docu.address || '').toLowerCase();
       if (qtext && !address.includes(qtext.toLowerCase().trim())) return false;
@@ -552,29 +586,96 @@
       return true;
     }
 
-    // ===== Saved searches (local for now, will move to Firestore with auth) =====
-    function getSavedSearches() { return getJSON('savedSearches', []); }
-    function setSavedSearches(arr) { setJSON('savedSearches', arr); }
+    // ===== Saved Searches (Firestore) =====
+    async function loadUserSavedSearches() {
+      if (!currentUser) {
+        userSavedSearches = [];
+        return;
+      }
+      try {
+        const ref = collection(db, 'users', currentUser.uid, 'savedSearches');
+        const snap = await getDocs(query(ref, orderBy('createdAt', 'desc')));
+        userSavedSearches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log('[search] Loaded', userSavedSearches.length, 'saved searches');
+      } catch (e) {
+        console.warn('[search] Failed to load saved searches:', e);
+        userSavedSearches = [];
+      }
+    }
 
-    function saveCurrentSearch(name, q, filters, opts = {}) {
-      const email = (localStorage.getItem('loggedInEmail') || '').trim();
-      const phone = (localStorage.getItem('loggedInPhone') || '').trim();
-      const arr = getSavedSearches();
-      const record = {
-        id: 'ss_' + Date.now(),
-        name: name || (q || 'Search') + ' #' + (arr.length + 1),
-        q,
-        filters,
-        email: email || '',
-        phone: phone || '',
-        alerts: !!opts.alerts,
-        alertType: opts.alertType || 'none',
-        lastSent: opts.lastSent || null,
-        lastChecked: Date.now()
-      };
-      arr.unshift(record);
-      setSavedSearches(arr);
-      return record;
+    async function saveSearchToFirestore(name, q, filters, opts = {}) {
+      if (!currentUser) return null;
+      try {
+        const ref = collection(db, 'users', currentUser.uid, 'savedSearches');
+        const docRef = await addDoc(ref, {
+          name: name || q || 'My Search',
+          q,
+          filters,
+          alerts: !!opts.alerts,
+          alertType: opts.alertType || 'none',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        console.log('[search] Saved search:', docRef.id);
+        await loadUserSavedSearches(); // Refresh list
+        return docRef.id;
+      } catch (e) {
+        console.error('[search] Failed to save search:', e);
+        return null;
+      }
+    }
+
+    // ===== Saved Search Autocomplete =====
+    function showSavedSearchAutocomplete(input) {
+      const autocomplete = $('searchAutocomplete');
+      const val = input.toLowerCase().trim();
+      
+      // Only show autocomplete for logged-in users with 2+ chars typed
+      if (!currentUser || val.length < 2 || userSavedSearches.length === 0) {
+        autocomplete.classList.remove('show');
+        return;
+      }
+
+      const matches = userSavedSearches.filter(s => 
+        s.name.toLowerCase().includes(val) || 
+        (s.q && s.q.toLowerCase().includes(val))
+      );
+
+      if (matches.length === 0) {
+        autocomplete.classList.remove('show');
+        return;
+      }
+
+      autocomplete.innerHTML = matches.slice(0, 5).map(s => `
+        <div class="search-autocomplete-item" data-search-id="${s.id}">
+          ${s.name}
+          <span class="saved-label">Saved Search</span>
+        </div>
+      `).join('');
+
+      autocomplete.querySelectorAll('.search-autocomplete-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const searchId = item.dataset.searchId;
+          const saved = userSavedSearches.find(s => s.id === searchId);
+          if (saved) {
+            loadSavedSearch(saved);
+          }
+          autocomplete.classList.remove('show');
+        });
+      });
+
+      autocomplete.classList.add('show');
+    }
+
+    function loadSavedSearch(saved) {
+      $('qBox').value = saved.q || '';
+      if (saved.filters) {
+        writeFiltersToUI(saved.filters);
+        updateDropdownLabels(saved.filters);
+      }
+      // Re-apply to map
+      applyAllFilters();
     }
 
     // ===== Map + markers + viewport sync =====
@@ -785,13 +886,62 @@
     async function applyAllFilters() {
       const f = readFiltersFromUI();
       setJSON('lastFilters', f);
-      renderPills(f);
       updateDropdownLabels(f);
 
       const q = $("qBox").value.trim();
       const filtered = allDocs.filter(d => matchesFilters(d, q, f));
       await addDotPriceMarkers(filtered);
     }
+
+    // ===== Handle Pending Action (after login redirect) =====
+    async function handlePendingAction() {
+      const hasPendingParam = getParam('pendingAction') === 'true';
+      const pendingStr = sessionStorage.getItem('pendingAction');
+      
+      if (!hasPendingParam || !pendingStr || !currentUser) return;
+      
+      try {
+        const action = JSON.parse(pendingStr);
+        sessionStorage.removeItem('pendingAction');
+        
+        // Restore search state
+        if (action.q) $('qBox').value = action.q;
+        if (action.filters) {
+          writeFiltersToUI(action.filters);
+          updateDropdownLabels(action.filters);
+        }
+        
+        // Execute the pending action
+        switch (action.type) {
+          case 'save_search':
+            const name = action.name || action.q || 'My Search';
+            await saveSearchToFirestore(name, action.q, action.filters, { alerts: false });
+            alert('Search saved as: ' + name);
+            break;
+          case 'email_now':
+            await saveSearchToFirestore('', action.q, action.filters, { alerts: false, alertType: 'email' });
+            alert('Results will be emailed to ' + currentUser.email);
+            break;
+          case 'text_now':
+            await saveSearchToFirestore('', action.q, action.filters, { alerts: false, alertType: 'text' });
+            alert('Results will be texted to your phone.');
+            break;
+          case 'auto_email':
+            await saveSearchToFirestore('', action.q, action.filters, { alerts: true, alertType: 'email' });
+            alert('Auto-email enabled! You\'ll be notified at ' + currentUser.email + ' when new listings match this search.');
+            break;
+          case 'auto_text':
+            await saveSearchToFirestore('', action.q, action.filters, { alerts: true, alertType: 'text' });
+            alert('Auto-text enabled! You\'ll be notified when new listings match this search.');
+            break;
+        }
+      } catch (e) {
+        console.error('[search] Failed to handle pending action:', e);
+      }
+    }
+
+    // ===== Boot State =====
+    let bootComplete = false;
 
     // ===== Boot =====
     (async function boot() {
@@ -801,7 +951,6 @@
 
       const lastFilters = getJSON('lastFilters', {});
       writeFiltersToUI(lastFilters);
-      renderPills(lastFilters);
       updateDropdownLabels(lastFilters);
 
       await initMap(qParam);
@@ -824,95 +973,115 @@
       const filtered = allDocs.filter(d => matchesFilters(d, qParam, lastFilters));
       await addDotPriceMarkers(filtered);
 
+      // Mark boot complete - pendingAction can now safely execute
+      bootComplete = true;
+      console.log('[search] Boot complete, listings loaded:', allDocs.length);
+
+      // If user was already logged in before boot finished, handle pending action now
+      if (currentUser) {
+        await handlePendingAction();
+      }
+
       // Enter key in search box triggers new search
       $("qBox").addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
           const q = $("qBox").value.trim();
           localStorage.setItem('lastSearch', q);
+          $('searchAutocomplete').classList.remove('show');
           location.href = `/search.html?q=${encodeURIComponent(q)}`;
         }
+      });
+
+      // Autocomplete on input (only for logged-in users)
+      $("qBox").addEventListener('input', (e) => {
+        showSavedSearchAutocomplete(e.target.value);
       });
 
       // Clear all filters
       $("clearFiltersBtn").onclick = async () => {
         setJSON('lastFilters', {});
         document.querySelectorAll('#priceMin, #priceMax, #bedsMin, #bathsMin, #status, #propType').forEach(el => el.value = '');
-        renderPills({});
         updateDropdownLabels({});
         const q = $("qBox").value.trim();
         const refiltered = allDocs.filter(d => matchesFilters(d, q, {}));
         await addDotPriceMarkers(refiltered);
       };
 
+      // ===== GATED ACTIONS =====
+
       // Save search button
       $("saveSearchBtn").onclick = () => {
-        const q = $("qBox").value.trim();
-        const filters = readFiltersFromUI();
-        const nameInput = $("searchNameInput");
-        const name = (nameInput?.value || '').trim() || q || "My Search";
-        saveCurrentSearch(name, q, filters, { alerts: false });
-        if (nameInput) nameInput.value = '';
-        alert("Search saved as: " + name);
+        requireAuth('save_search', async () => {
+          const q = $("qBox").value.trim();
+          const filters = readFiltersFromUI();
+          const nameInput = $("searchNameInput");
+          const name = (nameInput?.value || '').trim() || q || "My Search";
+          await saveSearchToFirestore(name, q, filters, { alerts: false });
+          if (nameInput) nameInput.value = '';
+          alert("Search saved as: " + name);
+        });
       };
 
       // Email search button
       $("emailSearchBtn").onclick = () => {
-        const email = (localStorage.getItem('loggedInEmail') || '').trim();
-        if (!email) {
-          const inputEmail = prompt("Enter your email to receive results:");
-          if (!inputEmail) return;
-          localStorage.setItem('loggedInEmail', inputEmail);
-        }
-        const q = $("qBox").value.trim();
-        const filters = readFiltersFromUI();
-        saveCurrentSearch('', q, filters, { alerts: false, lastSent: Date.now() });
-        alert("Results will be emailed to " + (localStorage.getItem('loggedInEmail') || ''));
+        requireAuth('email_now', async () => {
+          const q = $("qBox").value.trim();
+          const filters = readFiltersFromUI();
+          await saveSearchToFirestore('', q, filters, { alerts: false, alertType: 'email' });
+          alert("Results will be emailed to " + currentUser.email);
+        });
       };
 
       // Text search button
       $("textSearchBtn").onclick = () => {
-        const phone = (localStorage.getItem('loggedInPhone') || '').trim();
-        if (!phone) {
-          const inputPhone = prompt("Enter your phone number to receive results via text:");
-          if (!inputPhone) return;
-          localStorage.setItem('loggedInPhone', inputPhone);
-        }
-        const q = $("qBox").value.trim();
-        const filters = readFiltersFromUI();
-        saveCurrentSearch('', q, filters, { alerts: false, alertType: 'text', lastSent: Date.now() });
-        alert("Results will be texted to " + (localStorage.getItem('loggedInPhone') || ''));
+        requireAuth('text_now', async () => {
+          const q = $("qBox").value.trim();
+          const filters = readFiltersFromUI();
+          await saveSearchToFirestore('', q, filters, { alerts: false, alertType: 'text' });
+          alert("Results will be texted to your phone.");
+        });
       };
 
       // Auto-email button
       $("autoEmailBtn").onclick = () => {
-        const email = (localStorage.getItem('loggedInEmail') || '').trim();
-        if (!email) {
-          const inputEmail = prompt("Enter your email for auto-notifications:");
-          if (!inputEmail) return;
-          localStorage.setItem('loggedInEmail', inputEmail);
-        }
-        const q = $("qBox").value.trim();
-        const filters = readFiltersFromUI();
-        saveCurrentSearch('', q, filters, { alerts: true, alertType: 'email', lastSent: Date.now() });
-        alert("Auto-email enabled! You'll be notified at " + (localStorage.getItem('loggedInEmail') || '') + " when new listings match this search.");
+        requireAuth('auto_email', async () => {
+          const q = $("qBox").value.trim();
+          const filters = readFiltersFromUI();
+          await saveSearchToFirestore('', q, filters, { alerts: true, alertType: 'email' });
+          alert("Auto-email enabled! You'll be notified at " + currentUser.email + " when new listings match this search.");
+        });
       };
 
       // Auto-text button
       $("autoTextBtn").onclick = () => {
-        const phone = (localStorage.getItem('loggedInPhone') || '').trim();
-        if (!phone) {
-          const inputPhone = prompt("Enter your phone number for auto-text notifications:");
-          if (!inputPhone) return;
-          localStorage.setItem('loggedInPhone', inputPhone);
-        }
-        const q = $("qBox").value.trim();
-        const filters = readFiltersFromUI();
-        saveCurrentSearch('', q, filters, { alerts: true, alertType: 'text', lastSent: Date.now() });
-        alert("Auto-text enabled! You'll be notified at " + (localStorage.getItem('loggedInPhone') || '') + " when new listings match this search.");
+        requireAuth('auto_text', async () => {
+          const q = $("qBox").value.trim();
+          const filters = readFiltersFromUI();
+          await saveSearchToFirestore('', q, filters, { alerts: true, alertType: 'text' });
+          alert("Auto-text enabled! You'll be notified when new listings match this search.");
+        });
       };
 
     })();
+
+    // ===== Auth State Listener =====
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+      updateAuthUI();
+      
+      if (user) {
+        console.log('[search] Logged in as:', user.email);
+        await loadUserSavedSearches();
+        // Handle pending action only if boot is complete
+        if (bootComplete) {
+          await handlePendingAction();
+        }
+      } else {
+        console.log('[search] Not logged in');
+        userSavedSearches = [];
+      }
+    });
   </script>
 </body>
 </html>
