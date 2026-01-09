@@ -174,15 +174,15 @@
 
   <!-- ========== STRIP 1: BRANDED HEADER ========== -->
   <div class="search-header">
-    <header class="bg-white shadow">
+    <header class="bg-white border-b">
       <div class="max-w-7xl mx-auto px-4 py-3">
         <div class="flex items-center justify-between">
           <a href="/index.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Home</a>
 
           <div class="text-center">
             <div class="flex items-end justify-center gap-0">
-              <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-8 w-8 object-contain -mr-1 -mb-0.5">
-              <h1 class="text-xl font-bold">GuaranteedCommission.com</h1>
+              <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+              <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
             </div>
           </div>
 
@@ -365,11 +365,8 @@
           </button>
         </div>
 
-        <!-- Active Pills + Results Count -->
-        <div class="flex items-center justify-between mt-2 px-1">
-          <div id="activePills" class="flex flex-wrap items-center"></div>
-          <p id="qLabel" class="text-sm text-gray-600"></p>
-        </div>
+        <!-- Active Pills -->
+        <div id="activePills" class="flex flex-wrap items-center mt-2 px-1"></div>
 
       </div>
     </section>
@@ -776,13 +773,6 @@
       const bounds = map.getBounds();
       const visible = allListingsWithCoords.filter(it => bounds.contains([it._lng, it._lat]));
       renderTilesWithHover($('grid'), visible);
-
-      const q = $('qBox').value.trim();
-      const count = visible.length;
-      const total = allListingsWithCoords.length;
-      $('qLabel').textContent = q
-        ? `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} for "${q}"`
-        : `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''}`;
     }
 
     function wireMapSync() {
@@ -807,7 +797,6 @@
     (async function boot() {
       const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
       $("qBox").value = qParam;
-      $("qLabel").textContent = qParam ? `Showing results for "${qParam}"` : 'Showing all listings';
       localStorage.setItem('lastSearch', qParam);
 
       const lastFilters = getJSON('lastFilters', {});
