@@ -28,7 +28,7 @@
   <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-3">
-        <span class="badge">secure access build 2025-11-29</span>
+        <span class="badge">Firebase Auth build 2026-01-09</span>
       </div>
 
       <!-- Tabs -->
@@ -75,7 +75,7 @@
           <a href="#" id="goCreate" class="text-blue-600 hover:underline">Create account</a>
         </div>
 
-        <button type="submit"
+        <button type="submit" id="loginSubmitBtn"
                 class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition">
           Log In
         </button>
@@ -89,8 +89,6 @@
             <input id="c_name" type="text" required
                    class="w-full border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
                    placeholder="First Last" />
-            <button type="button" id="toggleName"
-                    class="hidden absolute inset-y-0 right-0 px-3 text-sm text-blue-600 hover:underline select-none">Show</button>
           </div>
         </div>
 
@@ -170,7 +168,7 @@
           <a href="#" id="goSignin" class="text-blue-600 hover:underline">Already have an account? Sign in</a>
         </div>
 
-        <button type="submit"
+        <button type="submit" id="createSubmitBtn"
                 class="w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition">
           Create Account
         </button>
@@ -186,14 +184,28 @@
     </div>
   </main>
 
-  <script>
-    console.log('[login] secure access build 2025-11-29');
+  <!-- Firebase Auth -->
+  <script type="module">
+    import { auth, db } from "/scripts/firebase-init.js";
+    import { 
+      signInWithEmailAndPassword, 
+      createUserWithEmailAndPassword,
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { 
+      doc, 
+      setDoc, 
+      getDoc,
+      serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    console.log('[login] Firebase Auth build 2026-01-09');
 
     // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
     const statusBox = $('status');
-    const safeJSON = (s)=>{ try { return JSON.parse(s); } catch { return null; } };
-    function setStatus(msg, ok=false) {
+
+    function setStatus(msg, ok = false) {
       statusBox.classList.remove('hidden');
       statusBox.textContent = msg;
       statusBox.className = ok
@@ -201,78 +213,73 @@
         : 'mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
     }
 
-    function onlyDigits(s){ return (s || '').replace(/\D/g, ''); }
-    function formatPhone(s){
-      const d = onlyDigits(s).slice(0,10);
-      if (d.length <= 3) return d;
-      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
-      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
+    function clearStatus() {
+      statusBox.classList.add('hidden');
+      statusBox.textContent = '';
     }
-    function isValidPhone(s){ return onlyDigits(s).length === 10; }
 
-    // Tabs
+    function onlyDigits(s) { return (s || '').replace(/\D/g, ''); }
+
+    function formatPhone(s) {
+      const d = onlyDigits(s).slice(0, 10);
+      if (d.length <= 3) return d;
+      if (d.length <= 6) return d.slice(0, 3) + '-' + d.slice(3);
+      return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+    }
+
+    function normalizePhoneE164(s) {
+      const digits = onlyDigits(s);
+      if (digits.length === 10) return '+1' + digits;
+      if (digits.length === 11 && digits.startsWith('1')) return '+' + digits;
+      return null; // Invalid
+    }
+
+    function isValidPhone(s) { return onlyDigits(s).length === 10; }
+
+    function setLoading(btn, loading) {
+      btn.disabled = loading;
+      btn.style.opacity = loading ? '0.6' : '1';
+    }
+
+    // ---------- Tabs ----------
     const tabSignin = $('tab-signin');
     const tabCreate = $('tab-create');
     const loginForm = $('loginForm');
     const createForm = $('createForm');
+
     function showSignin() {
-      tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
-      tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-      loginForm.classList.remove('hidden'); createForm.classList.add('hidden');
-      tabSignin.setAttribute('aria-selected','true'); tabCreate.setAttribute('aria-selected','false');
+      tabSignin.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
+      tabCreate.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+      loginForm.classList.remove('hidden');
+      createForm.classList.add('hidden');
+      tabSignin.setAttribute('aria-selected', 'true');
+      tabCreate.setAttribute('aria-selected', 'false');
+      clearStatus();
     }
+
     function showCreate() {
-      tabCreate.className='flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
-      tabSignin.className='flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
-      createForm.classList.remove('hidden'); loginForm.classList.add('hidden');
-      tabCreate.setAttribute('aria-selected','true'); tabSignin.setAttribute('aria-selected','false');
+      tabCreate.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-blue-600 text-blue-700';
+      tabSignin.className = 'flex-1 py-2 text-center font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-700';
+      createForm.classList.remove('hidden');
+      loginForm.classList.add('hidden');
+      tabCreate.setAttribute('aria-selected', 'true');
+      tabSignin.setAttribute('aria-selected', 'false');
+      clearStatus();
     }
+
     tabSignin.addEventListener('click', showSignin);
     tabCreate.addEventListener('click', showCreate);
-    $('goCreate')?.addEventListener('click', (e)=>{ e.preventDefault(); showCreate(); });
-    $('goSignin')?.addEventListener('click', (e)=>{ e.preventDefault(); showSignin(); });
+    $('goCreate')?.addEventListener('click', (e) => { e.preventDefault(); showCreate(); });
+    $('goSignin')?.addEventListener('click', (e) => { e.preventDefault(); showSignin(); });
 
     // Role link toggle
-    $('createRole')?.addEventListener('change', (e)=>{
+    $('createRole')?.addEventListener('change', (e) => {
       const v = e.target.value;
-      if (v==='listing_agent' || v==='buyers_agent') $('localProLink').classList.remove('hidden');
+      if (v === 'listing_agent' || v === 'buyers_agent') $('localProLink').classList.remove('hidden');
       else $('localProLink').classList.add('hidden');
     });
 
-    // Prefill (FSBO-only email/phone). For Basic/Plus: **do not prefill createEmail**
-    (function prefill() {
-      const fd = safeJSON(localStorage.getItem('formData')) || {};
-      const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
-
-      // Name (if present)
-      if (fd.name) $('c_name').value = fd.name;
-
-      // Email rules:
-      // FSBO → prefill from fsboEmail; Basic/Plus → leave blank (seller must type).
-      if (plan.includes('FSBO') && fd.fsboEmail) {
-        $('c_email').value = fd.fsboEmail;
-      } else {
-        $('c_email').value = '';
-      }
-
-      // Sign-in convenience prefill (harmless)
-      const last = localStorage.getItem('loggedInEmail') || '';
-      if (last) $('email').value = last;
-
-      // Phone FSBO-only
-      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
-        $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
-      }
-
-      // *** Force default to Create tab when arriving from Box 2 or ?tab=create ***
-      const url = new URL(location.href);
-      const tabParam = (url.searchParams.get('tab') || '').toLowerCase();
-      if (localStorage.getItem('nextAfterLogin') || tabParam === 'create') {
-        showCreate();
-      }
-    })();
-
-    // Show/Hide toggles
+    // ---------- Show/Hide toggles ----------
     function wireToggle(inputId, btnId) {
       const input = $(inputId);
       const btn = $(btnId);
@@ -285,32 +292,42 @@
         input.focus({ preventScroll: true });
       });
     }
-    wireToggle('password','togglePwd');
-    wireToggle('c_password','togglePwdC1');
-    wireToggle('c_password2','togglePwdC2');
+    wireToggle('password', 'togglePwd');
+    wireToggle('c_password', 'togglePwdC1');
+    wireToggle('c_password2', 'togglePwdC2');
 
-    // Strength + match
+    // ---------- Password Strength + Match ----------
     function scorePassword(p) {
-      let s=0; if (!p) return 0;
-      if (p.length>=10) s++; if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++;
-      if (/[^A-Za-z0-9]/.test(p)) s++; if (p.length>=14) s++;
-      return Math.min(s,4);
+      let s = 0;
+      if (!p) return 0;
+      if (p.length >= 10) s++;
+      if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++;
+      if (/\d/.test(p)) s++;
+      if (/[^A-Za-z0-9]/.test(p)) s++;
+      if (p.length >= 14) s++;
+      return Math.min(s, 4);
     }
-    function updateStrength(){
+
+    function updateStrength() {
       const p1 = $('c_password')?.value || '';
       const p2 = $('c_password2')?.value || '';
-      const bar = $('strengthBar'), st=$('strengthText'), mm=$('matchMsg');
+      const bar = $('strengthBar'), st = $('strengthText'), mm = $('matchMsg');
       if (!bar || !st || !mm) return;
-      const s=scorePassword(p1), widths=['0%','25%','50%','75%','100%'], colors=['transparent','#fca5a5','#fbbf24','#60a5fa','#34d399'], labels=['—','Weak','Fair','Good','Strong'];
-      bar.style.width=widths[s]; bar.style.backgroundColor=colors[s]; st.textContent='Password strength: '+labels[s];
-      if (!p2){ mm.textContent=''; mm.className='text-xs mt-1'; return; }
-      if (p1===p2){ mm.textContent='Passwords match'; mm.className='text-xs mt-1 text-green-600'; }
-      else { mm.textContent='Passwords do not match'; mm.className='text-xs mt-1 text-red-600'; }
+      const s = scorePassword(p1);
+      const widths = ['0%', '25%', '50%', '75%', '100%'];
+      const colors = ['transparent', '#fca5a5', '#fbbf24', '#60a5fa', '#34d399'];
+      const labels = ['—', 'Weak', 'Fair', 'Good', 'Strong'];
+      bar.style.width = widths[s];
+      bar.style.backgroundColor = colors[s];
+      st.textContent = 'Password strength: ' + labels[s];
+      if (!p2) { mm.textContent = ''; mm.className = 'text-xs mt-1'; return; }
+      if (p1 === p2) { mm.textContent = 'Passwords match'; mm.className = 'text-xs mt-1 text-green-600'; }
+      else { mm.textContent = 'Passwords do not match'; mm.className = 'text-xs mt-1 text-red-600'; }
     }
     $('c_password')?.addEventListener('input', updateStrength);
     $('c_password2')?.addEventListener('input', updateStrength);
 
-    // Phone mask (create)
+    // ---------- Phone mask ----------
     $('c_phone')?.addEventListener('input', () => {
       const el = $('c_phone');
       const cur = el.selectionStart;
@@ -319,97 +336,204 @@
       el.selectionStart = el.selectionEnd = Math.min(cur + (el.value.length - before.length), el.value.length);
     });
 
-    // Local accounts (demo in-browser)
-    const ACC_KEY='accounts';
-    const getAccounts = ()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
-    const saveAccounts = (obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
+    // ---------- Redirect helper ----------
+    function handlePostLogin() {
+      // Check for pendingAction (from search.html gating)
+      const pending = sessionStorage.getItem('pendingAction');
+      if (pending) {
+        try {
+          const action = JSON.parse(pending);
+          // Redirect back to search with query params preserved
+          const url = new URL('/search.html', window.location.origin);
+          if (action.q) url.searchParams.set('q', action.q);
+          url.searchParams.set('pendingAction', 'true');
+          window.location.href = url.toString();
+          return;
+        } catch (e) {
+          console.warn('[login] Failed to parse pendingAction:', e);
+        }
+      }
 
-    // Sign In
-    $('loginForm').addEventListener('submit', (e) => {
+      // Check for nextAfterLogin (legacy flow)
+      const next = localStorage.getItem('nextAfterLogin');
+      if (next) {
+        localStorage.removeItem('nextAfterLogin');
+        window.location.href = next;
+        return;
+      }
+
+      // Default: go to index
+      window.location.href = '/index.html';
+    }
+
+    // ---------- Firebase Auth Error Messages ----------
+    function getAuthErrorMessage(code) {
+      switch (code) {
+        case 'auth/email-already-in-use':
+          return 'An account with this email already exists. Please sign in.';
+        case 'auth/invalid-email':
+          return 'Please enter a valid email address.';
+        case 'auth/weak-password':
+          return 'Password is too weak. Please use at least 6 characters.';
+        case 'auth/user-not-found':
+          return 'No account found with this email. Please create an account.';
+        case 'auth/wrong-password':
+          return 'Incorrect password. Please try again.';
+        case 'auth/invalid-credential':
+          return 'Invalid email or password. Please try again.';
+        case 'auth/too-many-requests':
+          return 'Too many failed attempts. Please try again later.';
+        default:
+          return 'An error occurred. Please try again.';
+      }
+    }
+
+    // ---------- SIGN IN (Firebase Auth) ----------
+    $('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = $('email').value.trim().toLowerCase();
       const password = $('password').value;
-      const accounts = getAccounts();
-      const acct = accounts[email];
-      if (!acct) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); return; }
-      if (acct.password !== password) { setStatus('Invalid email or password.'); return; }
-      localStorage.setItem('isLoggedIn','true');
-      localStorage.setItem('loggedInEmail', email);
-      if (acct.role) localStorage.setItem('userRole', acct.role);
+      const btn = $('loginSubmitBtn');
 
-      // If no origin flag, assume header login (so verify → Welcome)
-      if (!localStorage.getItem('loginOrigin')) {
-        localStorage.setItem('loginOrigin','header');
+      if (!email || !password) {
+        setStatus('Please enter email and password.');
+        return;
       }
 
-      if (!localStorage.getItem('verificationCode')) {
-        const code = String(Math.floor(100000 + Math.random()*900000));
-        localStorage.setItem('verificationCode', code);
-        localStorage.setItem('verifyTarget', email);
+      setLoading(btn, true);
+      clearStatus();
+
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        console.log('[login] Sign in success:', userCredential.user.uid);
+        
+        // Store email for convenience
+        localStorage.setItem('loggedInEmail', email);
+        
+        setStatus('Login successful! Redirecting...', true);
+        setTimeout(handlePostLogin, 500);
+
+      } catch (error) {
+        console.error('[login] Sign in error:', error.code, error.message);
+        setStatus(getAuthErrorMessage(error.code));
+        setLoading(btn, false);
       }
-
-      const next = localStorage.getItem('nextAfterLogin');
-      if (next) { window.location.href = next; return; }
-
-      // Default destination → verify
-      window.location.href = '/verify-code.html';
     });
 
-    // Create Account
-    $('createForm').addEventListener('submit', (e) => {
+    // ---------- CREATE ACCOUNT (Firebase Auth + Firestore) ----------
+    $('createForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const name  = $('c_name').value.trim();
+      const name = $('c_name').value.trim();
       const email = $('c_email').value.trim().toLowerCase();
       const phone = $('c_phone').value.trim();
       const p1 = $('c_password').value;
       const p2 = $('c_password2').value;
       const role = $('createRole').value;
+      const btn = $('createSubmitBtn');
 
-      if (!name || !email || !phone || !p1) { setStatus('Please complete all fields.'); return; }
-      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
-      if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
-
-      const accounts = getAccounts();
-      accounts[email] = { name, email, password: p1, phone, role };
-      saveAccounts(accounts);
-
-      localStorage.setItem('isLoggedIn','true');
-      localStorage.setItem('loggedInEmail', email);
-      localStorage.setItem('userRole', role);
-
-      // If no origin flag, assume header login (so verify → Welcome)
-      if (!localStorage.getItem('loginOrigin')) {
-        localStorage.setItem('loginOrigin','header');
+      // Validation
+      if (!name || !email || !phone || !p1) {
+        setStatus('Please complete all fields.');
+        return;
+      }
+      if (!isValidPhone(phone)) {
+        setStatus('Please enter a valid 10-digit phone number.');
+        $('c_phone').focus();
+        return;
+      }
+      if (p1 !== p2) {
+        setStatus('Passwords do not match.');
+        return;
+      }
+      if (p1.length < 6) {
+        setStatus('Password must be at least 6 characters.');
+        return;
       }
 
-      // Send code (simulated) + verify handoff
-      const code = String(Math.floor(100000 + Math.random()*900000));
-      localStorage.setItem('verificationCode', code);
-      localStorage.setItem('verifyTarget', email);
+      const phoneE164 = normalizePhoneE164(phone);
+      if (!phoneE164) {
+        setStatus('Invalid phone number format.');
+        return;
+      }
 
-      const next = localStorage.getItem('nextAfterLogin');
-      if (next) { window.location.href = next; return; }
+      setLoading(btn, true);
+      clearStatus();
 
-      // Default destination → verify
-      window.location.href = '/verify-code.html';
+      try {
+        // Create Firebase Auth user
+        const userCredential = await createUserWithEmailAndPassword(auth, email, p1);
+        const uid = userCredential.user.uid;
+        console.log('[login] Account created:', uid);
+
+        // Store user profile in Firestore
+        await setDoc(doc(db, 'users', uid), {
+          name,
+          email,
+          phone: phoneE164,
+          role,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        console.log('[login] User profile saved to Firestore');
+
+        // Store email for convenience
+        localStorage.setItem('loggedInEmail', email);
+        localStorage.setItem('userRole', role);
+
+        setStatus('Account created successfully! Redirecting...', true);
+        setTimeout(handlePostLogin, 500);
+
+      } catch (error) {
+        console.error('[login] Create account error:', error.code, error.message);
+        setStatus(getAuthErrorMessage(error.code));
+        setLoading(btn, false);
+      }
     });
 
-    // Debug panel
-    $('dbgToggle').addEventListener('click', () => {
-      const fd = safeJSON(localStorage.getItem('formData'));
+    // ---------- Init: Check tab param ----------
+    (function init() {
+      const url = new URL(location.href);
+      const tabParam = (url.searchParams.get('tab') || '').toLowerCase();
+      if (tabParam === 'create' || sessionStorage.getItem('pendingAction')) {
+        // If coming from gated action, might want to create account
+      }
+      // Default to sign-in tab
+    })();
+
+    // ---------- Debug panel ----------
+    $('dbgToggle').addEventListener('click', async () => {
+      const user = auth.currentUser;
+      let firestoreData = null;
+      if (user) {
+        try {
+          const docSnap = await getDoc(doc(db, 'users', user.uid));
+          if (docSnap.exists()) firestoreData = docSnap.data();
+        } catch (e) {
+          firestoreData = { error: e.message };
+        }
+      }
       const dump = {
-        formData: fd,
-        selectedPlan: localStorage.getItem('selectedPlan'),
+        authUser: user ? { uid: user.uid, email: user.email } : null,
+        firestoreProfile: firestoreData,
+        pendingAction: sessionStorage.getItem('pendingAction'),
         loggedInEmail: localStorage.getItem('loggedInEmail'),
         userRole: localStorage.getItem('userRole'),
-        verificationCode: localStorage.getItem('verificationCode'),
-        verifyTarget: localStorage.getItem('verifyTarget'),
-        nextAfterLogin: localStorage.getItem('nextAfterLogin'),
-        loginOrigin: localStorage.getItem('loginOrigin')
+        nextAfterLogin: localStorage.getItem('nextAfterLogin')
       };
       const p = $('dbgPanel');
       p.classList.toggle('hidden');
       p.textContent = JSON.stringify(dump, null, 2);
+    });
+
+    // ---------- Auto-redirect if already logged in ----------
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('[login] Already logged in:', user.email);
+        // If there's a pending action, redirect immediately
+        if (sessionStorage.getItem('pendingAction')) {
+          handlePostLogin();
+        }
+      }
     });
   </script>
 </body>
