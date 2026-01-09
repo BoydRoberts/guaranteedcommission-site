@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-06 (National: fitBounds for ANY city/ZIP + dot-anchored price label; keep Tasks A/B/C/D) -->
+<!-- search.html - Build 2026-01-09 (Restored: Branded header + Zillow-style filter bar; Tasks A/B/C/D/E preserved) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -14,25 +14,17 @@
   <style>
     html, body { height: 100%; }
     .mapboxgl-canvas { outline: none; }
-    .pill { display:inline-flex; align-items:center; gap:4px; background:#f3f4f6; border-radius:9999px; padding:2px 10px; font-size:13px; margin:2px; }
-    .pill button { background:none; border:none; color:#555; font-size:14px; cursor:pointer; line-height:1; }
-    details[open] summary svg { transform: rotate(180deg); }
-
-    /* Email/alerts banner */
-    #saveBanner { display:none; }
-    .banner { background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; border-radius:8px; }
-    .banner .btn { border-radius:8px; padding:.5rem .75rem; font-size:.875rem; }
 
     /* Tile styles (shared with tile-renderer.js) */
     .gc-tile { background:#fff; border-radius:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.08); }
     .gc-photo { width:100%; height:180px; object-fit:cover; background:#e5e7eb; }
     .gc-ribbon { position:absolute; top:10px; left:10px; background:rgba(0,0,0,.75); color:#fff; font-size:12px; padding:4px 8px; border-radius:6px; }
-    .gc-heart { position:absolute; top:10px; right:10px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
-    .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); cursor:pointer; }
+    .gc-heart { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); border:none; cursor:pointer; }
+    .gc-share { position:absolute; bottom:10px; padding:.35rem .6rem; font-size:12px; background:#fff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); cursor:pointer; }
     .gc-share-left { left:10px; }
-    .gc-share-right{ right:10px; }
+    .gc-share-right { right:10px; }
 
-    /* === Task B: Zillow-style 50/50 layout === */
+    /* Task B: 50/50 layout */
     .search-layout { display:flex; flex-direction:column; height:100vh; }
     .search-header { flex-shrink:0; }
     .search-body { flex:1; display:flex; overflow:hidden; }
@@ -48,7 +40,7 @@
       .search-results #grid { grid-template-columns:1fr; }
     }
 
-    /* === Marker: dot is truth, price label is attached (no pointer triangle) === */
+    /* Marker styles */
     .gc-marker-wrap { position:relative; width:0; height:0; }
     .gc-marker-dot {
       position:absolute;
@@ -58,14 +50,13 @@
       border-radius:9999px;
       box-shadow:0 1px 2px rgba(0,0,0,.3);
       left:0; top:0;
-      transform: translate(-50%, -50%);
+      transform:translate(-50%, -50%);
       cursor:pointer;
     }
     .gc-marker-label {
       position:absolute;
-      left:10px;
-      top:0;
-      transform: translate(0, -50%);
+      left:10px; top:0;
+      transform:translate(0, -50%);
       display:inline-flex;
       align-items:center;
       justify-content:center;
@@ -81,144 +72,310 @@
       cursor:pointer;
       user-select:none;
     }
+    .gc-marker-wrap.highlighted .gc-marker-label { background:#dc2626; color:#fff; }
+    .gc-marker-wrap.highlighted .gc-marker-dot { box-shadow:0 3px 10px rgba(220,38,38,.45); }
+    .gc-tile.highlighted { outline:3px solid #dc2626; outline-offset:2px; box-shadow:0 4px 12px rgba(220,38,38,.3); }
 
-    .gc-marker-wrap.highlighted .gc-marker-label {
-      background:#dc2626;
+    /* Filter bar dropdown styling - All buttons use #4DA6FF with white text */
+    .filter-dropdown {
+      position:relative;
+      display:inline-block;
+    }
+    .filter-btn {
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      padding:8px 12px;
+      font-size:14px;
+      font-weight:500;
+      background:#4DA6FF;
       color:#fff;
+      border:1px solid #4DA6FF;
+      border-radius:8px;
+      cursor:pointer;
+      white-space:nowrap;
     }
-    .gc-marker-wrap.highlighted .gc-marker-dot {
-      box-shadow:0 3px 10px rgba(220,38,38,.45);
-    }
+    .filter-btn:hover { opacity:0.9; }
+    .filter-btn:focus { outline:none; }
+    .filter-btn.active { background:#4DA6FF; border-color:#4DA6FF; }
+    .filter-btn svg { width:12px; height:12px; transition:transform 0.15s; fill:#fff; }
+    .filter-dropdown.open .filter-btn svg { transform:rotate(180deg); }
 
-    .gc-tile.highlighted{
-      outline:3px solid #dc2626;
-      outline-offset:2px;
-      box-shadow:0 4px 12px rgba(220,38,38,.3);
+    .filter-panel {
+      position:absolute;
+      top:calc(100% + 4px);
+      left:0;
+      min-width:200px;
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:8px;
+      box-shadow:0 4px 16px rgba(0,0,0,.12);
+      padding:12px;
+      z-index:100;
+      display:none;
     }
+    .filter-dropdown.open .filter-panel { display:block; }
+    .filter-panel.right { left:auto; right:0; }
 
-    @media (hover:none) {
-      .gc-tile:hover { outline:none; }
+    .filter-panel label { display:block; font-size:12px; color:#6b7280; margin-bottom:4px; }
+    .filter-panel input, .filter-panel select {
+      width:100%;
+      padding:6px 8px;
+      font-size:14px;
+      border:1px solid #d1d5db;
+      border-radius:6px;
+      margin-bottom:8px;
     }
+    .filter-panel input:focus, .filter-panel select:focus {
+      outline:none;
+      border-color:#4DA6FF;
+    }
+    .filter-apply-btn {
+      width:100%;
+      padding:8px;
+      font-size:14px;
+      font-weight:500;
+      color:#fff;
+      background:#4DA6FF;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+    }
+    .filter-apply-btn:hover { opacity:0.9; }
+
+    /* Active filter pills */
+    .filter-pill {
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      padding:4px 10px;
+      font-size:12px;
+      font-weight:500;
+      background:#e0f2fe;
+      color:#0369a1;
+      border-radius:9999px;
+      margin-right:6px;
+    }
+    .filter-pill button {
+      background:none;
+      border:none;
+      color:#0369a1;
+      font-size:14px;
+      line-height:1;
+      cursor:pointer;
+      padding:0;
+      margin-left:2px;
+    }
+    .filter-pill button:hover { color:#dc2626; }
   </style>
 </head>
 
 <body class="search-layout text-gray-900">
 
-  <!-- Header -->
+  <!-- ========== STRIP 1: BRANDED HEADER ========== -->
   <div class="search-header">
     <header class="bg-white shadow">
-      <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-        <a href="/index.html" class="text-sm hover:underline" style="color:#4DA6FF;">Home</a>
-        <div class="text-center">
-          <h1 class="text-xl font-bold">Search Results</h1>
-          <p id="qLabel" class="text-xs text-gray-600"></p>
-        </div>
-        <div class="flex items-center gap-3">
-          <a href="/advertise.html" class="text-sm hover:underline" style="color:#4DA6FF;">Advertise</a>
-          <a href="/login.html" class="text-sm hover:underline" style="color:#4DA6FF;">Log In</a>
+      <div class="max-w-7xl mx-auto px-4 py-3">
+        <div class="flex items-center justify-between">
+          <a href="/index.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Home</a>
+
+          <div class="text-center">
+            <div class="flex items-end justify-center gap-0">
+              <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-8 w-8 object-contain -mr-1 -mb-0.5">
+              <h1 class="text-xl font-bold">GuaranteedCommission.com</h1>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <a href="/advertise.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Advertise</a>
+            <a href="/login.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Log In</a>
+          </div>
         </div>
       </div>
     </header>
 
-    <!-- Query & Controls -->
-    <section class="bg-white border-y">
-      <div class="max-w-7xl mx-auto px-4 py-4">
-        <div class="flex flex-col items-center gap-3">
+    <!-- ========== STRIP 2: ZILLOW-STYLE FILTER BAR ========== -->
+    <section class="bg-white border-b">
+      <div class="px-2 py-2">
 
-          <div class="w-full md:w-3/4 lg:w-2/3 flex items-center gap-2">
-            <input id="qBox" class="border rounded px-3 py-2 w-full" placeholder="City, neighborhood, or ZIP">
-            <button id="applyBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Search</button>
-            <select id="savedSearchesDropdown" class="border rounded px-2 py-2 text-sm">
-              <option value="">Saved Searches</option>
-            </select>
-            <button id="saveSearchBtn" class="px-3 py-2 border rounded text-sm">Save Search</button>
+        <!-- Filter Bar Row -->
+        <div class="flex flex-wrap items-center gap-2">
+
+          <!-- Search Input (far left, Zillow-style bigger) -->
+          <div class="w-[320px]">
+            <input id="qBox" type="text" class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 text-base focus:outline-none focus:border-[#4DA6FF]" placeholder="City, ZIP, or Saved Search">
           </div>
 
-          <div id="activePills" class="flex flex-wrap mt-1"></div>
-
-          <details id="filtersPanel" class="w-full md:w-3/4 lg:w-2/3">
-            <summary class="flex items-center justify-between cursor-pointer select-none px-2 py-2 text-sm text-gray-700">
-              <span class="font-semibold">Advanced filters</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" class="transition"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
-            </summary>
-
-            <div class="mt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
-              <div>
-                <label class="block text-gray-600 mb-1">Min Price ($)</label>
-                <input id="priceMin" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="500000">
-              </div>
-              <div>
-                <label class="block text-gray-600 mb-1">Max Price ($)</label>
-                <input id="priceMax" type="number" min="0" step="1000" class="w-full border rounded px-2 py-1" placeholder="2500000">
-              </div>
-              <div>
-                <label class="block text-gray-600 mb-1">Min Beds</label>
-                <input id="bedsMin" type="number" min="0" step="1" class="w-full border rounded px-2 py-1" placeholder="3">
-              </div>
-              <div>
-                <label class="block text-gray-600 mb-1">Min Baths</label>
-                <input id="bathsMin" type="number" min="0" step="0.5" class="w-full border rounded px-2 py-1" placeholder="2">
-              </div>
-              <div>
-                <label class="block text-gray-600 mb-1">Status</label>
-                <select id="status" class="w-full border rounded px-2 py-1">
-                  <option value="">Any</option>
-                  <option>Active</option>
-                  <option>In Contract</option>
-                  <option>Sold</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-gray-600 mb-1">Property Type</label>
-                <select id="propType" class="w-full border rounded px-2 py-1">
-                  <option value="">Any</option>
-                  <option>Single Family</option>
-                  <option>Condo</option>
-                  <option>Townhouse</option>
-                  <option>Multi-Family</option>
-                  <option>Land</option>
-                  <option>Other</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-gray-600 mb-1">Min Commission %</label>
-                <input id="commPctMin" type="number" min="0" step="0.25" class="w-full border rounded px-2 py-1" placeholder="2.5">
-              </div>
-              <div>
-                <label class="block text-gray-600 mb-1">Min Commission $</label>
-                <input id="commUsdMin" type="number" min="0" step="5000" class="w-full border rounded px-2 py-1" placeholder="20000">
-              </div>
-            </div>
-
-            <div class="mt-4 flex flex-wrap items-center gap-2">
-              <button id="applyFiltersBtn" class="bg-blue-600 text-white px-3 py-2 rounded">Apply filters</button>
-              <button id="clearFiltersBtn" class="px-3 py-2 rounded border">Clear</button>
-              <span class="text-xs text-gray-500 ml-2">Filters and last search are remembered.</span>
-            </div>
-          </details>
-
-          <div id="saveBanner" class="w-full md:w-3/4 lg:w-2/3 banner p-3 mt-2">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div class="text-sm"><strong>Email these results?</strong> We'll send today's matches now and alert you when new listings appear.</div>
-              <div class="flex gap-2">
-                <button id="saveYesBtn" class="btn bg-indigo-600 text-white">Yes, email & alert me</button>
-                <button id="saveNoBtn" class="btn border">Not now</button>
-              </div>
-            </div>
-            <div id="saveLoginNeeded" class="hidden mt-2 text-sm text-amber-800">
-              Please <a href="/login.html" class="underline">log in</a> to save searches and get alerts.
-            </div>
-            <div id="saveConfirmed" class="hidden mt-2 text-sm text-green-800">
-              Saved. We'll email these results now and alert you when new ones appear.
+          <!-- For Sale Dropdown -->
+          <div class="filter-dropdown" data-filter="status">
+            <button class="filter-btn" type="button">
+              <span>For Sale</span>
+              <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
+            </button>
+            <div class="filter-panel">
+              <select id="status" class="w-full">
+                <option value="">Any Status</option>
+                <option value="Active">Active</option>
+                <option value="In Contract">In Contract</option>
+                <option value="Sold">Sold</option>
+              </select>
+              <button class="filter-apply-btn" data-apply="status">Apply</button>
             </div>
           </div>
 
+          <!-- Price Dropdown -->
+          <div class="filter-dropdown" data-filter="price">
+            <button class="filter-btn" type="button">
+              <span>Price</span>
+              <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
+            </button>
+            <div class="filter-panel">
+              <label>Min Price</label>
+              <input id="priceMin" type="number" min="0" step="50000" placeholder="No Min">
+              <label>Max Price</label>
+              <input id="priceMax" type="number" min="0" step="50000" placeholder="No Max">
+              <button class="filter-apply-btn" data-apply="price">Apply</button>
+            </div>
+          </div>
+
+          <!-- Beds Dropdown -->
+          <div class="filter-dropdown" data-filter="beds">
+            <button class="filter-btn" type="button">
+              <span>Beds</span>
+              <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
+            </button>
+            <div class="filter-panel">
+              <label>Min Bedrooms</label>
+              <select id="bedsMin">
+                <option value="">Any</option>
+                <option value="1">1+</option>
+                <option value="2">2+</option>
+                <option value="3">3+</option>
+                <option value="4">4+</option>
+                <option value="5">5+</option>
+              </select>
+              <button class="filter-apply-btn" data-apply="beds">Apply</button>
+            </div>
+          </div>
+
+          <!-- Baths Dropdown -->
+          <div class="filter-dropdown" data-filter="baths">
+            <button class="filter-btn" type="button">
+              <span>Baths</span>
+              <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
+            </button>
+            <div class="filter-panel">
+              <label>Min Bathrooms</label>
+              <select id="bathsMin">
+                <option value="">Any</option>
+                <option value="1">1+</option>
+                <option value="1.5">1.5+</option>
+                <option value="2">2+</option>
+                <option value="2.5">2.5+</option>
+                <option value="3">3+</option>
+                <option value="4">4+</option>
+              </select>
+              <button class="filter-apply-btn" data-apply="baths">Apply</button>
+            </div>
+          </div>
+
+          <!-- Type Dropdown -->
+          <div class="filter-dropdown" data-filter="propType">
+            <button class="filter-btn" type="button">
+              <span>Type</span>
+              <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
+            </button>
+            <div class="filter-panel">
+              <select id="propType">
+                <option value="">Any Type</option>
+                <option value="Single Family">Single Family</option>
+                <option value="Condo">Condo</option>
+                <option value="Townhouse">Townhouse</option>
+                <option value="Multi-Family">Multi-Family</option>
+                <option value="Land">Land</option>
+                <option value="Other">Other</option>
+              </select>
+              <button class="filter-apply-btn" data-apply="propType">Apply</button>
+            </div>
+          </div>
+
+          <!-- Spacer -->
+          <div class="flex-1"></div>
+
+          <!-- Share / Save Button -->
+          <div class="filter-dropdown" data-filter="share-save">
+            <button class="px-4 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;" type="button">
+              Share / Save
+              <svg class="inline-block ml-1 w-3 h-3" viewBox="0 0 24 24"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
+            </button>
+            <div class="filter-panel right" style="min-width:280px;">
+              
+              <!-- Save Current Search -->
+              <div class="mb-4">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Save Current Search</label>
+                <input id="searchNameInput" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2" placeholder="Name this search...">
+                <button id="saveSearchBtn" class="w-full px-3 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;">
+                  Save Search
+                </button>
+              </div>
+
+              <hr class="my-3 border-gray-200">
+
+              <!-- Share Now -->
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Share Results Now</label>
+                <div class="grid grid-cols-2 gap-2">
+                  <button id="emailSearchBtn" class="px-3 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;">
+                    Email Results
+                  </button>
+                  <button id="textSearchBtn" class="px-3 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;">
+                    Text Results
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Auto-Email / Auto-Text Button -->
+          <div class="filter-dropdown" data-filter="auto-notify">
+            <button class="px-4 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;" type="button">
+              Auto-Email / Auto-Text
+              <svg class="inline-block ml-1 w-3 h-3" viewBox="0 0 24 24"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
+            </button>
+            <div class="filter-panel right" style="min-width:280px;">
+              
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Auto-Notify on New Listings</label>
+              <p class="text-xs text-gray-500 mb-3">Get notified when new listings match this search</p>
+              <div class="grid grid-cols-2 gap-2">
+                <button id="autoEmailBtn" class="px-3 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;">
+                  Auto-Email
+                </button>
+                <button id="autoTextBtn" class="px-3 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;">
+                  Auto-Text
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Clear All -->
+          <button id="clearFiltersBtn" class="px-3 py-2 text-sm text-white rounded-lg" style="background:#4DA6FF;">
+            Clear
+          </button>
         </div>
+
+        <!-- Active Pills + Results Count -->
+        <div class="flex items-center justify-between mt-2 px-1">
+          <div id="activePills" class="flex flex-wrap items-center"></div>
+          <p id="qLabel" class="text-sm text-gray-600"></p>
+        </div>
+
       </div>
     </section>
   </div>
 
-  <!-- Body -->
+  <!-- ========== MAP + RESULTS BODY ========== -->
   <div class="search-body">
     <div class="search-map"><div id="mapCanvas"></div></div>
     <div class="search-results"><div id="grid"></div></div>
@@ -242,6 +399,36 @@
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
     const CAN_HOVER = window.matchMedia && window.matchMedia('(hover: hover)').matches;
 
+    // ===== Filter Dropdown UI =====
+    (function wireFilterDropdowns() {
+      const dropdowns = document.querySelectorAll('.filter-dropdown');
+
+      dropdowns.forEach(dd => {
+        const btn = dd.querySelector('button');
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const wasOpen = dd.classList.contains('open');
+          dropdowns.forEach(d => d.classList.remove('open'));
+          if (!wasOpen) dd.classList.add('open');
+        });
+      });
+
+      document.addEventListener('click', () => {
+        dropdowns.forEach(d => d.classList.remove('open'));
+      });
+
+      document.querySelectorAll('.filter-panel').forEach(panel => {
+        panel.addEventListener('click', e => e.stopPropagation());
+      });
+
+      document.querySelectorAll('.filter-apply-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          applyAllFilters();
+          dropdowns.forEach(d => d.classList.remove('open'));
+        });
+      });
+    })();
+
     // ===== Likes =====
     async function incrementLikeOnce(listingId) {
       try {
@@ -261,53 +448,88 @@
       const val = (id) => (document.getElementById(id)?.value || '').trim();
       const num = (id) => {
         const v = (document.getElementById(id)?.value || '').trim();
-        const n = Number(v); return isFinite(n) && v!=='' ? n : null;
+        const n = Number(v);
+        return isFinite(n) && v !== '' ? n : null;
       };
       return {
         priceMin: num('priceMin'),
         priceMax: num('priceMax'),
-        bedsMin:  num('bedsMin'),
+        bedsMin: num('bedsMin'),
         bathsMin: num('bathsMin'),
-        status:   val('status'),
+        status: val('status'),
         propType: val('propType'),
-        commPctMin: num('commPctMin'),
-        commUsdMin: num('commUsdMin'),
       };
     }
 
-    function writeFiltersToUI(f){
-      const set = (id, v)=>{ const el=$(id); if (!el) return; el.value = (v ?? ''); };
+    function writeFiltersToUI(f) {
+      const set = (id, v) => { const el = $(id); if (el) el.value = (v ?? ''); };
       set('priceMin', f.priceMin ?? '');
       set('priceMax', f.priceMax ?? '');
-      set('bedsMin',  f.bedsMin ?? '');
+      set('bedsMin', f.bedsMin ?? '');
       set('bathsMin', f.bathsMin ?? '');
-      set('status',   f.status ?? '');
+      set('status', f.status ?? '');
       set('propType', f.propType ?? '');
-      set('commPctMin', f.commPctMin ?? '');
-      set('commUsdMin', f.commUsdMin ?? '');
     }
 
-    function renderPills(filters){
+    function updateDropdownLabels(f) {
+      const statusBtn = document.querySelector('[data-filter="status"] .filter-btn span');
+      if (statusBtn) statusBtn.textContent = f.status || 'For Sale';
+
+      const priceBtn = document.querySelector('[data-filter="price"] .filter-btn span');
+      if (priceBtn) {
+        if (f.priceMin && f.priceMax) priceBtn.textContent = `$${(f.priceMin/1000)}K-$${(f.priceMax/1000)}K`;
+        else if (f.priceMin) priceBtn.textContent = `$${(f.priceMin/1000)}K+`;
+        else if (f.priceMax) priceBtn.textContent = `Up to $${(f.priceMax/1000)}K`;
+        else priceBtn.textContent = 'Price';
+      }
+
+      const bedsBtn = document.querySelector('[data-filter="beds"] .filter-btn span');
+      if (bedsBtn) bedsBtn.textContent = f.bedsMin ? `${f.bedsMin}+ Beds` : 'Beds';
+
+      const bathsBtn = document.querySelector('[data-filter="baths"] .filter-btn span');
+      if (bathsBtn) bathsBtn.textContent = f.bathsMin ? `${f.bathsMin}+ Baths` : 'Baths';
+
+      const propBtn = document.querySelector('[data-filter="propType"] .filter-btn span');
+      if (propBtn) propBtn.textContent = f.propType || 'Type';
+
+      document.querySelectorAll('.filter-dropdown').forEach(dd => {
+        const filter = dd.dataset.filter;
+        let isActive = false;
+        if (filter === 'status' && f.status) isActive = true;
+        if (filter === 'price' && (f.priceMin || f.priceMax)) isActive = true;
+        if (filter === 'beds' && f.bedsMin) isActive = true;
+        if (filter === 'baths' && f.bathsMin) isActive = true;
+        if (filter === 'propType' && f.propType) isActive = true;
+        const btn = dd.querySelector('.filter-btn');
+        if (btn) btn.classList.toggle('active', isActive);
+      });
+    }
+
+    function renderPills(filters) {
       const pillsBox = $("activePills");
       pillsBox.innerHTML = '';
-      function pill(label, key){
+
+      function pill(label, key) {
         const el = document.createElement('div');
-        el.className='pill';
+        el.className = 'filter-pill';
         el.innerHTML = `<span>${label}</span><button aria-label="Clear">&times;</button>`;
-        el.querySelector('button').onclick = ()=>{ const input=document.getElementById(key); if(input){ input.value=''; } document.getElementById("applyFiltersBtn").click(); };
+        el.querySelector('button').onclick = () => {
+          const input = document.getElementById(key);
+          if (input) input.value = '';
+          applyAllFilters();
+        };
         pillsBox.appendChild(el);
       }
-      if (filters.priceMin) pill(`$${Number(filters.priceMin).toLocaleString()}+`,'priceMin');
-      if (filters.priceMax) pill(`Up to $${Number(filters.priceMax).toLocaleString()}`,'priceMax');
-      if (filters.bedsMin) pill(`${filters.bedsMin}+ bds`,'bedsMin');
-      if (filters.bathsMin) pill(`${filters.bathsMin}+ ba`,'bathsMin');
-      if (filters.status) pill(filters.status,'status');
-      if (filters.propType) pill(filters.propType,'propType');
-      if (filters.commPctMin) pill(`${filters.commPctMin}%+`,'commPctMin');
-      if (filters.commUsdMin) pill(`$${Number(filters.commUsdMin).toLocaleString()}+ comm`,'commUsdMin');
+
+      if (filters.priceMin) pill(`$${Number(filters.priceMin).toLocaleString()}+`, 'priceMin');
+      if (filters.priceMax) pill(`Up to $${Number(filters.priceMax).toLocaleString()}`, 'priceMax');
+      if (filters.bedsMin) pill(`${filters.bedsMin}+ beds`, 'bedsMin');
+      if (filters.bathsMin) pill(`${filters.bathsMin}+ baths`, 'bathsMin');
+      if (filters.status) pill(filters.status, 'status');
+      if (filters.propType) pill(filters.propType, 'propType');
     }
 
-    function matchesFilters(docu, qtext, f){
+    function matchesFilters(docu, qtext, f) {
       const address = (docu.address || '').toLowerCase();
       if (qtext && !address.includes(qtext.toLowerCase().trim())) return false;
 
@@ -321,7 +543,7 @@
       if (f.bathsMin && baths < f.bathsMin) return false;
 
       if (f.status) {
-        const normalized = (String(docu.status||'').toLowerCase()==='in_contract') ? 'In Contract' : (docu.status||'');
+        const normalized = (String(docu.status || '').toLowerCase() === 'in_contract') ? 'In Contract' : (docu.status || '');
         if (normalized !== f.status) return false;
       }
 
@@ -330,80 +552,42 @@
         if (!type || type !== f.propType.toLowerCase()) return false;
       }
 
-      const commType = docu.commissionType || '%';
-      const commVal = Number(docu.commission || 0);
-      if (f.commPctMin) {
-        if (commType === '%' && commVal < f.commPctMin) return false;
-        if (commType === '$') {
-          const p = Number(docu.price || 0);
-          if (p && (commVal / p * 100) < f.commPctMin) return false;
-        }
-      }
-      if (f.commUsdMin) {
-        if (commType === '$' && commVal < f.commUsdMin) return false;
-        if (commType === '%') {
-          const p = Number(docu.price || 0);
-          if (p && Math.round(p * (commVal/100)) < f.commUsdMin) return false;
-        }
-      }
-
       return true;
     }
 
-    // ===== Saved searches (local) =====
-    function getSavedSearches(){ return getJSON('savedSearches', []); }
-    function setSavedSearches(arr){ setJSON('savedSearches', arr); }
-    function refreshSavedDropdown(){
-      const dd = $("savedSearchesDropdown");
-      dd.innerHTML = `<option value="">Saved Searches</option>`;
-      getSavedSearches().forEach(s=>{
-        const opt = document.createElement('option');
-        opt.value = s.id; opt.textContent = s.name || s.q || 'Search';
-        dd.appendChild(opt);
-      });
-    }
-    function saveCurrentSearch(name, q, filters, opts={}){
+    // ===== Saved searches (local for now, will move to Firestore with auth) =====
+    function getSavedSearches() { return getJSON('savedSearches', []); }
+    function setSavedSearches(arr) { setJSON('savedSearches', arr); }
+
+    function saveCurrentSearch(name, q, filters, opts = {}) {
       const email = (localStorage.getItem('loggedInEmail') || '').trim();
-      if (!email && opts.alerts) {
-        $('saveLoginNeeded').classList.remove('hidden');
-        return null;
-      }
+      const phone = (localStorage.getItem('loggedInPhone') || '').trim();
       const arr = getSavedSearches();
       const record = {
         id: 'ss_' + Date.now(),
-        name: name || (q || 'Search') + ' #' + (arr.length+1),
-        q, filters,
+        name: name || (q || 'Search') + ' #' + (arr.length + 1),
+        q,
+        filters,
         email: email || '',
+        phone: phone || '',
         alerts: !!opts.alerts,
+        alertType: opts.alertType || 'none',
         lastSent: opts.lastSent || null,
         lastChecked: Date.now()
       };
       arr.unshift(record);
       setSavedSearches(arr);
-      refreshSavedDropdown();
-      $("savedSearchesDropdown").value = record.id;
       return record;
-    }
-
-    function showSaveBanner(show) {
-      const banner = document.getElementById('saveBanner');
-      if (!banner) return;
-      banner.style.display = show ? 'block' : 'none';
-      if (!show) {
-        const login = document.getElementById('saveLoginNeeded');
-        const conf  = document.getElementById('saveConfirmed');
-        if (login) login.classList.add('hidden');
-        if (conf)  conf.classList.add('hidden');
-      }
     }
 
     // ===== Map + markers + viewport sync =====
     let map;
     let markers = [];
-    let markerMap = {}; // listingKey -> marker wrap element
+    let markerMap = {};
     let allListingsWithCoords = [];
+    let allDocs = [];
 
-    const geocodeCache = new Map(); // exact address -> [lng, lat] or null
+    const geocodeCache = new Map();
 
     function formatPriceShort(price) {
       const p = Number(price || 0);
@@ -413,7 +597,7 @@
       return '$' + p.toLocaleString();
     }
 
-    function getListingKey(it){
+    function getListingKey(it) {
       return it?.id ? String(it.id) : String(it?.address || '').trim().toLowerCase();
     }
 
@@ -426,8 +610,7 @@
         && (latNum !== 0 || lngNum !== 0);
     }
 
-    // Nationwide: get bbox/center for ANY query string
-    async function geocodeWithBounds(q){
+    async function geocodeWithBounds(q) {
       if (!MAPBOX_TOKEN || !q) return null;
       try {
         const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
@@ -440,15 +623,14 @@
       }
     }
 
-    function clearMarkers(){
+    function clearMarkers() {
       markers.forEach(m => m.remove());
       markers = [];
       markerMap = {};
       allListingsWithCoords = [];
     }
 
-    // Exact address geocoding (the “dot worked” approach)
-    async function geocodeExactAddress(addr){
+    async function geocodeExactAddress(addr) {
       const a = String(addr || '').trim();
       if (!a) return null;
       if (geocodeCache.has(a)) return geocodeCache.get(a);
@@ -466,20 +648,17 @@
       return null;
     }
 
-    function highlightMarker(listingKey, on){
+    function highlightMarker(listingKey, on) {
       const wrap = markerMap[listingKey];
-      if (!wrap) return;
-      wrap.classList.toggle('highlighted', !!on);
+      if (wrap) wrap.classList.toggle('highlighted', !!on);
     }
 
-    function highlightTile(listingKey, on){
+    function highlightTile(listingKey, on) {
       const tile = document.querySelector(`[data-listing-id="${listingKey}"]`);
-      if (!tile) return;
-      tile.classList.toggle('highlighted', !!on);
+      if (tile) tile.classList.toggle('highlighted', !!on);
     }
 
-    async function initMap(q){
-      // Default (no search): USA center
+    async function initMap(q) {
       const DEFAULT_CENTER = [-98.5795, 39.8283];
       const DEFAULT_ZOOM = 4.2;
 
@@ -501,22 +680,19 @@
       });
       map.addControl(new mapboxgl.NavigationControl());
 
-      // Nationwide “show whole city with padding”:
-      // Fit to bbox when available, otherwise center+zoom.
       if (bbox) {
-        const b = bbox; // [minLng, minLat, maxLng, maxLat]
-        map.fitBounds([[b[0], b[1]], [b[2], b[3]]], {
+        map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], {
           padding: 70,
           maxZoom: 12.8,
           duration: 0
         });
       }
 
-      setTimeout(() => { try { map.resize(); } catch(e){} }, 140);
+      setTimeout(() => { try { map.resize(); } catch (e) {} }, 140);
       return center;
     }
 
-    async function addDotPriceMarkers(items){
+    async function addDotPriceMarkers(items) {
       if (!map) return;
       clearMarkers();
 
@@ -526,7 +702,6 @@
         const addr = (it?.address || '').trim();
         if (!addr) continue;
 
-        // Prefer stored coords if you later add them to Firestore
         let coords = null;
         if (isValidLatLng(it.lat, it.lng)) {
           coords = [Number(it.lng), Number(it.lat)];
@@ -538,7 +713,6 @@
         const listingKey = getListingKey(it);
         allListingsWithCoords.push({ ...it, _lng: coords[0], _lat: coords[1] });
 
-        // Build marker DOM: dot pinned to coordinate, label sits to the right
         const wrap = document.createElement('div');
         wrap.className = 'gc-marker-wrap';
         wrap.dataset.listingId = listingKey;
@@ -551,7 +725,6 @@
         label.className = 'gc-marker-label';
         label.textContent = formatPriceShort(it.price);
 
-        // Clicking dot OR label goes to listing
         const goListing = (e) => {
           e.stopPropagation();
           if (it.id) window.location.href = `/listing.html?id=${encodeURIComponent(it.id)}`;
@@ -560,7 +733,6 @@
         dot.addEventListener('click', goListing);
         label.addEventListener('click', goListing);
 
-        // Hover sync
         if (CAN_HOVER) {
           wrap.addEventListener('mouseenter', () => highlightTile(listingKey, true));
           wrap.addEventListener('mouseleave', () => highlightTile(listingKey, false));
@@ -580,7 +752,7 @@
       syncTilesToViewport();
     }
 
-    function renderTilesWithHover(grid, items){
+    function renderTilesWithHover(grid, items) {
       grid.innerHTML = '';
       if (!items.length) {
         grid.innerHTML = `<div class="text-sm text-gray-500">No listings in this map area. Pan or zoom out to see more.</div>`;
@@ -599,7 +771,7 @@
       });
     }
 
-    function syncTilesToViewport(){
+    function syncTilesToViewport() {
       if (!map) return;
       const bounds = map.getBounds();
       const visible = allListingsWithCoords.filter(it => bounds.contains([it._lng, it._lat]));
@@ -609,18 +781,30 @@
       const count = visible.length;
       const total = allListingsWithCoords.length;
       $('qLabel').textContent = q
-        ? `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} in map area for "${q}"`
-        : `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} in map area`;
+        ? `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''} for "${q}"`
+        : `Showing ${count} of ${total} listing${total !== 1 ? 's' : ''}`;
     }
 
-    function wireMapSync(){
+    function wireMapSync() {
       if (!map) return;
       map.on('moveend', syncTilesToViewport);
       map.on('zoomend', syncTilesToViewport);
     }
 
+    // ===== Apply All Filters =====
+    async function applyAllFilters() {
+      const f = readFiltersFromUI();
+      setJSON('lastFilters', f);
+      renderPills(f);
+      updateDropdownLabels(f);
+
+      const q = $("qBox").value.trim();
+      const filtered = allDocs.filter(d => matchesFilters(d, q, f));
+      await addDotPriceMarkers(filtered);
+    }
+
     // ===== Boot =====
-    (async function boot(){
+    (async function boot() {
       const qParam = getParam('q') || localStorage.getItem('lastSearch') || '';
       $("qBox").value = qParam;
       $("qLabel").textContent = qParam ? `Showing results for "${qParam}"` : 'Showing all listings';
@@ -629,91 +813,115 @@
       const lastFilters = getJSON('lastFilters', {});
       writeFiltersToUI(lastFilters);
       renderPills(lastFilters);
+      updateDropdownLabels(lastFilters);
 
       await initMap(qParam);
       wireMapSync();
 
       // Load from Firestore
-      let docs = [];
       try {
-        const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(200)));
+        const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt", "desc"), limit(200)));
         snap.forEach(d => {
           const data = d.data() || {};
           const signed = !!(data.signedISC && typeof data.signedISC === 'object' && data.signedISC.date);
           const isActive = String(data.status || '').toLowerCase() === 'active';
           if (!signed && !isActive) return;
-          docs.push({ id: d.id, ...data });
+          allDocs.push({ id: d.id, ...data });
         });
       } catch (e) {
         console.warn("[search] Firestore fetch failed:", e);
       }
 
-      const filtered = docs.filter(d => matchesFilters(d, qParam, lastFilters));
-
+      const filtered = allDocs.filter(d => matchesFilters(d, qParam, lastFilters));
       await addDotPriceMarkers(filtered);
 
-      showSaveBanner(true);
+      // Enter key in search box triggers new search
+      $("qBox").addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const q = $("qBox").value.trim();
+          localStorage.setItem('lastSearch', q);
+          location.href = `/search.html?q=${encodeURIComponent(q)}`;
+        }
+      });
 
-      // Search button
-      $("applyBtn").onclick = () => {
-        const q = $("qBox").value.trim();
-        localStorage.setItem('lastSearch', q);
-        location.href = `/search.html?q=${encodeURIComponent(q)}`;
-      };
-
-      // Filters
-      $("applyFiltersBtn").onclick = async () => {
-        const f = readFiltersFromUI();
-        setJSON('lastFilters', f);
-        renderPills(f);
-        const q = $("qBox").value.trim();
-        const refiltered = docs.filter(d => matchesFilters(d, q, f));
-        await addDotPriceMarkers(refiltered);
-        showSaveBanner(true);
-      };
-
+      // Clear all filters
       $("clearFiltersBtn").onclick = async () => {
         setJSON('lastFilters', {});
-        document.querySelectorAll('#filtersPanel input, #filtersPanel select').forEach(el => el.value = '');
+        document.querySelectorAll('#priceMin, #priceMax, #bedsMin, #bathsMin, #status, #propType').forEach(el => el.value = '');
         renderPills({});
+        updateDropdownLabels({});
         const q = $("qBox").value.trim();
-        const refiltered = docs.filter(d => matchesFilters(d, q, {}));
+        const refiltered = allDocs.filter(d => matchesFilters(d, q, {}));
         await addDotPriceMarkers(refiltered);
-        showSaveBanner(true);
       };
 
-      // Saved searches
-      refreshSavedDropdown();
-      const dd = $("savedSearchesDropdown");
-      dd.onchange = async () => {
-        const id = dd.value;
-        if (!id) return;
-        const arr = getSavedSearches();
-        const sel = arr.find(s => s.id === id);
-        if (!sel) return;
-        $("qBox").value = sel.q || '';
-        writeFiltersToUI(sel.filters || {});
-        renderPills(sel.filters || {});
-        const refiltered = docs.filter(d => matchesFilters(d, sel.q || '', sel.filters || {}));
-        await addDotPriceMarkers(refiltered);
-        showSaveBanner(true);
-      };
-
-      // Optional query params
-      (function(){
-        const u = new URL(location.href);
-        if (u.searchParams.get('open') === 'filters') document.getElementById('filtersPanel')?.setAttribute('open','');
-        if (u.searchParams.get('prompt') === 'save') showSaveBanner(true);
-      })();
-
-      // Save banner buttons
-      $('saveYesBtn').addEventListener('click', () => {
+      // Save search button
+      $("saveSearchBtn").onclick = () => {
         const q = $("qBox").value.trim();
         const filters = readFiltersFromUI();
-        const rec = saveCurrentSearch('', q, filters, { alerts: true, lastSent: Date.now() });
-        if (rec) $('saveConfirmed').classList.remove('hidden');
-      });
-      $('saveNoBtn').addEventListener('click', () => { showSaveBanner(false); });
+        const nameInput = $("searchNameInput");
+        const name = (nameInput?.value || '').trim() || q || "My Search";
+        saveCurrentSearch(name, q, filters, { alerts: false });
+        if (nameInput) nameInput.value = '';
+        alert("Search saved as: " + name);
+      };
+
+      // Email search button
+      $("emailSearchBtn").onclick = () => {
+        const email = (localStorage.getItem('loggedInEmail') || '').trim();
+        if (!email) {
+          const inputEmail = prompt("Enter your email to receive results:");
+          if (!inputEmail) return;
+          localStorage.setItem('loggedInEmail', inputEmail);
+        }
+        const q = $("qBox").value.trim();
+        const filters = readFiltersFromUI();
+        saveCurrentSearch('', q, filters, { alerts: false, lastSent: Date.now() });
+        alert("Results will be emailed to " + (localStorage.getItem('loggedInEmail') || ''));
+      };
+
+      // Text search button
+      $("textSearchBtn").onclick = () => {
+        const phone = (localStorage.getItem('loggedInPhone') || '').trim();
+        if (!phone) {
+          const inputPhone = prompt("Enter your phone number to receive results via text:");
+          if (!inputPhone) return;
+          localStorage.setItem('loggedInPhone', inputPhone);
+        }
+        const q = $("qBox").value.trim();
+        const filters = readFiltersFromUI();
+        saveCurrentSearch('', q, filters, { alerts: false, alertType: 'text', lastSent: Date.now() });
+        alert("Results will be texted to " + (localStorage.getItem('loggedInPhone') || ''));
+      };
+
+      // Auto-email button
+      $("autoEmailBtn").onclick = () => {
+        const email = (localStorage.getItem('loggedInEmail') || '').trim();
+        if (!email) {
+          const inputEmail = prompt("Enter your email for auto-notifications:");
+          if (!inputEmail) return;
+          localStorage.setItem('loggedInEmail', inputEmail);
+        }
+        const q = $("qBox").value.trim();
+        const filters = readFiltersFromUI();
+        saveCurrentSearch('', q, filters, { alerts: true, alertType: 'email', lastSent: Date.now() });
+        alert("Auto-email enabled! You'll be notified at " + (localStorage.getItem('loggedInEmail') || '') + " when new listings match this search.");
+      };
+
+      // Auto-text button
+      $("autoTextBtn").onclick = () => {
+        const phone = (localStorage.getItem('loggedInPhone') || '').trim();
+        if (!phone) {
+          const inputPhone = prompt("Enter your phone number for auto-text notifications:");
+          if (!inputPhone) return;
+          localStorage.setItem('loggedInPhone', inputPhone);
+        }
+        const q = $("qBox").value.trim();
+        const filters = readFiltersFromUI();
+        saveCurrentSearch('', q, filters, { alerts: true, alertType: 'text', lastSent: Date.now() });
+        alert("Auto-text enabled! You'll be notified at " + (localStorage.getItem('loggedInPhone') || '') + " when new listings match this search.");
+      };
 
     })();
   </script>
