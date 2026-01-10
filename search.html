@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-01-09 (Firebase Auth gating + Firestore saved searches) -->
+<!-- search.html - Build 2026-01-10 (Hardened: error handling, defensive checks) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -388,7 +388,7 @@
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { 
       collection, query, orderBy, getDocs, limit, doc as fdoc, updateDoc, increment, serverTimestamp,
-      addDoc, deleteDoc, where
+      addDoc
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { renderTile } from "/tile-renderer.js";
 
@@ -445,7 +445,7 @@
       }
     }
 
-    // ===== Phone Normalization =====
+    // ===== Phone Normalization (TODO: Use when wiring real SMS delivery) =====
     function normalizePhoneE164(s) {
       const digits = (s || '').replace(/\D/g, '');
       if (digits.length === 10) return '+1' + digits;
@@ -912,31 +912,38 @@
         }
         
         // Execute the pending action
+        let result = null;
         switch (action.type) {
           case 'save_search':
             const name = action.name || action.q || 'My Search';
-            await saveSearchToFirestore(name, action.q, action.filters, { alerts: false });
-            alert('Search saved as: ' + name);
+            result = await saveSearchToFirestore(name, action.q, action.filters, { alerts: false });
+            if (result) alert('Search saved as: ' + name);
+            else alert('Failed to save search. Please try again.');
             break;
           case 'email_now':
-            await saveSearchToFirestore('', action.q, action.filters, { alerts: false, alertType: 'email' });
-            alert('Results will be emailed to ' + currentUser.email);
+            result = await saveSearchToFirestore('', action.q, action.filters, { alerts: false, alertType: 'email' });
+            if (result) alert('Results will be emailed to ' + currentUser.email);
+            else alert('Failed to queue email. Please try again.');
             break;
           case 'text_now':
-            await saveSearchToFirestore('', action.q, action.filters, { alerts: false, alertType: 'text' });
-            alert('Results will be texted to your phone.');
+            result = await saveSearchToFirestore('', action.q, action.filters, { alerts: false, alertType: 'text' });
+            if (result) alert('Results will be texted to your phone.');
+            else alert('Failed to queue text. Please try again.');
             break;
           case 'auto_email':
-            await saveSearchToFirestore('', action.q, action.filters, { alerts: true, alertType: 'email' });
-            alert('Auto-email enabled! You\'ll be notified at ' + currentUser.email + ' when new listings match this search.');
+            result = await saveSearchToFirestore('', action.q, action.filters, { alerts: true, alertType: 'email' });
+            if (result) alert('Auto-email enabled! You\'ll be notified at ' + currentUser.email + ' when new listings match this search.');
+            else alert('Failed to enable auto-email. Please try again.');
             break;
           case 'auto_text':
-            await saveSearchToFirestore('', action.q, action.filters, { alerts: true, alertType: 'text' });
-            alert('Auto-text enabled! You\'ll be notified when new listings match this search.');
+            result = await saveSearchToFirestore('', action.q, action.filters, { alerts: true, alertType: 'text' });
+            if (result) alert('Auto-text enabled! You\'ll be notified when new listings match this search.');
+            else alert('Failed to enable auto-text. Please try again.');
             break;
         }
       } catch (e) {
         console.error('[search] Failed to handle pending action:', e);
+        alert('Something went wrong. Please try again.');
       }
     }
 
@@ -1017,9 +1024,13 @@
           const filters = readFiltersFromUI();
           const nameInput = $("searchNameInput");
           const name = (nameInput?.value || '').trim() || q || "My Search";
-          await saveSearchToFirestore(name, q, filters, { alerts: false });
+          const result = await saveSearchToFirestore(name, q, filters, { alerts: false });
           if (nameInput) nameInput.value = '';
-          alert("Search saved as: " + name);
+          if (result) {
+            alert("Search saved as: " + name);
+          } else {
+            alert("Failed to save search. Please try again.");
+          }
         });
       };
 
@@ -1028,8 +1039,12 @@
         requireAuth('email_now', async () => {
           const q = $("qBox").value.trim();
           const filters = readFiltersFromUI();
-          await saveSearchToFirestore('', q, filters, { alerts: false, alertType: 'email' });
-          alert("Results will be emailed to " + currentUser.email);
+          const result = await saveSearchToFirestore('', q, filters, { alerts: false, alertType: 'email' });
+          if (result) {
+            alert("Results will be emailed to " + currentUser.email);
+          } else {
+            alert("Failed to queue email. Please try again.");
+          }
         });
       };
 
@@ -1038,8 +1053,12 @@
         requireAuth('text_now', async () => {
           const q = $("qBox").value.trim();
           const filters = readFiltersFromUI();
-          await saveSearchToFirestore('', q, filters, { alerts: false, alertType: 'text' });
-          alert("Results will be texted to your phone.");
+          const result = await saveSearchToFirestore('', q, filters, { alerts: false, alertType: 'text' });
+          if (result) {
+            alert("Results will be texted to your phone.");
+          } else {
+            alert("Failed to queue text. Please try again.");
+          }
         });
       };
 
@@ -1048,8 +1067,12 @@
         requireAuth('auto_email', async () => {
           const q = $("qBox").value.trim();
           const filters = readFiltersFromUI();
-          await saveSearchToFirestore('', q, filters, { alerts: true, alertType: 'email' });
-          alert("Auto-email enabled! You'll be notified at " + currentUser.email + " when new listings match this search.");
+          const result = await saveSearchToFirestore('', q, filters, { alerts: true, alertType: 'email' });
+          if (result) {
+            alert("Auto-email enabled! You'll be notified at " + currentUser.email + " when new listings match this search.");
+          } else {
+            alert("Failed to enable auto-email. Please try again.");
+          }
         });
       };
 
@@ -1058,8 +1081,12 @@
         requireAuth('auto_text', async () => {
           const q = $("qBox").value.trim();
           const filters = readFiltersFromUI();
-          await saveSearchToFirestore('', q, filters, { alerts: true, alertType: 'text' });
-          alert("Auto-text enabled! You'll be notified when new listings match this search.");
+          const result = await saveSearchToFirestore('', q, filters, { alerts: true, alertType: 'text' });
+          if (result) {
+            alert("Auto-text enabled! You'll be notified when new listings match this search.");
+          } else {
+            alert("Failed to enable auto-text. Please try again.");
+          }
         });
       };
 
