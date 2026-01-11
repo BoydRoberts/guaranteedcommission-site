@@ -28,7 +28,7 @@
   <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-3">
-        <span class="badge">Firebase Auth build 2026-01-09</span>
+        <span class="badge">Firebase Auth build 2026-01-10 (legacy flags restored)</span>
       </div>
 
       <!-- Tabs -->
@@ -199,7 +199,7 @@
       serverTimestamp 
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    console.log('[login] Firebase Auth build 2026-01-09');
+    console.log('[login] Firebase Auth build 2026-01-10 (legacy flags restored)');
 
     // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
@@ -354,7 +354,7 @@
         }
       }
 
-      // Check for nextAfterLogin (legacy flow)
+      // Check for nextAfterLogin (Box 2 flow - goes to verify-code.html)
       const next = localStorage.getItem('nextAfterLogin');
       if (next) {
         localStorage.removeItem('nextAfterLogin');
@@ -362,8 +362,16 @@
         return;
       }
 
-      // Default: go to index
-      window.location.href = '/index.html';
+      // Check for loginOrigin (alternative Box 2 indicator)
+      const origin = localStorage.getItem('loginOrigin');
+      if (origin === 'box2') {
+        localStorage.removeItem('loginOrigin');
+        window.location.href = '/verify-code.html';
+        return;
+      }
+
+      // Default: go to welcome page
+      window.location.href = '/welcome.html';
     }
 
     // ---------- Firebase Auth Error Messages ----------
@@ -407,8 +415,21 @@
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         console.log('[login] Sign in success:', userCredential.user.uid);
         
-        // Store email for convenience
+        // ===== LEGACY FLAGS (required for verify-code, welcome, etc.) =====
+        localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('loggedInEmail', email);
+        
+        // Try to get role from Firestore profile
+        try {
+          const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+          if (userDoc.exists()) {
+            const profile = userDoc.data();
+            if (profile.role) localStorage.setItem('userRole', profile.role);
+            if (profile.name) localStorage.setItem('userName', profile.name);
+          }
+        } catch (e) {
+          console.warn('[login] Could not fetch user profile:', e);
+        }
         
         setStatus('Login successful! Redirecting...', true);
         setTimeout(handlePostLogin, 500);
@@ -476,9 +497,11 @@
         });
         console.log('[login] User profile saved to Firestore');
 
-        // Store email for convenience
+        // ===== LEGACY FLAGS (required for verify-code, welcome, etc.) =====
+        localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('loggedInEmail', email);
         localStorage.setItem('userRole', role);
+        localStorage.setItem('userName', name);
 
         setStatus('Account created successfully! Redirecting...', true);
         setTimeout(handlePostLogin, 500);
