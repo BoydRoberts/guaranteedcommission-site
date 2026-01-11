@@ -28,7 +28,7 @@
   <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-3">
-        <span class="badge">Firebase Auth build 2026-01-10 (legacy flags restored)</span>
+        <span class="badge">Firebase Auth build 2026-01-11 (auto-redirect fixed)</span>
       </div>
 
       <!-- Tabs -->
@@ -187,19 +187,19 @@
   <!-- Firebase Auth -->
   <script type="module">
     import { auth, db } from "/scripts/firebase-init.js";
-    import { 
-      signInWithEmailAndPassword, 
+    import {
+      signInWithEmailAndPassword,
       createUserWithEmailAndPassword,
-      onAuthStateChanged 
+      onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { 
-      doc, 
-      setDoc, 
+    import {
+      doc,
+      setDoc,
       getDoc,
-      serverTimestamp 
+      serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    console.log('[login] Firebase Auth build 2026-01-10 (legacy flags restored)');
+    console.log('[login] Firebase Auth build 2026-01-11 (auto-redirect fixed)');
 
     // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
@@ -231,7 +231,7 @@
       const digits = onlyDigits(s);
       if (digits.length === 10) return '+1' + digits;
       if (digits.length === 11 && digits.startsWith('1')) return '+' + digits;
-      return null; // Invalid
+      return null;
     }
 
     function isValidPhone(s) { return onlyDigits(s).length === 10; }
@@ -272,14 +272,12 @@
     $('goCreate')?.addEventListener('click', (e) => { e.preventDefault(); showCreate(); });
     $('goSignin')?.addEventListener('click', (e) => { e.preventDefault(); showSignin(); });
 
-    // Role link toggle
     $('createRole')?.addEventListener('change', (e) => {
       const v = e.target.value;
       if (v === 'listing_agent' || v === 'buyers_agent') $('localProLink').classList.remove('hidden');
       else $('localProLink').classList.add('hidden');
     });
 
-    // ---------- Show/Hide toggles ----------
     function wireToggle(inputId, btnId) {
       const input = $(inputId);
       const btn = $(btnId);
@@ -296,7 +294,6 @@
     wireToggle('c_password', 'togglePwdC1');
     wireToggle('c_password2', 'togglePwdC2');
 
-    // ---------- Password Strength + Match ----------
     function scorePassword(p) {
       let s = 0;
       if (!p) return 0;
@@ -327,7 +324,6 @@
     $('c_password')?.addEventListener('input', updateStrength);
     $('c_password2')?.addEventListener('input', updateStrength);
 
-    // ---------- Phone mask ----------
     $('c_phone')?.addEventListener('input', () => {
       const el = $('c_phone');
       const cur = el.selectionStart;
@@ -338,12 +334,10 @@
 
     // ---------- Redirect helper ----------
     function handlePostLogin() {
-      // Check for pendingAction (from search.html gating)
       const pending = sessionStorage.getItem('pendingAction');
       if (pending) {
         try {
           const action = JSON.parse(pending);
-          // Redirect back to search with query params preserved
           const url = new URL('/search.html', window.location.origin);
           if (action.q) url.searchParams.set('q', action.q);
           url.searchParams.set('pendingAction', 'true');
@@ -354,7 +348,6 @@
         }
       }
 
-      // Check for nextAfterLogin (Box 2 flow - goes to verify-code.html)
       const next = localStorage.getItem('nextAfterLogin');
       if (next) {
         localStorage.removeItem('nextAfterLogin');
@@ -362,7 +355,6 @@
         return;
       }
 
-      // Check for loginOrigin (alternative Box 2 indicator)
       const origin = localStorage.getItem('loginOrigin');
       if (origin === 'box2') {
         localStorage.removeItem('loginOrigin');
@@ -370,33 +362,23 @@
         return;
       }
 
-      // Default: go to welcome page
       window.location.href = '/welcome.html';
     }
 
-    // ---------- Firebase Auth Error Messages ----------
     function getAuthErrorMessage(code) {
       switch (code) {
-        case 'auth/email-already-in-use':
-          return 'An account with this email already exists. Please sign in.';
-        case 'auth/invalid-email':
-          return 'Please enter a valid email address.';
-        case 'auth/weak-password':
-          return 'Password is too weak. Please use at least 6 characters.';
-        case 'auth/user-not-found':
-          return 'No account found with this email. Please create an account.';
-        case 'auth/wrong-password':
-          return 'Incorrect password. Please try again.';
-        case 'auth/invalid-credential':
-          return 'Invalid email or password. Please try again.';
-        case 'auth/too-many-requests':
-          return 'Too many failed attempts. Please try again later.';
-        default:
-          return 'An error occurred. Please try again.';
+        case 'auth/email-already-in-use': return 'An account with this email already exists. Please sign in.';
+        case 'auth/invalid-email': return 'Please enter a valid email address.';
+        case 'auth/weak-password': return 'Password is too weak. Please use at least 6 characters.';
+        case 'auth/user-not-found': return 'No account found with this email. Please create an account.';
+        case 'auth/wrong-password': return 'Incorrect password. Please try again.';
+        case 'auth/invalid-credential': return 'Invalid email or password. Please try again.';
+        case 'auth/too-many-requests': return 'Too many failed attempts. Please try again later.';
+        default: return 'An error occurred. Please try again.';
       }
     }
 
-    // ---------- SIGN IN (Firebase Auth) ----------
+    // ---------- SIGN IN ----------
     $('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = $('email').value.trim().toLowerCase();
@@ -413,13 +395,11 @@
 
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        console.log('[login] Sign in success:', userCredential.user.uid);
-        
-        // ===== LEGACY FLAGS (required for verify-code, welcome, etc.) =====
+
+        // Legacy flags (keep old flows alive)
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('loggedInEmail', email);
-        
-        // Try to get role from Firestore profile
+
         try {
           const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
           if (userDoc.exists()) {
@@ -427,12 +407,12 @@
             if (profile.role) localStorage.setItem('userRole', profile.role);
             if (profile.name) localStorage.setItem('userName', profile.name);
           }
-        } catch (e) {
-          console.warn('[login] Could not fetch user profile:', e);
+        } catch (e2) {
+          console.warn('[login] Could not fetch user profile:', e2);
         }
-        
+
         setStatus('Login successful! Redirecting...', true);
-        setTimeout(handlePostLogin, 500);
+        setTimeout(handlePostLogin, 300);
 
       } catch (error) {
         console.error('[login] Sign in error:', error.code, error.message);
@@ -441,7 +421,7 @@
       }
     });
 
-    // ---------- CREATE ACCOUNT (Firebase Auth + Firestore) ----------
+    // ---------- CREATE ACCOUNT ----------
     $('createForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = $('c_name').value.trim();
@@ -452,59 +432,35 @@
       const role = $('createRole').value;
       const btn = $('createSubmitBtn');
 
-      // Validation
-      if (!name || !email || !phone || !p1) {
-        setStatus('Please complete all fields.');
-        return;
-      }
-      if (!isValidPhone(phone)) {
-        setStatus('Please enter a valid 10-digit phone number.');
-        $('c_phone').focus();
-        return;
-      }
-      if (p1 !== p2) {
-        setStatus('Passwords do not match.');
-        return;
-      }
-      if (p1.length < 6) {
-        setStatus('Password must be at least 6 characters.');
-        return;
-      }
+      if (!name || !email || !phone || !p1) { setStatus('Please complete all fields.'); return; }
+      if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
+      if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
+      if (p1.length < 6) { setStatus('Password must be at least 6 characters.'); return; }
 
       const phoneE164 = normalizePhoneE164(phone);
-      if (!phoneE164) {
-        setStatus('Invalid phone number format.');
-        return;
-      }
+      if (!phoneE164) { setStatus('Invalid phone number format.'); return; }
 
       setLoading(btn, true);
       clearStatus();
 
       try {
-        // Create Firebase Auth user
         const userCredential = await createUserWithEmailAndPassword(auth, email, p1);
         const uid = userCredential.user.uid;
-        console.log('[login] Account created:', uid);
 
-        // Store user profile in Firestore
         await setDoc(doc(db, 'users', uid), {
-          name,
-          email,
-          phone: phoneE164,
-          role,
+          name, email, phone: phoneE164, role,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
-        console.log('[login] User profile saved to Firestore');
 
-        // ===== LEGACY FLAGS (required for verify-code, welcome, etc.) =====
+        // Legacy flags (keep old flows alive)
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('loggedInEmail', email);
         localStorage.setItem('userRole', role);
         localStorage.setItem('userName', name);
 
         setStatus('Account created successfully! Redirecting...', true);
-        setTimeout(handlePostLogin, 500);
+        setTimeout(handlePostLogin, 300);
 
       } catch (error) {
         console.error('[login] Create account error:', error.code, error.message);
@@ -512,16 +468,6 @@
         setLoading(btn, false);
       }
     });
-
-    // ---------- Init: Check tab param ----------
-    (function init() {
-      const url = new URL(location.href);
-      const tabParam = (url.searchParams.get('tab') || '').toLowerCase();
-      if (tabParam === 'create' || sessionStorage.getItem('pendingAction')) {
-        // If coming from gated action, might want to create account
-      }
-      // Default to sign-in tab
-    })();
 
     // ---------- Debug panel ----------
     $('dbgToggle').addEventListener('click', async () => {
@@ -541,21 +487,23 @@
         pendingAction: sessionStorage.getItem('pendingAction'),
         loggedInEmail: localStorage.getItem('loggedInEmail'),
         userRole: localStorage.getItem('userRole'),
-        nextAfterLogin: localStorage.getItem('nextAfterLogin')
+        userName: localStorage.getItem('userName'),
+        nextAfterLogin: localStorage.getItem('nextAfterLogin'),
+        loginOrigin: localStorage.getItem('loginOrigin')
       };
       const p = $('dbgPanel');
       p.classList.toggle('hidden');
       p.textContent = JSON.stringify(dump, null, 2);
     });
 
-    // ---------- Auto-redirect if already logged in ----------
+    // =====================================================================
+    // FIX: If already logged in and you visit /login.html, DO NOT sit here.
+    // Route using the same post-login rules.
+    // =====================================================================
     onAuthStateChanged(auth, (user) => {
       if (user) {
         console.log('[login] Already logged in:', user.email);
-        // If there's a pending action, redirect immediately
-        if (sessionStorage.getItem('pendingAction')) {
-          handlePostLogin();
-        }
+        setTimeout(handlePostLogin, 0);
       }
     });
   </script>
