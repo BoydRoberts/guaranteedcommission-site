@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- agent-detail.html - Build 2026-01-12 (Fixed promo button + color) -->
+<!-- agent-detail.html - Build 2026-01-12b (Fix: force agent role + promo enable + Task E geocode preserved) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -227,6 +227,11 @@
     import {
       getStorage, ref, uploadBytes, getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+    // =========================================================================
+    // FIX: Force agent role on the agent page (prevents stale seller role breaking promo)
+    // =========================================================================
+    try { localStorage.setItem("userRole", "listing_agent"); } catch(e) {}
 
     // =========================================================================
     // TASK E: Mapbox geocoding for lat/lng (matches index.html pattern)
@@ -681,25 +686,17 @@
       return new Date().getFullYear();
     }
 
-    // ✅ FIX: Promo active for ALL months in 2026 and 2027 for listing agents
-    // More tolerant role check - accepts variations like "listing_agent", "Listing Agent", "agent", etc.
+    // =========================================================================
+    // FIX: Promo active in 2026/2027 on agent-detail page
+    // Uses page context (agent-detail.html) as fallback if localStorage is stale
+    // =========================================================================
     function isAgentPromoActive() {
       try {
-        const roleRaw = (localStorage.getItem("userRole") || "").trim().toLowerCase();
         const year = getCurrentYear();
-        
-        // Accept multiple role variations
-        const isAgentRole = 
-          roleRaw === "listing_agent" ||
-          roleRaw === "listing agent" ||
-          roleRaw === "listingagent" ||
-          roleRaw === "agent" ||
-          roleRaw === "buyers_agent" ||
-          roleRaw === "buyer's agent" ||
-          roleRaw === "buyersagent" ||
-          roleRaw.includes("agent");
-        
-        console.log("[promo] Role check:", roleRaw, "isAgent:", isAgentRole, "year:", year);
+        const roleRaw = (localStorage.getItem("userRole") || "").trim().toLowerCase();
+        const isAgentContext = (location.pathname || "").toLowerCase().includes("agent-detail");
+        const isAgentRole = roleRaw.includes("agent") || isAgentContext;
+        console.log("[promo] Role check:", roleRaw, "isAgent:", isAgentRole, "year:", year, "agentContext:", isAgentContext);
         return isAgentRole && (year === 2026 || year === 2027);
       } catch { return false; }
     }
@@ -729,18 +726,15 @@
 
       if (active) {
         badge.classList.remove("hidden");
-        // ✅ FIX: Use Strip 1 blue (#4DA6FF) for badge
-        badge.className = "text-xs px-2 py-1 rounded text-white";
-        badge.style.backgroundColor = "#4DA6FF";
         badge.textContent = "Active";
+        badge.style.backgroundColor = "#4DA6FF";
       } else {
         badge.classList.add("hidden");
       }
 
       btn.disabled = !active;
-      // ✅ FIX: Ensure button has Strip 1 blue (#4DA6FF)
       btn.style.backgroundColor = "#4DA6FF";
-      
+
       $("promoNote").textContent = active
         ? `Click to apply free pricing (Plus, Banner, Premium, Pin set to $0) for ${promoMonth} ${year}.`
         : `Promo applies during 2026-2027 when upgrades are paid by the agent.`;
