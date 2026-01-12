@@ -75,7 +75,7 @@
                 <a id="agentPreview" class="px-3 py-2 rounded border text-sm" href="#" target="_blank" rel="noopener">Preview</a>
               </div>
             </div>
-            <p id="agentNoListings" class="hidden text-sm text-gray-700 mt-2">No listings found for your account.</p>
+            <p id="agentNoListings" class="hidden text-sm text-gray-700 mt-2">No listings found for your agent account.</p>
           </div>
 
           <div class="border rounded-lg p-4">
@@ -116,7 +116,7 @@
 
     const emailRaw = (localStorage.getItem('loggedInEmail') || localStorage.getItem('verifyTarget') || '').trim();
     const emailLower = norm(emailRaw);
-    let role  = (localStorage.getItem('userRole') || '').trim();
+    let role  = (localStorage.getItem('userRole') || '').trim().toLowerCase();
     $("who").textContent = emailRaw || 'there';
 
     console.log("[welcome] emailRaw=", emailRaw, "emailLower=", emailLower, "role=", role);
@@ -162,7 +162,6 @@
         if (!list.some(x => x.id === id)) list.push({ id, ...data });
       }
 
-      // ✅ Primary: LOWERCASE fields (case-insensitive)
       if (emailLower) {
         try {
           const q1 = query(collection(db, "listings"), where("ownerEmailLower", "==", emailLower), limit(50));
@@ -176,7 +175,7 @@
           snap2.forEach(d => upsert(agent, d.id, d.data()));
         } catch (e) { console.warn("[welcome] agentEmailLower query failed:", e); }
 
-        // ✅ Legacy fallback: old fields (for old docs that don't have lower fields yet)
+        // Legacy fallback (older docs)
         try {
           const q1b = query(collection(db, "listings"), where("ownerEmail", "==", emailLower), limit(50));
           const snap1b = await getDocs(q1b);
@@ -190,7 +189,6 @@
         } catch (e) {}
       }
 
-      // Safety net: lastListingId fetch
       if (lastLid) {
         try {
           const snap = await getDoc(doc(db, "listings", lastLid));
@@ -201,7 +199,6 @@
         } catch {}
       }
 
-      // Dedup all
       const byId = {};
       [...owner, ...agent].forEach(it => byId[it.id] = it);
       const all = Object.values(byId);
@@ -230,6 +227,15 @@
       return addr ? '/listing.html?addr=' + encodeURIComponent(addr) : '#';
     }
 
+    function canEditAsSeller(it) {
+      const o = norm(it.ownerEmailLower || it.ownerEmail || '');
+      return !!emailLower && o === emailLower;
+    }
+    function canEditAsAgent(it) {
+      const a = norm(it.agentEmailLower || it.agentEmail || '');
+      return !!emailLower && a === emailLower;
+    }
+
     function fillDropdown(selectEl, list) {
       selectEl.innerHTML = `<option value="">Select your listing…</option>`;
       list.forEach(it => {
@@ -246,7 +252,7 @@
       }
     }
 
-    function wireEditor(selectEl, editBtn, previewA, list) {
+    function wireEditor(selectEl, editBtn, previewA, list, mode) {
       if (!selectEl || !editBtn || !previewA) return;
 
       selectEl.addEventListener('change', () => {
@@ -259,7 +265,7 @@
         if (!it) { alert('Pick a listing first.'); return; }
         localStorage.setItem('lastListingId', it.id);
 
-        if (selectEl.id === 'sellerListings') {
+        if (mode === 'seller') {
           localStorage.setItem('userRole','seller');
           location.href = '/seller-detail.html?id=' + encodeURIComponent(it.id);
         } else {
@@ -298,44 +304,46 @@
     (async function boot(){
       const { owner, agent, all } = await fetchMyLists();
 
-      const sellerSource = owner.length ? owner.slice() : all.slice();
-      const agentSource  = agent.length ? agent.slice() : all.slice();
+      // IMPORTANT: no fallback-to-all for dropdowns
+      const sellerSource = owner.slice();
+      const agentSource  = agent.slice();
 
+      // Respect role from login; only infer if missing
       if (!role) {
         role = sellerSource.length ? 'seller' : (agentSource.length ? 'listing_agent' : 'seller');
         try { localStorage.setItem('userRole', role); } catch {}
       }
 
-      if (role === 'listing_agent' && !agentSource.length && sellerSource.length) {
-        role = 'seller';
-        try { localStorage.setItem('userRole', role); } catch {}
-      }
-
+      // Show boxes strictly by role (no silent downgrade)
       if (role === 'seller') $('boxSeller').classList.remove('hidden');
       else if (role === 'listing_agent') $('boxAgent').classList.remove('hidden');
       else $('boxOther').classList.remove('hidden');
 
-      if (sellerSource.length === 1 && role === 'seller') renderPromptCard(sellerSource[0], 'seller');
-      else if (agentSource.length === 1 && role === 'listing_agent') renderPromptCard(agentSource[0], 'agent');
+      // Prompt card only if exactly one listing in that role bucket
+      if (role === 'seller' && sellerSource.length === 1) renderPromptCard(sellerSource[0], 'seller');
+      if (role === 'listing_agent' && agentSource.length === 1) renderPromptCard(agentSource[0], 'agent');
 
+      // Seller dropdown
       const sellerSel  = $("sellerListings");
       const sellerGo   = $("sellerEditGo");
       const sellerPrev = $("sellerPreview");
       if (sellerSel) {
         if (sellerSource.length) { $("sellerNoListings")?.classList.add('hidden'); fillDropdown(sellerSel, sellerSource); }
         else { $("sellerNoListings")?.classList.remove('hidden'); }
-        wireEditor(sellerSel, sellerGo, sellerPrev, sellerSource);
+        wireEditor(sellerSel, sellerGo, sellerPrev, sellerSource, 'seller');
       }
 
+      // Agent dropdown
       const agentSel  = $("agentListings");
       const agentGo   = $("agentEditGo");
       const agentPrev = $("agentPreview");
       if (agentSel) {
         if (agentSource.length) { $("agentNoListings")?.classList.add('hidden'); fillDropdown(agentSel, agentSource); }
         else { $("agentNoListings")?.classList.remove('hidden'); }
-        wireEditor(agentSel, agentGo, agentPrev, agentSource);
+        wireEditor(agentSel, agentGo, agentPrev, agentSource, 'agent');
       }
 
+      // Table: show role-correct edit links per listing
       if (all.length) {
         const host = $("listingsTable");
         const sec  = $("listSection");
@@ -354,14 +362,25 @@
                 </thead>
                 <tbody class="divide-y">
                   ${all.map(it=>{
-                    const href = it.id ? ('/listing.html?id=' + encodeURIComponent(it.id)) : '#';
+                    const previewHref = it.id ? ('/listing.html?id=' + encodeURIComponent(it.id)) : '#';
+
+                    const canSeller = canEditAsSeller(it);
+                    const canAgent  = canEditAsAgent(it);
+
+                    const editLinks = [
+                      (canAgent  ? `<a class="text-blue-600 underline" href="/agent-detail.html?id=${encodeURIComponent(it.id)}">Edit as Agent</a>` : ``),
+                      (canSeller ? `<a class="text-blue-600 underline" href="/seller-detail.html?id=${encodeURIComponent(it.id)}">Edit as Seller</a>` : ``),
+                      ((!canAgent && !canSeller) ? `<span class="text-gray-400">No edit access</span>` : ``),
+                      `<a class="text-blue-600 underline" href="${previewHref}" target="_blank" rel="noopener">Preview</a>`
+                    ].filter(Boolean).join(`<span class="text-gray-300">|</span>`);
+
                     return `
                       <tr>
                         <td class="px-3 py-2">${it.address || ''}</td>
                         <td class="px-3 py-2">${it.status || 'Draft'}</td>
                         <td class="px-3 py-2">${it.plan || ''}</td>
-                        <td class="px-3 py-2 flex gap-3">
-                          <a class="text-blue-600 underline" href="${href}" target="_blank" rel="noopener">Preview</a>
+                        <td class="px-3 py-2">
+                          <div class="flex flex-wrap gap-3 items-center">${editLinks}</div>
                         </td>
                       </tr>
                     `;
