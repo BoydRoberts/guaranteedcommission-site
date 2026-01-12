@@ -75,7 +75,7 @@
                 <a id="agentPreview" class="px-3 py-2 rounded border text-sm" href="#" target="_blank" rel="noopener">Preview</a>
               </div>
             </div>
-            <p id="agentNoListings" class="hidden text-sm text-gray-700 mt-2">No listings found for your agent account.</p>
+            <p id="agentNoListings" class="hidden text-sm text-gray-700 mt-2">No listings found.</p>
           </div>
 
           <div class="border rounded-lg p-4">
@@ -118,8 +118,6 @@
     const emailLower = norm(emailRaw);
     let role  = (localStorage.getItem('userRole') || '').trim().toLowerCase();
     $("who").textContent = emailRaw || 'there';
-
-    console.log("[welcome] emailRaw=", emailRaw, "emailLower=", emailLower, "role=", role);
 
     $("logoutBtn")?.addEventListener('click', () => {
       try {
@@ -167,26 +165,26 @@
           const q1 = query(collection(db, "listings"), where("ownerEmailLower", "==", emailLower), limit(50));
           const snap1 = await getDocs(q1);
           snap1.forEach(d => upsert(owner, d.id, d.data()));
-        } catch (e) { console.warn("[welcome] ownerEmailLower query failed:", e); }
+        } catch {}
 
         try {
           const q2 = query(collection(db, "listings"), where("agentEmailLower", "==", emailLower), limit(50));
           const snap2 = await getDocs(q2);
           snap2.forEach(d => upsert(agent, d.id, d.data()));
-        } catch (e) { console.warn("[welcome] agentEmailLower query failed:", e); }
+        } catch {}
 
         // Legacy fallback (older docs)
         try {
           const q1b = query(collection(db, "listings"), where("ownerEmail", "==", emailLower), limit(50));
           const snap1b = await getDocs(q1b);
           snap1b.forEach(d => upsert(owner, d.id, d.data()));
-        } catch (e) {}
+        } catch {}
 
         try {
           const q2b = query(collection(db, "listings"), where("agentEmail", "==", emailLower), limit(50));
           const snap2b = await getDocs(q2b);
           snap2b.forEach(d => upsert(agent, d.id, d.data()));
-        } catch (e) {}
+        } catch {}
       }
 
       if (lastLid) {
@@ -211,7 +209,6 @@
         return (bu - au) || (bc - ac);
       });
 
-      console.log("[welcome] counts:", { owner: owner.length, agent: agent.length, all: all.length });
       return { owner, agent, all };
     }
 
@@ -225,15 +222,6 @@
       if (it && it.id) return '/listing.html?id=' + encodeURIComponent(it.id);
       const addr = (it.address || '').trim();
       return addr ? '/listing.html?addr=' + encodeURIComponent(addr) : '#';
-    }
-
-    function canEditAsSeller(it) {
-      const o = norm(it.ownerEmailLower || it.ownerEmail || '');
-      return !!emailLower && o === emailLower;
-    }
-    function canEditAsAgent(it) {
-      const a = norm(it.agentEmailLower || it.agentEmail || '');
-      return !!emailLower && a === emailLower;
     }
 
     function fillDropdown(selectEl, list) {
@@ -275,55 +263,33 @@
       });
     }
 
-    function renderPromptCard(it, mode) {
-      const host = $("promptHost");
-      if (!host || !it) return;
-      const addr = it.address || 'Your listing';
-      const id = it.id;
-
-      const editHref = (mode === 'agent')
-        ? `/agent-detail.html?id=${encodeURIComponent(id)}`
-        : `/seller-detail.html?id=${encodeURIComponent(id)}`;
-
-      host.innerHTML = `
-        <div class="border rounded-xl p-4 mb-4 ${mode === 'agent' ? 'bg-indigo-50 border-indigo-200' : 'bg-emerald-50 border-emerald-200'}">
-          <div class="flex items-start justify-between">
-            <div>
-              <div class="font-semibold">Continue your listing</div>
-              <div class="text-sm text-gray-700 mt-0.5">${addr}</div>
-            </div>
-            <div class="flex gap-2">
-              <a href="${editHref}" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</a>
-              <a href="/listing.html?id=${encodeURIComponent(id)}" target="_blank" rel="noopener" class="px-3 py-2 rounded border text-sm">Preview</a>
-            </div>
-          </div>
-        </div>
-      `;
+    function canEditAsSeller(it) {
+      const o = norm(it.ownerEmailLower || it.ownerEmail || '');
+      return !!emailLower && o === emailLower;
+    }
+    function canEditAsAgent(it) {
+      const a = norm(it.agentEmailLower || it.agentEmail || '');
+      return !!emailLower && a === emailLower;
     }
 
     (async function boot(){
       const { owner, agent, all } = await fetchMyLists();
 
-      // IMPORTANT: no fallback-to-all for dropdowns
+      // Seller dropdown: ONLY owned listings
       const sellerSource = owner.slice();
-      const agentSource  = agent.slice();
 
-      // Respect role from login; only infer if missing
+      // Agent dropdown: show ALL listings (per Boyd's request)
+      const agentSource = all.slice();
+
       if (!role) {
-        role = sellerSource.length ? 'seller' : (agentSource.length ? 'listing_agent' : 'seller');
+        role = sellerSource.length ? 'seller' : 'listing_agent';
         try { localStorage.setItem('userRole', role); } catch {}
       }
 
-      // Show boxes strictly by role (no silent downgrade)
       if (role === 'seller') $('boxSeller').classList.remove('hidden');
       else if (role === 'listing_agent') $('boxAgent').classList.remove('hidden');
       else $('boxOther').classList.remove('hidden');
 
-      // Prompt card only if exactly one listing in that role bucket
-      if (role === 'seller' && sellerSource.length === 1) renderPromptCard(sellerSource[0], 'seller');
-      if (role === 'listing_agent' && agentSource.length === 1) renderPromptCard(agentSource[0], 'agent');
-
-      // Seller dropdown
       const sellerSel  = $("sellerListings");
       const sellerGo   = $("sellerEditGo");
       const sellerPrev = $("sellerPreview");
@@ -333,7 +299,6 @@
         wireEditor(sellerSel, sellerGo, sellerPrev, sellerSource, 'seller');
       }
 
-      // Agent dropdown
       const agentSel  = $("agentListings");
       const agentGo   = $("agentEditGo");
       const agentPrev = $("agentPreview");
@@ -343,7 +308,7 @@
         wireEditor(agentSel, agentGo, agentPrev, agentSource, 'agent');
       }
 
-      // Table: show role-correct edit links per listing
+      // Table: show both role-aware edit links
       if (all.length) {
         const host = $("listingsTable");
         const sec  = $("listSection");
@@ -363,25 +328,21 @@
                 <tbody class="divide-y">
                   ${all.map(it=>{
                     const previewHref = it.id ? ('/listing.html?id=' + encodeURIComponent(it.id)) : '#';
-
                     const canSeller = canEditAsSeller(it);
                     const canAgent  = canEditAsAgent(it);
 
-                    const editLinks = [
-                      (canAgent  ? `<a class="text-blue-600 underline" href="/agent-detail.html?id=${encodeURIComponent(it.id)}">Edit as Agent</a>` : ``),
+                    const links = [
+                      `<a class="text-blue-600 underline" href="/agent-detail.html?id=${encodeURIComponent(it.id)}">Edit as Agent</a>`,
                       (canSeller ? `<a class="text-blue-600 underline" href="/seller-detail.html?id=${encodeURIComponent(it.id)}">Edit as Seller</a>` : ``),
-                      ((!canAgent && !canSeller) ? `<span class="text-gray-400">No edit access</span>` : ``),
                       `<a class="text-blue-600 underline" href="${previewHref}" target="_blank" rel="noopener">Preview</a>`
-                    ].filter(Boolean).join(`<span class="text-gray-300">|</span>`);
+                    ].filter(Boolean).join(` <span class="text-gray-300">|</span> `);
 
                     return `
                       <tr>
                         <td class="px-3 py-2">${it.address || ''}</td>
                         <td class="px-3 py-2">${it.status || 'Draft'}</td>
                         <td class="px-3 py-2">${it.plan || ''}</td>
-                        <td class="px-3 py-2">
-                          <div class="flex flex-wrap gap-3 items-center">${editLinks}</div>
-                        </td>
+                        <td class="px-3 py-2">${links}</td>
                       </tr>
                     `;
                   }).join('')}
