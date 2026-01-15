@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2026-01-07 (Task E: Truly non-blocking background geocode) -->
+<!-- index.html - Build 2026-01-15 (Task C: FSBO contact completeness in tiles) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -1123,6 +1123,7 @@
   </script>
 
   <!-- Strip 2 Tiles: Load from Firestore using shared tile-renderer.js -->
+  <!-- TASK C (2026-01-15): Now passes ownerName + ownerPhone for FSBO contact completeness -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -1153,6 +1154,11 @@
 
           if (!signed && !isActive) return;
 
+          // =========================================================================
+          // TASK C (2026-01-15): Add ownerName + ownerPhone for FSBO contact display
+          // These fields are now passed to tile-renderer.js which conditionally
+          // displays "FOR SALE BY OWNER - [Name] - [Phone]" for FSBO listings
+          // =========================================================================
           items.push({
             id: docu.id,
             address: d.address || "",
@@ -1166,6 +1172,8 @@
             brokerage: d.brokerage || "",
             agentName: d.agentName || "",
             agentPhone: d.agentPhone || "",
+            ownerName: d.ownerName || "",      // NEW: FSBO owner name
+            ownerPhone: d.ownerPhone || "",    // NEW: FSBO owner phone
             plan: d.plan || "Listed Property Basic",
             bedrooms: d.bedrooms != null ? d.bedrooms : "",
             bathrooms: d.bathrooms != null ? d.bathrooms : "",
