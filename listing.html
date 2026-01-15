@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-15 (Task D: ZIP parsing fix - anchor to end of address) -->
+<!-- Build: 2026-01-15 (Task C: FSBO contact + Task D: ZIP parsing fix + Header branding) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -674,7 +674,13 @@
         $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
         $("tileFacts").textContent = `${bds || "—"} bds | ${ba || "—"} ba | ${sqft || "—"} sqft${pType ? " | "+pType : ""} | ${status}`;
         $("tileAddress").textContent = address || "[full address]";
-        $("tileContact").textContent = `${(plan.includes("FSBO") ? "FOR SALE BY OWNER" : brokerage).toUpperCase()}${agentName ? ' - '+agentName : ''}${agentPhone ? ' - '+agentPhone : ''}`;
+        // TASK C (2026-01-15): FSBO shows owner contact; Listed shows agent contact
+        const isFSBO = plan.includes("FSBO");
+        const contactName = isFSBO ? String(d.ownerName || "") : agentName;
+        const contactPhone = isFSBO ? String(d.ownerPhone || "") : agentPhone;
+        const contactLabel = isFSBO ? "FOR SALE BY OWNER" : brokerage.toUpperCase();
+
+        $("tileContact").textContent = `${contactLabel}${contactName ? ' - ' + contactName : ''}${contactPhone ? ' - ' + contactPhone : ''}`;
 
         document.getElementById("topRow")?.classList.remove("hidden");
 
