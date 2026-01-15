@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-02 (Em dash to hyphen consistency fix) -->
+<!-- Build: 2026-01-15 (Task D: ZIP parsing fix - anchor to end of address) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -42,14 +42,23 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <!-- Top bar -->
+  <!-- Top bar (matches home/search header) -->
   <header class="bg-white border-b">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-      <a href="/index.html" class="text-sm hover:underline" style="color: #4DA6FF;">Home</a>
-      <h1 class="text-lg font-semibold">GuaranteedCommission.com</h1>
-      <div class="flex items-center gap-3">
-        <a href="/advertise.html" class="text-sm hover:underline" style="color: #4DA6FF;">Advertise</a>
-        <a href="/login.html" class="text-sm hover:underline" style="color: #4DA6FF;">Log In</a>
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <div class="flex items-center justify-between">
+        <a href="/index.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Home</a>
+
+        <div class="text-center">
+          <div class="flex items-end justify-center gap-0">
+            <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+            <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <a href="/advertise.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Advertise</a>
+          <a href="/login.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Log In</a>
+        </div>
       </div>
     </div>
   </header>
@@ -341,8 +350,10 @@
     });
 
     // START local-pros: fetch & render Local Professionals by ZIP
+    // TASK D (2026-01-15): Fixed to grab ZIP at END of address, not street number like "32181"
     function parseZipFromAddress(addr="") {
-      const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
+      // Anchor to end of string to get actual ZIP, not street number
+      const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\s*$/);
       return m ? m[1] : "";
     }
 
