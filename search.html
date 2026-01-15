@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-01-13 (Zillow UI + localStorage auth + auto-notify + dropdown fix) -->
+<!-- search.html - Build 2026-01-15 (Task C: FSBO contact completeness in tiles) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -751,7 +751,11 @@
       return center;
     }
 
-    // ===== Tile Renderer (inline) =====
+    // =========================================================================
+    // TASK C (2026-01-15): Tile Renderer with FSBO contact completeness
+    // Now shows "FOR SALE BY OWNER - [Owner Name] - [Owner Phone]" for FSBO
+    // and "BROKERAGE - [Agent Name] - [Agent Phone]" for Listed
+    // =========================================================================
     function money(n) { const v = Number(n || 0); return v ? ("$" + v.toLocaleString()) : "$—"; }
 
     function commissionAmount(price, commission, type) {
@@ -779,6 +783,37 @@
       };
     }
 
+    /**
+     * Build contact line based on listing type (FSBO vs Listed)
+     * Mirrors the logic in tile-renderer.js buildContactLine()
+     */
+    function buildContactLine(doc) {
+      const plan = String(doc.plan || "Listed Property Basic");
+      const isFSBO = plan.includes("FSBO");
+
+      if (isFSBO) {
+        // FSBO: FOR SALE BY OWNER - Owner Name - Owner Phone
+        let line = 'FOR SALE BY OWNER';
+        if (doc.ownerName) {
+          line += ' - ' + doc.ownerName;
+        }
+        if (doc.ownerPhone) {
+          line += ' - ' + doc.ownerPhone;
+        }
+        return line;
+      } else {
+        // Listed: BROKERAGE - Agent Name - Agent Phone
+        let line = (doc.brokerage || '[listing brokerage]').toUpperCase();
+        if (doc.agentName) {
+          line += ' - ' + doc.agentName;
+        }
+        if (doc.agentPhone) {
+          line += ' - ' + doc.agentPhone;
+        }
+        return line;
+      }
+    }
+
     function renderTile(doc) {
       const id = doc.id;
       const address = String(doc.address || "").trim();
@@ -794,9 +829,6 @@
       const cRaw = doc.commission ?? "";
       const cAmt = commissionAmount(price, cRaw, cType);
       const cPctLbl = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw) + '%')) : "—";
-      const brokerage = doc.brokerage || (plan.includes("FSBO") ? "FOR SALE BY OWNER" : "[listing brokerage]");
-      const agentName = doc.agentName || "";
-      const agentPhone = doc.agentPhone || "";
 
       const photos = Array.isArray(doc.photos) ? doc.photos.filter(u => typeof u === "string" && u) : [];
       let pIdx = (typeof doc.primaryIndex === "number") ? doc.primaryIndex : 0;
@@ -805,6 +837,9 @@
 
       const views = Number(doc.views || 0);
       const likes = Number(doc.likes || 0);
+
+      // TASK C: Build contact line using new helper
+      const contactLine = buildContactLine(doc);
 
       const card = document.createElement("article");
       card.className = "gc-tile relative";
@@ -828,7 +863,7 @@
           </div>
           <div class="text-sm font-medium truncate">${address || "[address]"}</div>
           <div class="text-[11px] text-gray-600 truncate">
-            ${(plan.includes("FSBO") ? "FSBO" : (brokerage || "[brokerage]")).toUpperCase()}${agentName ? ' — ' + agentName : ''}
+            ${contactLine}
           </div>
           <div class="text-[11px] text-gray-500 text-center tile-stats">
             ${views.toLocaleString()} views | ${likes.toLocaleString()} likes
@@ -995,6 +1030,8 @@
           const signed = !!(data.signedISC && typeof data.signedISC === 'object' && data.signedISC.date);
           const isActive = String(data.status || '').toLowerCase() === 'active';
           if (!signed && !isActive) return;
+          // TASK C: Firestore data already includes ownerName and ownerPhone
+          // These are automatically included when we spread ...data
           allDocs.push({ id: d.id, ...data });
         });
       } catch (e) {
