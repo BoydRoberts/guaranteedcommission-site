@@ -3,7 +3,13 @@
  * Shared listing tile renderer for GuaranteedCommission.com
  * Used by: index.html (Strip 2), search.html
  * 
- * Build: 2026-01-02
+ * Build: 2026-01-15
+ * 
+ * CHANGES (2026-01-15):
+ * - Added FSBO owner contact support (ownerName, ownerPhone)
+ * - Contact line now shows: 
+ *   - FSBO: "FOR SALE BY OWNER - [Owner Name] - [Owner Phone]"
+ *   - Listed: "BROKERAGE - [Agent Name] - [Agent Phone]"
  * 
  * IMPORTANT: This file does NOT inject CSS.
  * CSS classes used: .gc-tile, .gc-photo, .gc-ribbon, .gc-heart, .gc-share, .gc-share-left, .gc-share-right
@@ -143,6 +149,45 @@ function heartSvg(filled) {
 }
 
 // ============================================
+// CONTACT LINE BUILDER (NEW)
+// ============================================
+
+/**
+ * Build the contact line based on listing type
+ * @param {Object} params - Contact parameters
+ * @param {boolean} params.isFSBO - Whether this is a FSBO listing
+ * @param {string} params.brokerage - Brokerage name (for Listed)
+ * @param {string} params.agentName - Agent name (for Listed)
+ * @param {string} params.agentPhone - Agent phone (for Listed)
+ * @param {string} params.ownerName - Owner name (for FSBO)
+ * @param {string} params.ownerPhone - Owner phone (for FSBO)
+ * @returns {string} Formatted contact line HTML
+ */
+function buildContactLine({ isFSBO, brokerage, agentName, agentPhone, ownerName, ownerPhone }) {
+  if (isFSBO) {
+    // FSBO: FOR SALE BY OWNER - Owner Name - Owner Phone
+    let line = 'FOR SALE BY OWNER';
+    if (ownerName) {
+      line += ' - ' + ownerName;
+    }
+    if (ownerPhone) {
+      line += ' - ' + ownerPhone;
+    }
+    return line;
+  } else {
+    // Listed: BROKERAGE - Agent Name - Agent Phone
+    let line = (brokerage || '[listing brokerage]').toUpperCase();
+    if (agentName) {
+      line += ' - ' + agentName;
+    }
+    if (agentPhone) {
+      line += ' - ' + agentPhone;
+    }
+    return line;
+  }
+}
+
+// ============================================
 // MAIN TILE RENDERER
 // ============================================
 
@@ -159,6 +204,27 @@ function heartSvg(filled) {
  * - .gc-share-right: Right share button
  * 
  * @param {Object} data - Listing data
+ * @param {string} data.id - Listing ID
+ * @param {string} data.address - Full address
+ * @param {number} data.price - Listing price
+ * @param {number} data.commission - Commission value
+ * @param {string} data.commissionType - '%' or '$'
+ * @param {string} data.bannerText - Optional banner text
+ * @param {Array} data.photos - Array of photo URLs
+ * @param {number} data.primaryIndex - Index of primary photo
+ * @param {string} data.status - Listing status
+ * @param {string} data.brokerage - Brokerage name (Listed only)
+ * @param {string} data.agentName - Agent name (Listed only)
+ * @param {string} data.agentPhone - Agent phone (Listed only)
+ * @param {string} data.ownerName - Owner name (FSBO only)
+ * @param {string} data.ownerPhone - Owner phone (FSBO only)
+ * @param {string} data.plan - Plan type (determines FSBO vs Listed)
+ * @param {number} data.bedrooms - Number of bedrooms
+ * @param {number} data.bathrooms - Number of bathrooms
+ * @param {number} data.sqft - Square footage
+ * @param {string} data.propertyType - Property type
+ * @param {number} data.views - View count
+ * @param {number} data.likes - Like count
  * @param {Object} options - Render options
  * @param {Function} options.onLikeIncrement - Async callback to increment like in Firestore, receives (listingId)
  * @returns {HTMLElement} The tile element
@@ -174,9 +240,11 @@ export function renderTile(data, options = {}) {
   const photos = Array.isArray(data.photos) ? data.photos : [];
   const primaryIndex = data.primaryIndex || 0;
   const status = data.status || 'Active';
-  const brokerage = data.brokerage || '[listing brokerage]';
+  const brokerage = data.brokerage || '';
   const agentName = data.agentName || '';
   const agentPhone = data.agentPhone || '';
+  const ownerName = data.ownerName || '';      // NEW: FSBO owner name
+  const ownerPhone = data.ownerPhone || '';    // NEW: FSBO owner phone
   const plan = data.plan || 'Listed Property Basic';
   const bedrooms = data.bedrooms;
   const bathrooms = data.bathrooms;
@@ -196,9 +264,18 @@ export function renderTile(data, options = {}) {
   const safeIndex = (primaryIndex >= 0 && primaryIndex < validPhotos.length) ? primaryIndex : 0;
   const photoUrl = validPhotos[safeIndex] || '';
 
-  // Brokerage display
+  // Determine if FSBO
   const isFSBO = (plan || '').indexOf('FSBO') >= 0;
-  const brokerageDisplay = isFSBO ? 'FOR SALE BY OWNER' : (brokerage || '[listing brokerage]').toUpperCase();
+
+  // Build contact line using new helper
+  const contactLine = buildContactLine({
+    isFSBO,
+    brokerage,
+    agentName,
+    agentPhone,
+    ownerName,
+    ownerPhone
+  });
 
   // Property type segment
   const typeSeg = propertyType ? ' | ' + propertyType : '';
@@ -235,7 +312,7 @@ export function renderTile(data, options = {}) {
       </div>
       <div class="text-sm font-medium">${address}</div>
       <div class="text-[12px] text-gray-600">
-        ${brokerageDisplay}${agentName ? ' - ' + agentName : ''}${agentPhone ? ' - ' + agentPhone : ''}
+        ${contactLine}
       </div>
       <div class="text-[12px] text-gray-500 text-center" data-stats>
         Viewed ${views.toLocaleString()} time${views === 1 ? '' : 's'} | Liked ${likes.toLocaleString()} time${likes === 1 ? '' : 's'}
