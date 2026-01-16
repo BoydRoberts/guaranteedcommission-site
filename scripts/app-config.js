@@ -6,11 +6,14 @@ window.GC_CONFIG = window.GC_CONFIG || {};
 
 // Stripe publishable key (test mode)
 // IMPORTANT: Replace with live key when going to production
-window.GC_CONFIG.STRIPE_PUBLISHABLE_KEY = "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
+window.GC_CONFIG.STRIPE_PUBLISHABLE_KEY =
+  window.GC_CONFIG.STRIPE_PUBLISHABLE_KEY ||
+  "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
 
 // Stripe Price IDs (test mode)
 // IMPORTANT: Replace with live price IDs when going to production
-window.GC_CONFIG.PRICE_IDS = {
+window.GC_CONFIG.PRICE_IDS = window.GC_CONFIG.PRICE_IDS || {
+  // One-time listing upgrades
   PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
   FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
   BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR",
@@ -18,7 +21,17 @@ window.GC_CONFIG.PRICE_IDS = {
   PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
   CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm",
   CHANGE_COMMISSION_LISTED: "price_1STqWzPTiT2zuxx0ZKLMFpuE",
-  CHANGE_COMMISSION_FSBO: "price_1STqakPTiT2zuxx0zS0nEjDT"
+  CHANGE_COMMISSION_FSBO:   "price_1STqakPTiT2zuxx0zS0nEjDT",
+
+  // ==========================================
+  // NEW (Subscriptions): Local Ads by ZIP
+  // Replace with your Stripe recurring monthly Price IDs
+  // Example use:
+  // - Local Pro: $5/month per ZIP  -> quantity = # ZIPs
+  // - Local Broker: $99/month per ZIP -> quantity = # ZIPs
+  // ==========================================
+  LOCAL_PRO_MONTHLY:    "price_PLACEHOLDER_LOCAL_PRO_MONTHLY",
+  LOCAL_BROKER_MONTHLY: "price_PLACEHOLDER_LOCAL_BROKER_MONTHLY"
 };
 
 // Log configuration loaded (helps with debugging)
