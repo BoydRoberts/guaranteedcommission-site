@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Build: 2026-01-16 (Bulk ZIP subscription checkout - Local Professionals) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -6,36 +7,44 @@
   <title>Local Professionals | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .description { /* left as-is */ }
-    .zipbox { letter-spacing: 2px; }
     .hint { font-size: 11px; color:#6b7280; }
+    .chip { font-size: 12px; padding: 4px 8px; border-radius: 9999px; background:#f3f4f6; color:#374151; }
+    .chip-bad { background:#fee2e2; color:#991b1b; }
+    .chip-good { background:#dcfce7; color:#166534; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <header class="bg-white shadow">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/index.html" class="text-sm text-blue-600 hover:underline">Home</a>
-      <h1 class="text-lg font-semibold">Local Professionals</h1>
-      <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
+  <!-- Header (matches home page) -->
+  <header class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <div class="flex items-center justify-between">
+        <a href="/index.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Home</a>
+
+        <div class="text-center">
+          <div class="flex items-end justify-center gap-0">
+            <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+            <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <a href="/advertise.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Advertise</a>
+          <a href="/login.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Log In</a>
+        </div>
+      </div>
     </div>
   </header>
 
   <main class="max-w-4xl mx-auto px-4 py-6">
-    <section class="bg-white rounded-2xl shadow p-5">
+    <section class="bg-white rounded-2xl shadow p-6">
       <h2 class="text-2xl font-bold text-center">Become a Local Professional</h2>
       <p class="text-sm text-center text-gray-700 mt-1">
-        Display your business card on every listing detail page and on every FSBO intake page in a specified ZIP Code | Three agents and one lender per ZIP | $5 per month per ZIP | Maximum 3 ZIPs | First come first served | Your display rights preserved until you cancel
+        <strong>$5 per month per ZIP</strong>. Display your business card on listing detail pages in your selected ZIPs.
       </p>
-
-      <!-- Top mode choice -->
-      <div class="flex items-center justify-center gap-3 mt-4">
-        <button id="modeSearchB" class="px-3 py-2 rounded border" style="background-color:#4DA6FF; color:white;">Search by ZIP</button>
-      </div>
 
       <div id="status" class="hidden mt-4 text-sm rounded-lg p-3"></div>
 
-      <!-- Apply form -->
       <form id="proForm" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4" autocomplete="off">
         <div>
           <label class="block text-sm font-semibold">I am a</label>
@@ -51,7 +60,7 @@
           <input id="personalName" class="w-full border rounded px-3 py-2" placeholder="Your name" required>
         </div>
 
-        <div>
+        <div class="md:col-span-2">
           <label class="block text-sm font-semibold">Company Name</label>
           <input id="name" class="w-full border rounded px-3 py-2" placeholder="Full Company Name" required>
         </div>
@@ -63,26 +72,25 @@
 
         <div>
           <label class="block text-sm font-semibold">Phone</label>
-          <input id="phone" class="w-full border rounded px-3 py-2" placeholder="Phone" required>
+          <input id="phone" class="w-full border rounded px-3 py-2" placeholder="123-456-7890" inputmode="numeric" required>
+          <p class="hint mt-1">Format: 123-456-7890</p>
         </div>
 
-        <div>
-          <label class="block text-sm font-semibold">License # (agents/lenders)</label>
+        <div class="md:col-span-2">
+          <label class="block text-sm font-semibold">License # (optional)</label>
           <input id="license" class="w-full border rounded px-3 py-2" placeholder="license # / DRE # / NMLS # (if applicable)">
         </div>
 
-        <!-- Three ZIP inputs -->
+        <!-- ✅ BULK ZIP INPUT -->
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold mb-1">ZIP Codes (up to 3)</label>
-          <div class="grid grid-cols-3 gap-3">
-            <input id="zip1" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #1">
-            <input id="zip2" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #2">
-            <input id="zip3" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #3">
-          </div>
-          <p class="hint mt-2">Enter 5-digit ZIP codes. You can add up to three.</p>
+          <label class="block text-sm font-semibold">ZIP Codes (up to 99)</label>
+          <input id="zipBulk" class="w-full border rounded px-3 py-2"
+                 placeholder="Enter ZIPs separated by commas or spaces (e.g., 92651, 92657, 92660)">
+          <p class="hint mt-1">We will validate and de-duplicate ZIPs.</p>
+
+          <div class="mt-2 flex flex-wrap gap-2" id="zipChips"></div>
         </div>
 
-        <!-- Optional photo upload -->
         <div class="md:col-span-2">
           <label class="block text-sm font-semibold">Business Card (optional image)</label>
           <input id="photo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="w-full">
@@ -90,9 +98,16 @@
           <p class="hint mt-1">PNG/JPG recommended.</p>
         </div>
 
-        <div class="md:col-span-2 flex items-center justify-between mt-2">
-          <div class="text-sm text-gray-700">Your total: <span id="total">$0</span> / month</div>
-          <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white">
+        <!-- ✅ REAL-TIME TOTAL -->
+        <div class="md:col-span-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-2">
+          <div class="text-sm text-gray-700">
+            Monthly total: <span id="total" class="font-semibold">$0/month</span>
+            <span id="countNote" class="text-gray-500"></span>
+          </div>
+
+          <button id="checkoutBtn" type="button"
+                  class="px-4 py-2 rounded text-white font-semibold"
+                  style="background:#4DA6FF;">
             Proceed to Checkout
           </button>
         </div>
@@ -102,266 +117,238 @@
         </div>
       </form>
 
-      <!-- Simple ZIP search area -->
-      <div id="searchArea" class="hidden mt-8 border-t pt-5">
-        <h3 class="font-semibold mb-2">Search Local Professionals by ZIP</h3>
-        <div class="flex items-center gap-2">
-          <input id="searchZip" class="border rounded px-3 py-2 w-40" placeholder="ZIP code">
-          <button id="runZipSearch" class="px-3 py-2 rounded bg-gray-700 text-white">Search</button>
-        </div>
-        <div id="prosResults" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3"></div>
-      </div>
-
-    </section>
-
-    <section class="hidden rounded-2xl mt-4 bg-emerald-50 border border-emerald-200 p-5 text-amber-800" id="thanks">
-      <h3 class="text-lg font-semibold">Thank you!</h3>
-      <p class="text-sm text-gray-600 mt-1">Your Local Professionals subscription is being set up. You can complete your profile at any time.</p>
+      <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mt-6 text-emerald-800">
+        <h3 class="text-lg font-semibold">Thank you!</h3>
+        <p class="text-sm mt-1">Your Local Professional subscription checkout completed successfully.</p>
+      </section>
     </section>
   </main>
 
+  <script type="module" src="/scripts/firebase-init.js"></script>
+
   <script type="module">
-    // ✅ FIX #2: Import STORAGE_BUCKET_GS from single source of truth
     import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
-    import {
-      addDoc, collection, serverTimestamp, doc, updateDoc, query, where, getDocs
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import {
-      getStorage, ref, uploadBytes, getDownloadURL
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+    import { addDoc, collection, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+    const PRICE_ID_LOCAL_PRO = "price_1SQXeOPTiT2zuxx08ruzwpb6"; // $5/mo per ZIP
+    const PRICE_PER_ZIP = 5;
 
     const $ = (id) => document.getElementById(id);
 
     function setStatus(msg, ok=true){
       const el = $('status'); el.classList.remove('hidden');
-      el.className = ok
-        ? 'mt-3 text-sm rounded-lg p-3 bg-green-50 text-green-700'
-        : 'mt-3 text-sm rounded-lg p-3 bg-red-50 text-red-700';
+      el.className = ok ? 'mt-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
+                        : 'mt-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
       el.textContent = msg;
     }
 
-    function money(n){ return '$' + Number(n||0).toLocaleString(); }
-
-    function formatPhoneDisplay(s){
-      const d = String(s||'').replace(/\D/g,'').slice(0,10);
-      return d.length===10 ? `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}` : (s||'');
+    function onlyDigits(s){ return String(s||'').replace(/\D/g,''); }
+    function formatPhone(s){
+      const d = onlyDigits(s).slice(0,10);
+      if (d.length <= 3) return d;
+      if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
+      return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
     }
 
-    // Mode toggle via query or buttons
-    (function(){
-      const u = new URL(location.href);
-      let mode = u.searchParams.get('mode') || 'apply';
+    function parseZipList(raw) {
+      const parts = String(raw || "")
+        .replace(/[\n\r]/g, " ")
+        .split(/[, ]+/)
+        .map(s => s.trim())
+        .filter(Boolean);
 
-      function show(mode){
-        if (mode === 'search') {
-          $('searchArea').classList.remove('hidden');
-          $('proForm')?.classList.remove('hidden');
-          $('searchZip').focus();
-        }
+      const seen = new Set();
+      const good = [];
+      const bad = [];
+
+      for (const p of parts) {
+        const z = p.replace(/\D/g,'').slice(0,5);
+        if (!/^\d{5}$/.test(z)) { bad.push(p); continue; }
+        if (seen.has(z)) continue;
+        seen.add(z);
+        good.push(z);
       }
 
-      show(mode);
-      $('modeSearchB')?.addEventListener('click', ()=>{ location.href='?mode=search'; });
-    })();
+      return { good, bad };
+    }
 
-    // ZIP inputs: only digits, auto-advance after 5
-    function zipFilter(el, nextEl){
-      if (!el) return;
-      el.addEventListener('input', (e)=>{
-        const d = e.target.value.replace(/\D/g,'').slice(0,5);
-        e.target.value = d;
-        if (d.length === 5 && nextEl) nextEl.focus();
-        compute();
+    function fmtMoney(n){ return '$' + Number(n||0).toLocaleString(); }
+
+    function renderZipChips(good, bad) {
+      const host = $('zipChips');
+      host.innerHTML = '';
+
+      good.forEach(z => {
+        const d = document.createElement('span');
+        d.className = 'chip chip-good';
+        d.textContent = z;
+        host.appendChild(d);
       });
-      el.addEventListener('blur', compute);
+
+      bad.forEach(x => {
+        const d = document.createElement('span');
+        d.className = 'chip chip-bad';
+        d.textContent = `Invalid: ${x}`;
+        host.appendChild(d);
+      });
     }
-    zipFilter($('zip1'), $('zip2'));
-    zipFilter($('zip2'), $('zip3'));
-    zipFilter($('zip3'), null);
 
-    // price: $5 per month per unique zip, max 3
-    function compute(){
-      const z1 = $('zip1')?.value.trim() || '';
-      const z2 = $('zip2')?.value.trim() || '';
-      const z3 = $('zip3')?.value.trim() || '';
-      const zips = [z1,z2,z3].filter(Boolean);
-      const uniq = [];
-      zips.forEach(z => { if (!uniq.includes(z)) uniq.push(z); });
-      $('total').textContent = money(Math.min(uniq.length, 3) * 5);
-      return uniq.slice(0,3);
+    function updateTotal() {
+      const raw = $('zipBulk').value;
+      const { good, bad } = parseZipList(raw);
+
+      if (good.length > 99) {
+        const extra = good.slice(99);
+        good.length = 99;
+        extra.forEach(x => bad.push(x));
+      }
+
+      renderZipChips(good, bad);
+
+      const total = good.length * PRICE_PER_ZIP;
+      $('total').textContent = `${fmtMoney(total)}/month`;
+      $('countNote').textContent = good.length ? ` (${good.length} ZIP${good.length===1?'':'s'})` : '';
+      return { zipCodes: good, invalid: bad };
     }
-    ['role','personalName','name','email','phone','license'].forEach(id=>{
-      const el=$(id); if(el) el.addEventListener('input', compute);
+
+    $('phone')?.addEventListener('input', (e) => { e.target.value = formatPhone(e.target.value); });
+    $('zipBulk')?.addEventListener('input', updateTotal);
+    updateTotal();
+
+    $('photo')?.addEventListener('change', (e) => {
+      const f = e.target.files?.[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = () => { $('photoPreview').innerHTML = `<img src="${r.result}" alt="Card" class="h-24 w-24 object-cover rounded border">`; };
+      r.readAsDataURL(f);
     });
-
-    // photo preview
-    $('photo')?.addEventListener('change', async (e)=>{
-      const f = e.target?.files?.[0]; if(!f) return;
-      const reader = new FileReader();
-      reader.onload = () => { $('photoPreview').innerHTML = `<img src="${reader.result}" alt="Photo" class="h-24 w-24 object-cover rounded border">`; };
-      reader.readAsDataURL(f);
-    });
-
-    // Stripe Payment Link
-    const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_8x2dRb4Gr8N4gnlaM44ow00";
-
-    // ✅ FIX #2: Removed hardcoded BUCKET_URL - now using STORAGE_BUCKET_GS from firebase-init.js
 
     async function maybeUploadPhoto(draftId) {
       try {
         const file = $('photo')?.files?.[0];
         if (!file) return "";
-        // ✅ FIX #2: Use STORAGE_BUCKET_GS from import
         const storage = getStorage(undefined, STORAGE_BUCKET_GS);
         const safe = String(file.name || "local_pro_card").replace(/[^\w\-.]+/g,"_");
         const path = `localPros/${draftId}/card_${Date.now()}_${safe}`;
         const r = ref(storage, path);
         await uploadBytes(r, file);
-        const url = await getDownloadURL(r);
-        return url;
+        return await getDownloadURL(r);
       } catch (e) {
         console.warn("[local-pros] photo upload failed:", e);
         return "";
       }
     }
 
-    // Proceed to Checkout
-    $('checkoutBtn')?.addEventListener('click', async ()=>{
+    function loggedInEmail() {
+      return (localStorage.getItem('loggedInEmail') || localStorage.getItem('verifyTarget') || '').trim();
+    }
+
+    (function(){
+      const u = new URL(location.href);
+      if (u.searchParams.get('status') === 'success') {
+        $('thanks')?.classList.remove('hidden');
+      }
+    })();
+
+    $('checkoutBtn')?.addEventListener('click', async () => {
+      const btn = $('checkoutBtn');
       try {
-        const btn = $('checkoutBtn');
         btn.disabled = true;
         btn.textContent = 'Starting checkout…';
 
         const role = $('role').value.trim();
         const personalName = $('personalName').value.trim();
         const name = $('name').value.trim();
-        const email = $('email').value.trim();
-        const phone = formatPhoneDisplay($('phone').value.trim());
+        const email = $('email').value.trim().toLowerCase();
+        const phoneDigits = onlyDigits($('phone').value);
+        const phone = formatPhone($('phone').value.trim());
         const license = $('license').value.trim();
-        const zips = compute();
 
-        if (!role || !personalName || !name || !email || !phone || !zips.length) {
-          setStatus('Please complete all required fields and at least one ZIP.', false);
-          btn.disabled = false;
-          btn.textContent = 'Proceed to Checkout';
+        const { zipCodes } = updateTotal();
+
+        if (!role || !personalName || !name || !email) {
+          setStatus('Please complete role, personal name, company name, and email.', false);
+          return;
+        }
+        if (!/^\S+@\S+\.\S{2,}$/.test(email)) {
+          setStatus('Please enter a valid email address.', false);
+          return;
+        }
+        if (phoneDigits.length !== 10) {
+          setStatus('Please enter a valid 10-digit phone number.', false);
+          return;
+        }
+        if (!zipCodes.length) {
+          setStatus('Please enter at least one valid 5-digit ZIP code.', false);
+          return;
+        }
+        if (zipCodes.length > 99) {
+          setStatus('Maximum 99 ZIP codes per checkout.', false);
           return;
         }
 
-        // Create pending draft
-        let draftId = "";
-        try {
-          const draft = {
-            role,
-            personalName,
-            name,
-            email: String(email || "").toLowerCase(),
-            phone,
-            license,
-            zips,
-            photoUrl: "",
-            status: "pending",
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          };
-          const refDoc = await addDoc(collection(db, "localPros"), draft);
-          draftId = refDoc.id;
-          localStorage.setItem('localProDraftId', JSON.stringify(draftId));
-        } catch (e) {
-          console.warn("[local-pros] draft save failed; proceeding anyway:", e);
+        // Save a draft record (pending)
+        const draft = {
+          role,
+          personalName,
+          name,
+          email,
+          phone,
+          license,
+          zips: zipCodes,
+          photoUrl: "",
+          status: "pending",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+
+        const refDoc = await addDoc(collection(db, "localPros"), draft);
+        localStorage.setItem("localProDraftId", refDoc.id);
+
+        const photoUrl = await maybeUploadPhoto(refDoc.id);
+        if (photoUrl) {
+          await updateDoc(doc(db, "localPros", refDoc.id), { photoUrl, updatedAt: serverTimestamp() });
         }
 
-        if (draftId) {
-          const photoUrl = await maybeUploadPhoto(draftId);
-          if (photoUrl) {
-            try {
-              await updateDoc(doc(db, "localPros", draftId), { photoUrl, updatedAt: serverTimestamp() });
-            } catch (e) {
-              console.warn("[local-pros] could not patch photoUrl:", e);
-            }
+        const successUrl = window.location.origin + "/local-professionals.html?status=success";
+        const cancelUrl  = window.location.origin + "/local-professionals.html?status=cancel";
+
+        const payload = {
+          roleType: "local_pro",
+          zipCodes: zipCodes,
+          priceId: PRICE_ID_LOCAL_PRO,
+          successUrl,
+          cancelUrl,
+          metadata: {
+            email: loggedInEmail() || email,
+            name: name,
+            personalName: personalName,
+            draftId: refDoc.id
           }
-        }
+        };
 
-        const params = new URLSearchParams({
-          prefilled_email: email,
-          client_reference_id: JSON.stringify({ role, name, email, phone, license, zips }),
-          quantity: String(Math.max(1, Math.min(zips.length, 3)))
+        const resp = await fetch("/api/create-subscription-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
         });
 
-        window.location.href = `${CHECKOUT_LINK_BASE}?${params.toString()}`;
+        const ct = resp.headers.get("content-type") || "";
+        const out = ct.includes("application/json") ? await resp.json() : { error: "Non-JSON server response" };
 
-      } catch(e){
-        setStatus('Payment could not start.', false);
+        if (!resp.ok) throw new Error(out.error || out.message || "Subscription session failed.");
+
+        if (out.url) {
+          window.location.href = out.url;
+          return;
+        }
+        throw new Error("Server did not return checkout url.");
+      } catch (e) {
+        console.error(e);
+        setStatus(e.message || "Checkout error.", false);
       } finally {
-        const btn = $('checkoutBtn');
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Proceed to Checkout';
-        }
-      }
-    });
-
-    // After redirect
-    (async function(){
-      const u = new URL(location.href);
-      if (u.searchParams.get('status') === 'success') {
-        $('thanks').classList.remove('hidden');
-        try {
-          const draftIdRaw = localStorage.getItem("localProDraftId");
-          if (draftIdRaw) {
-            const draftId = JSON.parse(draftIdRaw);
-            await updateDoc(doc(db, "localPros", draftId), {
-              status: "active",
-              updatedAt: serverTimestamp()
-            });
-          }
-        } catch (e) {
-          console.warn("[local-pros] finalize failed", e);
-        }
-      }
-    })();
-
-    // Search (local cached only for now)
-    $('runZipSearch')?.addEventListener('click', async ()=>{
-      const zip = $('searchZip').value.trim();
-      if (!/^\d{5}$/.test(zip)) { setStatus('Enter a valid 5-digit ZIP to search.', false); return; }
-      setStatus('Searching...', true);
-
-      try {
-        // Query Firestore for active professionals in this ZIP
-        const q = query(
-          collection(db, "localPros"),
-          where("zips", "array-contains", zip),
-          where("status", "==", "active")
-        );
-        const snapshot = await getDocs(q);
-        
-        const pros = [];
-        snapshot.forEach(doc => {
-          pros.push({ id: doc.id, ...doc.data() });
-        });
-
-        const box = $('prosResults'); 
-        box.innerHTML='';
-        $('status').classList.add('hidden');
-        
-        if (!pros.length) {
-          box.innerHTML = `<div class="text-sm text-gray-600">No Local Professionals in ${zip} yet.</div>`;
-          return;
-        }
-        
-        pros.forEach(p=>{
-          const card = document.createElement('div');
-          card.className = 'border rounded-lg p-3 bg-white';
-          card.innerHTML = `
-            <div class="text-sm font-semibold">${p.name || 'Professional'}</div>
-            <div class="text-xs text-gray-600">${p.role || ''}${p.license ? ' • ' + p.license : ''}</div>
-            <div class="text-xs text-gray-500 mt-1">ZIPs: ${(p.zips||[]).join(', ')}</div>
-          `;
-          box.appendChild(card);
-        });
-      } catch (err) {
-        console.error('Search error:', err);
-        setStatus('Search failed. Please try again.', false);
+        btn.disabled = false;
+        btn.textContent = "Proceed to Checkout";
       }
     });
   </script>
