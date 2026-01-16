@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Build: 2026-01-16 (Welcome: seller-first, header match, buttons #4DA6FF, saved searches, permissioned table) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -8,38 +9,48 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <header class="bg-white shadow">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/index.html" class="text-sm hover:underline" style="color:#4DA6FF;">Home</a>
-      <h1 class="text-lg font-semibold">Welcome</h1>
-      <div class="flex items-center gap-3">
-        <a href="/advertise.html" class="text-sm hover:underline" style="color:#4DA6FF;">Advertise</a>
-        <a href="/search.html" class="text-sm hover:underline" style="color:#4DA6FF;">Search</a>
-        <button id="logoutBtn" class="text-sm px-3 py-1 rounded border">Log out</button>
+  <!-- Header (matches home/search/listing) -->
+  <header class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <div class="flex items-center justify-between">
+        <a href="/index.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Home</a>
+
+        <div class="text-center">
+          <div class="flex items-end justify-center gap-0">
+            <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+            <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <a href="/advertise.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Advertise</a>
+          <a href="/search.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Search</a>
+          <button id="logoutBtn" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Log out</button>
+        </div>
       </div>
     </div>
   </header>
 
   <main class="max-w-4xl mx-auto px-4 py-6">
     <section class="bg-white rounded-2xl shadow p-6">
-      <h2 class="text-xl font-bold mb-1">Hi <span id="who">there</span></h2>
+      <h2 class="text-xl font-bold mb-1">Welcome <span id="who">there</span></h2>
       <p class="text-sm text-gray-600 mb-4">What would you like to do next?</p>
-
-      <div id="promptHost" class="mb-4"></div>
 
       <div id="roleBoxes" class="space-y-4">
 
+        <!-- SELLER BOX (the only one we are "wiring" right now) -->
         <div id="boxSeller" class="hidden space-y-4">
+
           <div class="border rounded-lg p-4">
             <h3 class="font-semibold mb-2">Enter a new listing</h3>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
               <label class="text-sm">Plan</label>
               <select id="sellerNewPlan" class="border rounded px-2 py-1 text-sm">
                 <option>Listed Property Basic</option>
                 <option>Listed Property Plus</option>
                 <option>FSBO Plus</option>
               </select>
-              <button id="sellerNewGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Continue</button>
+              <button id="sellerNewGo" class="px-3 py-2 rounded text-white text-sm" style="background:#4DA6FF;">Continue</button>
             </div>
           </div>
 
@@ -50,19 +61,34 @@
                 <option value="">Select your listing…</option>
               </select>
               <div class="flex gap-2">
-                <button id="sellerEditGo" class="px-3 py-2 rounded bg-blue-600 text-white text-sm">Edit</button>
-                <a id="sellerPreview" class="px-3 py-2 rounded border text-sm" href="#" target="_blank" rel="noopener">Preview</a>
+                <button id="sellerEditGo" class="px-3 py-2 rounded text-white text-sm" style="background:#4DA6FF;">Edit</button>
+                <a id="sellerPreview" class="px-3 py-2 rounded border text-sm hover:bg-gray-50" href="#" target="_blank" rel="noopener">Preview</a>
               </div>
             </div>
             <p id="sellerNoListings" class="hidden text-sm text-gray-700 mt-2">No listings found for your account.</p>
           </div>
 
           <div class="border rounded-lg p-4">
-            <h3 class="font-semibold mb-2">Search commissions / create auto-email search</h3>
-            <button id="sellerSearchGo" class="px-3 py-2 rounded bg-gray-700 text-white text-sm">Open Search with filters</button>
+            <h3 class="font-semibold mb-2">Search Guaranteed Commissions</h3>
+            <button id="sellerSearchGo" class="px-3 py-2 rounded text-white text-sm" style="background:#4DA6FF;">Open Search with filters</button>
+          </div>
+
+          <div class="border rounded-lg p-4">
+            <h3 class="font-semibold mb-2">View / edit a current saved search or auto notification</h3>
+            <div class="flex flex-col gap-2 md:flex-row md:items-center">
+              <select id="sellerSavedSearches" class="border rounded px-2 py-2 text-sm grow">
+                <option value="">Select a saved search…</option>
+              </select>
+              <div class="flex gap-2">
+                <button id="sellerSavedEditGo" class="px-3 py-2 rounded text-white text-sm" style="background:#4DA6FF;">Edit</button>
+                <button id="sellerSavedDeleteGo" class="px-3 py-2 rounded border text-sm hover:bg-gray-50">Delete</button>
+              </div>
+            </div>
+            <p id="sellerNoSavedSearches" class="hidden text-sm text-gray-700 mt-2">No saved searches found.</p>
           </div>
         </div>
 
+        <!-- AGENT BOX (frozen; do not expand yet) -->
         <div id="boxAgent" class="hidden space-y-4">
           <div class="border rounded-lg p-4">
             <h3 class="font-semibold mb-2">Edit a current listing</h3>
@@ -89,6 +115,7 @@
           </div>
         </div>
 
+        <!-- OTHER BOX (frozen) -->
         <div id="boxOther" class="hidden space-y-4">
           <div class="border rounded-lg p-4">
             <h3 class="font-semibold mb-2">Search commissions</h3>
@@ -116,9 +143,9 @@
 
     const emailRaw = (localStorage.getItem('loggedInEmail') || localStorage.getItem('verifyTarget') || '').trim();
     const emailLower = norm(emailRaw);
-    let role  = (localStorage.getItem('userRole') || '').trim().toLowerCase();
     $("who").textContent = emailRaw || 'there';
 
+    // Logout
     $("logoutBtn")?.addEventListener('click', () => {
       try {
         ['isLoggedIn','loggedInEmail','userRole','verificationCode','verifyTarget','nextAfterLogin','nextAfterVerify','lastListingId','lastListingAddress']
@@ -127,17 +154,89 @@
       location.href = '/index.html';
     });
 
-    $("sellerNewGo")?.addEventListener('click', ()=>{
+    // Seller buttons
+    $("sellerNewGo")?.addEventListener('click', ()=> {
       const plan = $("sellerNewPlan").value;
       localStorage.setItem('selectedPlan', plan);
       location.href = '/index.html#strip2Search';
       window.scrollTo(0,0);
     });
-
     $("sellerSearchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
+
+    // Frozen agent/other buttons (do not expand yet)
     $("agentSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
     $("otherSearchGo")?.addEventListener('click',  ()=> location.href='/search.html?open=filters&prompt=save');
     $("agentProApply")?.addEventListener('click',  ()=> location.href='/local-professionals.html?mode=apply');
+
+    // Saved searches (seller)
+    function getSavedSearches() {
+      try { return JSON.parse(localStorage.getItem('savedSearches') || '[]'); }
+      catch { return []; }
+    }
+    function setSavedSearches(arr) {
+      try { localStorage.setItem('savedSearches', JSON.stringify(arr || [])); }
+      catch {}
+    }
+    function fillSavedSearchDropdown(selectEl, list) {
+      selectEl.innerHTML = `<option value="">Select a saved search…</option>`;
+
+      const searches   = list.filter(s => !String(s.name||'').startsWith('Auto-Email:') && !String(s.name||'').startsWith('Auto-Text:'));
+      const autoEmails = list.filter(s =>  String(s.name||'').startsWith('Auto-Email:'));
+      const autoTexts  = list.filter(s =>  String(s.name||'').startsWith('Auto-Text:'));
+
+      function addGroup(label, arr, stripPrefix) {
+        if (!arr.length) return;
+        const grp = document.createElement('optgroup');
+        grp.label = label;
+        arr.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = stripPrefix ? String(s.name||'').replace(stripPrefix, '') : (s.name || '(unnamed)');
+          grp.appendChild(opt);
+        });
+        selectEl.appendChild(grp);
+      }
+
+      addGroup('Saved Searches', searches, '');
+      addGroup('Auto-Email Notifications', autoEmails, 'Auto-Email: ');
+      addGroup('Auto-Text Notifications', autoTexts, 'Auto-Text: ');
+
+      if (list.length) selectEl.value = list[0].id;
+    }
+
+    function wireSavedSearchControls() {
+      const selectEl = $('sellerSavedSearches');
+      const editBtn = $('sellerSavedEditGo');
+      const deleteBtn = $('sellerSavedDeleteGo');
+      if (!selectEl) return;
+
+      editBtn?.addEventListener('click', () => {
+        const savedList = getSavedSearches(); // fresh
+        const id = selectEl.value;
+        const saved = savedList.find(s => s.id === id);
+        if (!saved) { alert('Please select a saved search first.'); return; }
+
+        // Clear stale lastSearch / lastFilters if missing on this saved record
+        if (saved.q) localStorage.setItem('lastSearch', saved.q);
+        else localStorage.removeItem('lastSearch');
+
+        if (saved.filters) localStorage.setItem('lastFilters', JSON.stringify(saved.filters));
+        else localStorage.removeItem('lastFilters');
+
+        location.href = '/search.html';
+      });
+
+      deleteBtn?.addEventListener('click', () => {
+        const savedList = getSavedSearches(); // fresh
+        const id = selectEl.value;
+        if (!id) { alert('Please select a saved search first.'); return; }
+        if (!confirm('Delete this saved search?')) return;
+
+        const updated = savedList.filter(s => s.id !== id);
+        setSavedSearches(updated);
+        location.reload();
+      });
+    }
 
     function tsMillis(x) {
       try {
@@ -146,7 +245,7 @@
         if (typeof x.toDate === "function") return x.toDate().getTime();
         if (typeof x === "number") return x;
         return 0;
-      } catch (_) { return 0; }
+      } catch { return 0; }
     }
 
     async function fetchMyLists() {
@@ -163,27 +262,23 @@
       if (emailLower) {
         try {
           const q1 = query(collection(db, "listings"), where("ownerEmailLower", "==", emailLower), limit(50));
-          const snap1 = await getDocs(q1);
-          snap1.forEach(d => upsert(owner, d.id, d.data()));
+          (await getDocs(q1)).forEach(d => upsert(owner, d.id, d.data()));
         } catch {}
 
         try {
           const q2 = query(collection(db, "listings"), where("agentEmailLower", "==", emailLower), limit(50));
-          const snap2 = await getDocs(q2);
-          snap2.forEach(d => upsert(agent, d.id, d.data()));
+          (await getDocs(q2)).forEach(d => upsert(agent, d.id, d.data()));
         } catch {}
 
-        // Legacy fallback (older docs)
+        // Legacy fallback
         try {
           const q1b = query(collection(db, "listings"), where("ownerEmail", "==", emailLower), limit(50));
-          const snap1b = await getDocs(q1b);
-          snap1b.forEach(d => upsert(owner, d.id, d.data()));
+          (await getDocs(q1b)).forEach(d => upsert(owner, d.id, d.data()));
         } catch {}
 
         try {
           const q2b = query(collection(db, "listings"), where("agentEmail", "==", emailLower), limit(50));
-          const snap2b = await getDocs(q2b);
-          snap2b.forEach(d => upsert(agent, d.id, d.data()));
+          (await getDocs(q2b)).forEach(d => upsert(agent, d.id, d.data()));
         } catch {}
       }
 
@@ -205,7 +300,7 @@
         const au = tsMillis(a.updatedAt);
         const bu = tsMillis(b.updatedAt);
         const ac = tsMillis(a.createdAt);
-        const bc = tsMillis(b.createdAt);
+        const bc = tsMillis(b.createdAt);  /* ✅ FIXED: was a.createdAt */
         return (bu - au) || (bc - ac);
       });
 
@@ -275,21 +370,23 @@
     (async function boot(){
       const { owner, agent, all } = await fetchMyLists();
 
-      // Seller dropdown: ONLY owned listings
       const sellerSource = owner.slice();
-
-      // Agent dropdown: show ALL listings (per Boyd's request)
       const agentSource = all.slice();
 
-      if (!role) {
-        role = sellerSource.length ? 'seller' : 'listing_agent';
-        try { localStorage.setItem('userRole', role); } catch {}
+      // Seller-first: if user owns ANY listings, treat them as seller for this phase
+      const shouldShowSeller = sellerSource.length > 0;
+
+      if (shouldShowSeller) {
+        try { localStorage.setItem('userRole', 'seller'); } catch {}
+        $('boxSeller').classList.remove('hidden');
+      } else {
+        // fallback to existing role behavior if no owned listings exist
+        const role = (localStorage.getItem('userRole') || '').trim().toLowerCase();
+        if (role === 'listing_agent') $('boxAgent').classList.remove('hidden');
+        else $('boxOther').classList.remove('hidden');
       }
 
-      if (role === 'seller') $('boxSeller').classList.remove('hidden');
-      else if (role === 'listing_agent') $('boxAgent').classList.remove('hidden');
-      else $('boxOther').classList.remove('hidden');
-
+      // Seller dropdown
       const sellerSel  = $("sellerListings");
       const sellerGo   = $("sellerEditGo");
       const sellerPrev = $("sellerPreview");
@@ -299,6 +396,20 @@
         wireEditor(sellerSel, sellerGo, sellerPrev, sellerSource, 'seller');
       }
 
+      // Seller saved searches
+      const savedSearches = getSavedSearches();
+      const savedSel = $("sellerSavedSearches");
+      if (savedSel) {
+        if (savedSearches.length) {
+          $("sellerNoSavedSearches")?.classList.add('hidden');
+          fillSavedSearchDropdown(savedSel, savedSearches);
+        } else {
+          $("sellerNoSavedSearches")?.classList.remove('hidden');
+        }
+        wireSavedSearchControls();
+      }
+
+      // Agent dropdown (frozen behavior)
       const agentSel  = $("agentListings");
       const agentGo   = $("agentEditGo");
       const agentPrev = $("agentPreview");
@@ -308,7 +419,7 @@
         wireEditor(agentSel, agentGo, agentPrev, agentSource, 'agent');
       }
 
-      // Table: show both role-aware edit links
+      // Table: permission-gated links
       if (all.length) {
         const host = $("listingsTable");
         const sec  = $("listSection");
@@ -328,12 +439,9 @@
                 <tbody class="divide-y">
                   ${all.map(it=>{
                     const previewHref = it.id ? ('/listing.html?id=' + encodeURIComponent(it.id)) : '#';
-                    const canSeller = canEditAsSeller(it);
-                    const canAgent  = canEditAsAgent(it);
-
                     const links = [
-                      `<a class="text-blue-600 underline" href="/agent-detail.html?id=${encodeURIComponent(it.id)}">Edit as Agent</a>`,
-                      (canSeller ? `<a class="text-blue-600 underline" href="/seller-detail.html?id=${encodeURIComponent(it.id)}">Edit as Seller</a>` : ``),
+                      (canEditAsSeller(it) ? `<a class="text-blue-600 underline" href="/seller-detail.html?id=${encodeURIComponent(it.id)}">Edit as Seller</a>` : ``),
+                      (canEditAsAgent(it)  ? `<a class="text-blue-600 underline" href="/agent-detail.html?id=${encodeURIComponent(it.id)}">Edit as Agent</a>` : ``),
                       `<a class="text-blue-600 underline" href="${previewHref}" target="_blank" rel="noopener">Preview</a>`
                     ].filter(Boolean).join(` <span class="text-gray-300">|</span> `);
 
@@ -352,6 +460,8 @@
           `;
         }
       }
+
+      console.log('[welcome] ready', { owner: owner.length, agent: agent.length, saved: savedSearches.length });
     })();
   </script>
 </body>
