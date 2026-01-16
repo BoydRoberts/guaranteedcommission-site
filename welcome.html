@@ -1,11 +1,16 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-16 (Welcome: multi-role aware: seller + agent + local pro + local broker; NO localServices) -->
+<!-- Build: 2026-01-16 (Welcome: multi-role aware; Local Brokers ZIP overflow fix applied correctly) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Welcome | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* Helps prevent long dropdown text from breaking layout (browser support varies for <option>) */
+    select.truncate-option { max-width: 100%; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
 
@@ -123,7 +128,7 @@
         </div>
 
         <!-- ======================
-             LOCAL PROFESSIONALS (shown for agents, or for users with profiles)
+             LOCAL PROFESSIONALS (shown for agents, or users with profiles)
              UI only for now
              ====================== -->
         <div id="blkLocalPros" class="hidden border rounded-lg p-4">
@@ -142,13 +147,14 @@
         </div>
 
         <!-- ======================
-             LOCAL BROKERS (shown for agents, or for users with profiles)
+             LOCAL BROKERS (shown for agents, or users with profiles)
              UI only for now
              ====================== -->
         <div id="blkLocalBrokers" class="hidden border rounded-lg p-4">
           <h3 class="font-semibold mb-2">Local Brokers</h3>
           <div class="flex flex-col gap-2 md:flex-row md:items-center">
-            <select id="brokerProfiles" class="border rounded px-2 py-2 text-sm grow">
+            <!-- ✅ FIX: add truncate-option class -->
+            <select id="brokerProfiles" class="border rounded px-2 py-2 text-sm grow truncate-option">
               <option value="">Select your Local Broker profile…</option>
             </select>
             <div class="flex gap-2">
@@ -200,7 +206,7 @@
       window.scrollTo(0,0);
     });
 
-    // Search button (single listener; no duplicate)
+    // Search button (single listener)
     $("searchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
 
     // Saved searches (localStorage)
@@ -417,12 +423,22 @@
       return !!emailLower && a === emailLower;
     }
 
+    // ✅ UPDATED: support {text,title} labels (used for broker ZIP truncation)
     function fillProfileDropdown(selectEl, items, labelFn) {
       selectEl.innerHTML = `<option value="">Select…</option>`;
       items.forEach(x => {
         const opt = document.createElement('option');
+        const label = labelFn(x);
         opt.value = x.id;
-        opt.textContent = labelFn(x);
+
+        if (label && typeof label === 'object') {
+          opt.textContent = label.text || '';
+          opt.title = label.title || '';
+        } else {
+          opt.textContent = String(label || '');
+          opt.title = String(label || '');
+        }
+
         selectEl.appendChild(opt);
       });
       if (items.length) selectEl.value = items[0].id;
@@ -431,12 +447,22 @@
     function proLabel(x) {
       const nm = x.name || x.personalName || 'Local Professional';
       const z = Array.isArray(x.zips) ? x.zips.join(', ') : '';
-      return z ? `${nm} — ZIPs: ${z}` : nm;
+      const full = z ? `${nm} — ZIPs: ${z}` : nm;
+      // keep as simple string for pros
+      return full;
     }
+
+    // ✅ FIX: brokers return {text,title} so dropdown doesn’t blow out margins
     function brokerLabel(x) {
       const nm = x.name || 'Local Broker';
-      const z = x.zip || (Array.isArray(x.zips) ? x.zips.join(', ') : '');
-      return z ? `${nm} — ${z}` : nm;
+      const z = x.zip ? String(x.zip) : (Array.isArray(x.zips) ? x.zips.join(', ') : '');
+      const full = z ? `${nm} — ${z}` : nm;
+
+      // Hard truncate for dropdown display (reliable vs browser option wrapping)
+      const MAX = 46;
+      const text = full.length > MAX ? (full.slice(0, MAX) + '…') : full;
+
+      return { text, title: full };
     }
 
     (async function boot(){
@@ -512,7 +538,7 @@
       }
       wireSavedSearchControls();
 
-      // Local pros/brokers dropdowns (UI only)
+      // Local pros dropdown (simple)
       if (pros.length) {
         $('noProProfiles')?.classList.add('hidden');
         fillProfileDropdown($('proProfiles'), pros, proLabel);
@@ -520,6 +546,7 @@
         $('noProProfiles')?.classList.remove('hidden');
       }
 
+      // Local brokers dropdown (truncated + tooltip)
       if (brokers.length) {
         $('noBrokerProfiles')?.classList.add('hidden');
         fillProfileDropdown($('brokerProfiles'), brokers, brokerLabel);
