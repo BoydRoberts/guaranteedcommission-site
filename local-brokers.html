@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Build: 2026-01-16 (Bulk ZIP subscription checkout - Local Brokers) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -7,29 +8,40 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .hint { font-size: 11px; color:#6b7280; }
+    .chip { font-size: 12px; padding: 4px 8px; border-radius: 9999px; background:#f3f4f6; color:#374151; }
+    .chip-bad { background:#fee2e2; color:#991b1b; }
+    .chip-good { background:#dcfce7; color:#166534; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <header class="bg-white shadow">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/index.html" class="text-sm text-blue-600 hover:underline">Home</a>
-      <h1 class="text-lg font-semibold">Local Brokers</h1>
-      <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
+  <!-- Header (matches home page) -->
+  <header class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <div class="flex items-center justify-between">
+        <a href="/index.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Home</a>
+
+        <div class="text-center">
+          <div class="flex items-end justify-center gap-0">
+            <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+            <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <a href="/advertise.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Advertise</a>
+          <a href="/login.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Log In</a>
+        </div>
+      </div>
     </div>
   </header>
 
   <main class="max-w-4xl mx-auto px-4 py-6">
-    <section class="bg-white rounded-2xl shadow p-5">
+    <section class="bg-white rounded-2xl shadow p-6">
       <h2 class="text-2xl font-bold text-center">Reserve Your Broker Ad</h2>
       <p class="text-sm text-center text-gray-700 mt-1">
-        $100 per month per ZIP (1 broker per ZIP). Your brokerage ad displays on all listing detail pages in that ZIP in the "Local Real Estate Brokerage" section.
+        <strong>$100 per month per ZIP</strong> (1 broker per ZIP). Your brokerage ad displays on all listing detail pages in those ZIP codes.
       </p>
-
-      <!-- Top mode choice -->
-      <div class="flex items-center justify-center gap-3 mt-4">
-        <button id="modeSearchB" class="px-3 py-2 rounded border" style="background-color:#4DA6FF; color:white;">Search by ZIP</button>
-      </div>
 
       <div id="status" class="hidden mt-4 text-sm rounded-lg p-3"></div>
 
@@ -60,10 +72,14 @@
           <input id="website" class="w-full border rounded px-3 py-2" placeholder="https://example.com">
         </div>
 
-        <div>
-          <label class="block text-sm font-semibold">ZIP Code</label>
-          <input id="zip" class="w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="e.g., 92660" required>
-          <p class="hint mt-1">Enter a 5-digit ZIP. One broker per ZIP.</p>
+        <!-- ✅ BULK ZIP INPUT -->
+        <div class="md:col-span-2">
+          <label class="block text-sm font-semibold">ZIP Codes (up to 99)</label>
+          <input id="zipBulk" class="w-full border rounded px-3 py-2"
+                 placeholder="Enter ZIPs separated by commas or spaces (e.g., 92651, 92657, 92660)">
+          <p class="hint mt-1">We will validate and de-duplicate ZIPs. Example: “92651 92657 92660”.</p>
+
+          <div class="mt-2 flex flex-wrap gap-2" id="zipChips"></div>
         </div>
 
         <div class="md:col-span-2">
@@ -73,54 +89,51 @@
           <p class="hint mt-1">Recommended: horizontal image. JPG/PNG.</p>
         </div>
 
-        <div class="md:col-span-2 flex items-center justify-between mt-2">
-          <div class="text-sm text-gray-700">Your total: <span id="total">$100</span> / month</div>
-          <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white">
+        <!-- ✅ REAL-TIME TOTAL -->
+        <div class="md:col-span-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-2">
+          <div class="text-sm text-gray-700">
+            Monthly total: <span id="total" class="font-semibold">$0/month</span>
+            <span id="countNote" class="text-gray-500"></span>
+          </div>
+
+          <button id="checkoutBtn" type="button"
+                  class="px-4 py-2 rounded text-white font-semibold"
+                  style="background:#4DA6FF;">
             Proceed to Checkout
           </button>
         </div>
 
         <div class="md:col-span-2 text-xs text-gray-600 mt-1">
-          All purchases subject to quality control review. Use "Search by ZIP" to check availability.
+          All purchases subject to quality control review. (UI only on ZIP exclusivity enforcement for now.)
         </div>
       </form>
 
-      <!-- Simple ZIP search area -->
-      <div id="searchArea" class="hidden mt-8 border-t pt-5">
-        <h3 class="font-semibold mb-2">Search Local Brokers by ZIP</h3>
-        <div class="flex items-center gap-2">
-          <input id="searchZip" class="border rounded px-3 py-2 w-40" placeholder="ZIP code">
-          <button id="runZipSearch" class="px-3 py-2 rounded bg-gray-700 text-white">Search</button>
-        </div>
-        <div id="brokersResults" class="mt-4 grid grid-cols-1 gap-3"></div>
-      </div>
-
-    </section>
-
-    <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mt-4 text-emerald-800">
-      <h3 class="text-lg font-semibold">Thank you!</h3>
-      <p class="text-sm mt-1">Your Local Broker subscription is being set up. Your ad will appear once activated.</p>
+      <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mt-6 text-emerald-800">
+        <h3 class="text-lg font-semibold">Thank you!</h3>
+        <p class="text-sm mt-1">Your Local Broker subscription checkout completed successfully.</p>
+      </section>
     </section>
   </main>
 
+  <script type="module" src="/scripts/firebase-init.js"></script>
+
   <script type="module">
-    // ✅ FIX #2: Import STORAGE_BUCKET_GS from single source of truth
     import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
-    import {
-      addDoc, collection, doc, updateDoc, serverTimestamp, query, where, getDocs
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import {
-      getStorage, ref, uploadBytes, getDownloadURL
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+    import { addDoc, collection, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+    const PRICE_ID_LOCAL_BROKER = "price_1SQXmVPTiT2zuxx0bIP98lVs"; // $100/mo per ZIP
+    const PRICE_PER_ZIP = 100;
 
     const $ = (id) => document.getElementById(id);
+
     function setStatus(msg, ok=true){
       const el = $('status'); el.classList.remove('hidden');
       el.className = ok ? 'mt-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
                         : 'mt-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
       el.textContent = msg;
     }
-    function money(n){ return '$' + Number(n||0).toLocaleString(); }
+
     function onlyDigits(s){ return String(s||'').replace(/\D/g,''); }
     function formatPhone(s){
       const d = onlyDigits(s).slice(0,10);
@@ -129,71 +142,113 @@
       return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
     }
 
-    // Mode toggle via query or buttons
-    (function(){
-      const u = new URL(location.href);
-      let mode = u.searchParams.get('mode') || 'apply';
+    function parseZipList(raw) {
+      const parts = String(raw || "")
+        .replace(/[\n\r]/g, " ")
+        .split(/[, ]+/)
+        .map(s => s.trim())
+        .filter(Boolean);
 
-      function show(mode){
-        if (mode === 'search') {
-          $('searchArea').classList.remove('hidden');
-          $('brokerForm')?.classList.remove('hidden');
-          $('searchZip').focus();
-        }
+      const seen = new Set();
+      const good = [];
+      const bad = [];
+
+      for (const p of parts) {
+        const z = p.replace(/\D/g,'').slice(0,5);
+        if (!/^\d{5}$/.test(z)) { bad.push(p); continue; }
+        if (seen.has(z)) continue;
+        seen.add(z);
+        good.push(z);
       }
 
-      show(mode);
-      $('modeSearchB')?.addEventListener('click', ()=>{ location.href='?mode=search'; });
-    })();
+      return { good, bad };
+    }
 
-    // Price label (fixed $100/mo)
-    (function(){ $('total').textContent = money(100); })();
+    function fmtMoney(n){ return '$' + Number(n||0).toLocaleString(); }
 
-    // Preview photo (guarded)
-    const photoInput = $('photo');
-    if (photoInput) {
-      photoInput.addEventListener('change', (e) => {
-        const f = e.target.files?.[0]; if (!f) return;
-        const r = new FileReader();
-        r.onload = () => { $('photoPreview').innerHTML = `<img src="${r.result}" alt="Ad" class="h-28 object-contain rounded border">`; };
-        r.readAsDataURL(f);
+    function renderZipChips(good, bad) {
+      const host = $('zipChips');
+      host.innerHTML = '';
+
+      good.forEach(z => {
+        const d = document.createElement('span');
+        d.className = 'chip chip-good';
+        d.textContent = z;
+        host.appendChild(d);
+      });
+
+      bad.forEach(x => {
+        const d = document.createElement('span');
+        d.className = 'chip chip-bad';
+        d.textContent = `Invalid: ${x}`;
+        host.appendChild(d);
       });
     }
 
-    // If listing page passed a ZIP (convenience)
-    (function(){
-      const u = new URL(location.href);
-      const z = (u.searchParams.get('zip') || '').trim().slice(0,5);
-      if (/^\d{5}$/.test(z)) $('zip').value = z;
-    })();
+    function updateTotal() {
+      const raw = $('zipBulk').value;
+      const { good, bad } = parseZipList(raw);
 
-    // Stripe Checkout Link (test)
-    const CHECKOUT_LINK_BASE_BROKER = "https://buy.stripe.com/test_28EaEZc8T4wO0on7zS4ow01";
+      if (good.length > 99) {
+        // Keep first 99, mark rest bad
+        const extra = good.slice(99);
+        good.length = 99;
+        extra.forEach(x => bad.push(x));
+      }
 
-    // ✅ FIX #2: Removed hardcoded BUCKET_URL - now using STORAGE_BUCKET_GS from firebase-init.js
+      renderZipChips(good, bad);
+
+      const total = good.length * PRICE_PER_ZIP;
+      $('total').textContent = `${fmtMoney(total)}/month`;
+      $('countNote').textContent = good.length ? ` (${good.length} ZIP${good.length===1?'':'s'})` : '';
+      return { zipCodes: good, invalid: bad };
+    }
+
+    $('phone')?.addEventListener('input', (e) => { e.target.value = formatPhone(e.target.value); });
+    $('zipBulk')?.addEventListener('input', updateTotal);
+    updateTotal();
+
+    // Photo preview
+    $('photo')?.addEventListener('change', (e) => {
+      const f = e.target.files?.[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = () => { $('photoPreview').innerHTML = `<img src="${r.result}" alt="Ad" class="h-28 object-contain rounded border">`; };
+      r.readAsDataURL(f);
+    });
 
     async function maybeUploadPhoto(draftId) {
       try {
         const file = $('photo')?.files?.[0];
         if (!file) return "";
-        // ✅ FIX #2: Use STORAGE_BUCKET_GS from import
         const storage = getStorage(undefined, STORAGE_BUCKET_GS);
         const safe = String(file.name || "broker_ad").replace(/[^\w\-.]+/g,"_");
         const path = `localBrokers/${draftId}/ad_${Date.now()}_${safe}`;
         const r = ref(storage, path);
         await uploadBytes(r, file);
-        const url = await getDownloadURL(r);
-        return url;
+        return await getDownloadURL(r);
       } catch (e) {
         console.warn("[local-brokers] photo upload failed:", e);
         return "";
       }
     }
 
-    $('checkoutBtn').addEventListener('click', async () => {
+    function loggedInEmail() {
+      return (localStorage.getItem('loggedInEmail') || localStorage.getItem('verifyTarget') || '').trim();
+    }
+
+    // ✅ finalize success banner
+    (function(){
+      const u = new URL(location.href);
+      if (u.searchParams.get('status') === 'success') {
+        $('thanks')?.classList.remove('hidden');
+      }
+    })();
+
+    $('checkoutBtn')?.addEventListener('click', async () => {
+      const btn = $('checkoutBtn');
       try {
-        $('checkoutBtn').disabled = true;
-        $('checkoutBtn').textContent = 'Starting checkout…';
+        btn.disabled = true;
+        btn.textContent = 'Starting checkout…';
 
         const name = $('name').value.trim();
         const contact = $('contact').value.trim();
@@ -201,121 +256,92 @@
         const phoneDigits = onlyDigits($('phone').value);
         const phone = formatPhone($('phone').value.trim());
         const website = $('website').value.trim();
-        const zip = ($('zip').value || '').trim();
-        
-        if (!name || !contact || !email || !/^\d{5}$/.test(zip)) {
-          setStatus('Please complete brokerage name, contact, email, and a 5-digit ZIP.', false);
+
+        const { zipCodes, invalid } = updateTotal();
+
+        if (!name || !contact || !email) {
+          setStatus('Please complete brokerage name, contact, and email.', false);
           return;
         }
-        
         if (!/^\S+@\S+\.\S{2,}$/.test(email)) {
           setStatus('Please enter a valid email address.', false);
           return;
         }
-        
         if (phoneDigits.length !== 10) {
           setStatus('Please enter a valid 10-digit phone number.', false);
           return;
         }
+        if (!zipCodes.length) {
+          setStatus('Please enter at least one valid 5-digit ZIP code.', false);
+          return;
+        }
+        if (zipCodes.length > 99) {
+          setStatus('Maximum 99 ZIP codes per checkout.', false);
+          return;
+        }
 
-        // Save draft first (pending)
+        // Save a draft record (pending) for tracking (UI: not enforcing exclusivity yet)
         const draft = {
           name,
           contact,
           email,
           phone,
           website,
-          zip,
+          zips: zipCodes,
           photoUrl: "",
           status: "pending",
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         };
+
         const refDoc = await addDoc(collection(db, "localBrokers"), draft);
         localStorage.setItem("localBrokerDraftId", refDoc.id);
 
-        // Optional: upload ad image, then patch the draft with photoUrl
         const photoUrl = await maybeUploadPhoto(refDoc.id);
         if (photoUrl) {
           await updateDoc(doc(db, "localBrokers", refDoc.id), { photoUrl, updatedAt: serverTimestamp() });
         }
 
-        // Build params and redirect to Stripe
-        const params = new URLSearchParams({
-          prefilled_email: email,
-          client_reference_id: JSON.stringify({ type: "broker", name, contact, email, phone, website, zip })
-        });
-        window.location.href = `${CHECKOUT_LINK_BASE_BROKER}?${params.toString()}`;
-      } catch (e) {
-        setStatus(e.message || "Checkout error.", false);
-      } finally {
-        $('checkoutBtn').disabled = false;
-        $('checkoutBtn').textContent = 'Proceed to Checkout';
-      }
-    });
+        // Call subscription API (bulk quantity)
+        const successUrl = window.location.origin + "/local-brokers.html?status=success";
+        const cancelUrl  = window.location.origin + "/local-brokers.html?status=cancel";
 
-    // Finalize after Stripe returns
-    (async function finalizeIfSuccess(){
-      const u = new URL(location.href);
-      if (u.searchParams.get('status') === 'success') {
-        $('thanks').classList.remove('hidden');
-        try {
-          const id = localStorage.getItem("localBrokerDraftId");
-          if (id) {
-            await updateDoc(doc(db, "localBrokers", id), {
-              status: "active",
-              updatedAt: serverTimestamp()
-            });
+        const payload = {
+          roleType: "local_broker",
+          zipCodes: zipCodes,
+          priceId: PRICE_ID_LOCAL_BROKER,
+          successUrl,
+          cancelUrl,
+          metadata: {
+            email: loggedInEmail() || email,
+            name: name,
+            contact: contact,
+            draftId: refDoc.id
           }
-        } catch (e) {
-          console.warn("[local-brokers] finalize failed:", e);
-        }
-      }
-    })();
+        };
 
-    // Search by ZIP
-    $('runZipSearch')?.addEventListener('click', async ()=>{
-      const zip = $('searchZip').value.trim();
-      if (!/^\d{5}$/.test(zip)) { setStatus('Enter a valid 5-digit ZIP to search.', false); return; }
-      setStatus('Searching...', true);
-
-      try {
-        // Query Firestore for active brokers in this ZIP
-        const q = query(
-          collection(db, "localBrokers"),
-          where("zip", "==", zip),
-          where("status", "==", "active")
-        );
-        const snapshot = await getDocs(q);
-        
-        const brokers = [];
-        snapshot.forEach(doc => {
-          brokers.push({ id: doc.id, ...doc.data() });
+        const resp = await fetch("/api/create-subscription-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
         });
 
-        const box = $('brokersResults'); 
-        box.innerHTML='';
-        $('status').classList.add('hidden');
-        
-        if (!brokers.length) {
-          box.innerHTML = `<div class="text-sm text-gray-600">No Local Brokers reserved in ${zip} yet. This ZIP is available!</div>`;
+        const ct = resp.headers.get("content-type") || "";
+        const out = ct.includes("application/json") ? await resp.json() : { error: "Non-JSON server response" };
+
+        if (!resp.ok) throw new Error(out.error || out.message || "Subscription session failed.");
+
+        if (out.url) {
+          window.location.href = out.url;
           return;
         }
-        
-        brokers.forEach(b=>{
-          const card = document.createElement('div');
-          card.className = 'border rounded-lg p-3 bg-white';
-          card.innerHTML = `
-            <div class="text-sm font-semibold">${b.name || 'Brokerage'}</div>
-            <div class="text-xs text-gray-600">${b.contact || ''}</div>
-            <div class="text-xs text-gray-500 mt-1">ZIP: ${b.zip || ''}</div>
-            ${b.website ? `<div class="text-xs text-blue-600 mt-1"><a href="${b.website}" target="_blank" class="hover:underline">${b.website}</a></div>` : ''}
-          `;
-          box.appendChild(card);
-        });
-      } catch (err) {
-        console.error('Search error:', err);
-        setStatus('Search failed. Please try again.', false);
+        throw new Error("Server did not return checkout url.");
+      } catch (e) {
+        console.error(e);
+        setStatus(e.message || "Checkout error.", false);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Proceed to Checkout";
       }
     });
   </script>
