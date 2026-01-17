@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- seller-detail.html - Build 2026-01-07 (Task E: Non-blocking geocode with timeout + metadata) -->
+<!-- seller-detail.html - Build 2026-01-16 (Task: Soft Autosave + Status Indicator; preserves Task E + existing logic) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -12,9 +12,41 @@
     .lock-note { font-size: 12px; color:#6b7280; }
     .pill { font-size: 11px; padding: 2px 8px; border-radius: 9999px; background:#eef2ff; color:#3730a3; }
     .badge { font-size: 10px; padding:2px 6px; border-radius: 9999px; background:#ecfccb; color:#166534; border:1px solid #bbf7d0; }
+
+    /* ===== Soft Autosave indicator ===== */
+    #autosaveIndicator {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 9999;
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 9999px;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+    #autosaveDot {
+      width: 9px;
+      height: 9px;
+      border-radius: 9999px;
+      background: #9ca3af; /* gray by default */
+      box-shadow: 0 0 0 2px rgba(156,163,175,0.15);
+    }
+    #autosaveText { color: #374151; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
+
+  <!-- Soft Autosave status indicator -->
+  <div id="autosaveIndicator" aria-live="polite">
+    <span id="autosaveDot"></span>
+    <span id="autosaveText">Waiting…</span>
+  </div>
 
   <header class="bg-white shadow">
     <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -230,10 +262,10 @@
   <div id="changeCommissionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-md relative p-6">
       <button onclick="closeChangeCommissionModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
-      
+
       <h2 class="text-lg font-bold mb-4">Change Commission</h2>
       <p class="text-sm text-gray-600 mb-4">Enter your new commission amount and type. After payment, you will sign a new Irrevocable Seller Communication with the updated commission.</p>
-      
+
       <div class="space-y-4">
         <div class="flex gap-2">
           <input type="text" id="newCommission" placeholder="Commission amount (e.g., 2.5 or 5000)" class="flex-1 border p-2 rounded">
@@ -242,7 +274,7 @@
             <option value="$">$</option>
           </select>
         </div>
-        
+
         <div class="flex items-center justify-end gap-2">
           <button type="button" onclick="closeChangeCommissionModal()" class="px-4 py-2 rounded border">Cancel</button>
           <button id="confirmCommissionBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">Confirm New Commission</button>
@@ -265,7 +297,7 @@
   <script type="module">
     import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
     import { updatePaidUpgradesAfterPayment } from "/scripts/paid-upgrades-handler.js";
-    
+
     import {
       doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -280,49 +312,22 @@
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
     const GEO_TIMEOUT_MS = 3000; // 3 second timeout
 
-    /**
-     * Geocode a full address using Mapbox with timeout.
-     * Returns { lat, lng, placeName, status, provider } or failure object.
-     * Works nationwide - no bbox constraints.
-     * NEVER blocks page load - returns gracefully on timeout/error.
-     */
     async function geocodeAddress(address) {
-      const failResult = {
-        lat: null,
-        lng: null,
-        placeName: null,
-        status: "failed",
-        provider: "mapbox"
-      };
-
-      if (!address || !MAPBOX_TOKEN) {
-        failResult.status = "skipped";
-        return failResult;
-      }
+      const failResult = { lat:null, lng:null, placeName:null, status:"failed", provider:"mapbox" };
+      if (!address || !MAPBOX_TOKEN) { failResult.status = "skipped"; return failResult; }
 
       try {
         const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?limit=1&access_token=${MAPBOX_TOKEN}`;
-
-        // Race between fetch and timeout - never block more than GEO_TIMEOUT_MS
         const fetchPromise = fetch(url);
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("timeout")), GEO_TIMEOUT_MS);
-        });
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), GEO_TIMEOUT_MS));
 
         const resp = await Promise.race([fetchPromise, timeoutPromise]);
-        if (!resp.ok) {
-          failResult.status = "http_error";
-          return failResult;
-        }
+        if (!resp.ok) { failResult.status = "http_error"; return failResult; }
 
         const data = await resp.json();
         const feature = data?.features?.[0];
-        if (!feature?.center) {
-          failResult.status = "no_results";
-          return failResult;
-        }
+        if (!feature?.center) { failResult.status = "no_results"; return failResult; }
 
-        // Mapbox returns [lng, lat]
         return {
           lng: feature.center[0],
           lat: feature.center[1],
@@ -337,29 +342,19 @@
       }
     }
 
-    /**
-     * TASK E: Ensure the listing has lat/lng. If missing, geocode and save with metadata.
-     * Returns true if coordinates were added, false if already existed or failed.
-     */
     async function ensureLatLng(listingId, address) {
       if (!listingId || !address) return false;
       try {
         const snap = await getDoc(doc(db, "listings", listingId));
         if (!snap.exists()) return false;
         const d = snap.data() || {};
-        
-        // Check if lat/lng already exist and geoStatus is "ok"
+
         const hasLat = typeof d.lat === "number" && !isNaN(d.lat);
         const hasLng = typeof d.lng === "number" && !isNaN(d.lng);
-        if (hasLat && hasLng && d.geoStatus === "ok") {
-          console.log("[Task E] Listing already has lat/lng:", d.lat, d.lng);
-          return false;
-        }
-        
-        // Geocode and save with metadata
-        console.log("[Task E] Missing or incomplete lat/lng, geocoding address:", address);
+        if (hasLat && hasLng && d.geoStatus === "ok") return false;
+
         const geo = await geocodeAddress(address);
-        
+
         const geoUpdate = {
           lat: geo.lat,
           lng: geo.lng,
@@ -367,17 +362,10 @@
           geoProvider: geo.provider,
           updatedAt: serverTimestamp()
         };
-        
-        // Only add optional fields if they have values (cleaner Firestore docs)
-        if (geo.placeName) {
-          geoUpdate.geoPlaceName = geo.placeName;
-        }
-        if (geo.status === "ok") {
-          geoUpdate.geoUpdatedAt = serverTimestamp();
-        }
-        
+        if (geo.placeName) geoUpdate.geoPlaceName = geo.placeName;
+        if (geo.status === "ok") geoUpdate.geoUpdatedAt = serverTimestamp();
+
         await updateDoc(doc(db, "listings", listingId), geoUpdate);
-        console.log("[Task E] Saved geo data:", geo.status, geo.lat, geo.lng);
         return geo.status === "ok";
       } catch (e) {
         console.warn("[Task E] ensureLatLng failed:", e);
@@ -390,19 +378,7 @@
     (async function() {
       if (window.__paidUpgradesHandled) return;
       window.__paidUpgradesHandled = true;
-      
-      try {
-        const result = await updatePaidUpgradesAfterPayment();
-        if (result.processed) {
-          console.log('[seller-detail] Upgrades processed successfully');
-        } else if (result.alreadyProcessed) {
-          console.log('[seller-detail] Upgrades already processed');
-        } else {
-          console.log('[seller-detail] No paid upgrades to process');
-        }
-      } catch (e) {
-        console.warn('[seller-detail] paid-upgrades-handler failed:', e);
-      }
+      try { await updatePaidUpgradesAfterPayment(); } catch (e) { console.warn('[seller-detail] paid-upgrades-handler failed:', e); }
     })();
 
     // utilities
@@ -419,28 +395,54 @@
         el.id = "statusBar";
         el.className = "mt-2 text-sm";
         var main = document.querySelector('main');
-        if (main && main.parentNode) {
-          main.parentNode.insertBefore(el, main);
-        }
+        if (main && main.parentNode) main.parentNode.insertBefore(el, main);
       }
       el.textContent = msg || "";
       el.className = ok ? "max-w-6xl mx-auto px-3 mt-2 text-sm text-gray-600" : "max-w-6xl mx-auto px-3 mt-2 text-sm text-red-700";
     }
 
+    // ===== Soft Autosave indicator helpers =====
+    function setAutosaveUI(state) {
+      // state: "waiting" | "saving" | "saved" | "error"
+      var dot = document.getElementById("autosaveDot");
+      var txt = document.getElementById("autosaveText");
+      if (!dot || !txt) return;
+
+      if (state === "saving") {
+        dot.style.background = "#f59e0b"; // amber
+        txt.textContent = "Saving…";
+      } else if (state === "saved") {
+        dot.style.background = "#10b981"; // green
+        txt.textContent = "All changes saved";
+      } else if (state === "error") {
+        dot.style.background = "#ef4444"; // red
+        txt.textContent = "Save failed";
+      } else {
+        dot.style.background = "#9ca3af"; // gray
+        txt.textContent = "Waiting…";
+      }
+    }
+
+    function debounce(fn, waitMs) {
+      var t = null;
+      return function() {
+        var ctx = this, args = arguments;
+        if (t) clearTimeout(t);
+        t = setTimeout(function() { fn.apply(ctx, args); }, waitMs);
+      };
+    }
+
     // Local pros / brokers helpers
     function parseZipFromAddress(addr) {
       addr = addr || "";
+      // NOTE: seller-detail currently uses first-match. We keep it as-is to avoid side effects.
       var m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
       return m ? m[1] : "";
     }
 
     async function loadLocalPros(zip) {
       try {
-        var q1 = query(
-          collection(db, "localPros"),
-          where("status", "==", "active"),
-          where("zips", "array-contains", zip)
-        );
+        var q1 = query(collection(db, "localPros"), where("status", "==", "active"), where("zips", "array-contains", zip));
         var snap = await getDocs(q1);
         var all = [];
         snap.forEach(function(d) { all.push({ id: d.id, ...d.data() }); });
@@ -458,15 +460,12 @@
       lenders = lenders || [];
       var card = $("prosSidebar");
       if (!card) return;
-      
+
       var currentPlan = plan.trim();
-      var isFSBO = currentPlan.includes("FSBO");
-      
-      if (!isFSBO) {
-        card.classList.add("hidden");
-        return;
-      }
-      
+      var isFSBOPlan = currentPlan.includes("FSBO");
+
+      if (!isFSBOPlan) { card.classList.add("hidden"); return; }
+
       $("prosZip").textContent = zip || "—";
       $("prosCtaBtn").href = "/local-professionals.html?zip=" + encodeURIComponent(zip) + "&mode=search";
       $("prosEmptyLink").href = "/local-professionals.html?zip=" + encodeURIComponent(zip) + "&mode=apply";
@@ -481,7 +480,7 @@
         ph.textContent = "No Image";
         return ph;
       }
-      
+
       function tileFSBO(p){
         var div = document.createElement("div");
         div.className = "overflow-hidden bg-white rounded-lg shadow-sm";
@@ -503,33 +502,21 @@
       agents.forEach(function(a) { tiles.push(tileFSBO(a)); });
       lenders.forEach(function(l) { tiles.push(tileFSBO(l)); });
 
-      if (tiles.length) {
-        tiles.forEach(function(t) { list.appendChild(t); });
-        empty.classList.add("hidden");
-      } else {
-        empty.classList.remove("hidden");
-      }
+      if (tiles.length) { tiles.forEach(function(t) { list.appendChild(t); }); empty.classList.add("hidden"); }
+      else { empty.classList.remove("hidden"); }
 
       card.classList.remove("hidden");
     }
 
     async function loadLocalBroker(zip) {
       try {
-        var q1 = query(
-          collection(db, "localBrokers"),
-          where("status","==","active"),
-          where("zip","==", zip)
-        );
+        var q1 = query(collection(db, "localBrokers"), where("status","==","active"), where("zip","==", zip));
         var s1 = await getDocs(q1);
         if (!s1.empty) {
           var x = s1.docs[0].data() || {};
           return { id: s1.docs[0].id, ...x };
         }
-        var q2 = query(
-          collection(db, "localBrokers"),
-          where("status","==","active"),
-          where("zips","array-contains", zip)
-        );
+        var q2 = query(collection(db, "localBrokers"), where("status","==","active"), where("zips","array-contains", zip));
         var s2 = await getDocs(q2);
         if (!s2.empty) {
           var x2 = s2.docs[0].data() || {};
@@ -545,15 +532,11 @@
     function renderBrokerStrip(zip, broker) {
       var strip = $("brokerStrip");
       if (!strip) return;
-      
+
       var currentPlan = plan.trim();
-      var isFSBO = currentPlan.includes("FSBO");
-      
-      if (!isFSBO) {
-        strip.style.display = "none";
-        return;
-      }
-      
+      var isFSBOPlan = currentPlan.includes("FSBO");
+      if (!isFSBOPlan) { strip.style.display = "none"; return; }
+
       $("brokerZip").textContent = zip || "—";
       $("brokerCtaBtn").href = "/local-brokers.html?zip=" + encodeURIComponent(zip);
       $("brokerEmptyLink").href = "/local-brokers.html?zip=" + encodeURIComponent(zip) + "&mode=apply";
@@ -600,10 +583,7 @@
     })();
 
     var listingId = localStorage.getItem("lastListingId") || "";
-
-    if ($("previewLink") && listingId) {
-      $("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
-    }
+    if ($("previewLink") && listingId) $("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
 
     // state
     var plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
@@ -614,6 +594,8 @@
     var photos = [];
     var primaryIndex = 0;
     var paidUpgrades = {};
+    var currentZipOnDoc = ""; // snapshot from refresh; used to avoid extra reads
+    var autosaveEnabled = true;
 
     function computePhotoHelp() {
       var remaining = Math.max(0, maxPhotos - (photos ? photos.length : 0));
@@ -624,12 +606,12 @@
           : "Listed Property Basic: 1 primary photo allowed (upgrade to add more).";
       }
     }
-    
+
     function clampPrimary(){
       if (!Array.isArray(photos) || photos.length === 0) { primaryIndex = 0; return; }
       if (primaryIndex < 0 || primaryIndex >= photos.length) primaryIndex = 0;
     }
-    
+
     function renderThumbs(){
       clampPrimary();
       var grid = $("photoGrid");
@@ -651,7 +633,7 @@
         ordered.unshift(prim);
       }
 
-      ordered.forEach(function(item, idxDisplay){
+      ordered.forEach(function(item){
         var u = item.u;
         var i = item.i;
         var row = document.createElement("div");
@@ -659,7 +641,7 @@
 
         var img = new Image();
         img.src = u;
-        img.alt = "Photo " + (idxDisplay+1);
+        img.alt = "Photo";
         img.className = "thumb border " + (i===primaryIndex ? "border-green-500" : "border-gray-300");
         img.title = (i===primaryIndex) ? "Primary photo" : "Click to set as primary";
         img.addEventListener("click", async function(){
@@ -691,14 +673,19 @@
           input.type="file"; input.accept="image/*";
           input.onchange = async function(e){
             var file = e.target.files ? e.target.files[0] : null; if (!file) return;
+            setAutosaveUI("saving");
             setStatus("Uploading replacement...");
             try {
               var urlNew = await uploadOne(file);
               photos[i] = urlNew;
               await savePhotosField(true);
+              setAutosaveUI("saved");
+              setTimeout(function(){ setAutosaveUI("waiting"); }, 1500);
             } catch (err) {
               console.warn(err);
+              setAutosaveUI("error");
               setStatus("Could not replace photo.", false);
+              setTimeout(function(){ setAutosaveUI("waiting"); }, 2500);
             }
           };
           input.click();
@@ -709,9 +696,12 @@
         bDelete.textContent = "Delete";
         bDelete.onclick = async function(){
           if (!confirm("Remove this photo from the listing?")) return;
+          setAutosaveUI("saving");
           photos.splice(i,1);
           if (primaryIndex >= photos.length) primaryIndex = Math.max(0, photos.length-1);
           await savePhotosField(true);
+          setAutosaveUI("saved");
+          setTimeout(function(){ setAutosaveUI("waiting"); }, 1500);
         };
 
         btns.appendChild(bReplace);
@@ -724,7 +714,7 @@
 
       computePhotoHelp();
     }
-    
+
     async function uploadOne(file){
       var storage = getStorage(undefined, STORAGE_BUCKET_GS);
       var safeName = String(file.name || "photo").replace(/[^\w\-.]+/g,"_");
@@ -735,7 +725,7 @@
       return url;
     }
 
-    async function savePhotosField(thenRefresh){
+    async function savePhotosField(){
       if (!listingId) return;
       try {
         clampPrimary();
@@ -761,13 +751,14 @@
 
         try {
           var remaining = Math.max(0, maxPhotos - photos.length);
-          if (remaining <= 0) { 
-            alert("You have reached the photo limit for your plan (" + maxPhotos + ")."); 
-            e.target.value=""; 
-            return; 
+          if (remaining <= 0) {
+            alert("You have reached the photo limit for your plan (" + maxPhotos + ").");
+            e.target.value="";
+            return;
           }
           var toUpload = files.slice(0, remaining);
 
+          setAutosaveUI("saving");
           setStatus("Uploading photo(s)...");
           for (var idx = 0; idx < toUpload.length; idx++) {
             var f = toUpload[idx];
@@ -779,9 +770,13 @@
               setStatus("Upload failed for one or more files.", false);
             }
           }
-          await savePhotosField(true);
+          await savePhotosField();
+          setAutosaveUI("saved");
+          setTimeout(function(){ setAutosaveUI("waiting"); }, 1500);
         } catch (err) {
+          setAutosaveUI("error");
           setStatus("Upload failed.", false);
+          setTimeout(function(){ setAutosaveUI("waiting"); }, 2500);
         } finally {
           e.target.value = "";
         }
@@ -790,12 +785,9 @@
 
     // FIELD LOCKING LOGIC
     function applyFieldLocking(planName, paidUpgrades) {
-      var isFSBO = planName.includes("FSBO");
       var isBasic = planName === "Listed Property Basic";
-      var isPlus = planName === "Listed Property Plus";
-      
       paidUpgrades = paidUpgrades || {};
-      
+
       var descEl = $("description");
       var descNote = $("descGateNote");
       if (isBasic) {
@@ -805,11 +797,11 @@
         if (descEl) { descEl.classList.remove("dimmed"); descEl.removeAttribute("disabled"); }
         if (descNote) descNote.classList.add("hidden");
       }
-      
+
       var bannerEl = $("bannerText");
       var bannerNote = $("bannerGateNote");
       var bannerUnlocked = !!paidUpgrades.banner;
-      
+
       if (bannerUnlocked) {
         if (bannerEl) { bannerEl.classList.remove("dimmed"); bannerEl.removeAttribute("disabled"); }
         if (bannerNote) bannerNote.classList.add("hidden");
@@ -817,11 +809,11 @@
         if (bannerEl) { bannerEl.classList.add("dimmed"); bannerEl.setAttribute("disabled","disabled"); }
         if (bannerNote) bannerNote.classList.remove("hidden");
       }
-      
+
       var premiumEl = $("preferredArea");
       var premiumNote = $("premiumGateNote");
       var premiumUnlocked = !!paidUpgrades.premium || !!paidUpgrades.pin;
-      
+
       if (premiumUnlocked) {
         if (premiumEl) { premiumEl.classList.remove("dimmed"); premiumEl.removeAttribute("disabled"); }
         if (premiumNote) premiumNote.classList.add("hidden");
@@ -829,11 +821,11 @@
         if (premiumEl) { premiumEl.classList.add("dimmed"); premiumEl.setAttribute("disabled","disabled"); }
         if (premiumNote) premiumNote.classList.remove("hidden");
       }
-      
+
       var pinEl = $("pinArea");
       var pinNote = $("pinGateNote");
       var pinUnlocked = !!paidUpgrades.pin;
-      
+
       if (pinUnlocked) {
         if (pinEl) { pinEl.classList.remove("dimmed"); pinEl.removeAttribute("disabled"); }
         if (pinNote) pinNote.classList.add("hidden");
@@ -845,25 +837,20 @@
 
     // refresh all fields from server
     async function refreshFromServer(note){
-      if (!listingId) { 
-        setStatus("No listing selected (missing id).", false); 
-        return; 
-      }
+      if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
 
       try {
         var snap = await getDoc(doc(db, "listings", listingId));
-        if (!snap.exists()) { 
-          setStatus("Listing not found on server.", false); 
-          return; 
-        }
+        if (!snap.exists()) { setStatus("Listing not found on server.", false); return; }
         var d = snap.data() || {};
 
         plan = d.plan || plan;
-        isPlus = (plan === "Listed Property Plus" || plan.includes("FSBO"));
         isFSBO = plan.includes("FSBO");
+        isPlus = (plan === "Listed Property Plus" || isFSBO);
         maxPhotos = isPlus ? 20 : 1;
 
         paidUpgrades = d.paidUpgrades || {};
+        currentZipOnDoc = String(d.zip || "");
 
         $("planPill").textContent = plan || "—";
         $("fullAddress").value = d.address || "";
@@ -890,22 +877,20 @@
         if (plan.includes("FSBO")) {
           var block = $("listedBlock");
           if (block) block.style.display = "none";
+        } else {
+          var block2 = $("listedBlock");
+          if (block2) block2.style.display = "block";
         }
 
         photos = Array.isArray(d.photos) ? d.photos.slice(0, maxPhotos) : [];
         primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
 
         applyFieldLocking(plan, paidUpgrades);
-
         renderThumbs();
         setStatus(note || "Loaded from server.", true);
 
-        // =========================================================================
-        // TASK E: Ensure lat/lng exists on page load (NON-BLOCKING)
-        // Fire-and-forget: don't await, let it run in background
-        // =========================================================================
+        // Fire-and-forget geo ensure
         ensureLatLng(listingId, d.address);
-        // =========================================================================
 
         try {
           var zip = d.zip || parseZipFromAddress($("fullAddress").value || "");
@@ -919,94 +904,145 @@
         } catch (e) {
           console.warn("[local-pros] sidebar/strip skipped:", e);
         }
+
+        setAutosaveUI("waiting");
       } catch (e) {
         console.warn("[seller] load failed", e);
         setStatus("Could not load from server.", false);
+        setAutosaveUI("error");
+        setTimeout(function(){ setAutosaveUI("waiting"); }, 2500);
       }
     }
 
-    // Save button: write fields to Firestore
+    // ===== Soft Autosave (debounced) =====
+    function buildAutosavePayload() {
+      // Respect FSBO vs Listed: do not write listed-only agent/brokerage fields for FSBO
+      var planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
+      var isFSBOPlan = planNow.includes("FSBO");
+
+      var payload = {
+        updatedAt: serverTimestamp(),
+        status: $("status")?.value || "",
+        price: Number($("price")?.value || 0) || "",
+        apn: $("apn")?.value || "",
+        bedrooms: $("bedrooms")?.value || "",
+        bathrooms: $("bathrooms")?.value || "",
+        sqft: $("sqft")?.value || "",
+        yearBuilt: $("yearBuilt")?.value || "",
+        lotSize: $("lotSize")?.value || "",
+        propertyType: $("propertyType")?.value || "",
+        description: $("description")?.value || "",
+        bannerText: $("bannerText")?.value || "",
+        preferredArea: $("preferredArea")?.value || "",
+        pinArea: $("pinArea")?.value || ""
+      };
+
+      if (!isFSBOPlan) {
+        payload.brokerage = $("brokerage")?.value || "";
+        payload.agentName = $("agentName")?.value || "";
+        payload.agentEmail = $("agentEmail")?.value || "";
+        payload.agentPhone = $("agentPhone")?.value || "";
+      }
+
+      // One-time ZIP backfill (only if doc has no zip)
+      if (!currentZipOnDoc) {
+        var addr = ($("fullAddress")?.value || "").trim();
+        var z = parseZipFromAddress(addr);
+        if (z) payload.zip = z;
+      }
+
+      return payload;
+    }
+
+    async function doAutosave() {
+      if (!autosaveEnabled) return;
+      if (!listingId) return;
+
+      setAutosaveUI("saving");
+      try {
+        var payload = buildAutosavePayload();
+        await updateDoc(doc(db, "listings", listingId), payload);
+
+        // If we backfilled zip, remember it to avoid repeating
+        if (payload.zip) currentZipOnDoc = String(payload.zip);
+
+        setAutosaveUI("saved");
+        setTimeout(function(){ setAutosaveUI("waiting"); }, 1800);
+      } catch (e) {
+        console.warn("[autosave] failed", e);
+        setAutosaveUI("error");
+        setTimeout(function(){ setAutosaveUI("waiting"); }, 3000);
+      }
+    }
+
+    var autosaveDebounced = debounce(doAutosave, 1500);
+
+    function wireAutosaveListeners() {
+      var form = document.getElementById("sellerForm");
+      if (!form) return;
+
+      // Attach to all inputs/selects/textareas inside the form
+      var fields = form.querySelectorAll("input, select, textarea");
+
+      fields.forEach(function(el) {
+        // Skip file inputs (photos handled separately), readonly, and disabled
+        var type = (el.getAttribute("type") || "").toLowerCase();
+        if (type === "file") return;
+        if (el.hasAttribute("readonly")) return;
+        if (el.hasAttribute("disabled")) return;
+
+        // Skip commission fields explicitly (they're locked and should never autosave)
+        if (el.id === "commission" || el.id === "commissionType") return;
+
+        el.addEventListener("input", function() {
+          // If user changes something, schedule autosave
+          autosaveDebounced();
+        });
+        el.addEventListener("change", function() {
+          autosaveDebounced();
+        });
+      });
+    }
+
+    // ===== Manual Save button preserved =====
     var saveBtn = $("saveBtn");
     if (saveBtn) {
       saveBtn.addEventListener("click", async function(){
-        if (!listingId) { 
-          alert("No listing ID in this session."); 
-          return; 
-        }
+        if (!listingId) { alert("No listing ID in this session."); return; }
 
-        var planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
-
-        var update = {
-          updatedAt: serverTimestamp(),
-          status: $("status").value || "",
-          price: Number($("price").value || 0) || "",
-          apn: $("apn").value || "",
-          bedrooms: $("bedrooms").value || "",
-          bathrooms: $("bathrooms").value || "",
-          sqft: $("sqft").value || "",
-          yearBuilt: $("yearBuilt").value || "",
-          lotSize: $("lotSize").value || "",
-          propertyType: $("propertyType").value || "",
-          description: $("description").value || "",
-          bannerText: $("bannerText").value || "",
-          preferredArea: $("preferredArea").value || "",
-          pinArea: $("pinArea").value || ""
-        };
-
-        if (!planNow.includes("FSBO")) {
-          update.brokerage = $("brokerage").value || "";
-          update.agentName = $("agentName").value || "";
-          update.agentEmail = $("agentEmail").value || "";
-          update.agentPhone = $("agentPhone").value || "";
-        }
-
+        setAutosaveUI("saving");
         try {
-          var curSnap = await getDoc(doc(db, "listings", listingId));
-          var cur = curSnap.exists() ? (curSnap.data() || {}) : {};
-          if (!cur.zip) {
-            var addr = $("fullAddress").value || "";
-            var m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
-            var zip = m ? m[1] : "";
-            if (zip) update.zip = zip;
-          }
-        } catch (e) {
-          console.warn("[seller] zip backfill skipped:", e);
-        }
+          var planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
+          var update = buildAutosavePayload();
 
-        try {
+          // Manual save also triggers geo ensure
           await updateDoc(doc(db, "listings", listingId), update);
-          
-          // =========================================================================
-          // TASK E: Ensure lat/lng exists on save (NON-BLOCKING)
-          // Fire-and-forget: runs in background while refreshFromServer proceeds
-          // =========================================================================
           ensureLatLng(listingId, $("fullAddress").value);
-          // =========================================================================
-          
+
           await refreshFromServer("Saved to server.");
+          setAutosaveUI("saved");
+          setTimeout(function(){ setAutosaveUI("waiting"); }, 1800);
           alert("Saved.");
         } catch (e) {
           console.warn("[seller] update failed", e);
           setStatus("Could not save to server.", false);
+          setAutosaveUI("error");
+          setTimeout(function(){ setAutosaveUI("waiting"); }, 3000);
           alert("Could not save. Try again.");
         }
       });
     }
 
-    // Upgrades UI wiring
+    // Upgrades UI wiring (preserved as-is)
     (async function wireUpgrades(){
       var checkoutData = getJSON("checkoutData", null) || {};
-      
+
       var listingData = {};
       if (listingId) {
         try {
           var snap = await getDoc(doc(db, "listings", listingId));
-          if (snap.exists()) {
-            listingData = snap.data() || {};
-          }
-        } catch (e) {
-          console.warn("[upgrades] could not fetch listing data:", e);
-        }
+          if (snap.exists()) listingData = snap.data() || {};
+        } catch (e) { console.warn("[upgrades] could not fetch listing data:", e); }
       }
 
       var currentPlan = plan.trim();
@@ -1023,7 +1059,7 @@
         var grayedClass = paid ? "bg-gray-100 opacity-60" : "";
         var paidLabel = paid ? "<span class=\"text-xs text-green-600 ml-2\">Paid</span>" : "";
         var desc = description ? "<div class=\"text-xs text-gray-500\">" + description + "</div>" : "";
-        
+
         return "<label class=\"flex items-center justify-between border rounded-lg px-3 py-2 " + grayedClass + "\">" +
           "<div>" +
             "<span class=\"font-medium\">" + label + "</span>" +
@@ -1040,25 +1076,8 @@
 
       var upgrades = [];
 
-      if (isBasicNow) {
-        upgrades.push(row(
-          "Listed Property Plus",
-          20,
-          "upgradeToPlus",
-          false,
-          "20 photos + full property description"
-        ));
-      }
-
-      if (isPlusNow) {
-        upgrades.push(row(
-          "Listed Property Plus",
-          20,
-          "upgradeToPlus",
-          true,
-          "Current Plan"
-        ));
-      }
+      if (isBasicNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", false, "20 photos + full property description"));
+      if (isPlusNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", true, "Current Plan"));
 
       upgrades.push(row("Banner", 10, "banner", paidUpgradesNow.banner));
       upgrades.push(row("Premium Placement", 10, "premium", paidUpgradesNow.premium));
@@ -1080,31 +1099,20 @@
           var checked = e.target.checked;
           checkoutData.upgrades = checkoutData.upgrades || {};
 
-          if (k === "upgradeToPlus") {
-            checkoutData.upgrades.upgradeToPlus = checked;
-          } else if (k === "banner") {
-            checkoutData.upgrades.banner = checked;
-          } else if (k === "premium") {
-            checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
-          } else if (k === "pin") {
-            checkoutData.upgrades.pin = checked;
-            if (checked) checkoutData.upgrades.premium = true;
-          } else if (k === "confidential") {
-            checkoutData.upgrades.confidential = checked;
-          } else if (k === "changeCommission") {
+          if (k === "upgradeToPlus") checkoutData.upgrades.upgradeToPlus = checked;
+          else if (k === "banner") checkoutData.upgrades.banner = checked;
+          else if (k === "premium") checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
+          else if (k === "pin") { checkoutData.upgrades.pin = checked; if (checked) checkoutData.upgrades.premium = true; }
+          else if (k === "confidential") checkoutData.upgrades.confidential = checked;
+          else if (k === "changeCommission") {
             if (checked) {
               openChangeCommissionModal();
-              
               var confirmBtn = document.getElementById("confirmCommissionBtn");
               confirmBtn.onclick = function() {
                 var newComm = document.getElementById("newCommission").value.trim();
                 var newType = document.getElementById("newCommissionType").value;
-                
-                if (!newComm) {
-                  alert("Please enter a commission amount.");
-                  return;
-                }
-                
+                if (!newComm) { alert("Please enter a commission amount."); return; }
+
                 checkoutData.upgrades.changeCommission = true;
                 checkoutData.upgrades.upgradeToPlus = false;
                 checkoutData.meta = checkoutData.meta || {};
@@ -1114,7 +1122,6 @@
                 checkoutData.meta.newCommission = newComm;
                 checkoutData.meta.newCommissionType = newType;
                 setJSON("checkoutData", checkoutData);
-                
                 window.location.href = "/checkout.html";
               };
             } else {
@@ -1126,7 +1133,6 @@
               }
             }
           }
-          
           setJSON("checkoutData", checkoutData);
         });
       }
@@ -1134,22 +1140,18 @@
       var checkoutBtn = $("goCheckoutBtn");
       if (checkoutBtn) {
         checkoutBtn.addEventListener("click", async function() {
-          var checkoutData = getJSON("checkoutData", {});
-          checkoutData.meta = checkoutData.meta || {};
-          checkoutData.meta.fromSellerDetail = true;
-          
+          var checkoutData2 = getJSON("checkoutData", {});
+          checkoutData2.meta = checkoutData2.meta || {};
+          checkoutData2.meta.fromSellerDetail = true;
+
           try {
             if (listingId && db) {
-              var snap = await getDoc(doc(db, "listings", listingId));
-              if (snap.exists()) {
-                checkoutData.meta.paidUpgrades = snap.data().paidUpgrades || {};
-              }
+              var snap2 = await getDoc(doc(db, "listings", listingId));
+              if (snap2.exists()) checkoutData2.meta.paidUpgrades = snap2.data().paidUpgrades || {};
             }
-          } catch (e) {
-            console.warn("[goCheckout] Could not fetch paidUpgrades:", e);
-          }
-          
-          setJSON("checkoutData", checkoutData);
+          } catch (e) { console.warn("[goCheckout] Could not fetch paidUpgrades:", e); }
+
+          setJSON("checkoutData", checkoutData2);
           window.location.href = "/checkout.html";
         });
       }
@@ -1161,26 +1163,12 @@
       $("whoLine").textContent = who ? "Logged in as " + who : "";
 
       var formData = getJSON("formData", {});
-      if (formData.address && !$("fullAddress").value) {
-        $("fullAddress").value = formData.address;
-      }
+      if (formData.address && !$("fullAddress").value) $("fullAddress").value = formData.address;
 
       await refreshFromServer();
       computePhotoHelp();
-
-      try {
-        var addr = $("fullAddress").value || "";
-        var zip = parseZipFromAddress(addr);
-        if (zip) {
-          var prosData = await loadLocalPros(zip);
-          renderProsSidebar(zip, prosData.agents, prosData.lenders);
-
-          var broker = await loadLocalBroker(zip);
-          renderBrokerStrip(zip, broker);
-        }
-      } catch (e) {
-        console.warn("[local-pros] sidebar/strip skipped:", e);
-      }
+      wireAutosaveListeners();
+      setAutosaveUI("waiting");
     })();
   </script>
 
