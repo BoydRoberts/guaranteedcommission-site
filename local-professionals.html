@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-16 (Bulk ZIP subscription checkout - Local Professionals) -->
+<!-- Build: 2026-01-16 (Bulk ZIP subscription checkout - Local Professionals | License REQUIRED | Green Pay Button) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -47,7 +47,7 @@
 
       <form id="proForm" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4" autocomplete="off">
         <div>
-          <label class="block text-sm font-semibold">I am a</label>
+          <label class="block text-sm font-semibold">I am a <span class="text-red-600">*</span></label>
           <select id="role" class="w-full border rounded px-3 py-2" required>
             <option value="">Select…</option>
             <option value="real_estate_agent">Real Estate Agent</option>
@@ -56,38 +56,39 @@
         </div>
 
         <div>
-          <label class="block text-sm font-semibold">Name</label>
+          <label class="block text-sm font-semibold">Name <span class="text-red-600">*</span></label>
           <input id="personalName" class="w-full border rounded px-3 py-2" placeholder="Your name" required>
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold">Company Name</label>
+          <label class="block text-sm font-semibold">Company Name <span class="text-red-600">*</span></label>
           <input id="name" class="w-full border rounded px-3 py-2" placeholder="Full Company Name" required>
         </div>
 
         <div>
-          <label class="block text-sm font-semibold">Email</label>
+          <label class="block text-sm font-semibold">Email <span class="text-red-600">*</span></label>
           <input id="email" type="email" class="w-full border rounded px-3 py-2" placeholder="you@example.com" required>
         </div>
 
         <div>
-          <label class="block text-sm font-semibold">Phone</label>
+          <label class="block text-sm font-semibold">Phone <span class="text-red-600">*</span></label>
           <input id="phone" class="w-full border rounded px-3 py-2" placeholder="123-456-7890" inputmode="numeric" required>
           <p class="hint mt-1">Format: 123-456-7890</p>
         </div>
 
+        <!-- ✅ REQUIRED LICENSE -->
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold">License # (optional)</label>
-          <input id="license" class="w-full border rounded px-3 py-2" placeholder="license # / DRE # / NMLS # (if applicable)">
+          <label class="block text-sm font-semibold">License # (agents/lenders) <span class="text-red-600">*</span></label>
+          <input id="license" class="w-full border rounded px-3 py-2" placeholder="license # / DRE # / NMLS # (required)" required>
+          <p class="hint mt-1">Required by state law for advertising.</p>
         </div>
 
         <!-- ✅ BULK ZIP INPUT -->
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold">ZIP Codes (up to 99)</label>
+          <label class="block text-sm font-semibold">ZIP Codes (up to 99) <span class="text-red-600">*</span></label>
           <input id="zipBulk" class="w-full border rounded px-3 py-2"
-                 placeholder="Enter ZIPs separated by commas or spaces (e.g., 92651, 92657, 92660)">
+                 placeholder="Enter ZIPs separated by commas or spaces (e.g., 92651, 92657, 92660)" required>
           <p class="hint mt-1">We will validate and de-duplicate ZIPs.</p>
-
           <div class="mt-2 flex flex-wrap gap-2" id="zipChips"></div>
         </div>
 
@@ -98,7 +99,7 @@
           <p class="hint mt-1">PNG/JPG recommended.</p>
         </div>
 
-        <!-- ✅ REAL-TIME TOTAL -->
+        <!-- ✅ REAL-TIME TOTAL + GREEN PAY BUTTON -->
         <div class="md:col-span-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-2">
           <div class="text-sm text-gray-700">
             Monthly total: <span id="total" class="font-semibold">$0/month</span>
@@ -106,8 +107,7 @@
           </div>
 
           <button id="checkoutBtn" type="button"
-                  class="px-4 py-2 rounded text-white font-semibold"
-                  style="background:#4DA6FF;">
+                  class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold">
             Proceed to Checkout
           </button>
         </div>
@@ -169,7 +169,6 @@
         seen.add(z);
         good.push(z);
       }
-
       return { good, bad };
     }
 
@@ -178,14 +177,12 @@
     function renderZipChips(good, bad) {
       const host = $('zipChips');
       host.innerHTML = '';
-
       good.forEach(z => {
         const d = document.createElement('span');
         d.className = 'chip chip-good';
         d.textContent = z;
         host.appendChild(d);
       });
-
       bad.forEach(x => {
         const d = document.createElement('span');
         d.className = 'chip chip-bad';
@@ -263,7 +260,6 @@
         const phoneDigits = onlyDigits($('phone').value);
         const phone = formatPhone($('phone').value.trim());
         const license = $('license').value.trim();
-
         const { zipCodes } = updateTotal();
 
         if (!role || !personalName || !name || !email) {
@@ -278,6 +274,10 @@
           setStatus('Please enter a valid 10-digit phone number.', false);
           return;
         }
+        if (!license) {
+          setStatus('License # is required for advertising.', false);
+          return;
+        }
         if (!zipCodes.length) {
           setStatus('Please enter at least one valid 5-digit ZIP code.', false);
           return;
@@ -287,7 +287,6 @@
           return;
         }
 
-        // Save a draft record (pending)
         const draft = {
           role,
           personalName,
@@ -310,19 +309,17 @@
           await updateDoc(doc(db, "localPros", refDoc.id), { photoUrl, updatedAt: serverTimestamp() });
         }
 
-        const successUrl = window.location.origin + "/local-professionals.html?status=success";
-        const cancelUrl  = window.location.origin + "/local-professionals.html?status=cancel";
-
         const payload = {
           roleType: "local_pro",
           zipCodes: zipCodes,
           priceId: PRICE_ID_LOCAL_PRO,
-          successUrl,
-          cancelUrl,
+          successUrl: window.location.origin + "/local-professionals.html?status=success",
+          cancelUrl:  window.location.origin + "/local-professionals.html?status=cancel",
           metadata: {
             email: loggedInEmail() || email,
             name: name,
             personalName: personalName,
+            license: license,
             draftId: refDoc.id
           }
         };
@@ -335,13 +332,8 @@
 
         const ct = resp.headers.get("content-type") || "";
         const out = ct.includes("application/json") ? await resp.json() : { error: "Non-JSON server response" };
-
         if (!resp.ok) throw new Error(out.error || out.message || "Subscription session failed.");
-
-        if (out.url) {
-          window.location.href = out.url;
-          return;
-        }
+        if (out.url) { window.location.href = out.url; return; }
         throw new Error("Server did not return checkout url.");
       } catch (e) {
         console.error(e);
