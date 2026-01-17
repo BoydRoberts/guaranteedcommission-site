@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-01-16 (Replace "Comm" with "Commission" in tiles) -->
+<!-- search.html - Build 2026-01-17 (SOLD markers + SOLD tile badge; preserves filter bar + hover sync + auth gating) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -75,6 +75,25 @@
     .gc-marker-wrap.highlighted .gc-marker-label { background:#dc2626; color:#fff; }
     .gc-marker-wrap.highlighted .gc-marker-dot { box-shadow:0 3px 10px rgba(220,38,38,.45); }
     .gc-tile.highlighted { outline:3px solid #dc2626; outline-offset:2px; box-shadow:0 4px 12px rgba(220,38,38,.3); }
+
+    /* ===== SOLD marker styles (NEW) ===== */
+    .gc-marker-wrap.sold .gc-marker-dot {
+      background:#6b7280; /* gray */
+    }
+    .gc-marker-wrap.sold .gc-marker-label {
+      background: rgba(55,65,81,0.90); /* dark gray */
+      border-color:#374151;
+      color:#fff;
+    }
+    .gc-marker-wrap.sold.highlighted .gc-marker-label {
+      background:#111827; /* darker when highlighted */
+      border-color:#111827;
+      color:#fff;
+    }
+    .gc-marker-wrap.sold.highlighted .gc-marker-dot {
+      background:#111827;
+      box-shadow:0 3px 10px rgba(17,24,39,.45);
+    }
 
     /* Filter bar dropdown styling - All buttons use #4DA6FF with white text */
     .filter-dropdown { position:relative; display:inline-block; }
@@ -796,6 +815,7 @@
       const address = String(doc.address || "").trim();
       const banner = String(doc.bannerText || "");
       const status = String(doc.status || "Active");
+      const isSold = status.trim().toLowerCase() === "sold"; /* NEW */
       const pType = String(doc.propertyType || "");
       const bds = doc.bedrooms ?? "—";
       const ba = doc.bathrooms ?? "—";
@@ -824,6 +844,9 @@
         <div class="relative">
           <img class="gc-photo" alt="Listing photo" src="${primaryPhoto}">
           ${banner ? `<div class="gc-ribbon">${banner}</div>` : ''}
+
+          ${isSold ? `<div class="absolute top-2 left-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
+
           <button type="button" class="gc-heart" aria-label="Like"></button>
           <button type="button" class="gc-share gc-share-left" data-share="email">Email</button>
           <button type="button" class="gc-share gc-share-right" data-share="text">Text</button>
@@ -831,7 +854,6 @@
         <div class="p-3 space-y-1">
           <div class="flex items-center justify-between text-[15px] font-semibold">
             <div class="truncate">${price ? money(price) : "$—"}</div>
-            <!-- ✅ CHANGE: Comm -> Commission -->
             <div class="truncate text-red-600">Commission ${cPctLbl} | ${cAmt ? money(cAmt) : "$—"}</div>
           </div>
           <div class="text-[12px] text-gray-700">
@@ -901,12 +923,21 @@
         wrap.dataset.listingId = listingKey;
         wrap.title = addr;
 
+        // ===== SOLD marker check (NEW) =====
+        const isSold = String(it.status || '').trim().toLowerCase() === 'sold';
+        if (isSold) {
+          wrap.classList.add('sold');
+        }
+
         const dot = document.createElement('div');
         dot.className = 'gc-marker-dot';
 
         const label = document.createElement('div');
         label.className = 'gc-marker-label';
-        label.textContent = formatPriceShort(it.price);
+
+        // Price label text + SOLD suffix (NEW)
+        const basePrice = formatPriceShort(it.price);
+        label.textContent = isSold ? (basePrice + ' (SOLD)') : basePrice;
 
         const goListing = (e) => {
           e.stopPropagation();
