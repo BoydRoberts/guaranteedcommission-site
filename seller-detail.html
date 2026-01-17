@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- seller-detail.html - Build 2026-01-16 (Task: Soft Autosave + Status Indicator; preserves Task E + existing logic) -->
+<!-- seller-detail.html - Build 2026-01-16 (Soft Autosave + Sold Lock; preserves existing logic) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -34,7 +34,7 @@
       width: 9px;
       height: 9px;
       border-radius: 9999px;
-      background: #9ca3af; /* gray by default */
+      background: #9ca3af;
       box-shadow: 0 0 0 2px rgba(156,163,175,0.15);
     }
     #autosaveText { color: #374151; }
@@ -57,6 +57,13 @@
       <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
     </div>
   </header>
+
+  <!-- SOLD LOCK BANNER -->
+  <div id="soldLockBanner" class="hidden max-w-6xl mx-auto px-3 mt-4">
+    <div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-3 text-sm font-semibold">
+      Locked: This listing is closed and can no longer be edited.
+    </div>
+  </div>
 
   <main class="max-w-6xl mx-auto mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6 px-3">
 
@@ -262,10 +269,10 @@
   <div id="changeCommissionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-md relative p-6">
       <button onclick="closeChangeCommissionModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
-
+      
       <h2 class="text-lg font-bold mb-4">Change Commission</h2>
       <p class="text-sm text-gray-600 mb-4">Enter your new commission amount and type. After payment, you will sign a new Irrevocable Seller Communication with the updated commission.</p>
-
+      
       <div class="space-y-4">
         <div class="flex gap-2">
           <input type="text" id="newCommission" placeholder="Commission amount (e.g., 2.5 or 5000)" class="flex-1 border p-2 rounded">
@@ -274,7 +281,7 @@
             <option value="$">$</option>
           </select>
         </div>
-
+        
         <div class="flex items-center justify-end gap-2">
           <button type="button" onclick="closeChangeCommissionModal()" class="px-4 py-2 rounded border">Cancel</button>
           <button id="confirmCommissionBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">Confirm New Commission</button>
@@ -284,33 +291,19 @@
   </div>
 
   <script>
-    // Change Commission Modal helpers (non-module)
-    function openChangeCommissionModal() {
-      document.getElementById('changeCommissionModal').classList.remove('hidden');
-    }
-    function closeChangeCommissionModal() {
-      document.getElementById('changeCommissionModal').classList.add('hidden');
-    }
+    function openChangeCommissionModal() { document.getElementById('changeCommissionModal').classList.remove('hidden'); }
+    function closeChangeCommissionModal() { document.getElementById('changeCommissionModal').classList.add('hidden'); }
   </script>
 
   <!-- SELLER PAGE LOGIC (Firestore + Storage) -->
   <script type="module">
     import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
     import { updatePaidUpgradesAfterPayment } from "/scripts/paid-upgrades-handler.js";
+    import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-    import {
-      doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import {
-      getStorage, ref, uploadBytes, getDownloadURL
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-
-    // =========================================================================
-    // TASK E: Mapbox geocoding for lat/lng (matches index.html pattern)
-    // Non-blocking with timeout, includes metadata fields
-    // =========================================================================
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
-    const GEO_TIMEOUT_MS = 3000; // 3 second timeout
+    const GEO_TIMEOUT_MS = 3000;
 
     async function geocodeAddress(address) {
       const failResult = { lat:null, lng:null, placeName:null, status:"failed", provider:"mapbox" };
@@ -354,17 +347,9 @@
         if (hasLat && hasLng && d.geoStatus === "ok") return false;
 
         const geo = await geocodeAddress(address);
-
-        const geoUpdate = {
-          lat: geo.lat,
-          lng: geo.lng,
-          geoStatus: geo.status,
-          geoProvider: geo.provider,
-          updatedAt: serverTimestamp()
-        };
+        const geoUpdate = { lat: geo.lat, lng: geo.lng, geoStatus: geo.status, geoProvider: geo.provider, updatedAt: serverTimestamp() };
         if (geo.placeName) geoUpdate.geoPlaceName = geo.placeName;
         if (geo.status === "ok") geoUpdate.geoUpdatedAt = serverTimestamp();
-
         await updateDoc(doc(db, "listings", listingId), geoUpdate);
         return geo.status === "ok";
       } catch (e) {
@@ -372,20 +357,51 @@
         return false;
       }
     }
-    // =========================================================================
 
-    // Process paid upgrades FIRST (before any other logic)
     (async function() {
       if (window.__paidUpgradesHandled) return;
       window.__paidUpgradesHandled = true;
-      try { await updatePaidUpgradesAfterPayment(); } catch (e) { console.warn('[seller-detail] paid-upgrades-handler failed:', e); }
+      try { await updatePaidUpgradesAfterPayment(); }
+      catch (e) { console.warn('[seller-detail] paid-upgrades-handler failed:', e); }
     })();
 
-    // utilities
     var $ = function(id) { return document.getElementById(id); };
     var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
     var setJSON = function(k, v) { localStorage.setItem(k, JSON.stringify(v)); };
     var plural = function(n, a, b) { return (n===1 ? a : b); };
+
+    // ===== Autosave UI =====
+    function setAutosaveUI(state) {
+      var dot = document.getElementById("autosaveDot");
+      var txt = document.getElementById("autosaveText");
+      if (!dot || !txt) return;
+
+      if (state === "saving") {
+        dot.style.background = "#f59e0b";
+        txt.textContent = "Saving…";
+      } else if (state === "saved") {
+        dot.style.background = "#10b981";
+        txt.textContent = "All changes saved";
+      } else if (state === "error") {
+        dot.style.background = "#ef4444";
+        txt.textContent = "Save failed";
+      } else if (state === "locked") {
+        dot.style.background = "#ef4444";
+        txt.textContent = "Locked";
+      } else {
+        dot.style.background = "#9ca3af";
+        txt.textContent = "Waiting…";
+      }
+    }
+
+    function debounce(fn, waitMs) {
+      var t = null;
+      return function() {
+        var ctx = this, args = arguments;
+        if (t) clearTimeout(t);
+        t = setTimeout(function() { fn.apply(ctx, args); }, waitMs);
+      };
+    }
 
     function setStatus(msg, ok) {
       if (ok === undefined) ok = true;
@@ -401,41 +417,47 @@
       el.className = ok ? "max-w-6xl mx-auto px-3 mt-2 text-sm text-gray-600" : "max-w-6xl mx-auto px-3 mt-2 text-sm text-red-700";
     }
 
-    // ===== Soft Autosave indicator helpers =====
-    function setAutosaveUI(state) {
-      // state: "waiting" | "saving" | "saved" | "error"
-      var dot = document.getElementById("autosaveDot");
-      var txt = document.getElementById("autosaveText");
-      if (!dot || !txt) return;
+    // ===== SOLD LOCK =====
+    var soldLocked = false;
+    function checkSoldLock(statusValue) {
+      var isSold = String(statusValue || "").trim().toLowerCase() === "sold";
+      soldLocked = !!isSold;
 
-      if (state === "saving") {
-        dot.style.background = "#f59e0b"; // amber
-        txt.textContent = "Saving…";
-      } else if (state === "saved") {
-        dot.style.background = "#10b981"; // green
-        txt.textContent = "All changes saved";
-      } else if (state === "error") {
-        dot.style.background = "#ef4444"; // red
-        txt.textContent = "Save failed";
-      } else {
-        dot.style.background = "#9ca3af"; // gray
-        txt.textContent = "Waiting…";
+      var banner = document.getElementById("soldLockBanner");
+      if (banner) banner.classList.toggle("hidden", !isSold);
+
+      if (!isSold) {
+        if (!soldLocked) setAutosaveUI("waiting");
+        return false;
       }
+
+      // Disable all form controls
+      var form = document.getElementById("sellerForm");
+      if (form) {
+        form.querySelectorAll("input, select, textarea, button").forEach(function(el){
+          el.disabled = true;
+        });
+      }
+
+      // Disable upgrades checkout button
+      var goCheckoutBtn = document.getElementById("goCheckoutBtn");
+      if (goCheckoutBtn) goCheckoutBtn.disabled = true;
+
+      setAutosaveUI("locked");
+      return true;
     }
 
-    function debounce(fn, waitMs) {
-      var t = null;
-      return function() {
-        var ctx = this, args = arguments;
-        if (t) clearTimeout(t);
-        t = setTimeout(function() { fn.apply(ctx, args); }, waitMs);
-      };
+    // ZIP helper (prefer end-of-string ZIP)
+    function parseZipFromAddressEnd(addr) {
+      var m = String(addr || "").match(/\b(\d{5})(?:-\d{4})?\s*$/);
+      if (m && m[1]) return m[1];
+      var m2 = String(addr || "").match(/\b(\d{5})(?:-\d{4})?\b/);
+      return m2 ? m2[1] : "";
     }
 
-    // Local pros / brokers helpers
+    // Local pros / brokers helpers (kept)
     function parseZipFromAddress(addr) {
       addr = addr || "";
-      // NOTE: seller-detail currently uses first-match. We keep it as-is to avoid side effects.
       var m = String(addr).match(/\b(\d{5})(?:-\d{4})?\b/);
       return m ? m[1] : "";
     }
@@ -462,9 +484,8 @@
       if (!card) return;
 
       var currentPlan = plan.trim();
-      var isFSBOPlan = currentPlan.includes("FSBO");
-
-      if (!isFSBOPlan) { card.classList.add("hidden"); return; }
+      var isFSBO = currentPlan.includes("FSBO");
+      if (!isFSBO) { card.classList.add("hidden"); return; }
 
       $("prosZip").textContent = zip || "—";
       $("prosCtaBtn").href = "/local-professionals.html?zip=" + encodeURIComponent(zip) + "&mode=search";
@@ -534,8 +555,8 @@
       if (!strip) return;
 
       var currentPlan = plan.trim();
-      var isFSBOPlan = currentPlan.includes("FSBO");
-      if (!isFSBOPlan) { strip.style.display = "none"; return; }
+      var isFSBO = currentPlan.includes("FSBO");
+      if (!isFSBO) { strip.style.display = "none"; return; }
 
       $("brokerZip").textContent = zip || "—";
       $("brokerCtaBtn").href = "/local-brokers.html?zip=" + encodeURIComponent(zip);
@@ -594,8 +615,7 @@
     var photos = [];
     var primaryIndex = 0;
     var paidUpgrades = {};
-    var currentZipOnDoc = ""; // snapshot from refresh; used to avoid extra reads
-    var autosaveEnabled = true;
+    var currentZipOnDoc = "";
 
     function computePhotoHelp() {
       var remaining = Math.max(0, maxPhotos - (photos ? photos.length : 0));
@@ -644,7 +664,9 @@
         img.alt = "Photo";
         img.className = "thumb border " + (i===primaryIndex ? "border-green-500" : "border-gray-300");
         img.title = (i===primaryIndex) ? "Primary photo" : "Click to set as primary";
+
         img.addEventListener("click", async function(){
+          if (soldLocked) return;
           primaryIndex = i;
           await savePhotosField(true);
         });
@@ -661,7 +683,10 @@
           var bPrimary = document.createElement("button");
           bPrimary.type="button"; bPrimary.className="px-2 py-1 border rounded";
           bPrimary.textContent="Set Primary";
-          bPrimary.onclick = async function(){ primaryIndex = i; await savePhotosField(true); };
+          bPrimary.onclick = async function(){
+            if (soldLocked) return;
+            primaryIndex = i; await savePhotosField(true);
+          };
           btns.appendChild(bPrimary);
         }
 
@@ -669,23 +694,19 @@
         bReplace.type="button"; bReplace.className="px-2 py-1 border rounded";
         bReplace.textContent="Replace";
         bReplace.onclick = function(){
+          if (soldLocked) return;
           var input = document.createElement("input");
           input.type="file"; input.accept="image/*";
           input.onchange = async function(e){
             var file = e.target.files ? e.target.files[0] : null; if (!file) return;
-            setAutosaveUI("saving");
             setStatus("Uploading replacement...");
             try {
               var urlNew = await uploadOne(file);
               photos[i] = urlNew;
               await savePhotosField(true);
-              setAutosaveUI("saved");
-              setTimeout(function(){ setAutosaveUI("waiting"); }, 1500);
             } catch (err) {
               console.warn(err);
-              setAutosaveUI("error");
               setStatus("Could not replace photo.", false);
-              setTimeout(function(){ setAutosaveUI("waiting"); }, 2500);
             }
           };
           input.click();
@@ -695,13 +716,11 @@
         bDelete.type="button"; bDelete.className="px-2 py-1 border rounded";
         bDelete.textContent = "Delete";
         bDelete.onclick = async function(){
+          if (soldLocked) return;
           if (!confirm("Remove this photo from the listing?")) return;
-          setAutosaveUI("saving");
           photos.splice(i,1);
           if (primaryIndex >= photos.length) primaryIndex = Math.max(0, photos.length-1);
           await savePhotosField(true);
-          setAutosaveUI("saved");
-          setTimeout(function(){ setAutosaveUI("waiting"); }, 1500);
         };
 
         btns.appendChild(bReplace);
@@ -727,6 +746,7 @@
 
     async function savePhotosField(){
       if (!listingId) return;
+      if (soldLocked) return;
       try {
         clampPrimary();
         await updateDoc(doc(db, "listings", listingId), {
@@ -746,6 +766,8 @@
     var photoInput = $("photoInput");
     if (photoInput) {
       photoInput.addEventListener("change", async function(e){
+        if (soldLocked) return;
+
         var files = Array.from(e.target.files || []);
         if (!files.length) return;
 
@@ -758,7 +780,6 @@
           }
           var toUpload = files.slice(0, remaining);
 
-          setAutosaveUI("saving");
           setStatus("Uploading photo(s)...");
           for (var idx = 0; idx < toUpload.length; idx++) {
             var f = toUpload[idx];
@@ -770,20 +791,16 @@
               setStatus("Upload failed for one or more files.", false);
             }
           }
-          await savePhotosField();
-          setAutosaveUI("saved");
-          setTimeout(function(){ setAutosaveUI("waiting"); }, 1500);
+          await savePhotosField(true);
         } catch (err) {
-          setAutosaveUI("error");
           setStatus("Upload failed.", false);
-          setTimeout(function(){ setAutosaveUI("waiting"); }, 2500);
         } finally {
           e.target.value = "";
         }
       });
     }
 
-    // FIELD LOCKING LOGIC
+    // FIELD LOCKING LOGIC (kept)
     function applyFieldLocking(planName, paidUpgrades) {
       var isBasic = planName === "Listed Property Basic";
       paidUpgrades = paidUpgrades || {};
@@ -801,7 +818,6 @@
       var bannerEl = $("bannerText");
       var bannerNote = $("bannerGateNote");
       var bannerUnlocked = !!paidUpgrades.banner;
-
       if (bannerUnlocked) {
         if (bannerEl) { bannerEl.classList.remove("dimmed"); bannerEl.removeAttribute("disabled"); }
         if (bannerNote) bannerNote.classList.add("hidden");
@@ -813,7 +829,6 @@
       var premiumEl = $("preferredArea");
       var premiumNote = $("premiumGateNote");
       var premiumUnlocked = !!paidUpgrades.premium || !!paidUpgrades.pin;
-
       if (premiumUnlocked) {
         if (premiumEl) { premiumEl.classList.remove("dimmed"); premiumEl.removeAttribute("disabled"); }
         if (premiumNote) premiumNote.classList.add("hidden");
@@ -825,7 +840,6 @@
       var pinEl = $("pinArea");
       var pinNote = $("pinGateNote");
       var pinUnlocked = !!paidUpgrades.pin;
-
       if (pinUnlocked) {
         if (pinEl) { pinEl.classList.remove("dimmed"); pinEl.removeAttribute("disabled"); }
         if (pinNote) pinNote.classList.add("hidden");
@@ -833,6 +847,86 @@
         if (pinEl) { pinEl.classList.add("dimmed"); pinEl.setAttribute("disabled","disabled"); }
         if (pinNote) pinNote.classList.remove("hidden");
       }
+    }
+
+    // ===== Autosave payload + wiring =====
+    function buildAutosavePayload() {
+      var planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
+
+      var payload = {
+        updatedAt: serverTimestamp(),
+        status: $("status").value || "",
+        price: Number($("price").value || 0) || "",
+        apn: $("apn").value || "",
+        bedrooms: $("bedrooms").value || "",
+        bathrooms: $("bathrooms").value || "",
+        sqft: $("sqft").value || "",
+        yearBuilt: $("yearBuilt").value || "",
+        lotSize: $("lotSize").value || "",
+        propertyType: $("propertyType").value || "",
+        description: $("description").value || "",
+        bannerText: $("bannerText").value || "",
+        preferredArea: $("preferredArea").value || "",
+        pinArea: $("pinArea").value || ""
+      };
+
+      if (!planNow.includes("FSBO")) {
+        payload.brokerage = $("brokerage").value || "";
+        payload.agentName = $("agentName").value || "";
+        payload.agentEmail = $("agentEmail").value || "";
+        payload.agentPhone = $("agentPhone").value || "";
+      }
+
+      if (!currentZipOnDoc) {
+        var addr = ($("fullAddress")?.value || "").trim();
+        var z = parseZipFromAddressEnd(addr);
+        if (z) payload.zip = z;
+      }
+
+      return payload;
+    }
+
+    async function doAutosave() {
+      if (!listingId) return;
+      if (soldLocked) return;
+
+      // If user just chose Sold in UI, lock immediately and stop
+      if (checkSoldLock($("status")?.value)) return;
+
+      setAutosaveUI("saving");
+      try {
+        var payload = buildAutosavePayload();
+        await updateDoc(doc(db, "listings", listingId), payload);
+        if (payload.zip) currentZipOnDoc = String(payload.zip);
+
+        setAutosaveUI("saved");
+        setTimeout(function(){ if (!soldLocked) setAutosaveUI("waiting"); }, 1800);
+      } catch (e) {
+        console.warn("[autosave] failed", e);
+        setAutosaveUI("error");
+        setTimeout(function(){ if (!soldLocked) setAutosaveUI("waiting"); }, 3000);
+      }
+    }
+
+    var autosaveDebounced = debounce(doAutosave, 1500);
+
+    function wireAutosaveListeners() {
+      var form = document.getElementById("sellerForm");
+      if (!form) return;
+
+      var fields = form.querySelectorAll("input, select, textarea");
+      fields.forEach(function(el) {
+        var type = (el.getAttribute("type") || "").toLowerCase();
+        if (type === "file") return;
+        if (el.hasAttribute("readonly")) return;
+        if (el.hasAttribute("disabled")) return;
+
+        // Commission is locked on this page; never autosave it
+        if (el.id === "commission" || el.id === "commissionType") return;
+
+        el.addEventListener("input", function(){ autosaveDebounced(); });
+        el.addEventListener("change", function(){ autosaveDebounced(); });
+      });
     }
 
     // refresh all fields from server
@@ -886,10 +980,10 @@
         primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
 
         applyFieldLocking(plan, paidUpgrades);
+
         renderThumbs();
         setStatus(note || "Loaded from server.", true);
 
-        // Fire-and-forget geo ensure
         ensureLatLng(listingId, d.address);
 
         try {
@@ -905,135 +999,58 @@
           console.warn("[local-pros] sidebar/strip skipped:", e);
         }
 
-        setAutosaveUI("waiting");
+        // IMPORTANT: lock last so it overrides everything
+        checkSoldLock(d.status);
+
+        if (!soldLocked) setAutosaveUI("waiting");
       } catch (e) {
         console.warn("[seller] load failed", e);
         setStatus("Could not load from server.", false);
-        setAutosaveUI("error");
-        setTimeout(function(){ setAutosaveUI("waiting"); }, 2500);
+        if (!soldLocked) setAutosaveUI("error");
       }
     }
 
-    // ===== Soft Autosave (debounced) =====
-    function buildAutosavePayload() {
-      // Respect FSBO vs Listed: do not write listed-only agent/brokerage fields for FSBO
-      var planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
-      var isFSBOPlan = planNow.includes("FSBO");
-
-      var payload = {
-        updatedAt: serverTimestamp(),
-        status: $("status")?.value || "",
-        price: Number($("price")?.value || 0) || "",
-        apn: $("apn")?.value || "",
-        bedrooms: $("bedrooms")?.value || "",
-        bathrooms: $("bathrooms")?.value || "",
-        sqft: $("sqft")?.value || "",
-        yearBuilt: $("yearBuilt")?.value || "",
-        lotSize: $("lotSize")?.value || "",
-        propertyType: $("propertyType")?.value || "",
-        description: $("description")?.value || "",
-        bannerText: $("bannerText")?.value || "",
-        preferredArea: $("preferredArea")?.value || "",
-        pinArea: $("pinArea")?.value || ""
-      };
-
-      if (!isFSBOPlan) {
-        payload.brokerage = $("brokerage")?.value || "";
-        payload.agentName = $("agentName")?.value || "";
-        payload.agentEmail = $("agentEmail")?.value || "";
-        payload.agentPhone = $("agentPhone")?.value || "";
-      }
-
-      // One-time ZIP backfill (only if doc has no zip)
-      if (!currentZipOnDoc) {
-        var addr = ($("fullAddress")?.value || "").trim();
-        var z = parseZipFromAddress(addr);
-        if (z) payload.zip = z;
-      }
-
-      return payload;
-    }
-
-    async function doAutosave() {
-      if (!autosaveEnabled) return;
-      if (!listingId) return;
-
-      setAutosaveUI("saving");
-      try {
-        var payload = buildAutosavePayload();
-        await updateDoc(doc(db, "listings", listingId), payload);
-
-        // If we backfilled zip, remember it to avoid repeating
-        if (payload.zip) currentZipOnDoc = String(payload.zip);
-
-        setAutosaveUI("saved");
-        setTimeout(function(){ setAutosaveUI("waiting"); }, 1800);
-      } catch (e) {
-        console.warn("[autosave] failed", e);
-        setAutosaveUI("error");
-        setTimeout(function(){ setAutosaveUI("waiting"); }, 3000);
-      }
-    }
-
-    var autosaveDebounced = debounce(doAutosave, 1500);
-
-    function wireAutosaveListeners() {
-      var form = document.getElementById("sellerForm");
-      if (!form) return;
-
-      // Attach to all inputs/selects/textareas inside the form
-      var fields = form.querySelectorAll("input, select, textarea");
-
-      fields.forEach(function(el) {
-        // Skip file inputs (photos handled separately), readonly, and disabled
-        var type = (el.getAttribute("type") || "").toLowerCase();
-        if (type === "file") return;
-        if (el.hasAttribute("readonly")) return;
-        if (el.hasAttribute("disabled")) return;
-
-        // Skip commission fields explicitly (they're locked and should never autosave)
-        if (el.id === "commission" || el.id === "commissionType") return;
-
-        el.addEventListener("input", function() {
-          // If user changes something, schedule autosave
-          autosaveDebounced();
-        });
-        el.addEventListener("change", function() {
-          autosaveDebounced();
-        });
-      });
-    }
-
-    // ===== Manual Save button preserved =====
+    // Manual Save button (kept) — but blocked if Sold
     var saveBtn = $("saveBtn");
     if (saveBtn) {
       saveBtn.addEventListener("click", async function(){
+        if (soldLocked || checkSoldLock($("status")?.value)) {
+          alert("This listing is SOLD and locked. It cannot be edited.");
+          return;
+        }
+
         if (!listingId) { alert("No listing ID in this session."); return; }
 
-        setAutosaveUI("saving");
         try {
-          var planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
+          setAutosaveUI("saving");
           var update = buildAutosavePayload();
 
-          // Manual save also triggers geo ensure
           await updateDoc(doc(db, "listings", listingId), update);
+          if (update.zip) currentZipOnDoc = String(update.zip);
+
           ensureLatLng(listingId, $("fullAddress").value);
 
           await refreshFromServer("Saved to server.");
           setAutosaveUI("saved");
-          setTimeout(function(){ setAutosaveUI("waiting"); }, 1800);
+          setTimeout(function(){ if (!soldLocked) setAutosaveUI("waiting"); }, 1800);
           alert("Saved.");
         } catch (e) {
           console.warn("[seller] update failed", e);
           setStatus("Could not save to server.", false);
           setAutosaveUI("error");
-          setTimeout(function(){ setAutosaveUI("waiting"); }, 3000);
+          setTimeout(function(){ if (!soldLocked) setAutosaveUI("waiting"); }, 3000);
           alert("Could not save. Try again.");
         }
       });
     }
 
-    // Upgrades UI wiring (preserved as-is)
+    // Lock immediately if user selects Sold
+    $("status")?.addEventListener("change", function(){
+      checkSoldLock($("status")?.value);
+      autosaveDebounced();
+    });
+
+    // Upgrades UI wiring (kept)
     (async function wireUpgrades(){
       var checkoutData = getJSON("checkoutData", null) || {};
 
@@ -1051,7 +1068,6 @@
       var isBasicNow = currentPlan === "Listed Property Basic";
 
       var paidUpgradesNow = listingData.paidUpgrades || {};
-      var commissionChangeUsed = listingData.commissionChangeUsed || false;
 
       function row(label, price, key, paid, description) {
         var checked = paid || !!(checkoutData.upgrades && checkoutData.upgrades[key]);
@@ -1059,13 +1075,11 @@
         var grayedClass = paid ? "bg-gray-100 opacity-60" : "";
         var paidLabel = paid ? "<span class=\"text-xs text-green-600 ml-2\">Paid</span>" : "";
         var desc = description ? "<div class=\"text-xs text-gray-500\">" + description + "</div>" : "";
-
         return "<label class=\"flex items-center justify-between border rounded-lg px-3 py-2 " + grayedClass + "\">" +
           "<div>" +
             "<span class=\"font-medium\">" + label + "</span>" +
             "<span class=\"text-gray-500\"> - $" + price + "</span>" +
-            paidLabel +
-            desc +
+            paidLabel + desc +
           "</div>" +
           "<input type=\"checkbox\" data-key=\"" + key + "\" class=\"h-4 w-4\" " + (checked?"checked":"") + " " + disabled + "/>" +
         "</label>";
@@ -1075,7 +1089,6 @@
       if (!box) return;
 
       var upgrades = [];
-
       if (isBasicNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", false, "20 photos + full property description"));
       if (isPlusNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", true, "Current Plan"));
 
@@ -1092,66 +1105,17 @@
 
       box.innerHTML = upgrades.join("");
 
-      var checkboxes = box.querySelectorAll("input[type=\"checkbox\"]");
-      for (var i = 0; i < checkboxes.length; i++) {
-        checkboxes[i].addEventListener("change", function(e) {
-          var k = e.target.getAttribute("data-key");
-          var checked = e.target.checked;
-          checkoutData.upgrades = checkoutData.upgrades || {};
-
-          if (k === "upgradeToPlus") checkoutData.upgrades.upgradeToPlus = checked;
-          else if (k === "banner") checkoutData.upgrades.banner = checked;
-          else if (k === "premium") checkoutData.upgrades.premium = checked && !checkoutData.upgrades.pin;
-          else if (k === "pin") { checkoutData.upgrades.pin = checked; if (checked) checkoutData.upgrades.premium = true; }
-          else if (k === "confidential") checkoutData.upgrades.confidential = checked;
-          else if (k === "changeCommission") {
-            if (checked) {
-              openChangeCommissionModal();
-              var confirmBtn = document.getElementById("confirmCommissionBtn");
-              confirmBtn.onclick = function() {
-                var newComm = document.getElementById("newCommission").value.trim();
-                var newType = document.getElementById("newCommissionType").value;
-                if (!newComm) { alert("Please enter a commission amount."); return; }
-
-                checkoutData.upgrades.changeCommission = true;
-                checkoutData.upgrades.upgradeToPlus = false;
-                checkoutData.meta = checkoutData.meta || {};
-                checkoutData.meta.fromChangeCommission = true;
-                checkoutData.meta.fromSellerDetail = true;
-                checkoutData.meta.paidUpgrades = paidUpgradesNow;
-                checkoutData.meta.newCommission = newComm;
-                checkoutData.meta.newCommissionType = newType;
-                setJSON("checkoutData", checkoutData);
-                window.location.href = "/checkout.html";
-              };
-            } else {
-              checkoutData.upgrades.changeCommission = false;
-              if (checkoutData.meta) {
-                delete checkoutData.meta.fromChangeCommission;
-                delete checkoutData.meta.newCommission;
-                delete checkoutData.meta.newCommissionType;
-              }
-            }
-          }
-          setJSON("checkoutData", checkoutData);
-        });
-      }
-
       var checkoutBtn = $("goCheckoutBtn");
       if (checkoutBtn) {
-        checkoutBtn.addEventListener("click", async function() {
-          var checkoutData2 = getJSON("checkoutData", {});
-          checkoutData2.meta = checkoutData2.meta || {};
-          checkoutData2.meta.fromSellerDetail = true;
-
-          try {
-            if (listingId && db) {
-              var snap2 = await getDoc(doc(db, "listings", listingId));
-              if (snap2.exists()) checkoutData2.meta.paidUpgrades = snap2.data().paidUpgrades || {};
-            }
-          } catch (e) { console.warn("[goCheckout] Could not fetch paidUpgrades:", e); }
-
-          setJSON("checkoutData", checkoutData2);
+        checkoutBtn.addEventListener("click", function() {
+          if (soldLocked || checkSoldLock($("status")?.value)) {
+            alert("This listing is SOLD and locked. Upgrades are disabled.");
+            return;
+          }
+          var checkoutData = getJSON("checkoutData", {});
+          checkoutData.meta = checkoutData.meta || {};
+          checkoutData.meta.fromSellerDetail = true;
+          setJSON("checkoutData", checkoutData);
           window.location.href = "/checkout.html";
         });
       }
@@ -1168,7 +1132,7 @@
       await refreshFromServer();
       computePhotoHelp();
       wireAutosaveListeners();
-      setAutosaveUI("waiting");
+      if (!soldLocked) setAutosaveUI("waiting");
     })();
   </script>
 
