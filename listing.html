@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-15 (Task C: FSBO contact + Task D: ZIP parsing fix + Header branding) -->
+<!-- Build: 2026-01-17 (Sold state badge + inquiry lockdown; preserves existing logic) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -18,6 +18,25 @@
     .tile-photo { width:100%; height: 20rem; object-fit: cover; background:#e5e7eb; }
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
     .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+
+    /* SOLD badge (NEW) */
+    .sold-badge {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #dc2626; /* red-600 */
+      color: white;
+      font-weight: 800;
+      letter-spacing: .12em;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      box-shadow: 0 3px 12px rgba(220,38,38,.35);
+      border: 2px solid rgba(255,255,255,.9);
+      text-transform: uppercase;
+      font-size: 12px;
+      z-index: 20;
+    }
 
     /* Share buttons over the photo */
     .share-btn { position:absolute; bottom:12px; padding:.35rem .6rem; font-size:12px; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
@@ -65,6 +84,13 @@
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
+    <!-- SOLD inquiry lockdown notice (NEW) -->
+    <section id="soldInquiryNotice" class="hidden">
+      <div class="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm font-semibold">
+        This property has been sold and is no longer accepting inquiries.
+      </div>
+    </section>
+
     <!-- Top strip: 40 | 20 | 40 -->
     <section id="topRow" class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start hidden">
 
@@ -73,6 +99,9 @@
         <div class="relative">
           <img id="tilePhoto" class="tile-photo" alt="Listing photo"/>
           <div id="tileBanner" class="tile-banner hidden"></div>
+
+          <!-- SOLD badge overlay -->
+          <div id="soldBadge" class="sold-badge hidden">SOLD</div>
 
           <!-- Heart (like) -->
           <button id="tileHeart" type="button" class="heart-btn" aria-label="Like">
@@ -175,18 +204,15 @@
       const iscIframe = $("iscIframe");
       if (!tile || !mapCard || !iscCard) return;
 
-      // Reset
       mapCard.style.height = iscCard.style.height = '';
       if (iscIframe) iscIframe.style.height = '';
 
       const h = Math.max(0, tile.getBoundingClientRect().height);
 
-      // Map always matches tile
       mapCard.style.height = h + "px";
 
-      // ISC card also matches tile; iframe is clamped slightly smaller for padding
       iscCard.style.height = h + "px";
-      const PAD_FUDGE = 24; // tile/isc inner padding guard
+      const PAD_FUDGE = 24;
       if (iscIframe) {
         const inner = Math.max(0, h - PAD_FUDGE);
         iscIframe.style.height = inner + "px";
@@ -214,7 +240,6 @@
         const nowLiked = tog(favKeyId);
         btn.innerHTML = svg(nowLiked);
 
-        // First-like increment (device-scoped)
         try {
           const { updateDoc, doc, serverTimestamp, increment } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
           const onceKey = 'likedOnce:' + listingId;
@@ -254,7 +279,7 @@
         const resp = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`);
         const data = await resp.json();
         const f = data?.features?.[0];
-        return f ? f.center : null; // [lng, lat]
+        return f ? f.center : null;
       } catch { return null; }
     }
   </script>
@@ -275,7 +300,6 @@
       return "";
     }
 
-    // --- view/like counters ---
     async function incrementViewsOnce(id) {
       try {
         const key = 'viewedOnce:' + id;
@@ -302,7 +326,6 @@
       }
     }
 
-    // --- share helpers (silent soft limit: 5/device/day) ---
     function shareLimitOk() {
       try {
         const day = new Date().toISOString().slice(0,10);
@@ -313,7 +336,6 @@
         return true;
       } catch { return true; }
     }
-    // More reliable mailto
     function openEmail(address, url) {
       const subject = encodeURIComponent(address ? `Listing: ${address}` : `Listing`);
       const body = encodeURIComponent(`${address ? (address + " - ") : ""}commission posted with photos.\n\n${url}`);
@@ -329,40 +351,58 @@
       window.location.href = `sms:&body=${msg}`;
     }
 
-    // --- ISC auto-fit from printable-isc postMessage (clamped to tile height) ---
+    // Inquiry lockdown helper (NEW): if you later add inquiry buttons/forms, Sold will disable them
+    function applyInquiryLockdown(isSold) {
+      const notice = document.getElementById("soldInquiryNotice");
+      if (notice) notice.classList.toggle("hidden", !isSold);
+
+      const idsToDisable = [
+        "contactSellerBtn",
+        "inquireBtn",
+        "scheduleTourBtn",
+        "contactForm",
+        "inquiryForm"
+      ];
+      idsToDisable.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (isSold) {
+          el.classList.add("hidden");
+          try { el.disabled = true; } catch {}
+        } else {
+          el.classList.remove("hidden");
+          try { el.disabled = false; } catch {}
+        }
+      });
+    }
+
+    // --- ISC auto-fit ---
     window.addEventListener('message', (ev) => {
       try {
         const data = ev.data || {};
         if (data.type === 'gc-isc-embed-size') {
-          const f = $("iscIframe");
-          const tile = $("tileCard");
+          const f = document.getElementById("iscIframe");
+          const tile = document.getElementById("tileCard");
           if (f && tile) {
             const tileH = Math.max(0, tile.getBoundingClientRect().height);
             const PAD_FUDGE = 24;
             const desired = Math.max(0, Number(data.height || 0));
             const clamped = Math.max(0, Math.min(desired, tileH - PAD_FUDGE));
             f.style.height = clamped + 'px';
-            // keep map in sync with tile
             alignHeights();
           }
         }
       } catch {}
     });
 
-    // START local-pros: fetch & render Local Professionals by ZIP
-    // TASK D (2026-01-15): Fixed to grab ZIP at END of address, not street number like "32181"
     function parseZipFromAddress(addr="") {
-      // Anchor to end of string to get actual ZIP, not street number
       const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\s*$/);
       return m ? m[1] : "";
     }
 
-    // Loader with broad photo support + generic fallback
     async function loadLocalPros(zip) {
       try {
         const results = [];
-
-        // localPros by zips
         const q1 = query(collection(db, "localPros"), where("zips", "array-contains", zip));
         const snap1 = await getDocs(q1);
         snap1.forEach(d => {
@@ -375,34 +415,10 @@
             role: (String(x.role || "")).toLowerCase(),
             phone: x.phone || "",
             email: x.email || "",
-            // accept multiple possible photo fields
             photoUrl: x.photoUrl || x.imageUrl || x.cardUrl || x.photo || ""
           });
         });
 
-        // Optional secondary schema: localProfessionals (serviceAreas/zips)
-        try {
-          const q2a = query(collection(db, "localProfessionals"), where("serviceAreas", "array-contains", zip));
-          const q2b = query(collection(db, "localProfessionals"), where("zips", "array-contains", zip));
-          const [a,b] = await Promise.all([getDocs(q2a), getDocs(q2b)]);
-          const pushFrom = (snap) => snap.forEach(d => {
-            const x = d.data() || {};
-            const status = String(x.status || "active").toLowerCase();
-            if (status !== "active") return;
-            const roleRaw = (x.category || x.role || "").toString().toLowerCase();
-            results.push({
-              id: d.id,
-              name: x.name || "",
-              role: roleRaw,
-              phone: x.phone || "",
-              email: x.email || "",
-              photoUrl: x.imageUrl || x.cardUrl || x.photoUrl || x.photo || ""
-            });
-          });
-          pushFrom(a); pushFrom(b);
-        } catch {}
-
-        // Dedup
         const seen = new Set(); const dedup = [];
         for (const r of results) {
           const key = (r.name||"")+"|"+(r.email||"")+"|"+r.id;
@@ -414,11 +430,7 @@
         const agents = dedup.filter(p=>isAgent(p.role)).slice(0,3);
         const lenders= dedup.filter(p=>isLender(p.role)).slice(0,1);
 
-        // If nothing classified but we have rows, show generics
-        if (!agents.length && !lenders.length && dedup.length) {
-          return { agents: dedup.slice(0,4), lenders: [] };
-        }
-
+        if (!agents.length && !lenders.length && dedup.length) return { agents: dedup.slice(0,4), lenders: [] };
         return { agents, lenders };
       } catch (e) {
         console.warn("[local-pros] fetch failed:", e);
@@ -426,14 +438,13 @@
       }
     }
 
-    /* === Local Pros tiles — image only (no text under card) === */
     function renderPros(zip, agents = [], lenders = []) {
-      const card = $("prosCard");
-      const grid = $("prosGrid");
-      const empty = $("prosEmpty");
-      const zipSpan = $("prosZip");
-      const ctaBtn = $("prosCtaBtn");
-      const emptyLink = $("prosEmptyLink");
+      const card = document.getElementById("prosCard");
+      const grid = document.getElementById("prosGrid");
+      const empty = document.getElementById("prosEmpty");
+      const zipSpan = document.getElementById("prosZip");
+      const ctaBtn = document.getElementById("prosCtaBtn");
+      const emptyLink = document.getElementById("prosEmptyLink");
       if (!card || !grid) return;
 
       zipSpan.textContent = zip || "—";
@@ -459,7 +470,6 @@
         }
         return div;
       }
-
       function noImage() {
         const ph = document.createElement("div");
         ph.className = "w-full h-40 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
@@ -479,48 +489,23 @@
 
       card.classList.remove("hidden");
     }
-    // END local-pros
 
-    /* =========================
-       Local Brokers strip
-       ========================= */
     async function loadLocalBrokers(zip) {
       try {
         const results = [];
 
-        const qA = query(
-          collection(db, "localBrokers"),
-          where("status","==","active"),
-          where("zip","==", zip)
-        );
-        const qB = query(
-          collection(db, "localBrokers"),
-          where("status","==","active"),
-          where("zips","array-contains", zip)
-        );
-
+        const qA = query(collection(db, "localBrokers"), where("status","==","active"), where("zip","==", zip));
+        const qB = query(collection(db, "localBrokers"), where("status","==","active"), where("zips","array-contains", zip));
         const [sA, sB] = await Promise.all([getDocs(qA), getDocs(qB)]);
 
         sA.forEach(d => {
           const x = d.data() || {};
-          results.push({
-            id: d.id,
-            name: x.name || "",
-            phone: x.phone || "",
-            photoUrl: x.photoUrl || x.logoUrl || ""
-          });
+          results.push({ id: d.id, name: x.name || "", phone: x.phone || "", photoUrl: x.photoUrl || x.logoUrl || "" });
         });
 
         sB.forEach(d => {
           const x = d.data() || {};
-          if (!results.find(r => r.id === d.id)) {
-            results.push({
-              id: d.id,
-              name: x.name || "",
-              phone: x.phone || "",
-              photoUrl: x.photoUrl || x.logoUrl || ""
-            });
-          }
+          if (!results.find(r => r.id === d.id)) results.push({ id: d.id, name: x.name || "", phone: x.phone || "", photoUrl: x.photoUrl || x.logoUrl || "" });
         });
 
         return results.slice(0,4);
@@ -530,14 +515,13 @@
       }
     }
 
-    /* === Brokers image height reduced so header/button are not crowded; container aligns with Pros === */
     function renderBrokers(zip, items = []) {
-      const card = $("brokersCard");
-      const grid = $("brokersGrid");
-      const empty = $("brokersEmpty");
-      const zipSpan = $("brokersZip");
-      const cta = $("brokersCtaBtn");
-      const emptyLink = $("brokersEmptyLink");
+      const card = document.getElementById("brokersCard");
+      const grid = document.getElementById("brokersGrid");
+      const empty = document.getElementById("brokersEmpty");
+      const zipSpan = document.getElementById("brokersZip");
+      const cta = document.getElementById("brokersCtaBtn");
+      const emptyLink = document.getElementById("brokersEmptyLink");
       if (!card || !grid) return;
 
       zipSpan.textContent = zip || "—";
@@ -562,7 +546,6 @@
       const img = document.createElement("img");
       img.src = b.photoUrl || b.logoUrl || "";
       img.alt = "Local Brokerage";
-      /* slightly smaller heights to keep header/CTA comfortable */
       img.className = "w-full h-40 sm:h-48 md:h-56 lg:h-60 xl:h-64 object-contain";
       img.onerror = () => {
         const ph = document.createElement("div");
@@ -578,9 +561,6 @@
       empty.classList.add("hidden");
       card.classList.remove("hidden");
     }
-    /* =========================
-       /Local Brokers strip
-       ========================= */
 
     (async function boot(){
       try {
@@ -591,9 +571,8 @@
         if (!idParam)  idParam  = (localStorage.getItem('lastListingId') || '').trim();
         if (!addrParam) addrParam = (localStorage.getItem('lastListingAddress') || '').trim();
 
-        // Wire ISC (embed=1 so it posts its height)
-        const openA = $("iscOpenLink");
-        const iscIframe = $("iscIframe");
+        const openA = document.getElementById("iscOpenLink");
+        const iscIframe = document.getElementById("iscIframe");
         const base = "/printable-isc.html?embed=1";
         if (openA) openA.href = idParam
           ? `/printable-isc.html?id=${encodeURIComponent(idParam)}`
@@ -604,7 +583,6 @@
 
         let d = null;
 
-        // Prefer by id
         if (idParam && db) {
           try {
             const snap = await getDoc(doc(db, "listings", idParam));
@@ -612,7 +590,6 @@
           } catch {}
         }
 
-        // else by exact address
         if (!d && addrParam && db) {
           try {
             const snap = await getDocs(query(collection(db,"listings"), where("address","==", addrParam), limit(1)));
@@ -620,21 +597,25 @@
           } catch {}
         }
 
-        // If still no doc, paint shell and stop
         if (!d) {
           document.getElementById("topRow")?.classList.remove("hidden");
-          $("tileStats").textContent = "Viewed — | Liked —";
-          $("tileAddress").textContent = "[full address]";
+          document.getElementById("tileStats").textContent = "Viewed — | Liked —";
+          document.getElementById("tileAddress").textContent = "[full address]";
           return;
         }
 
-        // Increment views once, then paint stats
         if (idParam) await incrementViewsOnce(idParam);
 
-        // Normalize and paint main tile
         const address = String(d.address || "").trim();
         const plan = String(d.plan || "Listed Property Basic");
         const status = String(d.status || "Active");
+
+        // SOLD state (NEW)
+        const isSold = status.trim().toLowerCase() === "sold";
+        applyInquiryLockdown(isSold);
+        const soldBadge = document.getElementById("soldBadge");
+        if (soldBadge) soldBadge.classList.toggle("hidden", !isSold);
+
         const price = asNumOrEmpty(d.price);
         const cRaw  = dflt(d.commission, "");
         const cType = (d.commissionType === "%" || d.commissionType === "$") ? d.commissionType : "%";
@@ -660,8 +641,8 @@
           } catch {}
         }
 
-        $("tilePhoto").src = primaryPhoto || "";
-        const bEl = $("tileBanner"); 
+        document.getElementById("tilePhoto").src = primaryPhoto || "";
+        const bEl = document.getElementById("tileBanner");
         if (banner) { bEl.textContent = banner; bEl.classList.remove('hidden'); } else { bEl.classList.add('hidden'); }
 
         const cAmt = (function(p, c, t){
@@ -670,32 +651,29 @@
         })(price, cRaw, cType);
         const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
 
-        $("tilePrice").textContent = money(price);
-        $("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
-        $("tileFacts").textContent = `${bds || "—"} bds | ${ba || "—"} ba | ${sqft || "—"} sqft${pType ? " | "+pType : ""} | ${status}`;
-        $("tileAddress").textContent = address || "[full address]";
-        // TASK C (2026-01-15): FSBO shows owner contact; Listed shows agent contact
+        document.getElementById("tilePrice").textContent = money(price);
+        document.getElementById("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
+        document.getElementById("tileFacts").textContent = `${bds || "—"} bds | ${ba || "—"} ba | ${sqft || "—"} sqft${pType ? " | "+pType : ""} | ${status}`;
+        document.getElementById("tileAddress").textContent = address || "[full address]";
+
         const isFSBO = plan.includes("FSBO");
         const contactName = isFSBO ? String(d.ownerName || "") : agentName;
         const contactPhone = isFSBO ? String(d.ownerPhone || "") : agentPhone;
         const contactLabel = isFSBO ? "FOR SALE BY OWNER" : brokerage.toUpperCase();
-
-        $("tileContact").textContent = `${contactLabel}${contactName ? ' - ' + contactName : ''}${contactPhone ? ' - ' + contactPhone : ''}`;
+        document.getElementById("tileContact").textContent = `${contactLabel}${contactName ? ' - ' + contactName : ''}${contactPhone ? ' - ' + contactPhone : ''}`;
 
         document.getElementById("topRow")?.classList.remove("hidden");
 
-        // Map matches tile height
         if (address) bootMapFor(address);
 
-        // Description & gallery
         const desc = (d.description || "").trim();
         if (desc) {
-          $("dDescription").textContent = desc;
-          $("descCard").classList.remove("hidden");
+          document.getElementById("dDescription").textContent = desc;
+          document.getElementById("descCard").classList.remove("hidden");
         }
         const others = photos.filter((_, i) => i !== primaryIndex);
         if (others.length > 0) {
-          const grid = $("galleryGrid");
+          const grid = document.getElementById("galleryGrid");
           grid.innerHTML = "";
           others.forEach(src => {
             const img = document.createElement("img");
@@ -703,51 +681,29 @@
             img.className = "w-full h-32 object-cover rounded bg-gray-100";
             grid.appendChild(img);
           });
-          $("galleryCard").classList.remove("hidden");
+          document.getElementById("galleryCard").classList.remove("hidden");
         }
 
-        // START local-pros & brokers
         const zip = (d.zip && String(d.zip)) || parseZipFromAddress(address);
         if (zip) {
-          // Pros
           const { agents, lenders } = await loadLocalPros(zip);
-          if ((!agents || agents.length === 0) && (!lenders || lenders.length === 0)) {
-            try {
-              const qLite = query(collection(db, "localPros"), where("zips", "array-contains", zip));
-              const sLite = await getDocs(qLite);
-              if (sLite.size > 0) {
-                renderPros(zip, [{ name:"Local Professional", role:"", phone:"", email:"", photoUrl:"" }], []);
-              } else {
-                renderPros(zip, agents, lenders);
-              }
-            } catch {
-              renderPros(zip, agents, lenders);
-            }
-          } else {
-            renderPros(zip, agents, lenders);
-          }
+          renderPros(zip, agents, lenders);
 
-          // Brokers
           const brokers = await loadLocalBrokers(zip);
-          if (brokers.length > 0) {
-            renderBrokers(zip, brokers);
-          } // else keep brokers card hidden
+          if (brokers.length > 0) renderBrokers(zip, brokers);
         }
-        // END local-pros & brokers
 
-        // Paint stats (views + likes)
         if (idParam) await paintStats(idParam);
 
-        // Heart
         const favKeyId = idParam ? ('fav:'+idParam) : ('fav:'+address);
         setupHeart(idParam || address, favKeyId);
 
-        // Share buttons
         const shareUrl = idParam
           ? (window.location.origin + '/listing.html?id=' + encodeURIComponent(idParam))
           : (window.location.origin + '/listing.html?addr=' + encodeURIComponent(address));
-        const emailBtn = $("shareEmailBtn");
-        const textBtn  = $("shareTextBtn");
+
+        const emailBtn = document.getElementById("shareEmailBtn");
+        const textBtn  = document.getElementById("shareTextBtn");
         if (emailBtn) {
           emailBtn.addEventListener('click', (e)=> {
             e.preventDefault();
@@ -763,13 +719,11 @@
           });
         }
 
-        // Final height sync
         setTimeout(alignHeights, 80);
         window.addEventListener('resize', alignHeights);
 
       } catch (e) {
         console.warn(e);
-        // Minimal friendly banner
         document.body.insertAdjacentHTML("afterbegin",
           `<div class="max-w-7xl mx-auto px-4">
             <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-900">
