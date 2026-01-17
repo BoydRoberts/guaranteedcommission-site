@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-16 (Bulk ZIP subscription checkout - Local Brokers) -->
+<!-- Build: 2026-01-16 (Bulk ZIP subscription checkout - Local Brokers | License REQUIRED | Green Pay Button) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -47,24 +47,31 @@
 
       <form id="brokerForm" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4" autocomplete="off">
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold">Brokerage Name</label>
+          <label class="block text-sm font-semibold">Brokerage Name <span class="text-red-600">*</span></label>
           <input id="name" class="w-full border rounded px-3 py-2" placeholder="Your brokerage name" required>
         </div>
 
         <div>
-          <label class="block text-sm font-semibold">Contact Name</label>
+          <label class="block text-sm font-semibold">Contact Name <span class="text-red-600">*</span></label>
           <input id="contact" class="w-full border rounded px-3 py-2" placeholder="Primary contact" required>
         </div>
 
         <div>
-          <label class="block text-sm font-semibold">Email</label>
+          <label class="block text-sm font-semibold">Email <span class="text-red-600">*</span></label>
           <input id="email" type="email" class="w-full border rounded px-3 py-2" placeholder="you@example.com" required>
         </div>
 
         <div>
-          <label class="block text-sm font-semibold">Phone</label>
+          <label class="block text-sm font-semibold">Phone <span class="text-red-600">*</span></label>
           <input id="phone" class="w-full border rounded px-3 py-2" placeholder="123-456-7890" inputmode="numeric" required>
           <p class="hint mt-1">Format: 123-456-7890</p>
+        </div>
+
+        <!-- ✅ REQUIRED LICENSE -->
+        <div class="md:col-span-2">
+          <label class="block text-sm font-semibold">License # / DRE # <span class="text-red-600">*</span></label>
+          <input id="license" class="w-full border rounded px-3 py-2" placeholder="Enter your Brokerage License # / DRE #" required>
+          <p class="hint mt-1">Required by state law for advertising.</p>
         </div>
 
         <div>
@@ -74,11 +81,10 @@
 
         <!-- ✅ BULK ZIP INPUT -->
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold">ZIP Codes (up to 99)</label>
+          <label class="block text-sm font-semibold">ZIP Codes (up to 99) <span class="text-red-600">*</span></label>
           <input id="zipBulk" class="w-full border rounded px-3 py-2"
-                 placeholder="Enter ZIPs separated by commas or spaces (e.g., 92651, 92657, 92660)">
+                 placeholder="Enter ZIPs separated by commas or spaces (e.g., 92651, 92657, 92660)" required>
           <p class="hint mt-1">We will validate and de-duplicate ZIPs. Example: “92651 92657 92660”.</p>
-
           <div class="mt-2 flex flex-wrap gap-2" id="zipChips"></div>
         </div>
 
@@ -89,7 +95,7 @@
           <p class="hint mt-1">Recommended: horizontal image. JPG/PNG.</p>
         </div>
 
-        <!-- ✅ REAL-TIME TOTAL -->
+        <!-- ✅ REAL-TIME TOTAL + GREEN PAY BUTTON -->
         <div class="md:col-span-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3 mt-2">
           <div class="text-sm text-gray-700">
             Monthly total: <span id="total" class="font-semibold">$0/month</span>
@@ -97,8 +103,7 @@
           </div>
 
           <button id="checkoutBtn" type="button"
-                  class="px-4 py-2 rounded text-white font-semibold"
-                  style="background:#4DA6FF;">
+                  class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold">
             Proceed to Checkout
           </button>
         </div>
@@ -160,7 +165,6 @@
         seen.add(z);
         good.push(z);
       }
-
       return { good, bad };
     }
 
@@ -169,14 +173,12 @@
     function renderZipChips(good, bad) {
       const host = $('zipChips');
       host.innerHTML = '';
-
       good.forEach(z => {
         const d = document.createElement('span');
         d.className = 'chip chip-good';
         d.textContent = z;
         host.appendChild(d);
       });
-
       bad.forEach(x => {
         const d = document.createElement('span');
         d.className = 'chip chip-bad';
@@ -190,7 +192,6 @@
       const { good, bad } = parseZipList(raw);
 
       if (good.length > 99) {
-        // Keep first 99, mark rest bad
         const extra = good.slice(99);
         good.length = 99;
         extra.forEach(x => bad.push(x));
@@ -208,7 +209,6 @@
     $('zipBulk')?.addEventListener('input', updateTotal);
     updateTotal();
 
-    // Photo preview
     $('photo')?.addEventListener('change', (e) => {
       const f = e.target.files?.[0]; if (!f) return;
       const r = new FileReader();
@@ -236,7 +236,6 @@
       return (localStorage.getItem('loggedInEmail') || localStorage.getItem('verifyTarget') || '').trim();
     }
 
-    // ✅ finalize success banner
     (function(){
       const u = new URL(location.href);
       if (u.searchParams.get('status') === 'success') {
@@ -255,38 +254,19 @@
         const email = $('email').value.trim().toLowerCase();
         const phoneDigits = onlyDigits($('phone').value);
         const phone = formatPhone($('phone').value.trim());
+        const license = $('license').value.trim();
         const website = $('website').value.trim();
+        const { zipCodes } = updateTotal();
 
-        const { zipCodes, invalid } = updateTotal();
+        if (!name || !contact || !email) { setStatus('Please complete brokerage name, contact, and email.', false); return; }
+        if (!/^\S+@\S+\.\S{2,}$/.test(email)) { setStatus('Please enter a valid email address.', false); return; }
+        if (phoneDigits.length !== 10) { setStatus('Please enter a valid 10-digit phone number.', false); return; }
+        if (!license) { setStatus('License # / DRE # is required for advertising.', false); return; }
+        if (!zipCodes.length) { setStatus('Please enter at least one valid 5-digit ZIP code.', false); return; }
+        if (zipCodes.length > 99) { setStatus('Maximum 99 ZIP codes per checkout.', false); return; }
 
-        if (!name || !contact || !email) {
-          setStatus('Please complete brokerage name, contact, and email.', false);
-          return;
-        }
-        if (!/^\S+@\S+\.\S{2,}$/.test(email)) {
-          setStatus('Please enter a valid email address.', false);
-          return;
-        }
-        if (phoneDigits.length !== 10) {
-          setStatus('Please enter a valid 10-digit phone number.', false);
-          return;
-        }
-        if (!zipCodes.length) {
-          setStatus('Please enter at least one valid 5-digit ZIP code.', false);
-          return;
-        }
-        if (zipCodes.length > 99) {
-          setStatus('Maximum 99 ZIP codes per checkout.', false);
-          return;
-        }
-
-        // Save a draft record (pending) for tracking (UI: not enforcing exclusivity yet)
         const draft = {
-          name,
-          contact,
-          email,
-          phone,
-          website,
+          name, contact, email, phone, license, website,
           zips: zipCodes,
           photoUrl: "",
           status: "pending",
@@ -302,20 +282,17 @@
           await updateDoc(doc(db, "localBrokers", refDoc.id), { photoUrl, updatedAt: serverTimestamp() });
         }
 
-        // Call subscription API (bulk quantity)
-        const successUrl = window.location.origin + "/local-brokers.html?status=success";
-        const cancelUrl  = window.location.origin + "/local-brokers.html?status=cancel";
-
         const payload = {
           roleType: "local_broker",
           zipCodes: zipCodes,
           priceId: PRICE_ID_LOCAL_BROKER,
-          successUrl,
-          cancelUrl,
+          successUrl: window.location.origin + "/local-brokers.html?status=success",
+          cancelUrl:  window.location.origin + "/local-brokers.html?status=cancel",
           metadata: {
             email: loggedInEmail() || email,
             name: name,
             contact: contact,
+            license: license,
             draftId: refDoc.id
           }
         };
@@ -328,13 +305,8 @@
 
         const ct = resp.headers.get("content-type") || "";
         const out = ct.includes("application/json") ? await resp.json() : { error: "Non-JSON server response" };
-
         if (!resp.ok) throw new Error(out.error || out.message || "Subscription session failed.");
-
-        if (out.url) {
-          window.location.href = out.url;
-          return;
-        }
+        if (out.url) { window.location.href = out.url; return; }
         throw new Error("Server did not return checkout url.");
       } catch (e) {
         console.error(e);
