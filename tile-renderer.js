@@ -3,13 +3,16 @@
  * Shared listing tile renderer for GuaranteedCommission.com
  * Used by: index.html (Strip 2), search.html
  * 
- * Build: 2026-01-15
+ * Build: 2026-01-17
  * 
  * CHANGES (2026-01-15):
  * - Added FSBO owner contact support (ownerName, ownerPhone)
  * - Contact line now shows: 
  *   - FSBO: "FOR SALE BY OWNER - [Owner Name] - [Owner Phone]"
  *   - Listed: "BROKERAGE - [Agent Name] - [Agent Phone]"
+ * 
+ * CHANGES (2026-01-17):
+ * - Added SOLD ribbon on tiles when status === "Sold"
  * 
  * IMPORTANT: This file does NOT inject CSS.
  * CSS classes used: .gc-tile, .gc-photo, .gc-ribbon, .gc-heart, .gc-share, .gc-share-left, .gc-share-right
@@ -267,6 +270,9 @@ export function renderTile(data, options = {}) {
   // Determine if FSBO
   const isFSBO = (plan || '').indexOf('FSBO') >= 0;
 
+  // SOLD flag (NEW)
+  const isSold = String(status || '').trim().toLowerCase() === 'sold';
+
   // Build contact line using new helper
   const contactLine = buildContactLine({
     isFSBO,
@@ -296,6 +302,9 @@ export function renderTile(data, options = {}) {
     <div class="relative">
       <img class="gc-photo" src="${photoUrl}" alt="Listing photo">
       ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ''}
+
+      ${isSold ? `<div class="absolute top-2 left-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
+
       <button type="button" class="gc-heart" aria-label="Like">
         ${heartSvg(false)}
       </button>
