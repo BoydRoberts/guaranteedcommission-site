@@ -1,4 +1,4 @@
-// /checkout.js - build 2025-12-27 (whoLine cosmetic format only)
+// /checkout.js - build 2026-01-17 (Fix: Plus base-price loophole; preserve all existing logic)
 document.addEventListener("DOMContentLoaded", function() {
   console.log("[checkout.js] build 2025-12-27 - whoLine cosmetic");
 
@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (isFSBOPlan(planLS)) {
       var email = formData.fsboEmail || formData.ownerEmail || "[owner/seller email]";
       var phone = formData.phone || formData.agentPhone || "[owner/seller phone]";
-      $("whoLine").textContent = 
+      $("whoLine").textContent =
         ["", name, addr, ""].join(" * ") + "\n" +
         ["", phone, email, comm, ""].join(" * ");
     } else {
@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var agent     = formData.agent || "[Listing Agent]";
       var agentPh   = formData.phone || formData.agentPhone || "[Listing Agent phone]";
       var agentEmail = formData.agentEmail || "[Listing Agent email]";
-      $("whoLine").textContent = 
+      $("whoLine").textContent =
         ["", name, addr, ""].join(" * ") + "\n" +
         ["", agent, brokerage, agentPh, agentEmail, comm, ""].join(" * ");
     }
@@ -170,7 +170,7 @@ document.addEventListener("DOMContentLoaded", function() {
     return pu || {};
   }
 
-  // Pricing recompute (unchanged logic; already prevents double-charge if paidUpgrades present)
+  // Pricing recompute (FIXED: Plus base price only $0 if already paid in Firestore)
   function recompute(d) {
     var freshPlan = (localStorage.getItem("selectedPlan") || "").trim();
     var plan = freshPlan || d.plan || "Listed Property Basic";
@@ -185,20 +185,42 @@ document.addEventListener("DOMContentLoaded", function() {
 
     var base = 0;
 
+    // Paid upgrades snapshot (from Firestore via meta)
+    var pu = paid();
+    // We treat "upgradeToPlus" as the canonical paid flag for Plus.
+    // (If your Firestore uses a different flag later, add it here without removing this.)
+    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus);
+
     if (isCommissionChangeFlow) {
       base = 0;
+
     } else if (isFSBOPlan(plan)) {
       base = isUpgradeFromSellerDetail ? 0 : (d.prices.fsbo || 100);
+
     } else if (isUpgradingToPlus) {
-      base = promo ? 0 : (d.prices.plus || 20);
+      // User is upgrading from Basic to Plus inside checkout
+      base = promo ? 0 : (plusAlreadyPaid ? 0 : (d.prices.plus || 20));
       plan = "Listed Property Plus";
       localStorage.setItem("selectedPlan", "Listed Property Plus");
+
     } else if (plan === "Listed Property Plus") {
-      if (isUpgradeFromSellerDetail) base = 0;
-      else {
-        var freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
-        base = (promo || d.payer === "agent" || freeFlag) ? 0 : (d.prices.plus || 20);
+      // IMPORTANT FIX:
+      // Previously, seller-detail origin could force base to 0.
+      // Now, base is 0 ONLY if Plus is already paid in Firestore, OR promo/agent/freeFlag conditions apply.
+      var freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
+
+      if (promo || d.payer === "agent" || freeFlag) {
+        base = 0;
+      } else {
+        base = plusAlreadyPaid ? 0 : (d.prices.plus || 20);
       }
+
+      // If Plus is not paid yet and seller is in Plus, force the upgrade flag on
+      // so UI cannot "downgrade" to avoid payment.
+      if (!plusAlreadyPaid && d.payer === "seller") {
+        d.upgrades.upgradeToPlus = true;
+      }
+
     } else {
       base = 0;
     }
@@ -209,11 +231,9 @@ document.addEventListener("DOMContentLoaded", function() {
     var premiumPrice = promo ? 0 : (d.prices.premium || 10);
     var pinPrice     = promo ? 0 : (d.prices.pin     || 50);
 
-    var pu = paid();
-
-    if (d.upgrades.banner && !pu.banner) total += bannerPrice;
-    if (d.upgrades.pin && !pu.pin) total += pinPrice;
-    else if (d.upgrades.premium && !pu.premium && !pu.pin) total += premiumPrice;
+    if (d.upgrades.banner && !(pu && pu.banner)) total += bannerPrice;
+    if (d.upgrades.pin && !(pu && pu.pin)) total += pinPrice;
+    else if (d.upgrades.premium && !(pu && pu.premium) && !(pu && pu.pin)) total += premiumPrice;
 
     if (isFSBOPlan(plan)) {
       if (d.upgrades.confidential) total += (d.prices.confidential || 100);
@@ -236,7 +256,8 @@ document.addEventListener("DOMContentLoaded", function() {
   localStorage.setItem("checkoutData", JSON.stringify(data));
 
   function renderSummary() {
-    if ($("planName")) $("planName").textContent = data.plan;
+    // Selected Plan should match cost in recompute (FIX)
+    if ($("planName")) $("planName").textContent = data.plan + " ($" + (data.base || 0) + ")";
     if ($("basePrice")) $("basePrice").textContent = (data.base || 0);
     if ($("totalAmount")) $("totalAmount").textContent = (data.total || 0);
 
@@ -287,22 +308,30 @@ document.addEventListener("DOMContentLoaded", function() {
     var isCommissionChange = isChangeCommissionEnabled();
     var pu = paid();
 
+    // Determine if Plus must be charged (seller, not paid yet)
+    var plusNotPaid = !isFSBO && (plan === "Listed Property Plus") && !(pu && pu.upgradeToPlus) && data.payer === "seller" && !promo && !isCommissionChange;
+    if (plusNotPaid) {
+      // Force upgrade flag on (prevents downgrade + keeps total correct)
+      data.upgrades.upgradeToPlus = true;
+      localStorage.setItem("checkoutData", JSON.stringify(data));
+    }
+
     var toggles = [];
 
     if (!isFSBO) {
       toggles.push({
         key:"upgradeToPlus",
-        label: (plan === "Listed Property Plus" ? "Listed Property Plus (Current Plan)" : "Upgrade to Listed Property Plus"),
+        label: (plan === "Listed Property Plus" ? "Listed Property Plus (Selected Plan)" : "Upgrade to Listed Property Plus"),
         price: promo ? 0 : (data.prices.plus || 20),
         checked: (plan === "Listed Property Plus") || !!data.upgrades.upgradeToPlus,
-        disabled: isCommissionChange,
-        note: isCommissionChange ? "(Not available during commission changes)" : (plan === "Listed Property Plus" ? "(Already paid)" : "")
+        // If Plus is selected but not yet paid, disable so they can't uncheck and dodge payment
+        disabled: isCommissionChange || plusNotPaid || (pu && pu.upgradeToPlus) || (plan === "Listed Property Plus" && (pu && pu.upgradeToPlus)),
+        note: (pu && pu.upgradeToPlus) ? "(Already paid)" : (plusNotPaid ? "(Required for checkout)" : (isCommissionChange ? "(Not available during commission changes)" : ""))
       });
     }
 
     toggles.push({ key:"banner", label:"Banner", price: promo ? 0 : (data.prices.banner || 10), checked: !!pu.banner || !!data.upgrades.banner, disabled: !!pu.banner, note: pu.banner ? "(Already paid)" : "" });
 
-    // If pin paid, premium is effectively paid too.
     var premiumPaid = !!pu.premium || !!pu.pin;
     toggles.push({ key:"premium", label:"Premium Placement", price: promo ? 0 : (data.prices.premium || 10), checked: premiumPaid || (!!data.upgrades.premium && !data.upgrades.pin), disabled: premiumPaid, note: premiumPaid ? "(Already paid)" : "" });
 
@@ -381,7 +410,6 @@ document.addEventListener("DOMContentLoaded", function() {
           (listingId ? "?id=" + encodeURIComponent(listingId) + "&session_id={CHECKOUT_SESSION_ID}"
                     : "?session_id={CHECKOUT_SESSION_ID}");
 
-        // Commission change safety hint
         var successSignatureCC =
           window.location.origin + "/signature.html" +
           (listingId ? "?id=" + encodeURIComponent(listingId) + "&cc=1&session_id={CHECKOUT_SESSION_ID}"
