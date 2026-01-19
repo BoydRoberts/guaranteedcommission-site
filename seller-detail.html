@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- seller-detail.html - Build 2026-01-16 (Soft Autosave + Sold Lock; preserves existing logic) -->
+<!-- seller-detail.html - Build 2026-01-16 (Soft Autosave + Sold Lock; preserves existing logic; FIX: Change Commission modal flow) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -220,8 +220,8 @@
         </div>
 
         <div class="pt-2 grid grid-cols-2 gap-2">
-            <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
-            <a id="previewLink" href="/listing.html" class="text-center px-4 py-2 rounded bg-[#4DA6FF] text-white hover:bg-blue-500">Preview Full Listing Detail</a>
+          <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
+          <a id="previewLink" href="/listing.html" class="text-center px-4 py-2 rounded bg-[#4DA6FF] text-white hover:bg-blue-500">Preview Full Listing Detail</a>
         </div>
       </form>
     </section>
@@ -269,10 +269,10 @@
   <div id="changeCommissionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-md relative p-6">
       <button onclick="closeChangeCommissionModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
-      
+
       <h2 class="text-lg font-bold mb-4">Change Commission</h2>
       <p class="text-sm text-gray-600 mb-4">Enter your new commission amount and type. After payment, you will sign a new Irrevocable Seller Communication with the updated commission.</p>
-      
+
       <div class="space-y-4">
         <div class="flex gap-2">
           <input type="text" id="newCommission" placeholder="Commission amount (e.g., 2.5 or 5000)" class="flex-1 border p-2 rounded">
@@ -281,7 +281,7 @@
             <option value="$">$</option>
           </select>
         </div>
-        
+
         <div class="flex items-center justify-end gap-2">
           <button type="button" onclick="closeChangeCommissionModal()" class="px-4 py-2 rounded border">Cancel</button>
           <button id="confirmCommissionBtn" type="button" class="px-4 py-2 rounded bg-blue-600 text-white">Confirm New Commission</button>
@@ -299,9 +299,17 @@
   <script type="module">
     import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
     import { updatePaidUpgradesAfterPayment } from "/scripts/paid-upgrades-handler.js";
-    import { doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
+    import {
+      doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import {
+      getStorage, ref, uploadBytes, getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+    // =========================================================================
+    // Mapbox geocoding for lat/lng (non-blocking with timeout)
+    // =========================================================================
     const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
     const GEO_TIMEOUT_MS = 3000;
 
@@ -321,13 +329,7 @@
         const feature = data?.features?.[0];
         if (!feature?.center) { failResult.status = "no_results"; return failResult; }
 
-        return {
-          lng: feature.center[0],
-          lat: feature.center[1],
-          placeName: feature.place_name || null,
-          status: "ok",
-          provider: "mapbox"
-        };
+        return { lng: feature.center[0], lat: feature.center[1], placeName: feature.place_name || null, status: "ok", provider: "mapbox" };
       } catch (e) {
         console.warn("[geocodeAddress] failed:", e.message || e);
         failResult.status = (e.message === "timeout") ? "timeout" : "error";
@@ -358,13 +360,19 @@
       }
     }
 
+    // Process paid upgrades FIRST (before any other logic)
     (async function() {
       if (window.__paidUpgradesHandled) return;
       window.__paidUpgradesHandled = true;
-      try { await updatePaidUpgradesAfterPayment(); }
-      catch (e) { console.warn('[seller-detail] paid-upgrades-handler failed:', e); }
+      try {
+        const result = await updatePaidUpgradesAfterPayment();
+        if (result?.processed) console.log('[seller-detail] Upgrades processed successfully');
+      } catch (e) {
+        console.warn('[seller-detail] paid-upgrades-handler failed:', e);
+      }
     })();
 
+    // utilities
     var $ = function(id) { return document.getElementById(id); };
     var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
     var setJSON = function(k, v) { localStorage.setItem(k, JSON.stringify(v)); };
@@ -603,8 +611,11 @@
       }
     })();
 
-    var listingId = localStorage.getItem("lastListingId") || "";
-    if ($("previewLink") && listingId) $("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
+    var listingId = (localStorage.getItem("lastListingId") || "").trim();
+
+    if ($("previewLink") && listingId) {
+      $("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
+    }
 
     // state
     var plan = (localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
@@ -800,7 +811,7 @@
       });
     }
 
-    // FIELD LOCKING LOGIC (kept)
+    // FIELD LOCKING LOGIC
     function applyFieldLocking(planName, paidUpgrades) {
       var isBasic = planName === "Listed Property Basic";
       paidUpgrades = paidUpgrades || {};
@@ -1050,7 +1061,12 @@
       autosaveDebounced();
     });
 
-    // Upgrades UI wiring (kept)
+    // ============================================================
+    // Upgrades UI wiring (UPDATED):
+    // - Change Commission checkbox opens modal (no visual check)
+    // - Other upgrades save into checkoutData (no redirect)
+    // - Go to Checkout remains intentional navigation
+    // ============================================================
     (async function wireUpgrades(){
       var checkoutData = getJSON("checkoutData", null) || {};
 
@@ -1075,13 +1091,17 @@
         var grayedClass = paid ? "bg-gray-100 opacity-60" : "";
         var paidLabel = paid ? "<span class=\"text-xs text-green-600 ml-2\">Paid</span>" : "";
         var desc = description ? "<div class=\"text-xs text-gray-500\">" + description + "</div>" : "";
+
+        var inputId = (key === "changeCommission") ? "changeCommissionChk" : "";
+
         return "<label class=\"flex items-center justify-between border rounded-lg px-3 py-2 " + grayedClass + "\">" +
           "<div>" +
             "<span class=\"font-medium\">" + label + "</span>" +
             "<span class=\"text-gray-500\"> - $" + price + "</span>" +
             paidLabel + desc +
           "</div>" +
-          "<input type=\"checkbox\" data-key=\"" + key + "\" class=\"h-4 w-4\" " + (checked?"checked":"") + " " + disabled + "/>" +
+          "<input type=\"checkbox\" id=\"" + inputId + "\" data-key=\"" + key + "\" class=\"h-4 w-4\" " +
+            (checked?"checked":"") + " " + disabled + "/>" +
         "</label>";
       }
 
@@ -1089,6 +1109,7 @@
       if (!box) return;
 
       var upgrades = [];
+
       if (isBasicNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", false, "20 photos + full property description"));
       if (isPlusNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", true, "Current Plan"));
 
@@ -1105,6 +1126,62 @@
 
       box.innerHTML = upgrades.join("");
 
+      // Change Commission checkbox: modal trigger only (no visual check)
+      var cc = document.getElementById("changeCommissionChk");
+      if (cc) {
+        cc.addEventListener("click", function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (soldLocked || checkSoldLock($("status")?.value)) {
+            alert("This listing is SOLD and locked. Upgrades are disabled.");
+            return;
+          }
+          openChangeCommissionModal();
+        });
+      }
+
+      // Other upgrades: persist selection into checkoutData (no redirect)
+      var inputs = box.querySelectorAll('input[type="checkbox"]');
+      for (var i = 0; i < inputs.length; i++) {
+        var el = inputs[i];
+        var k = el.getAttribute("data-key");
+        if (!k) continue;
+        if (k === "changeCommission") continue;
+        if (el.disabled) continue;
+
+        el.addEventListener("change", function(e) {
+          if (soldLocked || checkSoldLock($("status")?.value)) {
+            e.target.checked = false;
+            alert("This listing is SOLD and locked. Upgrades are disabled.");
+            return;
+          }
+
+          var key = e.target.getAttribute("data-key");
+          var checked = !!e.target.checked;
+
+          var cd = getJSON("checkoutData", {}) || {};
+          cd.upgrades = cd.upgrades || {};
+          cd.meta = cd.meta || {};
+          cd.meta.fromSellerDetail = true;
+
+          if (key === "upgradeToPlus") cd.upgrades.upgradeToPlus = checked;
+          if (key === "banner") cd.upgrades.banner = checked;
+
+          if (key === "premium") {
+            cd.upgrades.premium = checked && !cd.upgrades.pin;
+          }
+          if (key === "pin") {
+            cd.upgrades.pin = checked;
+            if (checked) cd.upgrades.premium = true;
+          }
+
+          if (key === "confidential") cd.upgrades.confidential = checked;
+
+          setJSON("checkoutData", cd);
+        });
+      }
+
+      // Go to Checkout Button: manual redirect
       var checkoutBtn = $("goCheckoutBtn");
       if (checkoutBtn) {
         checkoutBtn.addEventListener("click", function() {
@@ -1112,13 +1189,62 @@
             alert("This listing is SOLD and locked. Upgrades are disabled.");
             return;
           }
-          var checkoutData = getJSON("checkoutData", {});
-          checkoutData.meta = checkoutData.meta || {};
-          checkoutData.meta.fromSellerDetail = true;
-          setJSON("checkoutData", checkoutData);
+          var cd = getJSON("checkoutData", {}) || {};
+          cd.meta = cd.meta || {};
+          cd.meta.fromSellerDetail = true;
+          setJSON("checkoutData", cd);
           window.location.href = "/checkout.html";
         });
       }
+    })();
+
+    // ============================================================
+    // Change Commission: Confirm button (single handler)
+    // Saves newCommission + newCommissionType into checkoutData, then redirects
+    // ============================================================
+    (function wireConfirmCommissionOnce() {
+      var btn = document.getElementById("confirmCommissionBtn");
+      if (!btn) return;
+
+      btn.addEventListener("click", function() {
+        if (soldLocked || checkSoldLock(document.getElementById("status")?.value)) {
+          alert("This listing is SOLD and locked. It cannot be edited.");
+          closeChangeCommissionModal();
+          return;
+        }
+
+        var newComm = (document.getElementById("newCommission")?.value || "").trim();
+        var newType = (document.getElementById("newCommissionType")?.value || "%").trim();
+
+        if (!newComm) {
+          alert("Please enter a commission amount.");
+          return;
+        }
+
+        // Ensure listingId is present (prevents Missing ID downstream)
+        var lid = (localStorage.getItem("lastListingId") || "").trim();
+        if (!lid) {
+          alert("Missing listing ID. Please open this listing from Welcome (Edit) so the ID is set.");
+          return;
+        }
+
+        var cd = getJSON("checkoutData", {}) || {};
+        cd.upgrades = cd.upgrades || {};
+        cd.meta = cd.meta || {};
+
+        cd.upgrades.changeCommission = true;
+        cd.meta.fromChangeCommission = true;
+        cd.meta.fromSellerDetail = true;
+        cd.meta.newCommission = newComm;
+        cd.meta.newCommissionType = newType;
+
+        cd.payer = "seller";
+
+        setJSON("checkoutData", cd);
+
+        closeChangeCommissionModal();
+        window.location.href = "/checkout.html";
+      });
     })();
 
     // Boot
