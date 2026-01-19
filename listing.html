@@ -58,6 +58,19 @@
 
     .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   </style>
+
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="GuaranteedCommission.com">
+  <meta property="og:description" content="Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.">
+  <meta property="og:image" content="https://guaranteedcommission.com/Logo.png">
+  <meta property="og:url" content="https://guaranteedcommission.com/">
+
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="GuaranteedCommission.com">
+  <meta name="twitter:description" content="Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.">
+  <meta name="twitter:image" content="https://guaranteedcommission.com/Logo.png">
 </head>
 <body class="bg-gray-100 text-gray-800">
 
@@ -607,6 +620,7 @@
         if (idParam) await incrementViewsOnce(idParam);
 
         const address = String(d.address || "").trim();
+        if (address) document.title = address + " | GuaranteedCommission.com";
         const plan = String(d.plan || "Listed Property Basic");
         const status = String(d.status || "Active");
 
