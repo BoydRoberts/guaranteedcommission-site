@@ -53,7 +53,16 @@
       <div class="flex items-center gap-2">
         <a href="/index.html" class="text-sm text-blue-600 hover:underline">Home</a>
       </div>
-      <h1 class="text-lg font-semibold">Listing Detail Intake (Seller)</h1>
+
+      <!-- UPDATED: Home-page branding block (logo + title + subtext) -->
+      <div class="text-center leading-tight">
+        <div class="flex items-end justify-center gap-1">
+          <img src="/Logo.png" alt="Logo" class="h-10 w-10 object-contain -mb-1">
+          <h1 class="text-2xl font-bold tracking-tight text-gray-900">GuaranteedCommission.com</h1>
+        </div>
+        <p class="text-xs text-gray-600 mt-1">Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.</p>
+      </div>
+
       <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
     </div>
   </header>
@@ -1221,7 +1230,6 @@
           return;
         }
 
-        // Ensure listingId is present (prevents Missing ID downstream)
         var lid = (localStorage.getItem("lastListingId") || "").trim();
         if (!lid) {
           alert("Missing listing ID. Please open this listing from Welcome (Edit) so the ID is set.");
