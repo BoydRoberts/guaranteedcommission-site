@@ -1,4 +1,4 @@
-// /checkout.js - build 2026-01-17 (Fix: Plus base-price loophole; remove hard reset revenue leak; preserve all existing logic)
+// /checkout.js - build 2026-01-18 (Fix: Change Commission base=0 + force ID in cc successUrl; preserve all existing logic)
 document.addEventListener("DOMContentLoaded", function() {
   console.log("[checkout.js] build 2025-12-27 - whoLine cosmetic");
 
@@ -148,7 +148,7 @@ document.addEventListener("DOMContentLoaded", function() {
     return pu || {};
   }
 
-  // Pricing recompute (FIXED: remove hard reset leak; enforce Plus intent from localStorage)
+  // Pricing recompute (FIXED: commission change base must be 0; remove hard reset leak; enforce Plus intent from localStorage)
   function recompute(d) {
     var freshPlan = (localStorage.getItem("selectedPlan") || "").trim();
     var plan = freshPlan || d.plan || "Listed Property Basic";
@@ -167,52 +167,46 @@ document.addEventListener("DOMContentLoaded", function() {
     var pu = paid();
     var plusAlreadyPaid = !!(pu && pu.upgradeToPlus);
 
-    // Special-case: if a user somehow uses this as selectedPlan, treat as $100 base intent
-    // (This matches your requirement, without deleting the existing FSBO + Confidential upsell logic.)
-    var selectedIsConfidentialPlan = (plan === "Confidential FSBO Upgrade");
-    if (selectedIsConfidentialPlan) {
-      // Seller intent: Confidential is $100/mo or $100 (depending on product), here treated as base charge for checkout.
-      // We keep plan as-is so UI can show it clearly.
-      base = (pu && pu.confidential) ? 0 : (d.prices.confidential || 100);
+    // ===== CRITICAL FIX #1 =====
+    // Commission change: base MUST be 0 (no Plus or FSBO base), only change-commission item is charged.
+    if (isCommissionChangeFlow) {
+      base = 0;
+      d.base = 0;
       d.plan = plan;
-      d.base = base;
-      // Add to total later with standard logic; keep upgrades.confidential false here to avoid double charge.
-    }
-
-    if (!selectedIsConfidentialPlan) {
-
-      if (isCommissionChangeFlow) {
-        base = 0;
-
-      } else if (isFSBOPlan(plan)) {
-        // Preserve prior behavior: if coming from seller-detail, base can be 0 for already-paid contexts.
-        // If you ever want FSBO base enforced like Plus, we can do that separately.
-        base = isUpgradeFromSellerDetail ? 0 : (d.prices.fsbo || 100);
-
-      } else if (isUpgradingToPlus) {
-        base = promo ? 0 : (plusAlreadyPaid ? 0 : (d.prices.plus || 20));
-        plan = "Listed Property Plus";
-        localStorage.setItem("selectedPlan", "Listed Property Plus");
-
-      } else if (plan === "Listed Property Plus") {
-        // REQUIREMENT: If selectedPlan is Plus, base MUST be 20 unless already paid.
-        var freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
-
-        if (promo || d.payer === "agent" || freeFlag) {
-          base = 0;
-        } else {
-          base = plusAlreadyPaid ? 0 : (d.prices.plus || 20);
-        }
-
-        // If Plus is not paid yet and seller is in Plus, force upgrade flag on
-        if (!plusAlreadyPaid && d.payer === "seller") {
-          d.upgrades.upgradeToPlus = true;
-        }
-
-      } else {
-        base = 0;
+      // do NOT return yet; allow total calculation to add the change commission item later.
+    } else {
+      // Special-case: if a user somehow uses this as selectedPlan, treat as $100 base intent
+      var selectedIsConfidentialPlan = (plan === "Confidential FSBO Upgrade");
+      if (selectedIsConfidentialPlan) {
+        base = (pu && pu.confidential) ? 0 : (d.prices.confidential || 100);
+        d.plan = plan;
+        d.base = base;
+        // keep upgrades.confidential false here to avoid double charge
       }
 
+      if (!selectedIsConfidentialPlan) {
+        if (isFSBOPlan(plan)) {
+          base = isUpgradeFromSellerDetail ? 0 : (d.prices.fsbo || 100);
+        } else if (isUpgradingToPlus) {
+          base = promo ? 0 : (plusAlreadyPaid ? 0 : (d.prices.plus || 20));
+          plan = "Listed Property Plus";
+          localStorage.setItem("selectedPlan", "Listed Property Plus");
+        } else if (plan === "Listed Property Plus") {
+          var freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
+
+          if (promo || d.payer === "agent" || freeFlag) {
+            base = 0;
+          } else {
+            base = plusAlreadyPaid ? 0 : (d.prices.plus || 20);
+          }
+
+          if (!plusAlreadyPaid && d.payer === "seller") {
+            d.upgrades.upgradeToPlus = true;
+          }
+        } else {
+          base = 0;
+        }
+      }
     }
 
     var total = base;
@@ -231,6 +225,7 @@ document.addEventListener("DOMContentLoaded", function() {
       else d.upgrades.confidential = false;
     }
 
+    // Change Commission item
     if (d.upgrades.changeCommission && isChangeCommissionEnabled()) {
       var isFSBO = isFSBOPlan(plan);
       var changeCommPrice = isFSBO ? (d.prices.changeCommissionFSBO || 50) : (d.prices.changeCommissionListed || 10);
@@ -247,7 +242,6 @@ document.addEventListener("DOMContentLoaded", function() {
   localStorage.setItem("checkoutData", JSON.stringify(data));
 
   function renderSummary() {
-    // Selected Plan should match cost in recompute
     if ($("planName")) $("planName").textContent = data.plan + " ($" + (data.base || 0) + ")";
     if ($("basePrice")) $("basePrice").textContent = (data.base || 0);
     if ($("totalAmount")) $("totalAmount").textContent = (data.total || 0);
@@ -395,15 +389,21 @@ document.addEventListener("DOMContentLoaded", function() {
         var isCommissionChange = isChangeCommissionEnabled();
         var isUpgradeFromSellerDetail = !!(data.meta && data.meta.fromSellerDetail === true);
 
+        // ===== CRITICAL FIX #2 =====
+        // Commission change must ALWAYS have an ID in the successUrl
+        if (isCommissionChange && !listingId) {
+          throw new Error("Missing listing ID for commission change. Please return to Welcome, edit the listing, then try again.");
+        }
+
         var successSignature =
           window.location.origin + "/signature.html" +
           (listingId ? "?id=" + encodeURIComponent(listingId) + "&session_id={CHECKOUT_SESSION_ID}"
                     : "?session_id={CHECKOUT_SESSION_ID}");
 
+        // ALWAYS include id on commission change success URL
         var successSignatureCC =
           window.location.origin + "/signature.html" +
-          (listingId ? "?id=" + encodeURIComponent(listingId) + "&cc=1&session_id={CHECKOUT_SESSION_ID}"
-                    : "?cc=1&session_id={CHECKOUT_SESSION_ID}");
+          "?id=" + encodeURIComponent(listingId) + "&cc=1&session_id={CHECKOUT_SESSION_ID}";
 
         var successSellerDetail =
           window.location.origin + "/seller-detail.html" +
@@ -442,6 +442,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         // IMPORTANT: Stripe sync — if base is 20 for Plus, MUST charge PLUS
+        // Note: this is guarded by !isCommissionChange (so CC never double-charges Plus).
         if (!isFSBO && data.plan === "Listed Property Plus" && !promo && !isCommissionChange && (data.base || 0) > 0) {
           items.push({ price: PRICE_IDS.PLUS, quantity: 1 });
         }
@@ -451,6 +452,7 @@ document.addEventListener("DOMContentLoaded", function() {
         else if (data.upgrades.premium && !pu.premium && !pu.pin && !promo) items.push({ price: PRICE_IDS.PREMIUM, quantity: 1 });
         if (isFSBO && data.upgrades.confidential && !pu.confidential && data.plan !== "Confidential FSBO Upgrade") items.push({ price: PRICE_IDS.CONFIDENTIAL, quantity: 1 });
 
+        // Change Commission item (ONLY item required for CC flow)
         if (data.upgrades.changeCommission && data.payer === "seller" && isCommissionChange) {
           var priceId = isFSBO ? PRICE_IDS.CHANGE_COMMISSION_FSBO : PRICE_IDS.CHANGE_COMMISSION_LISTED;
           items.push({ price: priceId, quantity: 1 });
