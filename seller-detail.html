@@ -1210,11 +1210,12 @@
       await refreshFromServer();
 
       // =========================================================================
-      // FIX: Multi-Strategy Downgrade Sync (only when upgraded=true is present)
-      // Strategy A: checkoutData.plan
-      // Strategy B: selectedPlan fallback
-      // Force overwrite Firestore + Force UI update
-      // Debug logs included as requested
+      // FIX: Downgrade Sync (only when upgraded=true is present)
+      // PRIORITY CORRECTION:
+      //   Priority 1 (Top): selectedPlan
+      //   Priority 2 (Fallback): checkoutData.plan (only if selectedPlan missing)
+      // Execution: If targetPlan found, FORCE overwrite Firestore + FORCE UI update.
+      // Logging kept so we can validate which strategy won.
       // =========================================================================
       try {
         var u = new URL(window.location.href);
@@ -1231,20 +1232,23 @@
 
             var targetPlan = "";
 
-            // Strategy A: checkoutData.plan
-            var cdA = getJSON("checkoutData", {});
-            if (cdA && typeof cdA.plan === "string" && cdA.plan.trim()) {
-              targetPlan = cdA.plan.trim();
+            // PRIORITY 1: selectedPlan (authoritative)
+            var spTop = (localStorage.getItem("selectedPlan") || "").trim();
+            if (spTop) {
+              targetPlan = spTop;
+              console.log("[seller-detail] Target Plan found (selectedPlan):", targetPlan);
             }
 
-            // Strategy B: selectedPlan fallback
+            // PRIORITY 2: checkoutData.plan (fallback only if selectedPlan missing)
             if (!targetPlan) {
-              var spB = (localStorage.getItem("selectedPlan") || "").trim();
-              if (spB) targetPlan = spB;
+              var cdFallback = getJSON("checkoutData", {});
+              if (cdFallback && typeof cdFallback.plan === "string" && cdFallback.plan.trim()) {
+                targetPlan = cdFallback.plan.trim();
+                console.log("[seller-detail] Target Plan found (checkoutData.plan):", targetPlan);
+              }
             }
 
             if (targetPlan) {
-              console.log("[seller-detail] Target Plan found:", targetPlan);
               console.log("[seller-detail] Force updating Firestore");
 
               await updateDoc(doc(db, "listings", lidFresh), {
@@ -1265,12 +1269,12 @@
               computePhotoHelp();
               renderThumbs();
             } else {
-              console.warn("[seller-detail] upgraded=true but no target plan found via checkoutData.plan or selectedPlan");
+              console.warn("[seller-detail] upgraded=true but no target plan found via selectedPlan or checkoutData.plan");
             }
           }
         }
       } catch (e) {
-        console.warn("[seller-detail] upgraded=true multi-strategy sync skipped:", e);
+        console.warn("[seller-detail] upgraded=true downgrade sync skipped:", e);
       }
       // =========================================================================
 
