@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- agent-detail.html - Build 2026-01-17 (Sold Lock + preserves Soft Autosave + Status Indicator + Promo + Geocode + Uploads) -->
+<!-- agent-detail.html - Build 2026-01-21 (Removed manual Save button; Autosave handles all saves) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -228,9 +228,8 @@
           </div>
         </div>
 
-        <div class="pt-2 grid grid-cols-2 gap-2">
-          <button id="saveBtn" type="button" class="bg-gray-700 text-white px-4 py-2 rounded">Save</button>
-          <a id="goPreviewBtn" href="#" target="_blank" class="text-center px-4 py-2 rounded text-white" style="background-color:#4DA6FF;">Preview Full Listing Detail</a>
+        <div class="pt-2 flex justify-center mt-6">
+          <a id="goPreviewBtn" href="#" target="_blank" class="text-center px-8 py-2 rounded text-white hover:opacity-90" style="background-color:#4DA6FF;">Preview Full Listing Detail</a>
         </div>
       </form>
     </section>
@@ -424,7 +423,7 @@
       if (banner) banner.classList.toggle("hidden", !isSold);
 
       if (!isSold) {
-        // unlock only happens by reloading a non-sold record from server (we don't “unlock” sold)
+        // unlock only happens by reloading a non-sold record from server (we don't "unlock" sold)
         return false;
       }
 
@@ -436,7 +435,7 @@
         form.querySelectorAll("input, select, textarea, button").forEach(el => { el.disabled = true; });
       }
 
-      // Also disable promo button explicitly (it’s inside the form? no, but still disable)
+      // Also disable promo button explicitly (it's inside the form? no, but still disable)
       const promoBtn = document.getElementById("applyPromoBtn");
       if (promoBtn) promoBtn.disabled = true;
 
@@ -797,44 +796,6 @@
         setTimeout(() => { if (!soldLocked) setAutosaveUI("waiting"); }, 3000);
       } finally {
         e.target.value = "";
-      }
-    });
-
-    // Manual Save button preserved
-    $("saveBtn").addEventListener("click", async () => {
-      if (!listingId) { alert("No listing ID in this session."); return; }
-      if (soldLocked || checkSoldLock($("status")?.value)) { alert("This listing is SOLD and locked."); return; }
-
-      setAutosaveUI("saving");
-
-      const payload = buildAutosavePayload();
-
-      try {
-        const curSnap = await getDoc(doc(db, "listings", listingId));
-        const cur = curSnap.exists() ? (curSnap.data() || {}) : {};
-        if (!cur.zip) {
-          const addr = $("fullAddress").value || "";
-          const z = parseZipFromAddressEnd(addr);
-          if (z) payload.zip = z;
-        }
-      } catch (e) {
-        console.warn("[agent] zip backfill skipped:", e);
-      }
-
-      try {
-        await updateDoc(doc(db, "listings", listingId), payload);
-        ensureLatLng(listingId, $("fullAddress").value);
-        await refreshFromServer("Saved to server.");
-
-        setAutosaveUI("saved");
-        setTimeout(() => { if (!soldLocked) setAutosaveUI("waiting"); }, 1800);
-        alert("Saved.");
-      } catch (e) {
-        console.warn("[agent-detail] save failed", e);
-        setAutosaveUI("error");
-        setStatus("Could not save to server.", false);
-        setTimeout(() => { if (!soldLocked) setAutosaveUI("waiting"); }, 3000);
-        alert("Could not save. Try again.");
       }
     });
 
