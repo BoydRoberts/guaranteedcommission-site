@@ -1229,6 +1229,46 @@
       if (formData.address && !$("fullAddress").value) $("fullAddress").value = formData.address;
 
       await refreshFromServer();
+
+      // =========================================================================
+      // FIX: Plan Downgrade Sync (only when upgraded=true is present)
+      // After refreshFromServer() so we can compare DB plan vs localStorage plan
+      // =========================================================================
+      try {
+        var u = new URL(window.location.href);
+        var upgraded = (u.searchParams.get("upgraded") === "true");
+
+        if (upgraded) {
+          var localPlan = (localStorage.getItem("selectedPlan") || "").trim();
+          var dbPlan = (plan || "").trim();
+
+          if (localPlan && dbPlan && localPlan !== dbPlan && listingId) {
+            console.log("[seller-detail] upgraded=true → syncing plan from localStorage to Firestore:", dbPlan, "→", localPlan);
+
+            await updateDoc(doc(db, "listings", listingId), {
+              plan: localPlan,
+              updatedAt: serverTimestamp()
+            });
+
+            // Update local state + UI to match localStorage (source of truth in this path)
+            plan = localPlan;
+            isFSBO = plan.includes("FSBO");
+            isPlus = (plan === "Listed Property Plus" || isFSBO);
+            maxPhotos = isPlus ? 20 : 1;
+
+            $("planPill").textContent = plan || "—";
+
+            // Keep gating + photo help consistent with updated plan
+            applyFieldLocking(plan, paidUpgrades);
+            computePhotoHelp();
+            renderThumbs();
+          }
+        }
+      } catch (e) {
+        console.warn("[seller-detail] upgraded=true sync skipped:", e);
+      }
+      // =========================================================================
+
       computePhotoHelp();
       wireAutosaveListeners();
       if (!soldLocked) setAutosaveUI("waiting");
