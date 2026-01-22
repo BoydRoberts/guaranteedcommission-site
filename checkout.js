@@ -1,6 +1,6 @@
-// /checkout.js - build 2026-01-21 (Allow downgrade from Plus at checkout; preserve CC fix + all existing logic)
+// /checkout.js - build 2026-01-21b (CC Who Row shows NEW commission; preserve downgrade + CC base=0 fix)
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("[checkout.js] build 2026-01-21 - allow Plus downgrade");
+  console.log("[checkout.js] build 2026-01-21b - CC Who Row shows new commission");
 
   var $ = function(id) { return document.getElementById(id); };
   var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
@@ -51,13 +51,26 @@ document.addEventListener("DOMContentLoaded", function() {
   var roleIsAgent = (role === "listing_agent" || role === "buyers_agent");
   var likelySellerFlow = hasSellerEmail || (!hasAgentData && !roleIsAgent);
 
-  // Who row (Dec-18 detailed style)
-  (function renderWhoRow(){
+  // ===== WHO ROW FUNCTION (moved to named function, called after data is initialized) =====
+  // This allows us to check data.meta.fromChangeCommission for the new commission value
+  function renderWhoRow() {
     if (!$("whoLine")) return;
     var addr = formData.address || "[Full Address]";
     var name = formData.name || "[Name]";
-    var type = (agentListing && agentListing.commissionType) || (formData && formData.commissionType) || "%";
-    var raw  = (agentListing && agentListing.commission != null) ? agentListing.commission : ((formData && formData.commission != null) ? formData.commission : "");
+
+    // ===== CHANGE COMMISSION DISPLAY FIX (2026-01-21) =====
+    // If in Change Commission flow, show the NEW commission value, not the old one
+    var type, raw;
+    if (data && data.meta && data.meta.fromChangeCommission === true) {
+      // Use the new commission values from meta
+      type = data.meta.newCommissionType || "%";
+      raw = (data.meta.newCommission != null && data.meta.newCommission !== "") ? data.meta.newCommission : "";
+    } else {
+      // Standard flow: use existing formData/agentListing values
+      type = (agentListing && agentListing.commissionType) || (formData && formData.commissionType) || "%";
+      raw  = (agentListing && agentListing.commission != null) ? agentListing.commission : ((formData && formData.commission != null) ? formData.commission : "");
+    }
+
     var comm = raw ? (type === "$" ? "$" + Math.round(Number(raw)).toLocaleString() : raw + "%") : "[commission]";
 
     if (isFSBOPlan(planLS)) {
@@ -78,7 +91,7 @@ document.addEventListener("DOMContentLoaded", function() {
     $("whoLine").style.whiteSpace = "pre-line";
     var whoRow = $("whoRow");
     if (whoRow) whoRow.classList.remove("hidden");
-  })();
+  }
 
   // checkoutData normalize
   var data = getJSON("checkoutData", null);
@@ -240,6 +253,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
   data = recompute(data);
   localStorage.setItem("checkoutData", JSON.stringify(data));
+
+  // ===== CALL renderWhoRow() AFTER data is initialized =====
+  // This ensures we can check data.meta.fromChangeCommission for new commission display
+  renderWhoRow();
 
   function renderSummary() {
     if ($("planName")) $("planName").textContent = data.plan + " ($" + (data.base || 0) + ")";
