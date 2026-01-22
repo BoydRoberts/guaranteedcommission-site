@@ -868,7 +868,6 @@
       }
     }
 
-    // ===== Autosave payload + wiring =====
     function buildAutosavePayload() {
       var planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
 
@@ -908,8 +907,6 @@
     async function doAutosave() {
       if (!listingId) return;
       if (soldLocked) return;
-
-      // If user just chose Sold in UI, lock immediately and stop
       if (checkSoldLock($("status")?.value)) return;
 
       setAutosaveUI("saving");
@@ -939,8 +936,6 @@
         if (type === "file") return;
         if (el.hasAttribute("readonly")) return;
         if (el.hasAttribute("disabled")) return;
-
-        // Commission is locked on this page; never autosave it
         if (el.id === "commission" || el.id === "commissionType") return;
 
         el.addEventListener("input", function(){ autosaveDebounced(); });
@@ -948,7 +943,6 @@
       });
     }
 
-    // refresh all fields from server
     async function refreshFromServer(note){
       if (!listingId) { setStatus("No listing selected (missing id).", false); return; }
 
@@ -1018,7 +1012,6 @@
           console.warn("[local-pros] sidebar/strip skipped:", e);
         }
 
-        // IMPORTANT: lock last so it overrides everything
         checkSoldLock(d.status);
 
         if (!soldLocked) setAutosaveUI("waiting");
@@ -1029,18 +1022,11 @@
       }
     }
 
-    // Lock immediately if user selects Sold
     $("status")?.addEventListener("change", function(){
       checkSoldLock($("status")?.value);
       autosaveDebounced();
     });
 
-    // ============================================================
-    // Upgrades UI wiring (UPDATED):
-    // - Change Commission checkbox opens modal (no visual check)
-    // - Other upgrades save into checkoutData (no redirect)
-    // - Go to Checkout remains intentional navigation
-    // ============================================================
     (async function wireUpgrades(){
       var checkoutData = getJSON("checkoutData", null) || {};
 
@@ -1100,7 +1086,6 @@
 
       box.innerHTML = upgrades.join("");
 
-      // Change Commission checkbox: modal trigger only (no visual check)
       var cc = document.getElementById("changeCommissionChk");
       if (cc) {
         cc.addEventListener("click", function(e) {
@@ -1114,7 +1099,6 @@
         });
       }
 
-      // Other upgrades: persist selection into checkoutData (no redirect)
       var inputs = box.querySelectorAll('input[type="checkbox"]');
       for (var i = 0; i < inputs.length; i++) {
         var el = inputs[i];
@@ -1155,7 +1139,6 @@
         });
       }
 
-      // Go to Checkout Button: manual redirect
       var checkoutBtn = $("goCheckoutBtn");
       if (checkoutBtn) {
         checkoutBtn.addEventListener("click", function() {
@@ -1172,10 +1155,6 @@
       }
     })();
 
-    // ============================================================
-    // Change Commission: Confirm button (single handler)
-    // Saves newCommission + newCommissionType into checkoutData, then redirects
-    // ============================================================
     (function wireConfirmCommissionOnce() {
       var btn = document.getElementById("confirmCommissionBtn");
       if (!btn) return;
@@ -1232,26 +1211,26 @@
 
       // =========================================================================
       // FIX: Plan Downgrade Sync (only when upgraded=true is present)
-      // After refreshFromServer() so we can compare DB plan vs localStorage plan
+      // Uses checkoutData.plan as source of truth and FORCE overwrites Firestore.
       // =========================================================================
       try {
         var u = new URL(window.location.href);
         var upgraded = (u.searchParams.get("upgraded") === "true");
 
         if (upgraded) {
-          var localPlan = (localStorage.getItem("selectedPlan") || "").trim();
-          var dbPlan = (plan || "").trim();
+          var cd2 = getJSON("checkoutData", {});
+          var checkoutPlan = (cd2 && cd2.plan ? String(cd2.plan) : "").trim();
 
-          if (localPlan && dbPlan && localPlan !== dbPlan && listingId) {
-            console.log("[seller-detail] upgraded=true → syncing plan from localStorage to Firestore:", dbPlan, "→", localPlan);
+          if (checkoutPlan && listingId) {
+            console.log("[seller-detail] upgraded=true → forcing plan from checkoutData.plan to Firestore:", checkoutPlan);
 
             await updateDoc(doc(db, "listings", listingId), {
-              plan: localPlan,
+              plan: checkoutPlan,
               updatedAt: serverTimestamp()
             });
 
-            // Update local state + UI to match localStorage (source of truth in this path)
-            plan = localPlan;
+            // Force UI + local state immediately
+            plan = checkoutPlan;
             isFSBO = plan.includes("FSBO");
             isPlus = (plan === "Listed Property Plus" || isFSBO);
             maxPhotos = isPlus ? 20 : 1;
@@ -1265,7 +1244,7 @@
           }
         }
       } catch (e) {
-        console.warn("[seller-detail] upgraded=true sync skipped:", e);
+        console.warn("[seller-detail] upgraded=true checkoutData.plan sync skipped:", e);
       }
       // =========================================================================
 
