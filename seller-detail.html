@@ -1210,41 +1210,67 @@
       await refreshFromServer();
 
       // =========================================================================
-      // FIX: Plan Downgrade Sync (only when upgraded=true is present)
-      // Uses checkoutData.plan as source of truth and FORCE overwrites Firestore.
+      // FIX: Multi-Strategy Downgrade Sync (only when upgraded=true is present)
+      // Strategy A: checkoutData.plan
+      // Strategy B: selectedPlan fallback
+      // Force overwrite Firestore + Force UI update
+      // Debug logs included as requested
       // =========================================================================
       try {
         var u = new URL(window.location.href);
         var upgraded = (u.searchParams.get("upgraded") === "true");
 
         if (upgraded) {
-          var cd2 = getJSON("checkoutData", {});
-          var checkoutPlan = (cd2 && cd2.plan ? String(cd2.plan) : "").trim();
+          console.log("[seller-detail] Upgraded flag detected");
 
-          if (checkoutPlan && listingId) {
-            console.log("[seller-detail] upgraded=true → forcing plan from checkoutData.plan to Firestore:", checkoutPlan);
+          // Read listingId fresh/verify
+          var lidFresh = (localStorage.getItem("lastListingId") || "").trim();
+          if (!lidFresh) {
+            console.warn("[seller-detail] upgraded=true but missing listingId - cannot sync plan");
+          } else {
 
-            await updateDoc(doc(db, "listings", listingId), {
-              plan: checkoutPlan,
-              updatedAt: serverTimestamp()
-            });
+            var targetPlan = "";
 
-            // Force UI + local state immediately
-            plan = checkoutPlan;
-            isFSBO = plan.includes("FSBO");
-            isPlus = (plan === "Listed Property Plus" || isFSBO);
-            maxPhotos = isPlus ? 20 : 1;
+            // Strategy A: checkoutData.plan
+            var cdA = getJSON("checkoutData", {});
+            if (cdA && typeof cdA.plan === "string" && cdA.plan.trim()) {
+              targetPlan = cdA.plan.trim();
+            }
 
-            $("planPill").textContent = plan || "—";
+            // Strategy B: selectedPlan fallback
+            if (!targetPlan) {
+              var spB = (localStorage.getItem("selectedPlan") || "").trim();
+              if (spB) targetPlan = spB;
+            }
 
-            // Keep gating + photo help consistent with updated plan
-            applyFieldLocking(plan, paidUpgrades);
-            computePhotoHelp();
-            renderThumbs();
+            if (targetPlan) {
+              console.log("[seller-detail] Target Plan found:", targetPlan);
+              console.log("[seller-detail] Force updating Firestore");
+
+              await updateDoc(doc(db, "listings", lidFresh), {
+                plan: targetPlan,
+                updatedAt: serverTimestamp()
+              });
+
+              // Force UI + local state immediately
+              plan = targetPlan;
+              isFSBO = plan.includes("FSBO");
+              isPlus = (plan === "Listed Property Plus" || isFSBO);
+              maxPhotos = isPlus ? 20 : 1;
+
+              $("planPill").textContent = plan || "—";
+
+              // Keep gating + photo help consistent with updated plan
+              applyFieldLocking(plan, paidUpgrades);
+              computePhotoHelp();
+              renderThumbs();
+            } else {
+              console.warn("[seller-detail] upgraded=true but no target plan found via checkoutData.plan or selectedPlan");
+            }
           }
         }
       } catch (e) {
-        console.warn("[seller-detail] upgraded=true checkoutData.plan sync skipped:", e);
+        console.warn("[seller-detail] upgraded=true multi-strategy sync skipped:", e);
       }
       // =========================================================================
 
