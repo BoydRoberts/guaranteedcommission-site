@@ -326,7 +326,7 @@
       if (!address || !MAPBOX_TOKEN) { failResult.status = "skipped"; return failResult; }
 
       try {
-        const url = \`https://api.mapbox.com/geocoding/v5/mapbox.places/\${encodeURIComponent(address)}.json?limit=1&access_token=\${MAPBOX_TOKEN}\`;
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?limit=1&access_token=${MAPBOX_TOKEN}`;
         const fetchPromise = fetch(url);
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), GEO_TIMEOUT_MS));
 
@@ -496,19 +496,19 @@
     function renderProsSidebar(zip, agents, lenders) {
       agents = agents || [];
       lenders = lenders || [];
-      var card = \$("prosSidebar");
+      var card = $("prosSidebar");
       if (!card) return;
 
       var currentPlan = plan.trim();
       var isFSBO = currentPlan.includes("FSBO");
       if (!isFSBO) { card.classList.add("hidden"); return; }
 
-      \$("prosZip").textContent = zip || "—";
-      \$("prosCtaBtn").href = "/local-professionals.html?zip=" + encodeURIComponent(zip) + "&mode=search";
-      \$("prosEmptyLink").href = "/local-professionals.html?zip=" + encodeURIComponent(zip) + "&mode=apply";
+      $("prosZip").textContent = zip || "—";
+      $("prosCtaBtn").href = "/local-professionals.html?zip=" + encodeURIComponent(zip) + "&mode=search";
+      $("prosEmptyLink").href = "/local-professionals.html?zip=" + encodeURIComponent(zip) + "&mode=apply";
 
-      var list = \$("prosList");
-      var empty = \$("prosEmpty");
+      var list = $("prosList");
+      var empty = $("prosEmpty");
       list.innerHTML = "";
 
       function noImageFSBO(){
@@ -567,19 +567,19 @@
     }
 
     function renderBrokerStrip(zip, broker) {
-      var strip = \$("brokerStrip");
+      var strip = $("brokerStrip");
       if (!strip) return;
 
       var currentPlan = plan.trim();
       var isFSBO = currentPlan.includes("FSBO");
       if (!isFSBO) { strip.style.display = "none"; return; }
 
-      \$("brokerZip").textContent = zip || "—";
-      \$("brokerCtaBtn").href = "/local-brokers.html?zip=" + encodeURIComponent(zip);
-      \$("brokerEmptyLink").href = "/local-brokers.html?zip=" + encodeURIComponent(zip) + "&mode=apply";
+      $("brokerZip").textContent = zip || "—";
+      $("brokerCtaBtn").href = "/local-brokers.html?zip=" + encodeURIComponent(zip);
+      $("brokerEmptyLink").href = "/local-brokers.html?zip=" + encodeURIComponent(zip) + "&mode=apply";
 
-      var ad = \$("brokerAd");
-      var empty = \$("brokerEmpty");
+      var ad = $("brokerAd");
+      var empty = $("brokerEmpty");
       ad.innerHTML = "";
 
       if (broker && (broker.photoUrl || broker.name)) {
@@ -621,8 +621,8 @@
 
     var listingId = (localStorage.getItem("lastListingId") || "").trim();
 
-    if (\$("previewLink") && listingId) {
-      \$("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
+    if ($("previewLink") && listingId) {
+      $("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
     }
 
     // state
@@ -638,7 +638,7 @@
 
     function computePhotoHelp() {
       var remaining = Math.max(0, maxPhotos - (photos ? photos.length : 0));
-      var el = \$("photoHelp");
+      var el = $("photoHelp");
       if (el) {
         el.textContent = isPlus
           ? "You can add up to " + remaining + " more " + plural(remaining, "photo","photos") + "."
@@ -653,7 +653,7 @@
 
     function renderThumbs(){
       clampPrimary();
-      var grid = \$("photoGrid");
+      var grid = $("photoGrid");
       if (!grid) return;
       grid.innerHTML = "";
 
@@ -782,7 +782,7 @@
       }
     }
 
-    var photoInput = \$("photoInput");
+    var photoInput = $("photoInput");
     if (photoInput) {
       photoInput.addEventListener("change", async function(e){
         if (soldLocked) return;
@@ -824,8 +824,8 @@
       var isBasic = planName === "Listed Property Basic";
       paidUpgrades = paidUpgrades || {};
 
-      var descEl = \$("description");
-      var descNote = \$("descGateNote");
+      var descEl = $("description");
+      var descNote = $("descGateNote");
       if (isBasic) {
         if (descEl) { descEl.classList.add("dimmed"); descEl.setAttribute("disabled","disabled"); }
         if (descNote) descNote.classList.remove("hidden");
@@ -834,8 +834,8 @@
         if (descNote) descNote.classList.add("hidden");
       }
 
-      var bannerEl = \$("bannerText");
-      var bannerNote = \$("bannerGateNote");
+      var bannerEl = $("bannerText");
+      var bannerNote = $("bannerGateNote");
       var bannerUnlocked = !!paidUpgrades.banner;
       if (bannerUnlocked) {
         if (bannerEl) { bannerEl.classList.remove("dimmed"); bannerEl.removeAttribute("disabled"); }
@@ -845,8 +845,8 @@
         if (bannerNote) bannerNote.classList.remove("hidden");
       }
 
-      var premiumEl = \$("preferredArea");
-      var premiumNote = \$("premiumGateNote");
+      var premiumEl = $("preferredArea");
+      var premiumNote = $("premiumGateNote");
       var premiumUnlocked = !!paidUpgrades.premium || !!paidUpgrades.pin;
       if (premiumUnlocked) {
         if (premiumEl) { premiumEl.classList.remove("dimmed"); premiumEl.removeAttribute("disabled"); }
@@ -856,8 +856,8 @@
         if (premiumNote) premiumNote.classList.remove("hidden");
       }
 
-      var pinEl = \$("pinArea");
-      var pinNote = \$("pinGateNote");
+      var pinEl = $("pinArea");
+      var pinNote = $("pinGateNote");
       var pinUnlocked = !!paidUpgrades.pin;
       if (pinUnlocked) {
         if (pinEl) { pinEl.classList.remove("dimmed"); pinEl.removeAttribute("disabled"); }
@@ -874,30 +874,30 @@
 
       var payload = {
         updatedAt: serverTimestamp(),
-        status: \$("status").value || "",
-        price: Number(\$("price").value || 0) || "",
-        apn: \$("apn").value || "",
-        bedrooms: \$("bedrooms").value || "",
-        bathrooms: \$("bathrooms").value || "",
-        sqft: \$("sqft").value || "",
-        yearBuilt: \$("yearBuilt").value || "",
-        lotSize: \$("lotSize").value || "",
-        propertyType: \$("propertyType").value || "",
-        description: \$("description").value || "",
-        bannerText: \$("bannerText").value || "",
-        preferredArea: \$("preferredArea").value || "",
-        pinArea: \$("pinArea").value || ""
+        status: $("status").value || "",
+        price: Number($("price").value || 0) || "",
+        apn: $("apn").value || "",
+        bedrooms: $("bedrooms").value || "",
+        bathrooms: $("bathrooms").value || "",
+        sqft: $("sqft").value || "",
+        yearBuilt: $("yearBuilt").value || "",
+        lotSize: $("lotSize").value || "",
+        propertyType: $("propertyType").value || "",
+        description: $("description").value || "",
+        bannerText: $("bannerText").value || "",
+        preferredArea: $("preferredArea").value || "",
+        pinArea: $("pinArea").value || ""
       };
 
       if (!planNow.includes("FSBO")) {
-        payload.brokerage = \$("brokerage").value || "";
-        payload.agentName = \$("agentName").value || "";
-        payload.agentEmail = \$("agentEmail").value || "";
-        payload.agentPhone = \$("agentPhone").value || "";
+        payload.brokerage = $("brokerage").value || "";
+        payload.agentName = $("agentName").value || "";
+        payload.agentEmail = $("agentEmail").value || "";
+        payload.agentPhone = $("agentPhone").value || "";
       }
 
       if (!currentZipOnDoc) {
-        var addr = (\$("fullAddress")?.value || "").trim();
+        var addr = ($("fullAddress")?.value || "").trim();
         var z = parseZipFromAddressEnd(addr);
         if (z) payload.zip = z;
       }
@@ -910,7 +910,7 @@
       if (soldLocked) return;
 
       // If user just chose Sold in UI, lock immediately and stop
-      if (checkSoldLock(\$("status")?.value)) return;
+      if (checkSoldLock($("status")?.value)) return;
 
       setAutosaveUI("saving");
       try {
@@ -965,33 +965,33 @@
         paidUpgrades = d.paidUpgrades || {};
         currentZipOnDoc = String(d.zip || "");
 
-        \$("planPill").textContent = plan || "—";
-        \$("fullAddress").value = d.address || "";
-        \$("status").value = d.status || "";
-        \$("price").value = d.price != null ? d.price : "";
-        \$("commission").value = d.commission != null ? d.commission : "";
-        \$("commissionType").value = d.commissionType || "%";
-        \$("apn").value = d.apn || "";
-        \$("bedrooms").value = d.bedrooms != null ? d.bedrooms : "";
-        \$("bathrooms").value = d.bathrooms != null ? d.bathrooms : "";
-        \$("sqft").value = d.sqft != null ? d.sqft : "";
-        \$("yearBuilt").value = d.yearBuilt != null ? d.yearBuilt : "";
-        \$("lotSize").value = d.lotSize != null ? d.lotSize : "";
-        \$("propertyType").value = d.propertyType || "";
-        \$("description").value = d.description || "";
-        \$("bannerText").value = d.bannerText || "";
-        \$("preferredArea").value = d.preferredArea || "";
-        \$("pinArea").value = d.pinArea || "";
-        \$("brokerage").value = d.brokerage || "";
-        \$("agentName").value = d.agentName || "";
-        \$("agentEmail").value = d.agentEmail || "";
-        \$("agentPhone").value = d.agentPhone || "";
+        $("planPill").textContent = plan || "—";
+        $("fullAddress").value = d.address || "";
+        $("status").value = d.status || "";
+        $("price").value = d.price != null ? d.price : "";
+        $("commission").value = d.commission != null ? d.commission : "";
+        $("commissionType").value = d.commissionType || "%";
+        $("apn").value = d.apn || "";
+        $("bedrooms").value = d.bedrooms != null ? d.bedrooms : "";
+        $("bathrooms").value = d.bathrooms != null ? d.bathrooms : "";
+        $("sqft").value = d.sqft != null ? d.sqft : "";
+        $("yearBuilt").value = d.yearBuilt != null ? d.yearBuilt : "";
+        $("lotSize").value = d.lotSize != null ? d.lotSize : "";
+        $("propertyType").value = d.propertyType || "";
+        $("description").value = d.description || "";
+        $("bannerText").value = d.bannerText || "";
+        $("preferredArea").value = d.preferredArea || "";
+        $("pinArea").value = d.pinArea || "";
+        $("brokerage").value = d.brokerage || "";
+        $("agentName").value = d.agentName || "";
+        $("agentEmail").value = d.agentEmail || "";
+        $("agentPhone").value = d.agentPhone || "";
 
         if (plan.includes("FSBO")) {
-          var block = \$("listedBlock");
+          var block = $("listedBlock");
           if (block) block.style.display = "none";
         } else {
-          var block2 = \$("listedBlock");
+          var block2 = $("listedBlock");
           if (block2) block2.style.display = "block";
         }
 
@@ -1006,7 +1006,7 @@
         ensureLatLng(listingId, d.address);
 
         try {
-          var zip = d.zip || parseZipFromAddress(\$("fullAddress").value || "");
+          var zip = d.zip || parseZipFromAddress($("fullAddress").value || "");
           if (zip) {
             var prosData = await loadLocalPros(zip);
             renderProsSidebar(zip, prosData.agents, prosData.lenders);
@@ -1030,8 +1030,8 @@
     }
 
     // Lock immediately if user selects Sold
-    \$("status")?.addEventListener("change", function(){
-      checkSoldLock(\$("status")?.value);
+    $("status")?.addEventListener("change", function(){
+      checkSoldLock($("status")?.value);
       autosaveDebounced();
     });
 
@@ -1071,7 +1071,7 @@
         return "<label class=\"flex items-center justify-between border rounded-lg px-3 py-2 " + grayedClass + "\">" +
           "<div>" +
             "<span class=\"font-medium\">" + label + "</span>" +
-            "<span class=\"text-gray-500\"> - \$" + price + "</span>" +
+            "<span class=\"text-gray-500\"> - $" + price + "</span>" +
             paidLabel + desc +
           "</div>" +
           "<input type=\"checkbox\" id=\"" + inputId + "\" data-key=\"" + key + "\" class=\"h-4 w-4\" " +
@@ -1079,7 +1079,7 @@
         "</label>";
       }
 
-      var box = \$("upgradesBox");
+      var box = $("upgradesBox");
       if (!box) return;
 
       var upgrades = [];
@@ -1106,7 +1106,7 @@
         cc.addEventListener("click", function(e) {
           e.preventDefault();
           e.stopPropagation();
-          if (soldLocked || checkSoldLock(\$("status")?.value)) {
+          if (soldLocked || checkSoldLock($("status")?.value)) {
             alert("This listing is SOLD and locked. Upgrades are disabled.");
             return;
           }
@@ -1124,7 +1124,7 @@
         if (el.disabled) continue;
 
         el.addEventListener("change", function(e) {
-          if (soldLocked || checkSoldLock(\$("status")?.value)) {
+          if (soldLocked || checkSoldLock($("status")?.value)) {
             e.target.checked = false;
             alert("This listing is SOLD and locked. Upgrades are disabled.");
             return;
@@ -1156,10 +1156,10 @@
       }
 
       // Go to Checkout Button: manual redirect
-      var checkoutBtn = \$("goCheckoutBtn");
+      var checkoutBtn = $("goCheckoutBtn");
       if (checkoutBtn) {
         checkoutBtn.addEventListener("click", function() {
-          if (soldLocked || checkSoldLock(\$("status")?.value)) {
+          if (soldLocked || checkSoldLock($("status")?.value)) {
             alert("This listing is SOLD and locked. Upgrades are disabled.");
             return;
           }
@@ -1223,10 +1223,10 @@
     // Boot
     (async function boot(){
       var who = (localStorage.getItem("loggedInEmail") || "").trim();
-      \$("whoLine").textContent = who ? "Logged in as " + who : "";
+      $("whoLine").textContent = who ? "Logged in as " + who : "";
 
       var formData = getJSON("formData", {});
-      if (formData.address && !\$("fullAddress").value) \$("fullAddress").value = formData.address;
+      if (formData.address && !$("fullAddress").value) $("fullAddress").value = formData.address;
 
       await refreshFromServer();
       computePhotoHelp();
