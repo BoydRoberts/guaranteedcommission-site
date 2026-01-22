@@ -1,6 +1,6 @@
-// /checkout.js - build 2026-01-18 (Fix: Change Commission base=0 + force ID in cc successUrl; preserve all existing logic)
+// /checkout.js - build 2026-01-21 (Allow downgrade from Plus at checkout; preserve CC fix + all existing logic)
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("[checkout.js] build 2025-12-27 - whoLine cosmetic");
+  console.log("[checkout.js] build 2026-01-21 - allow Plus downgrade");
 
   var $ = function(id) { return document.getElementById(id); };
   var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
@@ -148,7 +148,7 @@ document.addEventListener("DOMContentLoaded", function() {
     return pu || {};
   }
 
-  // Pricing recompute (FIXED: commission change base must be 0; remove hard reset leak; enforce Plus intent from localStorage)
+  // Pricing recompute (FIXED: commission change base=0 + force ID in cc successUrl; preserve all existing logic)
   function recompute(d) {
     var freshPlan = (localStorage.getItem("selectedPlan") || "").trim();
     var plan = freshPlan || d.plan || "Listed Property Basic";
@@ -295,22 +295,37 @@ document.addEventListener("DOMContentLoaded", function() {
     var isCommissionChange = isChangeCommissionEnabled();
     var pu = paid();
 
-    var plusNotPaid = !isFSBO && (plan === "Listed Property Plus") && !(pu && pu.upgradeToPlus) && data.payer === "seller" && !promo && !isCommissionChange;
-    if (plusNotPaid) {
-      data.upgrades.upgradeToPlus = true;
-      localStorage.setItem("checkoutData", JSON.stringify(data));
-    }
+    // ===== DOWNGRADE FIX (2026-01-21) =====
+    // REMOVED: The old "plusNotPaid" block that forced upgradeToPlus=true and locked the checkbox.
+    // Now users can uncheck to downgrade from Plus to Basic before paying.
+    // The checkbox is only disabled if:
+    //   1. Already paid for Plus (pu.upgradeToPlus), OR
+    //   2. Commission change flow (can't change plan during CC)
 
     var toggles = [];
 
     if (!isFSBO) {
+      // Determine if checkbox should be disabled
+      var plusAlreadyPaid = !!(pu && pu.upgradeToPlus);
+      var plusDisabled = isCommissionChange || plusAlreadyPaid;
+
+      // Determine note text
+      var plusNote = "";
+      if (plusAlreadyPaid) {
+        plusNote = "(Already paid)";
+      } else if (isCommissionChange) {
+        plusNote = "(Not available during commission changes)";
+      } else if (plan === "Listed Property Plus") {
+        plusNote = "(Uncheck to downgrade to Basic - FREE)";
+      }
+
       toggles.push({
         key:"upgradeToPlus",
-        label: (plan === "Listed Property Plus" ? "Listed Property Plus (Selected Plan)" : "Upgrade to Listed Property Plus"),
+        label: (plan === "Listed Property Plus" ? "Listed Property Plus" : "Upgrade to Listed Property Plus"),
         price: promo ? 0 : (data.prices.plus || 20),
         checked: (plan === "Listed Property Plus") || !!data.upgrades.upgradeToPlus,
-        disabled: isCommissionChange || plusNotPaid || (pu && pu.upgradeToPlus) || (plan === "Listed Property Plus" && (pu && pu.upgradeToPlus)),
-        note: (pu && pu.upgradeToPlus) ? "(Already paid)" : (plusNotPaid ? "(Required for checkout)" : (isCommissionChange ? "(Not available during commission changes)" : ""))
+        disabled: plusDisabled,
+        note: plusNote
       });
     }
 
@@ -356,6 +371,8 @@ document.addEventListener("DOMContentLoaded", function() {
             data.plan = "Listed Property Plus";
             localStorage.setItem("selectedPlan", "Listed Property Plus");
           } else {
+            // ===== DOWNGRADE HANDLER (2026-01-21) =====
+            // User unchecked Plus → revert to Basic with $0 base
             data.plan = "Listed Property Basic";
             data.base = 0;
             localStorage.setItem("selectedPlan", "Listed Property Basic");
