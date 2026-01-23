@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- seller-detail.html - Build 2026-01-16 (Soft Autosave + Sold Lock; preserves existing logic; FIX: Change Commission modal flow) -->
+<!-- seller-detail.html - Build 2026-01-22 (Price-Based Truth Downgrade Sync + Autosave) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -1210,12 +1210,9 @@
       await refreshFromServer();
 
       // =========================================================================
-      // FIX: Downgrade Sync (only when upgraded=true is present)
-      // PRIORITY CORRECTION:
-      //   Priority 1 (Top): selectedPlan
-      //   Priority 2 (Fallback): checkoutData.plan (only if selectedPlan missing)
-      // Execution: If targetPlan found, FORCE overwrite Firestore + FORCE UI update.
-      // Logging kept so we can validate which strategy won.
+      // FIX: Downgrade Sync (Price-Based Truth)
+      // The Zero-Dollar Rule: If checkoutData.total === 0, user downgraded to Basic.
+      // This is authoritative because price doesn't lie - selectedPlan strings were unreliable.
       // =========================================================================
       try {
         var u = new URL(window.location.href);
@@ -1232,24 +1229,26 @@
 
             var targetPlan = "";
 
-            // PRIORITY 1: selectedPlan (authoritative)
-            var spTop = (localStorage.getItem("selectedPlan") || "").trim();
-            if (spTop) {
-              targetPlan = spTop;
-              console.log("[seller-detail] Target Plan found (selectedPlan):", targetPlan);
-            }
+            // Read checkoutData for price-based truth
+            var cdSync = getJSON("checkoutData", {});
+            console.log("[seller-detail] checkoutData.total:", cdSync?.total, "type:", typeof cdSync?.total);
 
-            // PRIORITY 2: checkoutData.plan (fallback only if selectedPlan missing)
-            if (!targetPlan) {
-              var cdFallback = getJSON("checkoutData", {});
-              if (cdFallback && typeof cdFallback.plan === "string" && cdFallback.plan.trim()) {
-                targetPlan = cdFallback.plan.trim();
-                console.log("[seller-detail] Target Plan found (checkoutData.plan):", targetPlan);
+            // ZERO-DOLLAR RULE: If total is 0, force Basic (price doesn't lie)
+            if (cdSync && (cdSync.total === 0 || cdSync.total === "0")) {
+              targetPlan = "Listed Property Basic";
+              console.log("[seller-detail] $0 Transaction detected -> Forcing Basic");
+            }
+            // FALLBACK: If total > 0, use selectedPlan
+            else {
+              var spFallback = (localStorage.getItem("selectedPlan") || "").trim();
+              if (spFallback) {
+                targetPlan = spFallback;
+                console.log("[seller-detail] Paid transaction, using selectedPlan:", targetPlan);
               }
             }
 
             if (targetPlan) {
-              console.log("[seller-detail] Force updating Firestore");
+              console.log("[seller-detail] Force updating Firestore with plan:", targetPlan);
 
               await updateDoc(doc(db, "listings", lidFresh), {
                 plan: targetPlan,
@@ -1268,8 +1267,10 @@
               applyFieldLocking(plan, paidUpgrades);
               computePhotoHelp();
               renderThumbs();
+
+              console.log("[seller-detail] Plan sync complete. UI updated to:", plan);
             } else {
-              console.warn("[seller-detail] upgraded=true but no target plan found via selectedPlan or checkoutData.plan");
+              console.warn("[seller-detail] upgraded=true but no target plan determined");
             }
           }
         }
