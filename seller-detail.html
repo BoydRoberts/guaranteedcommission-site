@@ -1191,65 +1191,57 @@
       await refreshFromServer();
 
       // =========================================================================
-      // FIX: Downgrade Sync (Price-Based Truth + Referrer Safety Net)
-      // Trigger: Checks URL param OR if user came from /checkout.html
-      // Rule: If total was $0, force "Listed Property Basic" immediately.
+      // FIX: "Always On" Price Consistency Check
+      // We do not rely on URL flags or Referrers anymore.
+      // If the local receipt says $0, we strictly enforce "Basic".
       // =========================================================================
       try {
-        var u = new URL(window.location.href);
-        var hasFlag = (u.searchParams.get("upgraded") === "true");
-        // SAFETY NET: Check if user came from checkout page (even if param missing)
-        var fromCheckout = document.referrer && document.referrer.includes("checkout");
-
-        if (hasFlag || fromCheckout) {
-          console.log("[seller-detail] Post-Checkout Context Detected (Flag: " + hasFlag + ", Referrer: " + fromCheckout + ")");
-
-          // Read listingId fresh/verify
-          var lidFresh = (localStorage.getItem("lastListingId") || "").trim();
-          if (lidFresh) {
-            var targetPlan = "";
-            var cdSync = getJSON("checkoutData", {});
+        var lidFresh = (localStorage.getItem("lastListingId") || "").trim();
+        if (lidFresh) {
+          var cdSync = getJSON("checkoutData", null);
+          
+          // Only run if we actually have recent checkout data
+          if (cdSync && cdSync.plan) {
+            var rawTotal = Number(cdSync.total);
             
-            // NORMALIZE TOTAL: Handle 0, "0", "0.00"
-            var rawTotal = cdSync ? Number(cdSync.total) : -1;
-            console.log("[seller-detail] Checkout Data Total:", rawTotal);
-
-            // RULE 1: ZERO-DOLLAR TRUTH
+            // THE GOLDEN RULE: If you paid $0, you are BASIC.
             if (rawTotal === 0) {
-              targetPlan = "Listed Property Basic";
-              console.log("[seller-detail] $0 Transaction detected -> Forcing Basic");
-            } 
-            // RULE 2: FALLBACK TO SELECTION
-            else {
-              var sp = (localStorage.getItem("selectedPlan") || "").trim();
-              if (sp) targetPlan = sp;
-            }
+              // Check if we are currently out of sync
+              // 'plan' variable comes from refreshFromServer() above
+              if (plan !== "Listed Property Basic") {
+                console.log("[seller-detail] DETECTED SYNC ERROR: Plan is '" + plan + "' but Receipt is $0.");
+                console.log("[seller-detail] FORCING DOWNGRADE TO BASIC.");
+                
+                var targetPlan = "Listed Property Basic";
+                
+                // 1. Force Database
+                await updateDoc(doc(db, "listings", lidFresh), {
+                  plan: targetPlan,
+                  updatedAt: serverTimestamp()
+                });
 
-            if (targetPlan) {
-              console.log("[seller-detail] Force updating Firestore with plan:", targetPlan);
-              
-              await updateDoc(doc(db, "listings", lidFresh), {
-                plan: targetPlan,
-                updatedAt: serverTimestamp()
-              });
+                // 2. Force Local State
+                plan = targetPlan;
+                isFSBO = false;
+                isPlus = false;
+                maxPhotos = 1;
 
-              // Force UI + local state immediately
-              plan = targetPlan;
-              isFSBO = plan.includes("FSBO");
-              isPlus = (plan === "Listed Property Plus" || isFSBO);
-              maxPhotos = isPlus ? 20 : 1;
-
-              $("planPill").textContent = plan;
-              applyFieldLocking(plan, paidUpgrades);
-              computePhotoHelp();
-              try { renderThumbs(); } catch(e) {}
-
-              console.log("[seller-detail] Sync Complete. UI is now:", plan);
+                // 3. Force UI
+                $("planPill").textContent = plan;
+                
+                // Re-run UI dependencies
+                applyFieldLocking(plan, paidUpgrades);
+                computePhotoHelp();
+                try { renderThumbs(); } catch(e) {}
+                
+                // Alert removed to reduce friction, but console log remains
+                console.log("Plan corrected to Basic ($0) to match receipt.");
+              }
             }
           }
         }
       } catch (e) {
-        console.warn("[seller-detail] sync skipped:", e);
+        console.warn("[seller-detail] sync check failed:", e);
       }
       // =========================================================================
 
