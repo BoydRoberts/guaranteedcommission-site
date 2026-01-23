@@ -284,7 +284,7 @@
 
   <div style="background-color:#4DA6FF;">
     <section class="flex flex-col md:flex-row justify-center items-start gap-6 px-4 py-8 max-w-7xl mx-auto">
-      <div id="box1" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm flex flex-col">
+      <div id="box1" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-base flex flex-col">
         <h2 class="gc-title">Commission Communication Menu</h2>
         <ul class="gc-body-top-box1 space-y-3 flex-1">
           <li>
@@ -362,7 +362,7 @@
         </form>
       </div>
 
-      <div id="box3" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-sm flex flex-col">
+      <div id="box3" class="w-full md:w-1/3 bg-white p-4 rounded shadow text-base flex flex-col">
         <h2 class="gc-title">Irrevocable Seller Communication</h2>
 
         <div id="iscTextListed" class="gc-body-top-box3 flex flex-col flex-1">
@@ -1105,6 +1105,7 @@
       box.addEventListener('keydown', function(e){
         if (e.key === 'Enter') {
           e.preventDefault();
+          e.stopPropagation(); // Stop form submission if inside form
           go();
         }
       });
