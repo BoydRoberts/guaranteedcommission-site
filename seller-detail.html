@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- seller-detail.html - Build 2026-01-22 (Price-Based Truth Downgrade Sync + Autosave) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -42,7 +41,6 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <!-- Soft Autosave status indicator -->
   <div id="autosaveIndicator" aria-live="polite">
     <span id="autosaveDot"></span>
     <span id="autosaveText">Waiting…</span>
@@ -54,7 +52,6 @@
         <a href="/index.html" class="text-sm text-blue-600 hover:underline">Home</a>
       </div>
 
-      <!-- UPDATED: Home-page branding block (logo + title + subtext) -->
       <div class="text-center leading-tight">
         <div class="flex items-end justify-center gap-1">
           <img src="/Logo.png" alt="Logo" class="h-10 w-10 object-contain -mb-1">
@@ -67,7 +64,6 @@
     </div>
   </header>
 
-  <!-- SOLD LOCK BANNER -->
   <div id="soldLockBanner" class="hidden max-w-6xl mx-auto px-3 mt-4">
     <div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-3 text-sm font-semibold">
       Locked: This listing is closed and can no longer be edited.
@@ -76,7 +72,6 @@
 
   <main class="max-w-6xl mx-auto mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6 px-3">
 
-    <!-- LEFT: Intake form -->
     <section class="lg:col-span-2 bg-white rounded shadow p-5">
       <div class="flex items-center justify-between">
         <p class="text-sm">
@@ -88,13 +83,11 @@
       <hr class="my-4"/>
 
       <form id="sellerForm" class="space-y-5" autocomplete="off">
-        <!-- Address (read-only from Box 2) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Full Property Address</label>
           <input id="fullAddress" class="w-full border p-2 rounded bg-gray-50" type="text" readonly>
         </div>
 
-        <!-- Status (required) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Status <span class="text-red-600">*</span></label>
           <select id="status" class="w-full border p-2 rounded" required>
@@ -105,7 +98,6 @@
           </select>
         </div>
 
-        <!-- Price & Commission (commission locked: change requires payment) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-semibold mb-1">Listing Price ($)</label>
@@ -122,7 +114,6 @@
           </div>
         </div>
 
-        <!-- Property Facts -->
         <div>
           <label class="block text-sm font-semibold mb-1">Property Facts</label>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -164,14 +155,12 @@
           </div>
         </div>
 
-        <!-- APN / Parcel (optional here; required earlier for FSBO) -->
         <div>
           <label class="block text-sm font-semibold mb-1">APN / Parcel #</label>
           <input id="apn" class="w-full border p-2 rounded" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #">
           <p id="apnReqMsg" class="text-xs text-gray-500 mt-1">FSBO requires an APN/Parcel value.</p>
         </div>
 
-        <!-- Photos -->
         <div>
           <label class="block text-sm font-semibold mb-1">Photos</label>
           <div id="photoHelp" class="text-xs text-gray-600 mb-2"></div>
@@ -180,14 +169,12 @@
           <p class="text-xs text-gray-500 mt-2">Click a thumbnail or use the buttons to set primary, replace, or delete.</p>
         </div>
 
-        <!-- Description (Plus/FSBO only; disabled for Listed Basic) -->
         <div>
           <label class="block text-sm font-semibold mb-1">Full Property Description</label>
           <textarea id="description" rows="6" placeholder="Enter full property description" class="w-full border p-2 rounded"></textarea>
           <p id="descGateNote" class="lock-note mt-1 hidden">Upgrade to Listed Property Plus to enable Description.</p>
         </div>
 
-        <!-- Banner / Preferred / Pin -->
         <div>
           <label class="block text-sm font-semibold mb-1">Banner (optional)</label>
           <input id="bannerText" maxlength="30" placeholder="30 characters max (e.g., Open Sunday 1-4)" class="w-full border p-2 rounded">
@@ -206,7 +193,6 @@
           <p id="pinGateNote" class="lock-note mt-1 hidden">Purchase Pin Placement to enable this field.</p>
         </div>
 
-        <!-- Listed-only: Brokerage/Agent confirms -->
         <div id="listedBlock">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -234,7 +220,6 @@
       </form>
     </section>
 
-    <!-- RIGHT: Upgrades + Local Pros -->
     <aside class="space-y-4">
 
       <section class="bg-white rounded shadow p-5">
@@ -246,7 +231,6 @@
         <p class="text-xs text-gray-500 mt-2">Purchases are final.</p>
       </section>
 
-      <!-- Vertical Local Professionals (sticky) -->
       <section id="prosSidebar" class="bg-white rounded shadow p-5">
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold">Local Professionals in <span id="prosZip">—</span></h3>
@@ -259,7 +243,6 @@
       </section>
     </aside>
 
-    <!-- Bottom Local Broker strip -->
     <section id="brokerStrip" class="lg:col-span-3 bg-white rounded shadow p-5">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-lg font-semibold">Local Real Estate Brokerage in <span id="brokerZip">—</span></h3>
@@ -273,7 +256,6 @@
 
   </main>
 
-  <!-- Change Commission Modal -->
   <div id="changeCommissionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-md relative p-6">
       <button onclick="closeChangeCommissionModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
@@ -303,7 +285,6 @@
     function closeChangeCommissionModal() { document.getElementById('changeCommissionModal').classList.add('hidden'); }
   </script>
 
-  <!-- SELLER PAGE LOGIC (Firestore + Storage) -->
   <script type="module">
     import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
     import { updatePaidUpgradesAfterPayment } from "/scripts/paid-upgrades-handler.js";
@@ -1210,46 +1191,43 @@
       await refreshFromServer();
 
       // =========================================================================
-      // FIX: Downgrade Sync (Price-Based Truth)
-      // The Zero-Dollar Rule: If checkoutData.total === 0, user downgraded to Basic.
-      // This is authoritative because price doesn't lie - selectedPlan strings were unreliable.
+      // FIX: Downgrade Sync (Price-Based Truth + Referrer Safety Net)
+      // Trigger: Checks URL param OR if user came from /checkout.html
+      // Rule: If total was $0, force "Listed Property Basic" immediately.
       // =========================================================================
       try {
         var u = new URL(window.location.href);
-        var upgraded = (u.searchParams.get("upgraded") === "true");
+        var hasFlag = (u.searchParams.get("upgraded") === "true");
+        // SAFETY NET: Check if user came from checkout page (even if param missing)
+        var fromCheckout = document.referrer && document.referrer.includes("checkout");
 
-        if (upgraded) {
-          console.log("[seller-detail] Upgraded flag detected");
+        if (hasFlag || fromCheckout) {
+          console.log("[seller-detail] Post-Checkout Context Detected (Flag: " + hasFlag + ", Referrer: " + fromCheckout + ")");
 
           // Read listingId fresh/verify
           var lidFresh = (localStorage.getItem("lastListingId") || "").trim();
-          if (!lidFresh) {
-            console.warn("[seller-detail] upgraded=true but missing listingId - cannot sync plan");
-          } else {
-
+          if (lidFresh) {
             var targetPlan = "";
-
-            // Read checkoutData for price-based truth
             var cdSync = getJSON("checkoutData", {});
-            console.log("[seller-detail] checkoutData.total:", cdSync?.total, "type:", typeof cdSync?.total);
+            
+            // NORMALIZE TOTAL: Handle 0, "0", "0.00"
+            var rawTotal = cdSync ? Number(cdSync.total) : -1;
+            console.log("[seller-detail] Checkout Data Total:", rawTotal);
 
-            // ZERO-DOLLAR RULE: If total is 0, force Basic (price doesn't lie)
-            if (cdSync && (cdSync.total === 0 || cdSync.total === "0")) {
+            // RULE 1: ZERO-DOLLAR TRUTH
+            if (rawTotal === 0) {
               targetPlan = "Listed Property Basic";
               console.log("[seller-detail] $0 Transaction detected -> Forcing Basic");
-            }
-            // FALLBACK: If total > 0, use selectedPlan
+            } 
+            // RULE 2: FALLBACK TO SELECTION
             else {
-              var spFallback = (localStorage.getItem("selectedPlan") || "").trim();
-              if (spFallback) {
-                targetPlan = spFallback;
-                console.log("[seller-detail] Paid transaction, using selectedPlan:", targetPlan);
-              }
+              var sp = (localStorage.getItem("selectedPlan") || "").trim();
+              if (sp) targetPlan = sp;
             }
 
             if (targetPlan) {
               console.log("[seller-detail] Force updating Firestore with plan:", targetPlan);
-
+              
               await updateDoc(doc(db, "listings", lidFresh), {
                 plan: targetPlan,
                 updatedAt: serverTimestamp()
@@ -1261,21 +1239,17 @@
               isPlus = (plan === "Listed Property Plus" || isFSBO);
               maxPhotos = isPlus ? 20 : 1;
 
-              $("planPill").textContent = plan || "—";
-
-              // Keep gating + photo help consistent with updated plan
+              $("planPill").textContent = plan;
               applyFieldLocking(plan, paidUpgrades);
               computePhotoHelp();
-              renderThumbs();
+              try { renderThumbs(); } catch(e) {}
 
-              console.log("[seller-detail] Plan sync complete. UI updated to:", plan);
-            } else {
-              console.warn("[seller-detail] upgraded=true but no target plan determined");
+              console.log("[seller-detail] Sync Complete. UI is now:", plan);
             }
           }
         }
       } catch (e) {
-        console.warn("[seller-detail] upgraded=true downgrade sync skipped:", e);
+        console.warn("[seller-detail] sync skipped:", e);
       }
       // =========================================================================
 
