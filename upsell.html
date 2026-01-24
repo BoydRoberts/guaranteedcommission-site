@@ -38,7 +38,7 @@
       <div class="flex gap-2">
         <button id="btnSkip" class="px-4 py-2 rounded border">Skip</button>
         <button id="btnAdd" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Add &amp; Continue</button>
-        <a id="btnCheckout" href="/checkout.html" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">Review &amp; Checkout</a>
+        <button id="btnCheckout" class="hidden px-5 py-2 rounded bg-green-600 text-white hover:bg-green-700">Add &amp; Go to Checkout</button>
       </div>
     </div>
   </div>
@@ -145,7 +145,17 @@
         </div>`;
       host.appendChild(el);
 
-      $('#btnCheckout').classList.toggle('hidden', idx !== steps.length - 1);
+      // ✅ NEW: Button visibility logic for final step
+      const isLastStep = idx === steps.length - 1;
+      if (isLastStep) {
+        // On last step: hide "Add & Continue", show "Add & Go to Checkout"
+        $('#btnAdd').classList.add('hidden');
+        $('#btnCheckout').classList.remove('hidden');
+      } else {
+        // On all other steps: show "Add & Continue", hide "Add & Go to Checkout"
+        $('#btnAdd').classList.remove('hidden');
+        $('#btnCheckout').classList.add('hidden');
+      }
     }
 
     function saveCurrent(addSelected) {
@@ -217,6 +227,17 @@
 
       if (idx === steps.length - 1) window.location.href = '/checkout.html';
       else nextStep();
+    });
+
+    // ✅ NEW: Event listener for "Add & Go to Checkout" button on final step
+    $('#btnCheckout').addEventListener('click', () => {
+      // Force add = selected (same as btnAdd)
+      const ck = document.querySelector('#ck');
+      if (ck) ck.checked = true;
+
+      saveCurrent(true);
+      setJSON('checkoutData', data);
+      window.location.href = '/checkout.html';
     });
 
     renderStep();
