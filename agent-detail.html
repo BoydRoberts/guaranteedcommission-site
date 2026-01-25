@@ -52,25 +52,35 @@
     <span id="autosaveText">Waiting…</span>
   </div>
 
+  <!-- Header -->
+  <header class="bg-white shadow">
+    <div class="relative flex items-center justify-center max-w-7xl mx-auto px-4 py-4">
+      <a href="/index.html" class="absolute left-4 text-xs font-semibold hover:underline" style="color:#4DA6FF;">Home</a>
+
+      <div class="text-center">
+        <div class="flex items-end justify-center gap-0">
+          <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+          <h1 class="text-3xl font-bold tracking-tight text-gray-900">GuaranteedCommission.com</h1>
+        </div>
+        <p class="text-sm text-red-600 font-semibold mt-1 whitespace-nowrap">
+          Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.
+        </p>
+      </div>
+
+      <a href="/advertise.html" class="absolute right-4 text-xs font-semibold hover:underline" style="color:#4DA6FF;">Advertise</a>
+    </div>
+  </header>
+
+  <!-- Status bar -->
+  <div class="max-w-6xl mx-auto mt-4 px-3">
+    <p id="statusBar" class="text-sm text-gray-600"></p>
+  </div>
+
   <!-- SOLD LOCK BANNER -->
   <div id="soldLockBanner" class="hidden max-w-6xl mx-auto px-3 mt-4">
     <div class="bg-red-50 border border-red-200 text-red-800 rounded-lg p-3 text-sm font-semibold">
       Locked: This listing is closed and can no longer be edited.
     </div>
-  </div>
-
-  <!-- Header -->
-  <div class="max-w-6xl mx-auto mt-8 px-3">
-    <div class="flex items-start justify-between">
-      <div class="flex items-center gap-3">
-        <h1 class="text-2xl font-bold">Listing Detail Intake (Agent)</h1>
-      </div>
-      <div class="flex items-center gap-2">
-        <a href="/welcome.html" class="text-sm text-blue-600 hover:underline">Back to Welcome</a>
-        <a id="previewLink" href="/listing.html" target="_blank" class="text-sm text-blue-600 hover:underline">Preview Full Listing</a>
-      </div>
-    </div>
-    <p id="statusBar" class="mt-2 text-sm text-gray-600"></p>
   </div>
 
   <div class="max-w-6xl mx-auto mt-4 grid grid-cols-1 lg:grid-cols-3 gap-6 px-3">
@@ -343,7 +353,7 @@
     function setStatus(msg, ok=true) {
       const el = $("statusBar");
       el.textContent = msg || '';
-      el.className = ok ? "mt-2 text-sm text-gray-600" : "mt-2 text-sm text-red-700";
+      el.className = ok ? "text-sm text-gray-600" : "text-sm text-red-700";
     }
 
     // ===== Soft Autosave indicator helpers =====
@@ -398,7 +408,6 @@
     })();
 
     const listingId = localStorage.getItem('lastListingId') || '';
-    if ($("previewLink") && listingId) $("previewLink").href = "/listing.html?id=" + encodeURIComponent(listingId);
     if ($("goPreviewBtn") && listingId) $("goPreviewBtn").href = "/listing.html?id=" + encodeURIComponent(listingId);
 
     // ---- Working state ----
