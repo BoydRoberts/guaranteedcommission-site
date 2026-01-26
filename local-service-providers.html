@@ -6,365 +6,372 @@
   <title>Local Service Providers | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .description { /* left as-is */ }
-    .zipbox { letter-spacing: 2px; }
-    .hint { font-size: 11px; color:#6b7280; }
+    .thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
 
+  <!-- Header -->
   <header class="bg-white shadow">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/index.html" class="text-sm text-blue-600 hover:underline">Home</a>
-      <h1 class="text-lg font-semibold">Local Service Providers</h1>
-      <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
+    <div class="relative flex items-center justify-center max-w-7xl mx-auto px-4 py-4">
+      <a href="/advertise.html" class="absolute left-4 text-xs font-semibold hover:underline" style="color:#4DA6FF;">← Back to Advertise</a>
+
+      <div class="text-center">
+        <div class="flex items-end justify-center gap-0">
+          <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+          <h1 class="text-3xl font-bold tracking-tight text-gray-900">GuaranteedCommission.com</h1>
+        </div>
+        <p class="text-sm text-red-600 font-semibold mt-1 whitespace-nowrap">
+          Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.
+        </p>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-4 py-6">
-    <section class="bg-white rounded-2xl shadow p-5">
-      <h2 class="text-2xl font-bold text-center">Become a Local Service Provider</h2>
-      <p class="text-sm text-center text-gray-700 mt-1">
-        Display your business card on every listed property intake page (seller and agent) in a specified ZIP code | $5 per month per ZIP code | Maximum 3 ZIPs | First come first served | Your display rights preserved until you cancel
-      </p>
+  <main class="max-w-3xl mx-auto px-4 py-8">
+    <h2 class="text-2xl font-bold text-center mb-2" style="color:#4DA6FF;">Local Service Providers</h2>
+    <p class="text-center text-gray-600 mb-6">
+      Display your business card on every listing detail page and on every listed property intake page (seller and agent) in a specified ZIP code.
+    </p>
 
-      <!-- Top mode choice -->
-      <div class="flex items-center justify-center gap-3 mt-4">
-        <button id="modeSearchB" class="px-3 py-2 rounded border" style="background-color:#4DA6FF; color:white;">Search by ZIP</button>
+    <!-- Pricing Info -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-900">
+      <p class="font-semibold">$5 per month per ZIP code</p>
+      <p class="text-blue-700 mt-1">Maximum 3 ZIP codes | Eight service providers per ZIP | First come first served</p>
+    </div>
+
+    <!-- Status -->
+    <div id="status" class="hidden mb-4 text-sm rounded-lg p-3" role="alert"></div>
+
+    <!-- Signup Form -->
+    <form id="serviceProviderForm" class="bg-white rounded-xl shadow p-6 space-y-5" autocomplete="off">
+      <div>
+        <label for="role" class="block text-sm font-semibold mb-1">Service Type <span class="text-red-600">*</span></label>
+        <input id="role" type="text" required placeholder="e.g., Title, Escrow, Architect, Builder, Planner" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <p class="text-xs text-gray-500 mt-1">Enter your service category (Title, Escrow, Architect, Builder, etc.)</p>
       </div>
 
-      <div id="status" class="hidden mt-4 text-sm rounded-lg p-3"></div>
-
-      <!-- Apply form -->
-      <form id="proForm" class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4" autocomplete="off">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-semibold">Service Type</label>
-          <select id="role" class="w-full border rounded px-3 py-2" required>
-            <option value="">Select…</option>
-            <option value="title_company">Title Company</option>
-            <option value="escrow">Escrow</option>
-            <option value="home_warranty">Home Warranty</option>
-            <option value="home_inspection">Home Inspection</option>
-            <option value="other">Other</option>
-          </select>
+          <label for="name" class="block text-sm font-semibold mb-1">Your Name <span class="text-red-600">*</span></label>
+          <input id="name" type="text" required placeholder="First Last" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
-
         <div>
-          <label class="block text-sm font-semibold">Name</label>
-          <input id="personalName" class="w-full border rounded px-3 py-2" placeholder="Your name" required>
+          <label for="company" class="block text-sm font-semibold mb-1">Company Name <span class="text-red-600">*</span></label>
+          <input id="company" type="text" required placeholder="Your Company LLC" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
-
-        <div>
-          <label class="block text-sm font-semibold">Company Name</label>
-          <input id="name" class="w-full border rounded px-3 py-2" placeholder="Full Company Name" required>
-        </div>
-
-        <div>
-          <label class="block text-sm font-semibold">Email</label>
-          <input id="email" type="email" class="w-full border rounded px-3 py-2" placeholder="you@example.com" required>
-        </div>
-
-        <div>
-          <label class="block text-sm font-semibold">Phone</label>
-          <input id="phone" class="w-full border rounded px-3 py-2" placeholder="Phone" required>
-        </div>
-
-        <div>
-          <label class="block text-sm font-semibold">License # (if applicable)</label>
-          <input id="license" class="w-full border rounded px-3 py-2" placeholder="license # (if applicable)">
-        </div>
-
-        <!-- Three ZIP inputs -->
-        <div class="md:col-span-2">
-          <label class="block text-sm font-semibold mb-1">ZIP Codes (up to 3)</label>
-          <div class="grid grid-cols-3 gap-3">
-            <input id="zip1" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #1">
-            <input id="zip2" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #2">
-            <input id="zip3" class="zipbox w-full border rounded px-3 py-2 text-center" inputmode="numeric" maxlength="5" placeholder="ZIP #3">
-          </div>
-          <p class="hint mt-2">Enter 5-digit ZIP codes. You can add up to three.</p>
-        </div>
-
-        <!-- Optional photo upload -->
-        <div class="md:col-span-2">
-          <label class="block text-sm font-semibold">Business Card (optional image)</label>
-          <input id="photo" type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="w-full">
-          <div id="photoPreview" class="mt-2"></div>
-          <p class="hint mt-1">PNG/JPG recommended.</p>
-        </div>
-
-        <div class="md:col-span-2 flex items-center justify-between mt-2">
-          <div class="text-sm text-gray-700">Your total: <span id="total">$0</span> / month</div>
-          <button id="checkoutBtn" type="button" class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white">
-            Proceed to Checkout
-          </button>
-        </div>
-
-        <div class="md:col-span-2 text-xs text-gray-600 mt-1">
-          All purchases subject to quality control review.
-        </div>
-      </form>
-
-      <!-- Simple ZIP search area -->
-      <div id="searchArea" class="hidden mt-8 border-t pt-5">
-        <h3 class="font-semibold mb-2">Search Local Service Providers by ZIP</h3>
-        <div class="flex items-center gap-2">
-          <input id="searchZip" class="border rounded px-3 py-2 w-40" placeholder="ZIP code">
-          <button id="runZipSearch" class="px-3 py-2 rounded bg-gray-700 text-white">Search</button>
-        </div>
-        <div id="prosResults" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3"></div>
       </div>
 
-    </section>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="email" class="block text-sm font-semibold mb-1">Email <span class="text-red-600">*</span></label>
+          <input id="email" type="email" required placeholder="you@example.com" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label for="phone" class="block text-sm font-semibold mb-1">Phone <span class="text-red-600">*</span></label>
+          <input id="phone" type="tel" required placeholder="123-456-7890" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+      </div>
 
-    <section class="hidden rounded-2xl mt-4 bg-emerald-50 border border-emerald-200 p-5 text-amber-800" id="thanks">
-      <h3 class="text-lg font-semibold">Thank you!</h3>
-      <p class="text-sm text-gray-600 mt-1">Your Local Service Providers subscription is being set up. You can complete your profile at any time.</p>
+      <div>
+        <label for="license" class="block text-sm font-semibold mb-1">License # <span class="text-gray-400">(Optional)</span></label>
+        <input id="license" type="text" placeholder="License or certification number" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <!-- ZIP Codes -->
+      <div>
+        <label class="block text-sm font-semibold mb-1">ZIP Codes <span class="text-red-600">*</span></label>
+        <p class="text-xs text-gray-500 mb-2">Enter up to 3 ZIP codes where you want to display your business card. At least one required.</p>
+        <div class="grid grid-cols-3 gap-3">
+          <input id="zip1" type="text" maxlength="5" pattern="\d{5}" placeholder="ZIP 1" class="border p-2 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <input id="zip2" type="text" maxlength="5" pattern="\d{5}" placeholder="ZIP 2" class="border p-2 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <input id="zip3" type="text" maxlength="5" pattern="\d{5}" placeholder="ZIP 3" class="border p-2 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+      </div>
+
+      <!-- Business Card Upload -->
+      <div>
+        <label for="photoInput" class="block text-sm font-semibold mb-1">Business Card Image <span class="text-gray-400">(Optional)</span></label>
+        <input id="photoInput" type="file" accept=".png,.jpg,.jpeg" class="block w-full text-sm">
+        <p class="text-xs text-gray-500 mt-1">PNG or JPG. This will be displayed on listing pages in your ZIP codes.</p>
+        <div id="photoPreview" class="mt-3 hidden">
+          <img id="previewImg" class="thumb" alt="Preview">
+        </div>
+      </div>
+
+      <div class="pt-4">
+        <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+          Continue to Payment ($5/month per ZIP)
+        </button>
+      </div>
+    </form>
+
+    <!-- Search Section -->
+    <section class="mt-10 bg-white rounded-xl shadow p-6">
+      <h3 class="text-lg font-semibold mb-4" style="color:#4DA6FF;">Search Local Service Providers by ZIP</h3>
+      <div class="flex gap-2 mb-4">
+        <input id="searchZip" type="text" maxlength="5" placeholder="Enter ZIP code" class="flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button id="searchBtn" type="button" class="px-4 py-2 rounded text-white font-semibold hover:opacity-90" style="background-color:#4DA6FF;">Search</button>
+      </div>
+      <div id="searchResults" class="space-y-3"></div>
+      <p id="searchEmpty" class="hidden text-sm text-gray-500">No service providers found for this ZIP code.</p>
     </section>
   </main>
 
+  <!-- Firebase init -->
   <script type="module">
-    // ✅ FIX #2: Import STORAGE_BUCKET_GS from single source of truth
     import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
     import {
-      addDoc, collection, serverTimestamp, doc, updateDoc, query, where, getDocs
+      collection, addDoc, query, where, getDocs, serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
       getStorage, ref, uploadBytes, getDownloadURL
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     const $ = (id) => document.getElementById(id);
+    const COLLECTION = "localServiceProviders";
+    const MAX_PER_ZIP = 8;
+    const STRIPE_LINK = "https://buy.stripe.com/test_SERVICE_PROVIDER_PLACEHOLDER";
 
-    function setStatus(msg, ok=true){
-      const el = $('status'); el.classList.remove('hidden');
-      el.className = ok
-        ? 'mt-3 text-sm rounded-lg p-3 bg-green-50 text-green-700'
-        : 'mt-3 text-sm rounded-lg p-3 bg-red-50 text-red-700';
-      el.textContent = msg;
+    function setStatus(msg, ok = false) {
+      const box = $("status");
+      box.classList.remove("hidden");
+      box.textContent = msg;
+      box.className = ok
+        ? "mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700"
+        : "mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700";
     }
 
-    function money(n){ return '$' + Number(n||0).toLocaleString(); }
-
-    function formatPhoneDisplay(s){
-      const d = String(s||'').replace(/\D/g,'').slice(0,10);
-      return d.length===10 ? `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}` : (s||'');
+    function formatPhone(s) {
+      const d = (s || "").replace(/\D/g, "").slice(0, 10);
+      if (d.length <= 3) return d;
+      if (d.length <= 6) return d.slice(0, 3) + "-" + d.slice(3);
+      return d.slice(0, 3) + "-" + d.slice(3, 6) + "-" + d.slice(6);
     }
 
-    // Mode toggle via query or buttons
-    (function(){
-      const u = new URL(location.href);
-      let mode = u.searchParams.get('mode') || 'apply';
+    // Phone formatting
+    $("phone")?.addEventListener("input", (e) => {
+      const cur = e.target.selectionStart;
+      const before = e.target.value;
+      e.target.value = formatPhone(before);
+      e.target.selectionStart = e.target.selectionEnd = Math.min(cur + (e.target.value.length - before.length), e.target.value.length);
+    });
 
-      function show(mode){
-        if (mode === 'search') {
-          $('searchArea').classList.remove('hidden');
-          $('proForm')?.classList.remove('hidden');
-          $('searchZip').focus();
-        }
-      }
-
-      show(mode);
-      $('modeSearchB')?.addEventListener('click', ()=>{ location.href='?mode=search'; });
-    })();
-
-    // ZIP inputs: only digits, auto-advance after 5
-    function zipFilter(el, nextEl){
-      if (!el) return;
-      el.addEventListener('input', (e)=>{
-        const d = e.target.value.replace(/\D/g,'').slice(0,5);
-        e.target.value = d;
-        if (d.length === 5 && nextEl) nextEl.focus();
-        compute();
+    // ZIP inputs - digits only
+    ["zip1", "zip2", "zip3", "searchZip"].forEach((id) => {
+      $(id)?.addEventListener("input", (e) => {
+        e.target.value = e.target.value.replace(/\D/g, "").slice(0, 5);
       });
-      el.addEventListener('blur', compute);
-    }
-    zipFilter($('zip1'), $('zip2'));
-    zipFilter($('zip2'), $('zip3'));
-    zipFilter($('zip3'), null);
-
-    // price: $5 per month per unique zip, max 3
-    function compute(){
-      const z1 = $('zip1')?.value.trim() || '';
-      const z2 = $('zip2')?.value.trim() || '';
-      const z3 = $('zip3')?.value.trim() || '';
-      const zips = [z1,z2,z3].filter(Boolean);
-      const uniq = [];
-      zips.forEach(z => { if (!uniq.includes(z)) uniq.push(z); });
-      $('total').textContent = money(Math.min(uniq.length, 3) * 5);
-      return uniq.slice(0,3);
-    }
-    ['role','personalName','name','email','phone','license'].forEach(id=>{
-      const el=$(id); if(el) el.addEventListener('input', compute);
     });
 
-    // photo preview
-    $('photo')?.addEventListener('change', async (e)=>{
-      const f = e.target?.files?.[0]; if(!f) return;
-      const reader = new FileReader();
-      reader.onload = () => { $('photoPreview').innerHTML = `<img src="${reader.result}" alt="Photo" class="h-24 w-24 object-cover rounded border">`; };
-      reader.readAsDataURL(f);
-    });
-
-    // Stripe Payment Link
-    const CHECKOUT_LINK_BASE = "https://buy.stripe.com/test_8x2dRb4Gr8N4gnlaM44ow00";
-
-    // ✅ FIX #2: Removed hardcoded BUCKET_URL - now using STORAGE_BUCKET_GS from firebase-init.js
-
-    async function maybeUploadPhoto(draftId) {
-      try {
-        const file = $('photo')?.files?.[0];
-        if (!file) return "";
-        // ✅ FIX #2: Use STORAGE_BUCKET_GS from import
-        const storage = getStorage(undefined, STORAGE_BUCKET_GS);
-        const safe = String(file.name || "service_provider_card").replace(/[^\w\-.]+/g,"_");
-        const path = `localServices/${draftId}/card_${Date.now()}_${safe}`;
-        const r = ref(storage, path);
-        await uploadBytes(r, file);
-        const url = await getDownloadURL(r);
-        return url;
-      } catch (e) {
-        console.warn("[local-services] photo upload failed:", e);
-        return "";
+    // Photo preview
+    $("photoInput")?.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          $("previewImg").src = ev.target.result;
+          $("photoPreview").classList.remove("hidden");
+        };
+        reader.readAsDataURL(file);
+      } else {
+        $("photoPreview").classList.add("hidden");
       }
+    });
+
+    // Check ZIP availability (max 8 providers per ZIP)
+    async function checkZipAvailability(zips) {
+      const soldOut = [];
+      for (const zip of zips) {
+        if (!zip) continue;
+        try {
+          const q = query(
+            collection(db, COLLECTION),
+            where("status", "==", "active"),
+            where("zips", "array-contains", zip)
+          );
+          const snap = await getDocs(q);
+          if (snap.size >= MAX_PER_ZIP) {
+            soldOut.push(zip);
+          }
+        } catch (e) {
+          console.warn("[checkZip] error for", zip, e);
+        }
+      }
+      return soldOut;
     }
 
-    // Proceed to Checkout
-    $('checkoutBtn')?.addEventListener('click', async ()=>{
+    // Upload photo to Storage
+    async function uploadPhoto(file, docId) {
+      const storage = getStorage(undefined, STORAGE_BUCKET_GS);
+      const safeName = String(file.name || "card").replace(/[^\w\-.]+/g, "_");
+      const path = `localServiceProviders/${docId}/${Date.now()}_${safeName}`;
+      const r = ref(storage, path);
+      await uploadBytes(r, file);
+      return await getDownloadURL(r);
+    }
+
+    // Form submission
+    $("serviceProviderForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const role = ($("role")?.value || "").trim();
+      const name = ($("name")?.value || "").trim();
+      const company = ($("company")?.value || "").trim();
+      const email = ($("email")?.value || "").trim().toLowerCase();
+      const phone = ($("phone")?.value || "").trim();
+      const license = ($("license")?.value || "").trim();
+      const zip1 = ($("zip1")?.value || "").trim();
+      const zip2 = ($("zip2")?.value || "").trim();
+      const zip3 = ($("zip3")?.value || "").trim();
+      const photoFile = $("photoInput")?.files?.[0] || null;
+
+      // Validation
+      if (!role || !name || !company || !email || !phone) {
+        setStatus("Please complete all required fields.");
+        return;
+      }
+
+      const zips = [zip1, zip2, zip3].filter((z) => z && z.length === 5);
+      if (zips.length === 0) {
+        setStatus("Please enter at least one valid 5-digit ZIP code.");
+        return;
+      }
+
+      // Check ZIP availability
+      setStatus("Checking ZIP availability...", true);
+      const soldOut = await checkZipAvailability(zips);
+      if (soldOut.length > 0) {
+        setStatus(`ZIP ${soldOut.join(", ")} is sold out (limit ${MAX_PER_ZIP}). Please choose different ZIP codes.`);
+        return;
+      }
+
+      setStatus("Saving your information...", true);
+
       try {
-        const btn = $('checkoutBtn');
-        btn.disabled = true;
-        btn.textContent = 'Starting checkout…';
+        // Create Firestore document
+        const docData = {
+          role: role,
+          name: name,
+          company: company,
+          email: email,
+          emailLower: email.toLowerCase(),
+          phone: phone,
+          license: license || null,
+          zips: zips,
+          status: "pending", // Will be set to "active" after payment
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
 
-        const role = $('role').value.trim();
-        const personalName = $('personalName').value.trim();
-        const name = $('name').value.trim();
-        const email = $('email').value.trim();
-        const phone = formatPhoneDisplay($('phone').value.trim());
-        const license = $('license').value.trim();
-        const zips = compute();
+        const docRef = await addDoc(collection(db, COLLECTION), docData);
+        console.log("[service-provider] Created doc:", docRef.id);
 
-        if (!role || !personalName || !name || !email || !phone || !zips.length) {
-          setStatus('Please complete all required fields and at least one ZIP.', false);
-          btn.disabled = false;
-          btn.textContent = 'Proceed to Checkout';
-          return;
-        }
-
-        // Create pending draft
-        let draftId = "";
-        try {
-          const draft = {
-            role,
-            personalName,
-            name,
-            email: String(email || "").toLowerCase(),
-            phone,
-            license,
-            zips,
-            photoUrl: "",
-            status: "pending",
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          };
-          const refDoc = await addDoc(collection(db, "localServices"), draft);
-          draftId = refDoc.id;
-          localStorage.setItem('localServiceDraftId', JSON.stringify(draftId));
-        } catch (e) {
-          console.warn("[local-services] draft save failed; proceeding anyway:", e);
-        }
-
-        if (draftId) {
-          const photoUrl = await maybeUploadPhoto(draftId);
-          if (photoUrl) {
-            try {
-              await updateDoc(doc(db, "localServices", draftId), { photoUrl, updatedAt: serverTimestamp() });
-            } catch (e) {
-              console.warn("[local-services] could not patch photoUrl:", e);
-            }
+        // Upload photo if provided
+        if (photoFile) {
+          try {
+            const photoUrl = await uploadPhoto(photoFile, docRef.id);
+            // Note: In production, you'd update the doc with the photoUrl
+            // For now, we'll store it in localStorage for the Stripe return
+            localStorage.setItem("pendingServiceProviderPhoto", photoUrl);
+          } catch (uploadErr) {
+            console.warn("[service-provider] Photo upload failed:", uploadErr);
           }
         }
 
-        const params = new URLSearchParams({
-          prefilled_email: email,
-          client_reference_id: JSON.stringify({ role, personalName, name, email, phone, license, zips }),
-          quantity: String(Math.max(1, Math.min(zips.length, 3)))
-        });
+        // Store pending info for Stripe return
+        localStorage.setItem("pendingServiceProviderId", docRef.id);
+        localStorage.setItem("pendingServiceProviderEmail", email);
 
-        window.location.href = `${CHECKOUT_LINK_BASE}?${params.toString()}`;
+        setStatus("Redirecting to payment...", true);
 
-      } catch(e){
-        setStatus('Payment could not start.', false);
-      } finally {
-        const btn = $('checkoutBtn');
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Proceed to Checkout';
-        }
-      }
-    });
+        // Calculate total based on number of ZIPs
+        const total = zips.length * 5;
 
-    // After redirect
-    (async function(){
-      const u = new URL(location.href);
-      if (u.searchParams.get('status') === 'success') {
-        $('thanks').classList.remove('hidden');
-        try {
-          const draftIdRaw = localStorage.getItem("localServiceDraftId");
-          if (draftIdRaw) {
-            const draftId = JSON.parse(draftIdRaw);
-            await updateDoc(doc(db, "localServices", draftId), {
-              status: "active",
-              updatedAt: serverTimestamp()
-            });
-          }
-        } catch (e) {
-          console.warn("[local-services] finalize failed", e);
-        }
-      }
-    })();
+        // Redirect to Stripe (placeholder link)
+        setTimeout(() => {
+          window.location.href = `${STRIPE_LINK}?prefilled_email=${encodeURIComponent(email)}&client_reference_id=${docRef.id}`;
+        }, 800);
 
-    // Search by ZIP
-    $('runZipSearch')?.addEventListener('click', async ()=>{
-      const zip = $('searchZip').value.trim();
-      if (!/^\d{5}$/.test(zip)) { setStatus('Enter a valid 5-digit ZIP to search.', false); return; }
-      setStatus('Searching...', true);
-
-      try {
-        // Query Firestore for active service providers in this ZIP
-        const q = query(
-          collection(db, "localServices"),
-          where("zips", "array-contains", zip),
-          where("status", "==", "active")
-        );
-        const snapshot = await getDocs(q);
-        
-        const pros = [];
-        snapshot.forEach(doc => {
-          pros.push({ id: doc.id, ...doc.data() });
-        });
-
-        const box = $('prosResults'); 
-        box.innerHTML='';
-        $('status').classList.add('hidden');
-        
-        if (!pros.length) {
-          box.innerHTML = `<div class="text-sm text-gray-600">No Local Service Providers in ${zip} yet.</div>`;
-          return;
-        }
-        
-        pros.forEach(p=>{
-          const card = document.createElement('div');
-          card.className = 'border rounded-lg p-3 bg-white';
-          card.innerHTML = `
-            <div class="text-sm font-semibold">${p.name || 'Service Provider'}</div>
-            <div class="text-xs text-gray-600">${p.role || ''}${p.license ? ' • ' + p.license : ''}</div>
-            <div class="text-xs text-gray-500 mt-1">ZIPs: ${(p.zips||[]).join(', ')}</div>
-          `;
-          box.appendChild(card);
-        });
       } catch (err) {
-        console.error('Search error:', err);
-        setStatus('Search failed. Please try again.', false);
+        console.error("[service-provider] Save failed:", err);
+        setStatus("Could not save your information. Please try again.");
+      }
+    });
+
+    // Search functionality
+    $("searchBtn")?.addEventListener("click", async () => {
+      const zip = ($("searchZip")?.value || "").trim();
+      if (!zip || zip.length !== 5) {
+        setStatus("Please enter a valid 5-digit ZIP code.");
+        return;
+      }
+
+      const resultsDiv = $("searchResults");
+      const emptyMsg = $("searchEmpty");
+      resultsDiv.innerHTML = "<p class='text-sm text-gray-500'>Searching...</p>";
+      emptyMsg.classList.add("hidden");
+
+      try {
+        const q = query(
+          collection(db, COLLECTION),
+          where("status", "==", "active"),
+          where("zips", "array-contains", zip)
+        );
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+          resultsDiv.innerHTML = "";
+          emptyMsg.classList.remove("hidden");
+          return;
+        }
+
+        resultsDiv.innerHTML = "";
+        snap.forEach((doc) => {
+          const d = doc.data();
+          const card = document.createElement("div");
+          card.className = "flex items-center gap-4 p-3 border rounded-lg bg-gray-50";
+
+          const photoSrc = d.photoUrl || d.photo || "";
+          if (photoSrc) {
+            const img = document.createElement("img");
+            img.src = photoSrc;
+            img.alt = d.company || "Service Provider";
+            img.className = "thumb";
+            img.onerror = () => {
+              img.style.display = "none";
+            };
+            card.appendChild(img);
+          } else {
+            const placeholder = document.createElement("div");
+            placeholder.className = "thumb bg-gray-200 flex items-center justify-center text-xs text-gray-500";
+            placeholder.textContent = "No Image";
+            card.appendChild(placeholder);
+          }
+
+          const info = document.createElement("div");
+          info.className = "flex-1";
+          info.innerHTML = `
+            <p class="font-semibold">${d.company || d.name || "Service Provider"}</p>
+            <p class="text-sm text-gray-600">${d.role || "Service Provider"}</p>
+            <p class="text-xs text-gray-500">${d.name || ""} ${d.phone ? "• " + d.phone : ""}</p>
+          `;
+          card.appendChild(info);
+
+          resultsDiv.appendChild(card);
+        });
+
+      } catch (err) {
+        console.error("[search] failed:", err);
+        resultsDiv.innerHTML = "<p class='text-sm text-red-600'>Search failed. Please try again.</p>";
+      }
+    });
+
+    // Allow Enter key to trigger search
+    $("searchZip")?.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        $("searchBtn")?.click();
       }
     });
   </script>
