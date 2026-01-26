@@ -252,6 +252,21 @@
       </div>
     </section>
 
+    <!-- Local Service Providers Strip -->
+    <section id="serviceProvidersStrip" class="lg:col-span-3 bg-white rounded shadow p-5" style="display:none;">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold">Local Service Providers in <span id="serviceProvidersZip">—</span></h3>
+        <a id="serviceProvidersCtaBtn" href="/local-service-providers.html" class="text-sm px-3 py-1 rounded text-white hover:opacity-90" style="background-color:#4DA6FF;">Join This List</a>
+      </div>
+      <div id="serviceProvidersGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"></div>
+      <div id="serviceProvidersEmpty" class="hidden">
+        <a href="/local-service-providers.html" class="block p-4 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-blue-400 hover:bg-blue-50 transition">
+          <div class="text-gray-500 text-sm font-medium">Your Business Card Here</div>
+          <div class="text-xs text-gray-400 mt-1">Click to become a Local Service Provider</div>
+        </a>
+      </div>
+    </section>
+
   </main>
 
   <div id="changeCommissionModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
@@ -577,6 +592,110 @@
       } else {
         empty.classList.remove("hidden");
       }
+      strip.style.display = "block";
+    }
+
+    // ========== LOCAL SERVICE PROVIDERS ==========
+    async function loadLocalServiceProviders(zip) {
+      try {
+        var q1 = query(
+          collection(db, "localServiceProviders"),
+          where("status", "==", "active"),
+          where("zips", "array-contains", zip)
+        );
+        var snap = await getDocs(q1);
+        var results = [];
+        snap.forEach(function(d) {
+          var x = d.data() || {};
+          results.push({
+            id: d.id,
+            name: x.name || "",
+            company: x.company || "",
+            role: x.role || "Service Provider",
+            phone: x.phone || "",
+            email: x.email || "",
+            photoUrl: x.photoUrl || x.photo || x.cardUrl || ""
+          });
+        });
+
+        // Deduplicate by id
+        var seen = {};
+        var dedup = [];
+        for (var i = 0; i < results.length; i++) {
+          var r = results[i];
+          if (seen[r.id]) continue;
+          seen[r.id] = true;
+          dedup.push(r);
+        }
+
+        // Return up to 8
+        return dedup.slice(0, 8);
+      } catch (e) {
+        console.warn("[local-service-providers] fetch failed:", e);
+        return [];
+      }
+    }
+
+    function renderServiceProvidersStrip(zip, providers) {
+      var strip = $("serviceProvidersStrip");
+      if (!strip) return;
+
+      var currentPlan = plan.trim();
+      var isFSBO = currentPlan.includes("FSBO");
+      if (!isFSBO) { strip.style.display = "none"; return; }
+
+      $("serviceProvidersZip").textContent = zip || "—";
+      $("serviceProvidersCtaBtn").href = "/local-service-providers.html?zip=" + encodeURIComponent(zip);
+
+      var grid = $("serviceProvidersGrid");
+      var empty = $("serviceProvidersEmpty");
+      grid.innerHTML = "";
+
+      if (!providers || providers.length === 0) {
+        grid.classList.add("hidden");
+        empty.classList.remove("hidden");
+        strip.style.display = "block";
+        return;
+      }
+
+      grid.classList.remove("hidden");
+      empty.classList.add("hidden");
+
+      providers.forEach(function(sp) {
+        var card = document.createElement("div");
+        card.className = "bg-gray-50 rounded-lg border border-gray-200 overflow-hidden";
+
+        var photoSrc = sp.photoUrl || "";
+        if (photoSrc) {
+          var img = document.createElement("img");
+          img.src = photoSrc;
+          img.alt = sp.company || sp.name || "Service Provider";
+          img.className = "w-full h-28 object-contain bg-white";
+          img.onerror = function() {
+            var ph = document.createElement("div");
+            ph.className = "w-full h-28 bg-gray-100 flex items-center justify-center text-xs text-gray-500";
+            ph.textContent = "No Image";
+            img.replaceWith(ph);
+          };
+          card.appendChild(img);
+        } else {
+          var ph = document.createElement("div");
+          ph.className = "w-full h-28 bg-gray-100 flex items-center justify-center text-xs text-gray-500";
+          ph.textContent = "No Image";
+          card.appendChild(ph);
+        }
+
+        var body = document.createElement("div");
+        body.className = "p-2";
+        body.innerHTML = 
+          '<p class="font-semibold text-sm truncate">' + (sp.company || sp.name || "Service Provider") + '</p>' +
+          '<p class="text-xs text-gray-600 truncate">' + (sp.role || "Service Provider") + '</p>' +
+          (sp.phone ? '<p class="text-xs text-gray-500 mt-1">' + sp.phone + '</p>' : '');
+        card.appendChild(body);
+
+        grid.appendChild(card);
+      });
+
       strip.style.display = "block";
     }
 
@@ -986,6 +1105,10 @@
 
             var broker = await loadLocalBroker(zip);
             renderBrokerStrip(zip, broker);
+
+            // Load and render Local Service Providers
+            var serviceProviders = await loadLocalServiceProviders(zip);
+            renderServiceProvidersStrip(zip, serviceProviders);
           }
         } catch (e) {
           console.warn("[local-pros] sidebar/strip skipped:", e);
