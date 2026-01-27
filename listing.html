@@ -187,44 +187,32 @@
       </div>
 
       <!-- START local-pros: Horizontal Local Professionals block under Description -->
-      <section id="prosCard" class="card p-5 hidden">
+      <section id="prosCard" class="card p-5">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-lg font-semibold">Local Professionals in <span id="prosZip">—</span></h3>
-          <a id="prosCtaBtn" href="/local-professionals.html" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Local Professionals</a>
+          <a id="prosCtaBtn" href="/local-professionals.html" class="text-sm px-4 py-1.5 rounded text-white hover:opacity-90 text-center min-w-[200px]" style="background-color:#4DA6FF;">Local Professionals</a>
         </div>
-        <div id="prosGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
-        <div id="prosEmpty" class="hidden text-sm text-gray-600 mt-2">
-          No local professionals yet. <a id="prosEmptyLink" href="/local-professionals.html" class="underline text-blue-600">Become a Local Professional</a>.
-        </div>
+        <div id="prosGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
       </section>
       <!-- END local-pros -->
 
       <!-- Horizontal Local Real Estate Brokers strip (below Pros) -->
-      <section id="brokersCard" class="card p-5 hidden">
+      <section id="brokersCard" class="card p-5">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-lg font-semibold">Local Real Estate Brokers in <span id="brokersZip">—</span></h3>
-          <a id="brokersCtaBtn" href="/local-brokers.html" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Local Brokers</a>
+          <h3 class="text-lg font-semibold">Local Brokers in <span id="brokersZip">—</span></h3>
+          <a id="brokersCtaBtn" href="/local-brokers.html" class="text-sm px-4 py-1.5 rounded text-white hover:opacity-90 text-center min-w-[200px]" style="background-color:#4DA6FF;">Local Brokers</a>
         </div>
-        <div id="brokersGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
-        <div id="brokersEmpty" class="hidden text-sm text-gray-600 mt-2">
-          No local brokers yet. <a id="brokersEmptyLink" href="/local-brokers.html" class="underline text-blue-600">Reserve this ZIP</a>.
-        </div>
+        <div id="brokersGrid" class="w-full"></div>
       </section>
       <!-- END brokers -->
 
       <!-- Local Service Providers strip (below Brokers) -->
-      <section id="serviceProvidersCard" class="card p-5 hidden">
+      <section id="serviceProvidersCard" class="card p-5">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-lg font-semibold">Local Service Providers in <span id="serviceProvidersZip">—</span></h3>
-          <a id="serviceProvidersCtaBtn" href="/local-service-providers.html" class="text-sm px-3 py-1 rounded text-white hover:opacity-90" style="background-color:#4DA6FF;">Join This List</a>
+          <a id="serviceProvidersCtaBtn" href="/local-service-providers.html" class="text-sm px-4 py-1.5 rounded text-white hover:opacity-90 text-center min-w-[200px]" style="background-color:#4DA6FF;">Local Service Providers</a>
         </div>
-        <div id="serviceProvidersGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3"></div>
-        <div id="serviceProvidersEmpty" class="hidden">
-          <a href="/local-service-providers.html" class="block p-4 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-blue-400 hover:bg-blue-50 transition">
-            <div class="text-gray-500 text-sm font-medium">Your Business Card Here</div>
-            <div class="text-xs text-gray-400 mt-1">Click to become a Local Service Provider</div>
-          </a>
-        </div>
+        <div id="serviceProvidersGrid" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
       </section>
       <!-- END service providers -->
 
@@ -487,15 +475,12 @@
     function renderPros(zip, agents = [], lenders = []) {
       const card = document.getElementById("prosCard");
       const grid = document.getElementById("prosGrid");
-      const empty = document.getElementById("prosEmpty");
       const zipSpan = document.getElementById("prosZip");
       const ctaBtn = document.getElementById("prosCtaBtn");
-      const emptyLink = document.getElementById("prosEmptyLink");
       if (!card || !grid) return;
 
       zipSpan.textContent = zip || "—";
       ctaBtn.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
-      emptyLink.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=apply`;
 
       grid.innerHTML = "";
       const tiles = [];
@@ -522,18 +507,30 @@
         ph.textContent = "No Image";
         return ph;
       }
+      function makeGhostCard() {
+        const a = document.createElement("a");
+        a.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=apply`;
+        a.className = "block overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 transition";
+        const inner = document.createElement("div");
+        inner.className = "w-full h-40 flex flex-col items-center justify-center text-center p-3";
+        inner.innerHTML = `
+          <div class="text-gray-500 text-sm font-medium">Your Card Here</div>
+          <div class="text-xs text-gray-400 mt-1">Click to advertise</div>
+        `;
+        a.appendChild(inner);
+        return a;
+      }
 
+      // Combine agents and lenders
       agents.forEach(a => tiles.push(makeTile(a)));
       lenders.forEach(l => tiles.push(makeTile(l)));
 
-      if (tiles.length) {
-        tiles.forEach(t => grid.appendChild(t));
-        empty.classList.add("hidden");
-      } else {
-        empty.classList.remove("hidden");
+      // Always render 4 cards total (fill with ghost cards)
+      const TOTAL_SLOTS = 4;
+      tiles.forEach(t => grid.appendChild(t));
+      for (let i = tiles.length; i < TOTAL_SLOTS; i++) {
+        grid.appendChild(makeGhostCard());
       }
-
-      card.classList.remove("hidden");
     }
 
     async function loadLocalBrokers(zip) {
@@ -564,30 +561,33 @@
     function renderBrokers(zip, items = []) {
       const card = document.getElementById("brokersCard");
       const grid = document.getElementById("brokersGrid");
-      const empty = document.getElementById("brokersEmpty");
       const zipSpan = document.getElementById("brokersZip");
       const cta = document.getElementById("brokersCtaBtn");
-      const emptyLink = document.getElementById("brokersEmptyLink");
       if (!card || !grid) return;
 
       zipSpan.textContent = zip || "—";
       cta.href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
-      emptyLink.href = `/local-brokers.html?zip=${encodeURIComponent(zip)}&mode=apply`;
 
       grid.innerHTML = "";
 
+      // If no broker, show full-width ghost placeholder
       if (!Array.isArray(items) || items.length === 0) {
-        empty.classList.remove("hidden");
-        card.classList.add("hidden");
+        const ghostBanner = document.createElement("a");
+        ghostBanner.href = `/local-brokers.html?zip=${encodeURIComponent(zip)}&mode=apply`;
+        ghostBanner.className = "block w-full p-8 border-2 border-dashed border-gray-300 bg-gray-50 rounded-lg text-center hover:border-blue-400 hover:bg-blue-50 transition";
+        ghostBanner.innerHTML = `
+          <div class="text-gray-600 text-lg font-semibold">Exclusive Brokerage Slot Available</div>
+          <div class="text-gray-500 text-sm mt-2">Reserve This ZIP - $100/month</div>
+          <div class="text-xs text-gray-400 mt-1">Your 1200×176 banner ad will display here</div>
+        `;
+        grid.appendChild(ghostBanner);
         return;
       }
 
+      // Show the broker ad
       const b = items[0];
-      const wrapper = document.createElement("div");
-      wrapper.className = "col-span-1 lg:col-span-4";
-
       const tile = document.createElement("div");
-      tile.className = "overflow-hidden bg-white";
+      tile.className = "overflow-hidden bg-white w-full";
 
       const img = document.createElement("img");
       img.src = b.photoUrl || b.logoUrl || "";
@@ -601,11 +601,7 @@
       };
 
       tile.appendChild(img);
-      wrapper.appendChild(tile);
-      grid.appendChild(wrapper);
-
-      empty.classList.add("hidden");
-      card.classList.remove("hidden");
+      grid.appendChild(tile);
     }
 
     // ========== LOCAL SERVICE PROVIDERS ==========
@@ -651,7 +647,6 @@
     function renderServiceProviders(zip, items = []) {
       const card = document.getElementById("serviceProvidersCard");
       const grid = document.getElementById("serviceProvidersGrid");
-      const empty = document.getElementById("serviceProvidersEmpty");
       const zipSpan = document.getElementById("serviceProvidersZip");
       const ctaBtn = document.getElementById("serviceProvidersCtaBtn");
       if (!card || !grid) return;
@@ -661,17 +656,28 @@
 
       grid.innerHTML = "";
 
-      if (!Array.isArray(items) || items.length === 0) {
-        empty.classList.remove("hidden");
-        grid.classList.add("hidden");
-        card.classList.remove("hidden");
-        return;
+      function makeGhostCard() {
+        const a = document.createElement("a");
+        a.href = `/local-service-providers.html?zip=${encodeURIComponent(zip)}`;
+        a.className = "sp-card block border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 transition";
+        const inner = document.createElement("div");
+        inner.className = "sp-card-img flex flex-col items-center justify-center text-center p-3 bg-gray-50";
+        inner.innerHTML = `
+          <div class="text-gray-500 text-sm font-medium">Your Service Here</div>
+          <div class="text-xs text-gray-400 mt-1">Click to advertise</div>
+        `;
+        a.appendChild(inner);
+        // Add empty body for consistent height
+        const body = document.createElement("div");
+        body.className = "sp-card-body";
+        body.innerHTML = `<p class="text-sm text-gray-400">&nbsp;</p>`;
+        a.appendChild(body);
+        return a;
       }
 
-      empty.classList.add("hidden");
-      grid.classList.remove("hidden");
-
-      items.forEach(sp => {
+      // Render actual service provider cards
+      const validItems = Array.isArray(items) ? items : [];
+      validItems.forEach(sp => {
         const tile = document.createElement("div");
         tile.className = "sp-card";
 
@@ -707,7 +713,11 @@
         grid.appendChild(tile);
       });
 
-      card.classList.remove("hidden");
+      // Always render 8 cards total (fill with ghost cards)
+      const TOTAL_SLOTS = 8;
+      for (let i = validItems.length; i < TOTAL_SLOTS; i++) {
+        grid.appendChild(makeGhostCard());
+      }
     }
 
     (async function boot(){
@@ -834,17 +844,17 @@
         }
 
         const zip = (d.zip && String(d.zip)) || parseZipFromAddress(address);
-        if (zip) {
-          const { agents, lenders } = await loadLocalPros(zip);
-          renderPros(zip, agents, lenders);
+        
+        // Always render the advertising sections (with ghost cards if no data)
+        const { agents, lenders } = zip ? await loadLocalPros(zip) : { agents: [], lenders: [] };
+        renderPros(zip || "—", agents, lenders);
 
-          const brokers = await loadLocalBrokers(zip);
-          if (brokers.length > 0) renderBrokers(zip, brokers);
+        const brokers = zip ? await loadLocalBrokers(zip) : [];
+        renderBrokers(zip || "—", brokers);
 
-          // Load and render Local Service Providers
-          const serviceProviders = await loadLocalServiceProviders(zip);
-          renderServiceProviders(zip, serviceProviders);
-        }
+        // Load and render Local Service Providers
+        const serviceProviders = zip ? await loadLocalServiceProviders(zip) : [];
+        renderServiceProviders(zip || "—", serviceProviders);
 
         if (idParam) await paintStats(idParam);
 
