@@ -1214,12 +1214,12 @@
     })();
   </script>
 
-  <!-- Real-time Guaranteed Commissions Counter (scalable: listens to single stats doc) -->
+  <!-- Real-time Guaranteed Commissions Counter (direct count from listings collection) -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { collection, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    (function initCounter() {
+    (async function initCounter() {
       const counterDisplay = document.getElementById('counterDisplay');
       if (!counterDisplay || !db) return;
 
@@ -1256,27 +1256,17 @@
         }, 450);
       }
 
-      // Listen to single stats document (scalable: 1 doc read per visitor)
-      // Document: stats/publicCounts → { guaranteedCommissionsCount: N }
-      const statsDocRef = doc(db, "stats", "publicCounts");
-
-      const unsubscribe = onSnapshot(statsDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const count = Number(data.guaranteedCommissionsCount) || 0;
-          animateCountChange(count);
-        } else {
-          // Doc doesn't exist yet - show 0
-          animateCountChange(0);
-        }
-      }, (error) => {
-        console.warn("[counter] Firestore listener error:", error);
-      });
-
-      // Clean up on page unload
-      window.addEventListener('beforeunload', () => {
-        if (unsubscribe) unsubscribe();
-      });
+      // Direct count from listings collection (ALL documents - no filters)
+      // This shows total historical volume of the platform
+      try {
+        const listingsCol = collection(db, "listings");
+        const snapshot = await getCountFromServer(listingsCol);
+        const count = snapshot.data().count || 0;
+        animateCountChange(count);
+      } catch (error) {
+        console.warn("[counter] getCountFromServer failed:", error);
+        animateCountChange(0);
+      }
     })();
   </script>
 
