@@ -574,7 +574,7 @@
       if (!Array.isArray(items) || items.length === 0) {
         const ghostBanner = document.createElement("a");
         ghostBanner.href = `/local-brokers.html?zip=${encodeURIComponent(zip)}&mode=apply`;
-        ghostBanner.className = "block w-full p-8 border-2 border-dashed border-gray-300 bg-gray-50 rounded-lg text-center hover:border-blue-400 hover:bg-blue-50 transition";
+        ghostBanner.className = "block w-full h-80 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 bg-gray-50 rounded-lg text-center hover:border-blue-400 hover:bg-blue-50 transition";
         ghostBanner.innerHTML = `
           <div class="text-gray-600 text-lg font-semibold">Exclusive Brokerage Slot Available</div>
           <div class="text-gray-500 text-sm mt-2">Reserve This ZIP - $100/month</div>
@@ -592,10 +592,10 @@
       const img = document.createElement("img");
       img.src = b.photoUrl || b.logoUrl || "";
       img.alt = "Local Brokerage";
-      img.className = "w-full h-40 sm:h-48 md:h-56 lg:h-60 xl:h-64 object-contain";
+      img.className = "w-full h-80 object-contain bg-gray-50 rounded";
       img.onerror = () => {
         const ph = document.createElement("div");
-        ph.className = "w-full h-40 sm:h-48 md:h-56 lg:h-60 xl:h-64 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
+        ph.className = "w-full h-80 bg-gray-200 flex items-center justify-center text-xs text-gray-600 rounded";
         ph.textContent = "No Logo";
         img.replaceWith(ph);
       };
