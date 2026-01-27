@@ -85,10 +85,10 @@
 
         <!-- ✅ BULK ZIP INPUT -->
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold">ZIP Codes (up to 99) <span class="text-red-600">*</span></label>
+          <label class="block text-sm font-semibold">ZIP Codes (up to 3) <span class="text-red-600">*</span></label>
           <input id="zipBulk" class="w-full border rounded px-3 py-2"
                  placeholder="Enter ZIPs separated by commas or spaces (e.g., 92651, 92657, 92660)" required>
-          <p class="hint mt-1">We will validate and de-duplicate ZIPs.</p>
+          <p class="hint mt-1">Maximum 3 ZIP codes. We will validate and de-duplicate.</p>
           <div class="mt-2 flex flex-wrap gap-2" id="zipChips"></div>
         </div>
 
@@ -133,6 +133,7 @@
 
     const PRICE_ID_LOCAL_PRO = "price_1SQXeOPTiT2zuxx08ruzwpb6"; // $5/mo per ZIP
     const PRICE_PER_ZIP = 5;
+    const MAX_ZIPS = 3;
 
     const $ = (id) => document.getElementById(id);
 
@@ -195,9 +196,9 @@
       const raw = $('zipBulk').value;
       const { good, bad } = parseZipList(raw);
 
-      if (good.length > 99) {
-        const extra = good.slice(99);
-        good.length = 99;
+      if (good.length > MAX_ZIPS) {
+        const extra = good.slice(MAX_ZIPS);
+        good.length = MAX_ZIPS;
         extra.forEach(x => bad.push(x));
       }
 
@@ -282,8 +283,8 @@
           setStatus('Please enter at least one valid 5-digit ZIP code.', false);
           return;
         }
-        if (zipCodes.length > 99) {
-          setStatus('Maximum 99 ZIP codes per checkout.', false);
+        if (zipCodes.length > MAX_ZIPS) {
+          setStatus('Maximum 3 ZIP codes per checkout.', false);
           return;
         }
 
