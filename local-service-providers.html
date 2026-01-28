@@ -122,7 +122,7 @@
   <script type="module">
     import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
     import {
-      collection, addDoc, query, where, getDocs, serverTimestamp
+      collection, addDoc, query, where, getDocs, serverTimestamp, updateDoc, doc
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
       getStorage, ref, uploadBytes, getDownloadURL
@@ -271,9 +271,9 @@
         if (photoFile) {
           try {
             const photoUrl = await uploadPhoto(photoFile, docRef.id);
-            // Note: In production, you'd update the doc with the photoUrl
-            // For now, we'll store it in localStorage for the Stripe return
-            localStorage.setItem("pendingServiceProviderPhoto", photoUrl);
+            // Update the document with the photo URL
+            await updateDoc(doc(db, COLLECTION, docRef.id), { photoUrl: photoUrl });
+            console.log("[service-provider] Photo URL saved:", photoUrl);
           } catch (uploadErr) {
             console.warn("[service-provider] Photo upload failed:", uploadErr);
           }
