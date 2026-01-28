@@ -51,6 +51,13 @@
       hyphens: none;
     }
 
+    /* FSBO text wrapping fix - prevents commission from bleeding out of container */
+    .p.fsbo-wrap {
+      overflow-wrap: break-word;
+      word-break: break-word;
+      white-space: normal;
+    }
+
     .sig-row {
       margin-top: 1rem;
       display: flex;
@@ -201,6 +208,17 @@
       $("p2").textContent = p2;
       $("sigName").textContent = sigName;
       $("sigDate").textContent = sigDate;
+
+      // ✅ FSBO text wrapping fix: Add class to prevent commission bleeding
+      const p1El = $("p1");
+      const p2El = $("p2");
+      if (isFSBO) {
+        if (p1El) p1El.classList.add("fsbo-wrap");
+        if (p2El) p2El.classList.add("fsbo-wrap");
+      } else {
+        if (p1El) p1El.classList.remove("fsbo-wrap");
+        if (p2El) p2El.classList.remove("fsbo-wrap");
+      }
 
       const embedded = isEmbed();
 
