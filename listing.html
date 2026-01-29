@@ -206,7 +206,6 @@
   <!-- Footer with legal disclaimer -->
   <footer class="bg-white border-t mt-8">
     <div class="max-w-7xl mx-auto px-4 py-4 text-center text-xs text-gray-500 space-y-2">
-      <p>All purchases subject to quality control review.</p>
       <p class="text-gray-400">Local Professionals, Brokers, and Service Providers are third-party advertisers. Display on this site does not constitute an endorsement or recommendation by GuaranteedCommission.com. Verification of licenses and qualifications is the responsibility of the consumer.</p>
     </div>
   </footer>
@@ -440,30 +439,40 @@
             role: (String(x.role || "")).toLowerCase(),
             phone: x.phone || "",
             email: x.email || "",
-            photoUrl: x.photoUrl || x.imageUrl || x.cardUrl || x.photo || ""
+            photoUrl: x.photoUrl || x.imageUrl || x.cardUrl || x.photo || "",
+            createdAt: x.createdAt || null
           });
         });
 
+        // Deduplicate
         const seen = new Set(); const dedup = [];
         for (const r of results) {
           const key = (r.name||"")+"|"+(r.email||"")+"|"+r.id;
           if (seen.has(key)) continue; seen.add(key); dedup.push(r);
         }
 
+        // Sort by createdAt ascending (oldest first)
+        dedup.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+          const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
+          return aTime - bTime;
+        });
+
         const isAgent = (r="") => /agent|broker|real\s*estate/.test(String(r).toLowerCase());
         const isLender= (r="") => /lender|loan|mortgage/.test(String(r).toLowerCase());
-        const agents = dedup.filter(p=>isAgent(p.role)).slice(0,3);
-        const lenders= dedup.filter(p=>isLender(p.role)).slice(0,1);
+        
+        // Get top 3 agents and top 1 lender (already sorted oldest first)
+        const agents = dedup.filter(p => isAgent(p.role)).slice(0, 3);
+        const lender = dedup.filter(p => isLender(p.role)).slice(0, 1)[0] || null;
 
-        if (!agents.length && !lenders.length && dedup.length) return { agents: dedup.slice(0,4), lenders: [] };
-        return { agents, lenders };
+        return { agents, lender };
       } catch (e) {
         console.warn("[local-pros] fetch failed:", e);
-        return { agents: [], lenders: [] };
+        return { agents: [], lender: null };
       }
     }
 
-    function renderPros(zip, agents = [], lenders = []) {
+    function renderPros(zip, agents = [], lender = null) {
       const card = document.getElementById("prosCard");
       const grid = document.getElementById("prosGrid");
       const zipSpan = document.getElementById("prosZip");
@@ -474,7 +483,6 @@
       ctaBtn.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
 
       grid.innerHTML = "";
-      const tiles = [];
 
       function makeTile(p) {
         const div = document.createElement("div");
@@ -498,29 +506,47 @@
         ph.textContent = "No Image";
         return ph;
       }
-      function makeGhostCard() {
+      function makeAgentGhostCard() {
         const a = document.createElement("a");
-        a.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=apply`;
+        a.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&role=agent`;
         a.className = "block overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 transition";
         const inner = document.createElement("div");
         inner.className = "w-full h-40 flex flex-col items-center justify-center text-center p-3";
         inner.innerHTML = `
-          <div class="text-gray-500 text-sm font-medium">Your Card Here</div>
+          <div class="text-gray-500 text-sm font-medium">Agent Slot Available</div>
+          <div class="text-xs text-gray-400 mt-1">Click to advertise</div>
+        `;
+        a.appendChild(inner);
+        return a;
+      }
+      function makeLenderGhostCard() {
+        const a = document.createElement("a");
+        a.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&role=lender`;
+        a.className = "block overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 transition";
+        const inner = document.createElement("div");
+        inner.className = "w-full h-40 flex flex-col items-center justify-center text-center p-3";
+        inner.innerHTML = `
+          <div class="text-gray-500 text-sm font-medium">Lender Slot Available</div>
           <div class="text-xs text-gray-400 mt-1">Click to advertise</div>
         `;
         a.appendChild(inner);
         return a;
       }
 
-      // Combine agents and lenders
-      agents.forEach(a => tiles.push(makeTile(a)));
-      lenders.forEach(l => tiles.push(makeTile(l)));
+      // Slots 1-3: Agents (fill with agent ghost cards if missing)
+      for (let i = 0; i < 3; i++) {
+        if (agents[i]) {
+          grid.appendChild(makeTile(agents[i]));
+        } else {
+          grid.appendChild(makeAgentGhostCard());
+        }
+      }
 
-      // Always render 4 cards total (fill with ghost cards)
-      const TOTAL_SLOTS = 4;
-      tiles.forEach(t => grid.appendChild(t));
-      for (let i = tiles.length; i < TOTAL_SLOTS; i++) {
-        grid.appendChild(makeGhostCard());
+      // Slot 4: Lender (or lender ghost card)
+      if (lender) {
+        grid.appendChild(makeTile(lender));
+      } else {
+        grid.appendChild(makeLenderGhostCard());
       }
     }
 
@@ -614,7 +640,8 @@
             role: x.role || "Service Provider",
             phone: x.phone || "",
             email: x.email || "",
-            photoUrl: x.photoUrl || x.photo || x.cardUrl || ""
+            photoUrl: x.photoUrl || x.photo || x.cardUrl || "",
+            createdAt: x.createdAt || null
           });
         });
 
@@ -626,6 +653,13 @@
           seen.add(r.id);
           dedup.push(r);
         }
+
+        // Sort by createdAt ascending (oldest first)
+        dedup.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() || a.createdAt?.seconds * 1000 || 0;
+          const bTime = b.createdAt?.toMillis?.() || b.createdAt?.seconds * 1000 || 0;
+          return aTime - bTime;
+        });
 
         // Return up to 8
         return dedup.slice(0, 8);
@@ -823,8 +857,8 @@
         const zip = (d.zip && String(d.zip)) || parseZipFromAddress(address);
         
         // Always render the advertising sections (with ghost cards if no data)
-        const { agents, lenders } = zip ? await loadLocalPros(zip) : { agents: [], lenders: [] };
-        renderPros(zip || "—", agents, lenders);
+        const { agents, lender } = zip ? await loadLocalPros(zip) : { agents: [], lender: null };
+        renderPros(zip || "—", agents, lender);
 
         const brokers = zip ? await loadLocalBrokers(zip) : [];
         renderBrokers(zip || "—", brokers);
