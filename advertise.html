@@ -7,61 +7,157 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-900">
+
+  <!-- Header -->
   <header class="bg-white shadow">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="/index.html" class="text-sm text-blue-600 hover:underline">Home</a>
-      <h1 class="text-lg font-semibold">Advertise</h1>
-      <a href="/login.html" class="text-sm text-blue-600 hover:underline">Log In</a>
+    <div class="max-w-7xl mx-auto px-4 py-4">
+      <div class="flex items-center justify-between">
+        <a href="/index.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Home</a>
+        
+        <div class="text-center">
+          <div class="flex items-end justify-center gap-0">
+            <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+            <h1 class="text-3xl font-bold tracking-tight text-gray-900">GuaranteedCommission.com</h1>
+          </div>
+          <p class="text-sm text-red-600 font-semibold mt-1">
+            Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.
+          </p>
+        </div>
+        
+        <a href="/login.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Log In</a>
+      </div>
     </div>
   </header>
-  <main class="max-w-5xl mx-auto px-4 py-8 mt-4">
-    <h1 class="text-4xl font-bold text-center mb-8" style="color:#4DA6FF;">Promote Your Business</h1>
+
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <h1 class="text-4xl font-bold text-center mb-2" style="color:#4DA6FF;">Promote Your Business</h1>
+    <p class="text-center text-gray-600 mb-8">Reach motivated home sellers and real estate professionals in your target ZIP codes.</p>
+
     <div class="space-y-6">
-      <!-- Real estate agents and lenders become a Local Professional -->
-      <a href="/local-professionals.html" class="block bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
-        <h2 class="text-2xl font-semibold mb-3" style="color:#4DA6FF;">Real estate agents and lenders become a Local Professional</h2>
-        <p class="text-gray-700 leading-relaxed">
-          Display your business card on every listing detail page in a specified ZIP Code | Three agents and one lender per ZIP | $5 per month per ZIP | Maximum 3 ZIPs | First come first served | Your display rights preserved until you cancel
+
+      <!-- Card 1: Local Professionals -->
+      <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
+        <h2 class="text-2xl font-semibold mb-3" style="color:#4DA6FF;">Real Estate Agents and Lenders Become a Local Professional</h2>
+        <p class="text-gray-700 mb-4">
+          Display your business card on every listing detail page in a specified ZIP code.
         </p>
-      </a>
-      <!-- Brokerages become a Local Broker -->
-      <a href="/local-brokers.html" class="block bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
-        <h2 class="text-2xl font-semibold mb-3" style="color:#4DA6FF;">Brokerages become a Local Broker</h2>
-        <p class="text-gray-700 leading-relaxed">
-          Display your exclusive footer advertisement (the full strip) on every listing detail page in a specified ZIP code | One brokerage per ZIP | $100 per month per ZIP | Maximum 99 ZIP codes | First come first served | Your display rights preserved until you cancel | See Ad Specifications below
+        <ul class="text-sm text-gray-600 space-y-1 mb-5">
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span>Three agents and one lender per ZIP</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span><strong>$5 per month</strong> per ZIP</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span>Maximum 3 ZIPs</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span>First come, first served</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span>Your display rights preserved until you cancel</span>
+          </li>
+        </ul>
+        <a href="/local-professionals.html" 
+           class="inline-block px-6 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition"
+           style="background-color:#4DA6FF;">
+          Apply Now →
+        </a>
+      </div>
+
+      <!-- Card 2: Local Brokers -->
+      <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
+        <h2 class="text-2xl font-semibold mb-3" style="color:#4DA6FF;">Brokerages Become a Local Broker</h2>
+        <p class="text-gray-700 mb-4">
+          Display your own branded ad (the whole strip) on every listing detail page in a specified ZIP code.
         </p>
-      </a>
-      <!-- Title, escrow, architects, planners, builders, and other service providers become a Local Service Provider -->
-      <a href="/local-service-providers.html" class="block bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
-        <h2 class="text-2xl font-semibold mb-3" style="color:#4DA6FF;">Title, escrow, architects, planners, builders, and other service providers become a Local Service Provider</h2>
-        <p class="text-gray-700 leading-relaxed">
-          Display your business card on every listing detail page and on every listed property intake page (seller and agent) in a specified ZIP code | Eight Local Service Providers per ZIP | $5 per month per ZIP code | Maximum 3 ZIPs | First come first served | Your display rights preserved until you cancel
+        <ul class="text-sm text-gray-600 space-y-1 mb-5">
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span><strong>One brokerage per ZIP</strong> (exclusive)</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span><strong>$100 per month</strong> per ZIP</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span>Maximum 99 ZIP codes</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span>First come, first served</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span>Your display rights preserved until you cancel</span>
+          </li>
+        </ul>
+
+        <!-- Ad Specifications (inline) -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-5">
+          <h3 class="text-sm font-semibold text-gray-800 mb-2">Ad Specifications</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-600">
+            <div><span class="font-medium text-gray-700">Dimensions:</span> 1200 × 320 pixels</div>
+            <div><span class="font-medium text-gray-700">Aspect Ratio:</span> ~3.75:1 (Horizontal Strip)</div>
+            <div><span class="font-medium text-gray-700">File Format:</span> PNG or JPEG</div>
+            <div><span class="font-medium text-gray-700">Resolution:</span> 72 DPI (web standard)</div>
+          </div>
+        </div>
+
+        <a href="/local-brokers.html" 
+           class="inline-block px-6 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition"
+           style="background-color:#4DA6FF;">
+          Apply Now →
+        </a>
+      </div>
+
+      <!-- Card 3: Local Service Providers -->
+      <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
+        <h2 class="text-2xl font-semibold mb-3" style="color:#4DA6FF;">Title, Escrow, Architects, Planners, Builders, and Other Service Providers Become a Local Service Provider</h2>
+        <p class="text-gray-700 mb-4">
+          Display your business card on every listing detail page and on every listed property intake page (seller and agent) in a specified ZIP code.
         </p>
-      </a>
+        <ul class="text-sm text-gray-600 space-y-1 mb-5">
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span>Eight Local Service Providers per ZIP</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span><strong>$5 per month</strong> per ZIP code</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span>Maximum 3 ZIPs</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span>First come, first served</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-green-600 font-bold">✓</span>
+            <span>Your display rights preserved until you cancel</span>
+          </li>
+        </ul>
+        <a href="/local-service-providers.html" 
+           class="inline-block px-6 py-2 rounded-lg text-white font-semibold hover:opacity-90 transition"
+           style="background-color:#4DA6FF;">
+          Apply Now →
+        </a>
+      </div>
+
     </div>
 
-    <!-- Local Broker's Ad Specifications -->
-    <section class="mt-10 bg-gray-50 border border-gray-200 rounded-xl p-6">
-      <h2 class="text-xl font-semibold mb-4" style="color:#4DA6FF;">Local Broker's Ad Specifications</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-        <div class="flex items-start gap-2">
-          <span class="font-semibold text-gray-900">Dimensions:</span>
-          <span>1200 pixels (width) x 320 pixels (height)</span>
-        </div>
-        <div class="flex items-start gap-2">
-          <span class="font-semibold text-gray-900">Aspect Ratio:</span>
-          <span>Approximately 3.75:1 (Horizontal Strip)</span>
-        </div>
-        <div class="flex items-start gap-2">
-          <span class="font-semibold text-gray-900">File Format:</span>
-          <span>PNG (best for logos/text) or JPEG (best for photos)</span>
-        </div>
-        <div class="flex items-start gap-2">
-          <span class="font-semibold text-gray-900">Resolution:</span>
-          <span>72 DPI (Standard web resolution)</span>
-        </div>
-      </div>
-    </section>
+    <!-- Footer Note -->
+    <p class="text-center text-xs text-gray-500 mt-8">
+      All advertising placements are subject to approval. Ads must comply with applicable real estate advertising regulations.
+    </p>
   </main>
 </body>
 </html>
