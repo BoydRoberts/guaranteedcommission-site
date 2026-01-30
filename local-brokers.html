@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-16 (Bulk ZIP subscription checkout - Local Brokers | License REQUIRED | Green Pay Button) -->
+<!-- Build: 2026-01-30 (Bulk ZIP subscription checkout - Local Brokers | License REQUIRED | Green Pay Button | Instant Activation) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -11,6 +11,8 @@
     .chip { font-size: 12px; padding: 4px 8px; border-radius: 9999px; background:#f3f4f6; color:#374151; }
     .chip-bad { background:#fee2e2; color:#991b1b; }
     .chip-good { background:#dcfce7; color:#166534; }
+    /* Full ad preview - shows complete rectangle */
+    .card-preview { width: auto; max-width: 100%; height: auto; max-height: 200px; object-fit: contain; border-radius: 8px; border: 1px solid #e5e7eb; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -84,7 +86,7 @@
           <label class="block text-sm font-semibold">ZIP Codes (up to 99) <span class="text-red-600">*</span></label>
           <input id="zipBulk" class="w-full border rounded px-3 py-2"
                  placeholder="Enter ZIPs separated by commas or spaces (e.g., 92651, 92657, 92660)" required>
-          <p class="hint mt-1">We will validate and de-duplicate ZIPs. Example: “92651 92657 92660”.</p>
+          <p class="hint mt-1">We will validate and de-duplicate ZIPs. Example: "92651 92657 92660".</p>
           <div class="mt-2 flex flex-wrap gap-2" id="zipChips"></div>
         </div>
 
@@ -209,10 +211,11 @@
     $('zipBulk')?.addEventListener('input', updateTotal);
     updateTotal();
 
+    // Fix 1: Full ad preview (not cropped square)
     $('photo')?.addEventListener('change', (e) => {
       const f = e.target.files?.[0]; if (!f) return;
       const r = new FileReader();
-      r.onload = () => { $('photoPreview').innerHTML = `<img src="${r.result}" alt="Ad" class="h-28 object-contain rounded border">`; };
+      r.onload = () => { $('photoPreview').innerHTML = `<img src="${r.result}" alt="Broker Ad Preview" class="card-preview">`; };
       r.readAsDataURL(f);
     });
 
@@ -236,10 +239,40 @@
       return (localStorage.getItem('loggedInEmail') || localStorage.getItem('verifyTarget') || '').trim();
     }
 
-    (function(){
+    // Fix 3 & 4: Success handling with fallback activation
+    (async function(){
       const u = new URL(location.href);
       if (u.searchParams.get('status') === 'success') {
         $('thanks')?.classList.remove('hidden');
+        
+        // Fallback activation: If pendingBrokerId exists, activate immediately
+        const pendingId = localStorage.getItem("pendingBrokerId");
+        if (pendingId) {
+          try {
+            await updateDoc(doc(db, "localBrokers", pendingId), {
+              status: "active",
+              activatedAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            console.log("[local-brokers] Fallback activation successful:", pendingId);
+            
+            // Clean up localStorage
+            localStorage.removeItem("pendingBrokerId");
+            localStorage.removeItem("pendingBrokerEmail");
+            localStorage.removeItem("localBrokerDraftId");
+            
+            // Update success message
+            const thanksEl = $('thanks');
+            if (thanksEl) {
+              thanksEl.innerHTML = `
+                <h3 class="text-lg font-semibold">Thank you!</h3>
+                <p class="text-sm mt-1">Your Local Broker subscription checkout completed successfully. Your brokerage advertisement is now live in the requested ZIP code.</p>
+              `;
+            }
+          } catch (e) {
+            console.warn("[local-brokers] Fallback activation failed:", e);
+          }
+        }
       }
     })();
 
@@ -275,7 +308,11 @@
         };
 
         const refDoc = await addDoc(collection(db, "localBrokers"), draft);
-        localStorage.setItem("localBrokerDraftId", refDoc.id);
+        
+        // Fix 2: Store for activation on checkout-success.html
+        localStorage.setItem("pendingBrokerId", refDoc.id);
+        localStorage.setItem("pendingBrokerEmail", email);
+        localStorage.setItem("localBrokerDraftId", refDoc.id); // Legacy key
 
         const photoUrl = await maybeUploadPhoto(refDoc.id);
         if (photoUrl) {
