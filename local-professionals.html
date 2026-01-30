@@ -130,20 +130,94 @@
 
   <script type="module">
     import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
-    import { addDoc, collection, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { addDoc, collection, doc, updateDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     const PRICE_ID_LOCAL_PRO = "price_1SQXeOPTiT2zuxx08ruzwpb6"; // $5/mo per ZIP
     const PRICE_PER_ZIP = 5;
     const MAX_ZIPS = 3;
+    const MAX_AGENTS_PER_ZIP = 3;
+    const MAX_LENDERS_PER_ZIP = 1;
 
     const $ = (id) => document.getElementById(id);
+
+    // Waitlist state
+    let isWaitlistMode = false;
+    let soldOutZips = [];
 
     function setStatus(msg, ok=true){
       const el = $('status'); el.classList.remove('hidden');
       el.className = ok ? 'mt-4 text-sm rounded-lg p-3 bg-green-50 text-green-700'
                         : 'mt-4 text-sm rounded-lg p-3 bg-red-50 text-red-700';
       el.textContent = msg;
+    }
+
+    // Check ZIP availability based on role (3 agents or 1 lender per ZIP)
+    async function checkZipAvailability(zips, role) {
+      const soldOut = [];
+      const maxSlots = role === 'lender' ? MAX_LENDERS_PER_ZIP : MAX_AGENTS_PER_ZIP;
+      
+      for (const zip of zips) {
+        if (!zip) continue;
+        try {
+          const q = query(
+            collection(db, "localPros"),
+            where("status", "==", "active"),
+            where("role", "==", role),
+            where("zips", "array-contains", zip)
+          );
+          const snap = await getDocs(q);
+          if (snap.size >= maxSlots) {
+            soldOut.push(zip);
+          }
+        } catch (e) {
+          console.warn("[checkZip] error for", zip, e);
+        }
+      }
+      return soldOut;
+    }
+
+    // Update button state based on availability
+    function updateButtonState(soldOut, zipCodes) {
+      const btn = $('checkoutBtn');
+      soldOutZips = soldOut;
+      
+      if (soldOut.length > 0 && zipCodes.length > 0) {
+        // Some ZIPs are sold out - switch to waitlist mode
+        isWaitlistMode = true;
+        btn.textContent = 'Join Waitlist';
+        btn.className = 'px-4 py-2 rounded text-white font-semibold';
+        btn.style.backgroundColor = '#4DA6FF';
+        $('total').textContent = '$0 due today';
+        $('countNote').textContent = ' (Waitlist)';
+        
+        // Show which ZIPs are sold out
+        setStatus(`ZIP ${soldOut.join(', ')} is currently full. You can join the waitlist to be notified when a spot opens.`, true);
+      } else {
+        // All ZIPs available - normal checkout mode
+        isWaitlistMode = false;
+        btn.textContent = 'Proceed to Checkout';
+        btn.className = 'px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-semibold';
+        btn.style.backgroundColor = '';
+        $('status').classList.add('hidden');
+      }
+    }
+
+    // Debounced availability check
+    let checkTimeout = null;
+    async function debouncedAvailabilityCheck() {
+      clearTimeout(checkTimeout);
+      checkTimeout = setTimeout(async () => {
+        const role = $('role').value.trim();
+        const { zipCodes } = updateTotal(false); // Don't re-trigger check
+        
+        if (role && zipCodes.length > 0) {
+          const soldOut = await checkZipAvailability(zipCodes, role);
+          updateButtonState(soldOut, zipCodes);
+        } else {
+          updateButtonState([], zipCodes);
+        }
+      }, 500);
     }
 
     function onlyDigits(s){ return String(s||'').replace(/\D/g,''); }
@@ -194,7 +268,7 @@
       });
     }
 
-    function updateTotal() {
+    function updateTotal(triggerCheck = true) {
       const raw = $('zipBulk').value;
       const { good, bad } = parseZipList(raw);
 
@@ -206,15 +280,25 @@
 
       renderZipChips(good, bad);
 
-      const total = good.length * PRICE_PER_ZIP;
-      $('total').textContent = `${fmtMoney(total)}/month`;
-      $('countNote').textContent = good.length ? ` (${good.length} ZIP${good.length===1?'':'s'})` : '';
+      // Only update total if not in waitlist mode (will be overridden by availability check)
+      if (!isWaitlistMode) {
+        const total = good.length * PRICE_PER_ZIP;
+        $('total').textContent = `${fmtMoney(total)}/month`;
+        $('countNote').textContent = good.length ? ` (${good.length} ZIP${good.length===1?'':'s'})` : '';
+      }
+      
+      // Trigger availability check
+      if (triggerCheck) {
+        debouncedAvailabilityCheck();
+      }
+      
       return { zipCodes: good, invalid: bad };
     }
 
     $('phone')?.addEventListener('input', (e) => { e.target.value = formatPhone(e.target.value); });
-    $('zipBulk')?.addEventListener('input', updateTotal);
-    updateTotal();
+    $('zipBulk')?.addEventListener('input', () => updateTotal(true));
+    $('role')?.addEventListener('change', debouncedAvailabilityCheck);
+    updateTotal(false);
 
     $('photo')?.addEventListener('change', (e) => {
       const f = e.target.files?.[0]; if (!f) return;
@@ -284,7 +368,7 @@
       const btn = $('checkoutBtn');
       try {
         btn.disabled = true;
-        btn.textContent = 'Starting checkout…';
+        btn.textContent = isWaitlistMode ? 'Joining waitlist…' : 'Starting checkout…';
 
         const role = $('role').value.trim();
         const personalName = $('personalName').value.trim();
@@ -293,7 +377,7 @@
         const phoneDigits = onlyDigits($('phone').value);
         const phone = formatPhone($('phone').value.trim());
         const license = $('license').value.trim();
-        const { zipCodes } = updateTotal();
+        const { zipCodes } = updateTotal(false);
 
         if (!role || !personalName || !name || !email) {
           setStatus('Please complete role, personal name, company name, and email.', false);
@@ -320,6 +404,58 @@
           return;
         }
 
+        // ========== WAITLIST MODE ==========
+        if (isWaitlistMode) {
+          const waitlistData = {
+            role,
+            personalName,
+            name,
+            email,
+            emailLower: email.toLowerCase(),
+            phone,
+            license,
+            waitlistZips: soldOutZips,
+            allRequestedZips: zipCodes,
+            status: "waiting",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          };
+
+          // Upload photo if provided
+          let photoUrl = "";
+          const photoFile = $('photo')?.files?.[0];
+          if (photoFile) {
+            try {
+              const storage = getStorage(undefined, STORAGE_BUCKET_GS);
+              const safe = String(photoFile.name || "waitlist_card").replace(/[^\w\-.]+/g,"_");
+              const path = `waitlist_localPros/${email.replace(/[^a-z0-9]/g,'_')}/card_${Date.now()}_${safe}`;
+              const r = ref(storage, path);
+              await uploadBytes(r, photoFile);
+              photoUrl = await getDownloadURL(r);
+              waitlistData.photoUrl = photoUrl;
+            } catch (e) {
+              console.warn("[waitlist] photo upload failed:", e);
+            }
+          }
+
+          await addDoc(collection(db, "waitlist_localPros"), waitlistData);
+          console.log("[local-pros] Added to waitlist");
+
+          // Show success message
+          const thanksEl = $('thanks');
+          if (thanksEl) {
+            thanksEl.innerHTML = `
+              <h3 class="text-lg font-semibold">You're on the Waitlist!</h3>
+              <p class="text-sm mt-1">ZIP ${soldOutZips.join(', ')} is currently full. You have been added to the priority waitlist. We will notify you at <strong>${email}</strong> when a spot opens.</p>
+            `;
+            thanksEl.classList.remove('hidden');
+          }
+          $('status').classList.add('hidden');
+          $('proForm').classList.add('hidden');
+          return;
+        }
+
+        // ========== NORMAL CHECKOUT MODE ==========
         const draft = {
           role,
           personalName,
@@ -377,7 +513,7 @@
         setStatus(e.message || "Checkout error.", false);
       } finally {
         btn.disabled = false;
-        btn.textContent = "Proceed to Checkout";
+        btn.textContent = isWaitlistMode ? "Join Waitlist" : "Proceed to Checkout";
       }
     });
   </script>
