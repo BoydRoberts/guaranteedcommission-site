@@ -138,11 +138,18 @@
     }
 
     // ✅ FIXED: Shows history even with 1 entry, format: "12/18/2025 — Original — 3.0%"
+    // ✅ HIDE in embed mode to prevent text overflow in listing detail card
     function renderCommissionHistory(history) {
       const section = $("commissionHistorySection");
       const list = $("commissionHistoryList");
 
       if (!section || !list) return;
+
+      // Hide history in embed mode (small card view on listing detail page)
+      if (isEmbed()) {
+        section.classList.add("hidden");
+        return;
+      }
 
       // Changed from length <= 1 to length < 1
       if (!Array.isArray(history) || history.length < 1) {
