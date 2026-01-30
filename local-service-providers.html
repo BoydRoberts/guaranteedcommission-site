@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Build: 2026-01-30 (Local Service Providers | Instant Activation) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -6,6 +7,9 @@
   <title>Local Service Providers | GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    /* Fix 1: Full business card preview - shows complete rectangle */
+    .card-preview { width: auto; max-width: 100%; height: auto; max-height: 200px; object-fit: contain; border-radius: 8px; border: 1px solid #e5e7eb; }
+    /* Search result thumbnails */
     .thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb; }
   </style>
 </head>
@@ -42,6 +46,12 @@
 
     <!-- Status -->
     <div id="status" class="hidden mb-4 text-sm rounded-lg p-3" role="alert"></div>
+
+    <!-- Success Message (shown after payment) -->
+    <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mb-6 text-emerald-800">
+      <h3 class="text-lg font-semibold">Thank you!</h3>
+      <p class="text-sm mt-1">Your Local Service Provider subscription checkout completed successfully.</p>
+    </section>
 
     <!-- Signup Form -->
     <form id="serviceProviderForm" class="bg-white rounded-xl shadow p-6 space-y-5" autocomplete="off">
@@ -95,7 +105,7 @@
         <input id="photoInput" type="file" accept=".png,.jpg,.jpeg" class="block w-full text-sm">
         <p class="text-xs text-gray-500 mt-1">PNG or JPG. This will be displayed on listing pages in your ZIP codes.</p>
         <div id="photoPreview" class="mt-3 hidden">
-          <img id="previewImg" class="thumb" alt="Preview">
+          <img id="previewImg" class="card-preview" alt="Business Card Preview">
         </div>
       </div>
 
@@ -164,13 +174,14 @@
       });
     });
 
-    // Photo preview
+    // Fix 1: Photo preview with full card-preview class
     $("photoInput")?.addEventListener("change", (e) => {
       const file = e.target.files?.[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = (ev) => {
           $("previewImg").src = ev.target.result;
+          $("previewImg").className = "card-preview";
           $("photoPreview").classList.remove("hidden");
         };
         reader.readAsDataURL(file);
@@ -210,6 +221,43 @@
       await uploadBytes(r, file);
       return await getDownloadURL(r);
     }
+
+    // Fix 3 & 4: Success handling with fallback activation
+    (async function(){
+      const u = new URL(location.href);
+      if (u.searchParams.get('status') === 'success') {
+        $('thanks')?.classList.remove('hidden');
+        
+        // Fallback activation: If pendingServiceProviderId exists, activate immediately
+        const pendingId = localStorage.getItem("pendingServiceProviderId");
+        if (pendingId) {
+          try {
+            await updateDoc(doc(db, COLLECTION, pendingId), {
+              status: "active",
+              activatedAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            console.log("[service-providers] Fallback activation successful:", pendingId);
+            
+            // Clean up localStorage
+            localStorage.removeItem("pendingServiceProviderId");
+            localStorage.removeItem("pendingServiceProviderEmail");
+            localStorage.removeItem("pendingServiceProviderPhoto");
+            
+            // Update success message
+            const thanksEl = $('thanks');
+            if (thanksEl) {
+              thanksEl.innerHTML = `
+                <h3 class="text-lg font-semibold">Thank you!</h3>
+                <p class="text-sm mt-1">Your Local Service Provider subscription checkout completed successfully. Your business card is now live in the requested ZIP code.</p>
+              `;
+            }
+          } catch (e) {
+            console.warn("[service-providers] Fallback activation failed:", e);
+          }
+        }
+      }
+    })();
 
     // Form submission
     $("serviceProviderForm")?.addEventListener("submit", async (e) => {
@@ -268,9 +316,10 @@
         console.log("[service-provider] Created doc:", docRef.id);
 
         // Upload photo if provided
+        let photoUrl = "";
         if (photoFile) {
           try {
-            const photoUrl = await uploadPhoto(photoFile, docRef.id);
+            photoUrl = await uploadPhoto(photoFile, docRef.id);
             // Update the document with the photo URL
             await updateDoc(doc(db, COLLECTION, docRef.id), { photoUrl: photoUrl });
             console.log("[service-provider] Photo URL saved:", photoUrl);
@@ -279,16 +328,19 @@
           }
         }
 
-        // Store pending info for Stripe return
+        // Fix 2: Store pending info for activation on checkout-success.html
         localStorage.setItem("pendingServiceProviderId", docRef.id);
         localStorage.setItem("pendingServiceProviderEmail", email);
+        if (photoUrl) {
+          localStorage.setItem("pendingServiceProviderPhoto", photoUrl);
+        }
 
         setStatus("Redirecting to payment...", true);
 
         // Calculate total based on number of ZIPs
         const total = zips.length * 5;
 
-        // Redirect to Stripe (placeholder link)
+        // Redirect to Stripe
         setTimeout(() => {
           window.location.href = `${STRIPE_LINK}?prefilled_email=${encodeURIComponent(email)}&client_reference_id=${docRef.id}`;
         }, 800);
