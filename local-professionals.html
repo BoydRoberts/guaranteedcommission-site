@@ -11,6 +11,8 @@
     .chip { font-size: 12px; padding: 4px 8px; border-radius: 9999px; background:#f3f4f6; color:#374151; }
     .chip-bad { background:#fee2e2; color:#991b1b; }
     .chip-good { background:#dcfce7; color:#166534; }
+    /* Full business card preview - shows complete rectangle */
+    .card-preview { width: auto; max-width: 100%; height: auto; max-height: 200px; object-fit: contain; border-radius: 8px; border: 1px solid #e5e7eb; }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -217,7 +219,7 @@
     $('photo')?.addEventListener('change', (e) => {
       const f = e.target.files?.[0]; if (!f) return;
       const r = new FileReader();
-      r.onload = () => { $('photoPreview').innerHTML = `<img src="${r.result}" alt="Card" class="h-24 w-24 object-cover rounded border">`; };
+      r.onload = () => { $('photoPreview').innerHTML = `<img src="${r.result}" alt="Business Card Preview" class="card-preview">`; };
       r.readAsDataURL(f);
     });
 
@@ -241,10 +243,40 @@
       return (localStorage.getItem('loggedInEmail') || localStorage.getItem('verifyTarget') || '').trim();
     }
 
-    (function(){
+    // Success handling with fallback activation
+    (async function(){
       const u = new URL(location.href);
       if (u.searchParams.get('status') === 'success') {
         $('thanks')?.classList.remove('hidden');
+        
+        // Fallback activation: If pendingLocalProId exists, activate immediately
+        const pendingId = localStorage.getItem("pendingLocalProId");
+        if (pendingId) {
+          try {
+            await updateDoc(doc(db, "localPros", pendingId), {
+              status: "active",
+              activatedAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            console.log("[local-pros] Fallback activation successful:", pendingId);
+            
+            // Clean up localStorage
+            localStorage.removeItem("pendingLocalProId");
+            localStorage.removeItem("pendingLocalProEmail");
+            localStorage.removeItem("localProDraftId");
+            
+            // Update success message
+            const thanksEl = $('thanks');
+            if (thanksEl) {
+              thanksEl.innerHTML = `
+                <h3 class="text-lg font-semibold">Thank you!</h3>
+                <p class="text-sm mt-1">Your Local Professional subscription checkout completed successfully. Your business card is now live in the requested ZIP code.</p>
+              `;
+            }
+          } catch (e) {
+            console.warn("[local-pros] Fallback activation failed:", e);
+          }
+        }
       }
     })();
 
@@ -303,7 +335,11 @@
         };
 
         const refDoc = await addDoc(collection(db, "localPros"), draft);
-        localStorage.setItem("localProDraftId", refDoc.id);
+        
+        // Store for activation on checkout-success.html
+        localStorage.setItem("pendingLocalProId", refDoc.id);
+        localStorage.setItem("pendingLocalProEmail", email);
+        localStorage.setItem("localProDraftId", refDoc.id); // Legacy key
 
         const photoUrl = await maybeUploadPhoto(refDoc.id);
         if (photoUrl) {
