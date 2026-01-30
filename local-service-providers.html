@@ -141,7 +141,13 @@
     const $ = (id) => document.getElementById(id);
     const COLLECTION = "localServiceProviders";
     const MAX_PER_ZIP = 8;
+    const MAX_ZIPS = 3;
+    const PRICE_PER_ZIP = 5;
     const STRIPE_LINK = "https://buy.stripe.com/test_6oU9AVa0LaVc7QPg6o4ow04";
+
+    // Waitlist state
+    let isWaitlistMode = false;
+    let soldOutZips = [];
 
     function setStatus(msg, ok = false) {
       const box = $("status");
@@ -151,6 +157,8 @@
         ? "mb-4 text-sm rounded-lg p-3 bg-green-50 text-green-700"
         : "mb-4 text-sm rounded-lg p-3 bg-red-50 text-red-700";
     }
+
+    function fmtMoney(n) { return '$' + Number(n || 0).toLocaleString(); }
 
     function formatPhone(s) {
       const d = (s || "").replace(/\D/g, "").slice(0, 10);
@@ -167,11 +175,17 @@
       e.target.selectionStart = e.target.selectionEnd = Math.min(cur + (e.target.value.length - before.length), e.target.value.length);
     });
 
-    // ZIP inputs - digits only
-    ["zip1", "zip2", "zip3", "searchZip"].forEach((id) => {
+    // ZIP inputs - digits only + trigger availability check
+    ["zip1", "zip2", "zip3"].forEach((id) => {
       $(id)?.addEventListener("input", (e) => {
         e.target.value = e.target.value.replace(/\D/g, "").slice(0, 5);
+        debouncedAvailabilityCheck();
       });
+    });
+    
+    // Search ZIP - digits only (no availability check)
+    $("searchZip")?.addEventListener("input", (e) => {
+      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 5);
     });
 
     // Fix 1: Photo preview with full card-preview class
@@ -210,6 +224,56 @@
         }
       }
       return soldOut;
+    }
+
+    // Update button state based on availability
+    function updateButtonState(soldOut, zips) {
+      const btn = $("serviceProviderForm")?.querySelector('button[type="submit"]');
+      if (!btn) return;
+      
+      soldOutZips = soldOut;
+      
+      if (soldOut.length > 0 && zips.length > 0) {
+        // Some ZIPs are sold out - switch to waitlist mode
+        isWaitlistMode = true;
+        btn.textContent = 'Join Waitlist';
+        btn.className = 'w-full py-3 rounded-lg text-white font-semibold transition';
+        btn.style.backgroundColor = '#4DA6FF';
+        
+        // Show which ZIPs are sold out
+        setStatus(`ZIP ${soldOut.join(', ')} is currently full (limit ${MAX_PER_ZIP}). You can join the waitlist to be notified when a spot opens.`, true);
+      } else {
+        // All ZIPs available - normal checkout mode
+        isWaitlistMode = false;
+        btn.textContent = `Continue to Payment (${fmtMoney(PRICE_PER_ZIP)}/month per ZIP)`;
+        btn.className = 'w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition';
+        btn.style.backgroundColor = '';
+        $("status").classList.add("hidden");
+      }
+    }
+
+    // Get current ZIPs from inputs
+    function getCurrentZips() {
+      const zip1 = ($("zip1")?.value || "").trim();
+      const zip2 = ($("zip2")?.value || "").trim();
+      const zip3 = ($("zip3")?.value || "").trim();
+      return [zip1, zip2, zip3].filter((z) => z && z.length === 5);
+    }
+
+    // Debounced availability check
+    let checkTimeout = null;
+    async function debouncedAvailabilityCheck() {
+      clearTimeout(checkTimeout);
+      checkTimeout = setTimeout(async () => {
+        const zips = getCurrentZips();
+        
+        if (zips.length > 0) {
+          const soldOut = await checkZipAvailability(zips);
+          updateButtonState(soldOut, zips);
+        } else {
+          updateButtonState([], zips);
+        }
+      }, 500);
     }
 
     // Upload photo to Storage
@@ -263,40 +327,92 @@
     $("serviceProviderForm")?.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const role = ($("role")?.value || "").trim();
-      const name = ($("name")?.value || "").trim();
-      const company = ($("company")?.value || "").trim();
-      const email = ($("email")?.value || "").trim().toLowerCase();
-      const phone = ($("phone")?.value || "").trim();
-      const license = ($("license")?.value || "").trim();
-      const zip1 = ($("zip1")?.value || "").trim();
-      const zip2 = ($("zip2")?.value || "").trim();
-      const zip3 = ($("zip3")?.value || "").trim();
-      const photoFile = $("photoInput")?.files?.[0] || null;
-
-      // Validation
-      if (!role || !name || !company || !email || !phone) {
-        setStatus("Please complete all required fields.");
-        return;
-      }
-
-      const zips = [zip1, zip2, zip3].filter((z) => z && z.length === 5);
-      if (zips.length === 0) {
-        setStatus("Please enter at least one valid 5-digit ZIP code.");
-        return;
-      }
-
-      // Check ZIP availability
-      setStatus("Checking ZIP availability...", true);
-      const soldOut = await checkZipAvailability(zips);
-      if (soldOut.length > 0) {
-        setStatus(`ZIP ${soldOut.join(", ")} is sold out (limit ${MAX_PER_ZIP}). Please choose different ZIP codes.`);
-        return;
-      }
-
-      setStatus("Saving your information...", true);
-
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalText = btn.textContent;
+      
       try {
+        btn.disabled = true;
+        btn.textContent = isWaitlistMode ? 'Joining waitlist…' : 'Processing…';
+
+        const role = ($("role")?.value || "").trim();
+        const name = ($("name")?.value || "").trim();
+        const company = ($("company")?.value || "").trim();
+        const email = ($("email")?.value || "").trim().toLowerCase();
+        const phone = ($("phone")?.value || "").trim();
+        const license = ($("license")?.value || "").trim();
+        const zips = getCurrentZips();
+        const photoFile = $("photoInput")?.files?.[0] || null;
+
+        // Validation
+        if (!role || !name || !company || !email || !phone) {
+          setStatus("Please complete all required fields.");
+          return;
+        }
+
+        if (zips.length === 0) {
+          setStatus("Please enter at least one valid 5-digit ZIP code.");
+          return;
+        }
+
+        // ========== WAITLIST MODE ==========
+        if (isWaitlistMode) {
+          const waitlistData = {
+            role,
+            name,
+            company,
+            email,
+            emailLower: email.toLowerCase(),
+            phone,
+            license: license || null,
+            waitlistZips: soldOutZips,
+            allRequestedZips: zips,
+            status: "waiting",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          };
+
+          // Upload photo if provided
+          if (photoFile) {
+            try {
+              const storage = getStorage(undefined, STORAGE_BUCKET_GS);
+              const safeName = String(photoFile.name || "waitlist_card").replace(/[^\w\-.]+/g, "_");
+              const path = `waitlist_localServiceProviders/${email.replace(/[^a-z0-9]/g,'_')}/${Date.now()}_${safeName}`;
+              const r = ref(storage, path);
+              await uploadBytes(r, photoFile);
+              waitlistData.photoUrl = await getDownloadURL(r);
+            } catch (uploadErr) {
+              console.warn("[waitlist] photo upload failed:", uploadErr);
+            }
+          }
+
+          await addDoc(collection(db, "waitlist_localServiceProviders"), waitlistData);
+          console.log("[service-providers] Added to waitlist");
+
+          // Show success message
+          const thanksEl = $('thanks');
+          if (thanksEl) {
+            thanksEl.innerHTML = `
+              <h3 class="text-lg font-semibold">You're on the Waitlist!</h3>
+              <p class="text-sm mt-1">ZIP ${soldOutZips.join(', ')} is currently full (limit ${MAX_PER_ZIP}). You have been added to the priority waitlist. We will notify you at <strong>${email}</strong> when a spot opens.</p>
+            `;
+            thanksEl.classList.remove('hidden');
+          }
+          $("status").classList.add("hidden");
+          $("serviceProviderForm").classList.add("hidden");
+          return;
+        }
+
+        // ========== NORMAL CHECKOUT MODE ==========
+        // Re-check availability before proceeding
+        setStatus("Checking ZIP availability...", true);
+        const soldOut = await checkZipAvailability(zips);
+        if (soldOut.length > 0) {
+          updateButtonState(soldOut, zips);
+          return;
+        }
+
+        setStatus("Saving your information...", true);
+
         // Create Firestore document
         const docData = {
           role: role,
@@ -328,7 +444,7 @@
           }
         }
 
-        // Fix 2: Store pending info for activation on checkout-success.html
+        // Store pending info for activation on checkout-success.html
         localStorage.setItem("pendingServiceProviderId", docRef.id);
         localStorage.setItem("pendingServiceProviderEmail", email);
         if (photoUrl) {
@@ -337,17 +453,17 @@
 
         setStatus("Redirecting to payment...", true);
 
-        // Calculate total based on number of ZIPs
-        const total = zips.length * 5;
-
         // Redirect to Stripe
         setTimeout(() => {
           window.location.href = `${STRIPE_LINK}?prefilled_email=${encodeURIComponent(email)}&client_reference_id=${docRef.id}`;
         }, 800);
 
       } catch (err) {
-        console.error("[service-provider] Save failed:", err);
-        setStatus("Could not save your information. Please try again.");
+        console.error("[service-provider] Error:", err);
+        setStatus("Could not process your request. Please try again.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
       }
     });
 
