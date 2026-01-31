@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-30 (SECURITY: Zero Trust Dashboard - strict ownership verification, no localStorage trust) -->
+<!-- Build: 2026-01-30 (SECURITY: Zero Trust Dashboard - Firestore-based saved searches, role-conditional UI) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -202,7 +202,7 @@
 
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    import { collection, getDocs, query, where, limit, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { collection, getDocs, query, where, limit, doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id)=>document.getElementById(id);
     const norm = (s)=>String(s||'').trim().toLowerCase();
@@ -238,15 +238,10 @@
     // Search button
     $("searchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
 
-    // Saved searches (localStorage - user-specific by design)
-    function getSavedSearches() {
-      try { return JSON.parse(localStorage.getItem('savedSearches') || '[]'); }
-      catch { return []; }
-    }
-    function setSavedSearches(arr) {
-      try { localStorage.setItem('savedSearches', JSON.stringify(arr || [])); }
-      catch {}
-    }
+    // Saved searches - NOW FROM FIRESTORE (not localStorage)
+    // This prevents cross-user data leaks on shared computers
+    // The safeQueryByEmail function will be used to fetch from "savedSearches" collection
+    
     function fillSavedSearchDropdown(selectEl, list) {
       selectEl.innerHTML = `<option value="">Select a saved search…</option>`;
 
@@ -274,6 +269,9 @@
       if (list.length) selectEl.value = list[0].id;
     }
 
+    // Wire saved search controls - uses Firestore data passed from boot()
+    let savedSearchesList = []; // Will be populated from Firestore
+    
     function wireSavedSearchControls() {
       const selectEl = $('savedSearches');
       const editBtn = $('savedEditGo');
@@ -281,11 +279,11 @@
       if (!selectEl) return;
 
       editBtn?.addEventListener('click', () => {
-        const list = getSavedSearches();
         const id = selectEl.value;
-        const saved = list.find(s => s.id === id);
+        const saved = savedSearchesList.find(s => s.id === id);
         if (!saved) { alert('Please select a saved search first.'); return; }
 
+        // Store search params for search.html to pick up
         if (saved.q) localStorage.setItem('lastSearch', saved.q);
         else localStorage.removeItem('lastSearch');
 
@@ -295,14 +293,20 @@
         location.href = '/search.html';
       });
 
-      deleteBtn?.addEventListener('click', () => {
-        const list = getSavedSearches();
+      deleteBtn?.addEventListener('click', async () => {
         const id = selectEl.value;
         if (!id) { alert('Please select a saved search first.'); return; }
         if (!confirm('Delete this saved search?')) return;
 
-        setSavedSearches(list.filter(s => s.id !== id));
-        location.reload();
+        try {
+          // Delete from Firestore
+          await deleteDoc(doc(db, "savedSearches", id));
+          console.log('[welcome] Deleted saved search:', id);
+          location.reload();
+        } catch (e) {
+          console.error('[welcome] Failed to delete saved search:', e);
+          alert('Failed to delete. Please try again.');
+        }
       });
     }
 
@@ -519,12 +523,16 @@
     // ========================================
     (async function boot(){
       // Fetch all data in parallel (strict email ownership)
-      const [{ owner, agent, all }, pros, brokers, serviceProviders] = await Promise.all([
+      const [{ owner, agent, all }, pros, brokers, serviceProviders, savedDocs] = await Promise.all([
         fetchMyLists(),
         safeQueryByEmail("localPros"),
         safeQueryByEmail("localBrokers"),
-        safeQueryByEmail("localServiceProviders")
+        safeQueryByEmail("localServiceProviders"),
+        safeQueryByEmail("savedSearches") // NOW FROM FIRESTORE
       ]);
+
+      // Store saved searches for use by wireSavedSearchControls
+      savedSearchesList = savedDocs;
 
       // Determine what the user has (server-verified only)
       const hasSeller = owner.length > 0;
@@ -534,8 +542,7 @@
       const hasBrokers = brokers.length > 0;
       const hasServiceProviders = serviceProviders.length > 0;
       const hasSubscriptions = hasPros || hasBrokers || hasServiceProviders;
-      const saved = getSavedSearches();
-      const hasSavedSearches = saved.length > 0;
+      const hasSavedSearches = savedDocs.length > 0;
 
       // Determine if user is "new" (no data at all)
       const isNewUser = !hasListings && !hasSubscriptions && !hasSavedSearches;
@@ -550,9 +557,15 @@
         $('subtitle').textContent = 'Get started with GuaranteedCommission.com';
       }
 
-      // ALWAYS show "Enter new listing" and "Search" for logged-in users
-      $('blkSellerNew').classList.remove('hidden');
-      $('blkSearch').classList.remove('hidden');
+      // "Enter new listing" - ONLY for sellers/agents (not pure advertisers)
+      if (hasSeller || hasAgent) {
+        $('blkSellerNew').classList.remove('hidden');
+      }
+      
+      // "Search" - ONLY for sellers, agents, or users with saved searches
+      if (hasSeller || hasAgent || hasSavedSearches) {
+        $('blkSearch').classList.remove('hidden');
+      }
 
       // SELLER EDIT: Only if user owns seller listings
       if (hasSeller) {
@@ -574,10 +587,10 @@
         wireEditor(agentSel, agentGo, agentPrev, agent, 'agent');
       }
 
-      // SAVED SEARCHES: Only if user has saved searches
+      // SAVED SEARCHES: Only if user has saved searches (FROM FIRESTORE)
       if (hasSavedSearches) {
         $('blkSavedSearches').classList.remove('hidden');
-        fillSavedSearchDropdown($('savedSearches'), saved);
+        fillSavedSearchDropdown($('savedSearches'), savedDocs);
       }
       wireSavedSearchControls();
 
@@ -675,7 +688,7 @@
       // Debug role summary (hidden by default)
       const rs = $('roleSummary');
       if (rs) {
-        rs.textContent = `roles: seller=${hasSeller} agent=${hasAgent} localPros=${hasPros} localBrokers=${hasBrokers} serviceProviders=${hasServiceProviders}`;
+        rs.textContent = `roles: seller=${hasSeller} agent=${hasAgent} localPros=${hasPros} localBrokers=${hasBrokers} serviceProviders=${hasServiceProviders} savedSearches=${hasSavedSearches}`;
         // rs.classList.remove('hidden'); // enable for debugging
       }
 
