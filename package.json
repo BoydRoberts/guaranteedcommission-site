@@ -1,8 +1,17 @@
 {
   "name": "guaranteedcommission",
   "version": "1.0.0",
+  "description": "GuaranteedCommission.com - Real Estate Commission Transparency Platform",
   "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Static site - no build required'",
+    "start": "vercel dev"
+  },
   "dependencies": {
-    "stripe": "^16.6.0"
+    "stripe": "^14.10.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
