@@ -519,6 +519,69 @@
     }
 
     // ========================================
+    // STRIPE CUSTOMER PORTAL
+    // Calls Cloud Function to generate Stripe Portal URL
+    // ========================================
+    async function openStripePortal(email, subscriptionType) {
+      if (!email) {
+        alert('Please log in to manage your subscription.');
+        return;
+      }
+
+      try {
+        // Show loading state
+        const loadingMsg = document.createElement('div');
+        loadingMsg.id = 'portalLoading';
+        loadingMsg.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        loadingMsg.innerHTML = `
+          <div class="bg-white rounded-lg p-6 text-center">
+            <p class="text-gray-700">Opening ${subscriptionType} subscription portal...</p>
+            <p class="text-sm text-gray-500 mt-2">Please wait...</p>
+          </div>
+        `;
+        document.body.appendChild(loadingMsg);
+
+        // Call Cloud Function via HTTP endpoint
+        const response = await fetch('/api/createPortalSession', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email,
+            returnUrl: window.location.href
+          })
+        });
+
+        // Remove loading overlay
+        document.getElementById('portalLoading')?.remove();
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to open subscription portal');
+        }
+
+        const data = await response.json();
+        
+        if (data.url) {
+          // Redirect to Stripe Customer Portal
+          window.location.href = data.url;
+        } else {
+          throw new Error('No portal URL returned');
+        }
+
+      } catch (error) {
+        document.getElementById('portalLoading')?.remove();
+        console.error('[openStripePortal] Error:', error);
+        
+        // Show user-friendly error
+        if (error.message.includes('No subscription found')) {
+          alert(`No active subscription found for ${email}.\n\nIf you recently subscribed, please wait a few minutes and try again.\n\nFor help, contact support@guaranteedcommission.com`);
+        } else {
+          alert(`Unable to open subscription portal.\n\nError: ${error.message}\n\nPlease try again or contact support@guaranteedcommission.com`);
+        }
+      }
+    }
+
+    // ========================================
     // MAIN BOOT: Zero Trust - only show data user owns
     // ========================================
     (async function boot(){
@@ -600,13 +663,13 @@
         fillProfileDropdown($('proProfiles'), pros, proLabel);
         $('proStatusText').textContent = getStatusSummary(pros, 'pro') + ' — $5/month per ZIP';
         
-        // Update manage link (placeholder for Stripe Customer Portal)
+        // Manage Subscription button - calls Cloud Function to get Stripe Portal URL
         const manageBtn = $('proManageBtn');
         if (manageBtn) {
-          manageBtn.href = '#manage-stripe-pro'; // TODO: Replace with actual Stripe Customer Portal link
-          manageBtn.addEventListener('click', (e) => {
+          manageBtn.href = '#';
+          manageBtn.addEventListener('click', async (e) => {
             e.preventDefault();
-            alert('Stripe Customer Portal integration coming soon. Contact support@guaranteedcommission.com to manage your subscription.');
+            await openStripePortal(emailLower, 'Local Professional');
           });
         }
       }
@@ -617,12 +680,13 @@
         fillProfileDropdown($('brokerProfiles'), brokers, brokerLabel);
         $('brokerStatusText').textContent = getStatusSummary(brokers, 'broker') + ' — $100/month per ZIP (exclusive)';
         
+        // Manage Subscription button - calls Cloud Function
         const manageBtn = $('brokerManageBtn');
         if (manageBtn) {
-          manageBtn.href = '#manage-stripe-broker';
-          manageBtn.addEventListener('click', (e) => {
+          manageBtn.href = '#';
+          manageBtn.addEventListener('click', async (e) => {
             e.preventDefault();
-            alert('Stripe Customer Portal integration coming soon. Contact support@guaranteedcommission.com to manage your subscription.');
+            await openStripePortal(emailLower, 'Local Broker');
           });
         }
       }
@@ -633,12 +697,13 @@
         fillProfileDropdown($('serviceProviderProfiles'), serviceProviders, serviceProviderLabel);
         $('serviceProviderStatusText').textContent = getStatusSummary(serviceProviders, 'service') + ' — $5/month per ZIP';
         
+        // Manage Subscription button - calls Cloud Function
         const manageBtn = $('serviceProviderManageBtn');
         if (manageBtn) {
-          manageBtn.href = '#manage-stripe-service';
-          manageBtn.addEventListener('click', (e) => {
+          manageBtn.href = '#';
+          manageBtn.addEventListener('click', async (e) => {
             e.preventDefault();
-            alert('Stripe Customer Portal integration coming soon. Contact support@guaranteedcommission.com to manage your subscription.');
+            await openStripePortal(emailLower, 'Service Provider');
           });
         }
       }
