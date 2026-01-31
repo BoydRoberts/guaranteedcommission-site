@@ -276,6 +276,71 @@
       }, 500);
     }
 
+    // ========== AUTH GATE HELPERS ==========
+    // Helper to check if user is logged in
+    function isLoggedIn() {
+      const email = (localStorage.getItem('loggedInEmail') || '').trim();
+      return email.length > 0;
+    }
+
+    // Helper to save form draft for auth gate
+    function saveFormDraft() {
+      const draft = {
+        role: $('role')?.value || '',
+        name: $('name')?.value || '',
+        company: $('company')?.value || '',
+        email: $('email')?.value || '',
+        phone: $('phone')?.value || '',
+        license: $('license')?.value || '',
+        zip1: $('zip1')?.value || '',
+        zip2: $('zip2')?.value || '',
+        zip3: $('zip3')?.value || '',
+        savedAt: Date.now()
+      };
+      localStorage.setItem('localServiceFormDraft', JSON.stringify(draft));
+      console.log('[service-providers] Form draft saved for auth gate');
+    }
+
+    // ========== DRAFT RESTORATION (Auth Gate Support) ==========
+    // If user was redirected to login and came back, restore their form data
+    (function restoreDraft() {
+      try {
+        const draftJson = localStorage.getItem('localServiceFormDraft');
+        if (!draftJson) return;
+        
+        const draft = JSON.parse(draftJson);
+        console.log('[service-providers] Restoring form draft:', draft);
+        
+        // Restore form fields
+        if (draft.role && $('role')) $('role').value = draft.role;
+        if (draft.name && $('name')) $('name').value = draft.name;
+        if (draft.company && $('company')) $('company').value = draft.company;
+        if (draft.email && $('email')) $('email').value = draft.email;
+        if (draft.phone && $('phone')) $('phone').value = formatPhone(draft.phone);
+        if (draft.license && $('license')) $('license').value = draft.license;
+        if (draft.zip1 && $('zip1')) $('zip1').value = draft.zip1;
+        if (draft.zip2 && $('zip2')) $('zip2').value = draft.zip2;
+        if (draft.zip3 && $('zip3')) $('zip3').value = draft.zip3;
+        
+        // Trigger availability check to update button state
+        debouncedAvailabilityCheck();
+        
+        // Show status message
+        setStatus('Welcome back! Your form has been restored. Please click the button below to continue.', true);
+        
+        // Clear the draft (one-time restore)
+        localStorage.removeItem('localServiceFormDraft');
+        
+        // Clear the return path if we're back
+        if (localStorage.getItem('nextAfterLogin') === window.location.href) {
+          localStorage.removeItem('nextAfterLogin');
+        }
+      } catch (e) {
+        console.warn('[service-providers] Draft restore failed:', e);
+        localStorage.removeItem('localServiceFormDraft');
+      }
+    })();
+
     // Upload photo to Storage
     async function uploadPhoto(file, docId) {
       const storage = getStorage(undefined, STORAGE_BUCKET_GS);
@@ -343,7 +408,7 @@
         const zips = getCurrentZips();
         const photoFile = $("photoInput")?.files?.[0] || null;
 
-        // Validation
+        // ========== STEP 1: VALIDATION ==========
         if (!role || !name || !company || !email || !phone) {
           setStatus("Please complete all required fields.");
           return;
@@ -354,7 +419,26 @@
           return;
         }
 
-        // ========== WAITLIST MODE ==========
+        // ========== STEP 2: AUTH GATE ==========
+        // User must be logged in before proceeding to payment or waitlist
+        if (!isLoggedIn()) {
+          setStatus('Please log in or create an account to continue. Redirecting...', true);
+          
+          // Save form data for restoration after login
+          saveFormDraft();
+          
+          // Set return path so login redirects back here
+          localStorage.setItem('nextAfterLogin', window.location.href);
+          
+          // Redirect to login page
+          setTimeout(() => {
+            window.location.href = '/login.html?tab=create';
+          }, 1000);
+          
+          return;
+        }
+
+        // ========== STEP 3: WAITLIST MODE ==========
         if (isWaitlistMode) {
           const waitlistData = {
             role,
@@ -402,7 +486,7 @@
           return;
         }
 
-        // ========== NORMAL CHECKOUT MODE ==========
+        // ========== STEP 4: NORMAL CHECKOUT MODE ==========
         // Re-check availability before proceeding
         setStatus("Checking ZIP availability...", true);
         const soldOut = await checkZipAvailability(zips);
