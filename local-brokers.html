@@ -291,6 +291,66 @@
     $('zipBulk')?.addEventListener('input', () => updateTotal(true));
     updateTotal(false);
 
+    // ========== DRAFT RESTORATION (Auth Gate Support) ==========
+    // If user was redirected to login and came back, restore their form data
+    (function restoreDraft() {
+      try {
+        const draftJson = localStorage.getItem('localBrokerFormDraft');
+        if (!draftJson) return;
+        
+        const draft = JSON.parse(draftJson);
+        console.log('[local-brokers] Restoring form draft:', draft);
+        
+        // Restore form fields
+        if (draft.name && $('name')) $('name').value = draft.name;
+        if (draft.contact && $('contact')) $('contact').value = draft.contact;
+        if (draft.email && $('email')) $('email').value = draft.email;
+        if (draft.phone && $('phone')) $('phone').value = formatPhone(draft.phone);
+        if (draft.license && $('license')) $('license').value = draft.license;
+        if (draft.website && $('website')) $('website').value = draft.website;
+        if (draft.zipBulk && $('zipBulk')) $('zipBulk').value = draft.zipBulk;
+        
+        // Trigger total/chips update and availability check
+        updateTotal(true);
+        
+        // Show status message
+        setStatus('Welcome back! Your form has been restored. Please click "Proceed to Checkout" to continue.', true);
+        
+        // Clear the draft (one-time restore)
+        localStorage.removeItem('localBrokerFormDraft');
+        
+        // Clear the return path if we're back
+        if (localStorage.getItem('nextAfterLogin') === window.location.href) {
+          localStorage.removeItem('nextAfterLogin');
+        }
+      } catch (e) {
+        console.warn('[local-brokers] Draft restore failed:', e);
+        localStorage.removeItem('localBrokerFormDraft');
+      }
+    })();
+
+    // Helper to check if user is logged in
+    function isLoggedIn() {
+      const email = (localStorage.getItem('loggedInEmail') || '').trim();
+      return email.length > 0;
+    }
+
+    // Helper to save form draft for auth gate
+    function saveFormDraft() {
+      const draft = {
+        name: $('name')?.value || '',
+        contact: $('contact')?.value || '',
+        email: $('email')?.value || '',
+        phone: $('phone')?.value || '',
+        license: $('license')?.value || '',
+        website: $('website')?.value || '',
+        zipBulk: $('zipBulk')?.value || '',
+        savedAt: Date.now()
+      };
+      localStorage.setItem('localBrokerFormDraft', JSON.stringify(draft));
+      console.log('[local-brokers] Form draft saved for auth gate');
+    }
+
     // Fix 1: Full ad preview (not cropped square)
     $('photo')?.addEventListener('change', (e) => {
       const f = e.target.files?.[0]; if (!f) return;
@@ -371,6 +431,7 @@
         const website = $('website').value.trim();
         const { zipCodes } = updateTotal(false);
 
+        // ========== STEP 1: VALIDATION ==========
         if (!name || !contact || !email) { setStatus('Please complete brokerage name, contact, and email.', false); return; }
         if (!/^\S+@\S+\.\S{2,}$/.test(email)) { setStatus('Please enter a valid email address.', false); return; }
         if (phoneDigits.length !== 10) { setStatus('Please enter a valid 10-digit phone number.', false); return; }
@@ -378,7 +439,26 @@
         if (!zipCodes.length) { setStatus('Please enter at least one valid 5-digit ZIP code.', false); return; }
         if (zipCodes.length > MAX_ZIPS) { setStatus(`Maximum ${MAX_ZIPS} ZIP codes per checkout.`, false); return; }
 
-        // ========== WAITLIST MODE ==========
+        // ========== STEP 2: AUTH GATE ==========
+        // User must be logged in before proceeding to payment or waitlist
+        if (!isLoggedIn()) {
+          setStatus('Please log in or create an account to continue. Redirecting...', true);
+          
+          // Save form data for restoration after login
+          saveFormDraft();
+          
+          // Set return path so login redirects back here
+          localStorage.setItem('nextAfterLogin', window.location.href);
+          
+          // Redirect to login page
+          setTimeout(() => {
+            window.location.href = '/login.html?tab=create';
+          }, 1000);
+          
+          return;
+        }
+
+        // ========== STEP 3: WAITLIST MODE ==========
         if (isWaitlistMode) {
           const waitlistData = {
             name,
@@ -427,7 +507,7 @@
           return;
         }
 
-        // ========== NORMAL CHECKOUT MODE ==========
+        // ========== STEP 4: NORMAL CHECKOUT MODE ==========
         const draft = {
           name, contact, email, phone, license, website,
           zips: zipCodes,
