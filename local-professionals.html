@@ -300,6 +300,66 @@
     $('role')?.addEventListener('change', debouncedAvailabilityCheck);
     updateTotal(false);
 
+    // ========== DRAFT RESTORATION (Auth Gate Support) ==========
+    // If user was redirected to login and came back, restore their form data
+    (function restoreDraft() {
+      try {
+        const draftJson = localStorage.getItem('localProFormDraft');
+        if (!draftJson) return;
+        
+        const draft = JSON.parse(draftJson);
+        console.log('[local-pros] Restoring form draft:', draft);
+        
+        // Restore form fields
+        if (draft.role && $('role')) $('role').value = draft.role;
+        if (draft.personalName && $('personalName')) $('personalName').value = draft.personalName;
+        if (draft.name && $('name')) $('name').value = draft.name;
+        if (draft.email && $('email')) $('email').value = draft.email;
+        if (draft.phone && $('phone')) $('phone').value = formatPhone(draft.phone);
+        if (draft.license && $('license')) $('license').value = draft.license;
+        if (draft.zipBulk && $('zipBulk')) $('zipBulk').value = draft.zipBulk;
+        
+        // Trigger total/chips update and availability check
+        updateTotal(true);
+        
+        // Show status message
+        setStatus('Welcome back! Your form has been restored. Please click "Proceed to Checkout" to continue.', true);
+        
+        // Clear the draft (one-time restore)
+        localStorage.removeItem('localProFormDraft');
+        
+        // Clear the return path if we're back
+        if (localStorage.getItem('nextAfterLogin') === window.location.href) {
+          localStorage.removeItem('nextAfterLogin');
+        }
+      } catch (e) {
+        console.warn('[local-pros] Draft restore failed:', e);
+        localStorage.removeItem('localProFormDraft');
+      }
+    })();
+
+    // Helper to check if user is logged in
+    function isLoggedIn() {
+      const email = (localStorage.getItem('loggedInEmail') || '').trim();
+      return email.length > 0;
+    }
+
+    // Helper to save form draft for auth gate
+    function saveFormDraft() {
+      const draft = {
+        role: $('role')?.value || '',
+        personalName: $('personalName')?.value || '',
+        name: $('name')?.value || '',
+        email: $('email')?.value || '',
+        phone: $('phone')?.value || '',
+        license: $('license')?.value || '',
+        zipBulk: $('zipBulk')?.value || '',
+        savedAt: Date.now()
+      };
+      localStorage.setItem('localProFormDraft', JSON.stringify(draft));
+      console.log('[local-pros] Form draft saved for auth gate');
+    }
+
     $('photo')?.addEventListener('change', (e) => {
       const f = e.target.files?.[0]; if (!f) return;
       const r = new FileReader();
@@ -379,6 +439,7 @@
         const license = $('license').value.trim();
         const { zipCodes } = updateTotal(false);
 
+        // ========== STEP 1: VALIDATION ==========
         if (!role || !personalName || !name || !email) {
           setStatus('Please complete role, personal name, company name, and email.', false);
           return;
@@ -404,7 +465,26 @@
           return;
         }
 
-        // ========== WAITLIST MODE ==========
+        // ========== STEP 2: AUTH GATE ==========
+        // User must be logged in before proceeding to payment or waitlist
+        if (!isLoggedIn()) {
+          setStatus('Please log in or create an account to continue. Redirecting...', true);
+          
+          // Save form data for restoration after login
+          saveFormDraft();
+          
+          // Set return path so login redirects back here
+          localStorage.setItem('nextAfterLogin', window.location.href);
+          
+          // Redirect to login page
+          setTimeout(() => {
+            window.location.href = '/login.html?tab=create';
+          }, 1000);
+          
+          return;
+        }
+
+        // ========== STEP 3: WAITLIST MODE ==========
         if (isWaitlistMode) {
           const waitlistData = {
             role,
@@ -455,7 +535,7 @@
           return;
         }
 
-        // ========== NORMAL CHECKOUT MODE ==========
+        // ========== STEP 4: NORMAL CHECKOUT MODE ==========
         const draft = {
           role,
           personalName,
