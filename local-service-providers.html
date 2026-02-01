@@ -441,7 +441,8 @@
         // ========== STEP 3: WAITLIST MODE ==========
         if (isWaitlistMode) {
           const waitlistData = {
-            role,
+            roleType: 'local_service', // Required for waitlist processing
+            role, // Service type (Title, Escrow, etc.)
             name,
             company,
             email,
