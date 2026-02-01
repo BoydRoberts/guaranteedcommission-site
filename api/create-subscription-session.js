@@ -1,17 +1,19 @@
 // /api/create-subscription-session.js
-// Build: 2026-01-16 (Multi-ZIP subscription checkout for Local Pros & Local Brokers)
+// Build: 2026-01-30 (FIX: Pre-fill customer_email to link subscriptions correctly)
 //
 // Purpose:
 // - Create ONE Stripe subscription checkout session that charges quantity = number of ZIP codes.
 // - Supports bulk purchases (e.g., broker buys 99 ZIPs in one checkout).
+// - PRE-FILLS customer email to ensure Stripe subscription is linked to correct user.
 //
 // Request body (POST JSON):
 // {
-//   "roleType": "local_broker" | "local_pro",
+//   "roleType": "local_broker" | "local_pro" | "local_service",
 //   "zipCodes": ["92651","92657", ...],
+//   "priceId": "price_xxx" (optional - can also use env vars),
 //   "successUrl": "https://.../local-brokers.html?status=success",
 //   "cancelUrl":  "https://.../local-brokers.html?status=cancel",
-//   "metadata": { "draftId": "...", "email": "...", ... }
+//   "metadata": { "draftId": "...", "email": "user@example.com", ... }
 // }
 //
 // Response:
@@ -47,6 +49,11 @@ function safeString(v, maxLen = 500) {
   return s.slice(0, maxLen);
 }
 
+function normalizeEmail(email) {
+  if (!email || typeof email !== "string") return "";
+  return email.trim().toLowerCase();
+}
+
 function buildPriceId(roleType, envOrBodyPriceId) {
   // You can optionally pass a priceId from the client, but by default we map by roleType.
   // This keeps the API usable even if you haven't wired app-config into the client yet.
@@ -56,6 +63,7 @@ function buildPriceId(roleType, envOrBodyPriceId) {
   // Set these in Vercel env:
   // - STRIPE_PRICE_ID_LOCAL_PRO_MONTHLY
   // - STRIPE_PRICE_ID_LOCAL_BROKER_MONTHLY
+  // - STRIPE_PRICE_ID_LOCAL_SERVICE_MONTHLY
   const rt = String(roleType || "").trim().toLowerCase();
 
   if (rt === "local_pro") {
@@ -63,6 +71,9 @@ function buildPriceId(roleType, envOrBodyPriceId) {
   }
   if (rt === "local_broker") {
     return process.env.STRIPE_PRICE_ID_LOCAL_BROKER_MONTHLY || "";
+  }
+  if (rt === "local_service") {
+    return process.env.STRIPE_PRICE_ID_LOCAL_SERVICE_MONTHLY || "";
   }
   return "";
 }
@@ -100,12 +111,26 @@ export default async function handler(req, res) {
     const successUrl = String(body.successUrl || "").trim();
     const cancelUrl = String(body.cancelUrl || "").trim();
 
+    // ========== CRITICAL: Extract and normalize email ==========
+    // Email can come from body.email OR body.metadata.email
+    // This ensures Stripe Checkout is pre-filled with the correct email
+    const rawEmail = body.email || (body.metadata && body.metadata.email) || "";
+    const customerEmail = normalizeEmail(rawEmail);
+    
+    console.log("[create-subscription-session] Customer email:", customerEmail || "(not provided)");
+    console.log("[create-subscription-session] Role type:", roleType);
+    console.log("[create-subscription-session] ZIP count:", zipCodes.length);
+
     // Optional override: allow caller to specify priceId directly (MVP flexibility)
     const priceIdOverride = body.priceId ? String(body.priceId).trim() : "";
     const priceId = buildPriceId(roleType, priceIdOverride);
 
-    if (!roleType || (roleType !== "local_pro" && roleType !== "local_broker")) {
-      return res.status(400).json({ error: "Missing/invalid roleType (use 'local_pro' or 'local_broker')" });
+    // Validate roleType
+    const validRoleTypes = ["local_pro", "local_broker", "local_service"];
+    if (!roleType || !validRoleTypes.includes(roleType)) {
+      return res.status(400).json({ 
+        error: "Missing/invalid roleType (use 'local_pro', 'local_broker', or 'local_service')" 
+      });
     }
 
     if (!Array.isArray(body.zipCodes)) {
@@ -117,21 +142,21 @@ export default async function handler(req, res) {
     }
 
     // Hard cap to prevent abuse / accidental huge billing
-    // You requested up to 99; we enforce 99 by default.
     if (zipCodes.length > 99) {
       return res.status(400).json({ error: "Too many ZIP codes (max 99 per checkout)." });
     }
 
     if (!priceId) {
       // Helpful diagnostics: which env var is missing
-      const which =
-        roleType === "local_pro"
-          ? "STRIPE_PRICE_ID_LOCAL_PRO_MONTHLY"
-          : "STRIPE_PRICE_ID_LOCAL_BROKER_MONTHLY";
+      const envVarMap = {
+        local_pro: "STRIPE_PRICE_ID_LOCAL_PRO_MONTHLY",
+        local_broker: "STRIPE_PRICE_ID_LOCAL_BROKER_MONTHLY",
+        local_service: "STRIPE_PRICE_ID_LOCAL_SERVICE_MONTHLY"
+      };
+      const which = envVarMap[roleType] || "STRIPE_PRICE_ID_*";
       return res.status(500).json({
         error: "Missing Stripe price ID for subscriptions",
-        message:
-          "Set the required env var (" + which + ") or pass priceId in the request body."
+        message: "Set the required env var (" + which + ") or pass priceId in the request body."
       });
     }
 
@@ -148,7 +173,8 @@ export default async function handler(req, res) {
       zipCount: String(zipCodes.length)
     };
 
-    const session = await stripe.checkout.sessions.create({
+    // ========== Create Stripe Checkout Session ==========
+    const sessionConfig = {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: zipCodes.length }],
       success_url: successUrl,
@@ -156,11 +182,26 @@ export default async function handler(req, res) {
       billing_address_collection: "auto",
       allow_promotion_codes: true,
       metadata: meta
-    });
+    };
+
+    // ========== CRITICAL FIX: Pre-fill customer email ==========
+    // This ensures the Stripe subscription is linked to the user's login email
+    // Without this, users might enter a different email at checkout,
+    // breaking the "Manage Subscription" feature
+    if (customerEmail) {
+      sessionConfig.customer_email = customerEmail;
+      console.log("[create-subscription-session] Pre-filling customer_email:", customerEmail);
+    } else {
+      console.warn("[create-subscription-session] WARNING: No customer email provided - user will enter manually");
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    console.log("[create-subscription-session] Session created:", session.id);
 
     return res.status(200).json({ id: session.id, url: session.url });
   } catch (err) {
-    console.error("[stripe] create subscription session error", err);
+    console.error("[create-subscription-session] Error:", err);
     return res.status(500).json({
       error: "Stripe subscription session failed",
       message: err && err.message ? err.message : String(err)
