@@ -620,8 +620,12 @@
         $('subtitle').textContent = 'Get started with GuaranteedCommission.com';
       }
 
-      // "Enter new listing" - ONLY for sellers/agents (not pure advertisers)
-      if (hasSeller || hasAgent) {
+      // "Enter new listing" - ONLY for sellers (NOT agents)
+      // Business Rule: Agents cannot create listings or sign the ISC
+      // - New users see this (to list their first home)
+      // - Sellers see this (to list another home)
+      // - Agents do NOT see this (they cannot sign ISC)
+      if (!hasAgent || hasSeller) {
         $('blkSellerNew').classList.remove('hidden');
       }
       
