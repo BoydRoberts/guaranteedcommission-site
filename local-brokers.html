@@ -461,6 +461,7 @@
         // ========== STEP 3: WAITLIST MODE ==========
         if (isWaitlistMode) {
           const waitlistData = {
+            role: 'local_broker', // Required for waitlist processing
             name,
             contact,
             email,
