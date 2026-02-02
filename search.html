@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-01-17 (SOLD markers + SOLD tile badge + URL-synced filters; preserves filter bar + hover sync + auth gating) -->
+<!-- search.html - Build 2026-01-30 (SENIORITY PRIORITY SORTING: Pin > Premium > Standard) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -76,7 +76,7 @@
     .gc-marker-wrap.highlighted .gc-marker-dot { box-shadow:0 3px 10px rgba(220,38,38,.45); }
     .gc-tile.highlighted { outline:3px solid #dc2626; outline-offset:2px; box-shadow:0 4px 12px rgba(220,38,38,.3); }
 
-    /* ===== SOLD marker styles (NEW) ===== */
+    /* ===== SOLD marker styles ===== */
     .gc-marker-wrap.sold .gc-marker-dot {
       background:#6b7280; /* gray */
     }
@@ -93,6 +93,21 @@
     .gc-marker-wrap.sold.highlighted .gc-marker-dot {
       background:#111827;
       box-shadow:0 3px 10px rgba(17,24,39,.45);
+    }
+
+    /* ===== PIN marker styles (gold/premium look) ===== */
+    .gc-marker-wrap.pinned .gc-marker-dot {
+      background:#f59e0b; /* amber */
+      border-color:#fbbf24;
+    }
+    .gc-marker-wrap.pinned .gc-marker-label {
+      background:#fef3c7;
+      border-color:#f59e0b;
+      color:#92400e;
+    }
+    .gc-marker-wrap.pinned.highlighted .gc-marker-label {
+      background:#f59e0b;
+      color:#fff;
     }
 
     /* Filter bar dropdown styling - All buttons use #4DA6FF with white text */
@@ -580,6 +595,52 @@
       return true;
     }
 
+    // ===== SENIORITY PRIORITY SORTING =====
+    // Business Rules:
+    // 1. Pin Placement: Top tier, sorted by createdAt ASCENDING (oldest first = seniority)
+    // 2. Premium Placement: Second tier, sorted by createdAt ASCENDING (oldest first = seniority)
+    // 3. Standard Listings: Third tier, sorted by createdAt DESCENDING (newest first)
+    function sortListings(items) {
+      // Helper to get timestamp in milliseconds
+      function getCreatedAtMs(doc) {
+        const ca = doc.createdAt;
+        if (!ca) return 0;
+        if (typeof ca.toMillis === 'function') return ca.toMillis();
+        if (typeof ca.toDate === 'function') return ca.toDate().getTime();
+        if (typeof ca === 'number') return ca;
+        if (typeof ca === 'string') return new Date(ca).getTime() || 0;
+        return 0;
+      }
+
+      return [...items].sort((a, b) => {
+        const aPin = !!(a.paidUpgrades && a.paidUpgrades.pin);
+        const bPin = !!(b.paidUpgrades && b.paidUpgrades.pin);
+        const aPremium = !!(a.paidUpgrades && a.paidUpgrades.premium);
+        const bPremium = !!(b.paidUpgrades && b.paidUpgrades.premium);
+        
+        // Tier 1: Pin Placement wins over everything
+        if (aPin && !bPin) return -1;
+        if (!aPin && bPin) return 1;
+        
+        // Both have Pin: sort by createdAt ASCENDING (oldest first = seniority)
+        if (aPin && bPin) {
+          return getCreatedAtMs(a) - getCreatedAtMs(b);
+        }
+        
+        // Tier 2: Premium Placement wins over Standard
+        if (aPremium && !bPremium) return -1;
+        if (!aPremium && bPremium) return 1;
+        
+        // Both have Premium: sort by createdAt ASCENDING (oldest first = seniority)
+        if (aPremium && bPremium) {
+          return getCreatedAtMs(a) - getCreatedAtMs(b);
+        }
+        
+        // Tier 3: Standard listings - sort by createdAt DESCENDING (newest first)
+        return getCreatedAtMs(b) - getCreatedAtMs(a);
+      });
+    }
+
     // ===== Saved Searches (localStorage) =====
     function getSavedSearches() { return getJSON('savedSearches', []); }
     function setSavedSearches(arr) { setJSON('savedSearches', arr); }
@@ -651,7 +712,7 @@
       applyAllFilters();
     }
 
-    // ===== URL SYNC (NEW) =====
+    // ===== URL SYNC =====
     function syncFiltersToURL() {
       try {
         const f = readFiltersFromUI();
@@ -827,7 +888,7 @@
     }
 
     // =========================================================================
-    // TASK C (2026-01-15): Tile Renderer with FSBO contact completeness
+    // Tile Renderer with FSBO contact completeness
     // =========================================================================
     function money(n) { const v = Number(n || 0); return v ? ("$" + v.toLocaleString()) : "$—"; }
 
@@ -899,6 +960,10 @@
 
       const contactLine = buildContactLine(doc);
 
+      // Check for paid upgrades for visual indicators
+      const hasPin = !!(doc.paidUpgrades && doc.paidUpgrades.pin);
+      const hasPremium = !!(doc.paidUpgrades && doc.paidUpgrades.premium);
+
       const card = document.createElement("article");
       card.className = "gc-tile relative";
       card.onclick = () => { window.location.href = `/listing.html?id=${encodeURIComponent(id)}`; };
@@ -909,6 +974,8 @@
           ${banner ? `<div class="gc-ribbon">${banner}</div>` : ''}
 
           ${isSold ? `<div class="absolute top-2 left-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
+          ${hasPin && !isSold ? `<div class="absolute top-2 left-2 bg-amber-500 text-white font-bold text-[11px] px-2 py-1 rounded shadow">📌 PINNED</div>` : ''}
+          ${hasPremium && !hasPin && !isSold ? `<div class="absolute top-2 left-2 bg-blue-500 text-white font-bold text-[11px] px-2 py-1 rounded shadow">⭐ PREMIUM</div>` : ''}
 
           <button type="button" class="gc-heart" aria-label="Like"></button>
           <button type="button" class="gc-share gc-share-left" data-share="email">Email</button>
@@ -992,6 +1059,12 @@
           wrap.classList.add('sold');
         }
 
+        // ===== PIN marker check =====
+        const hasPin = !!(it.paidUpgrades && it.paidUpgrades.pin);
+        if (hasPin && !isSold) {
+          wrap.classList.add('pinned');
+        }
+
         const dot = document.createElement('div');
         dot.className = 'gc-marker-dot';
 
@@ -1000,7 +1073,7 @@
 
         // Price label text + SOLD suffix
         const basePrice = formatPriceShort(it.price);
-        label.textContent = isSold ? (basePrice + ' (SOLD)') : basePrice;
+        label.textContent = isSold ? (basePrice + ' (SOLD)') : (hasPin ? ('📌 ' + basePrice) : basePrice);
 
         const goListing = (e) => {
           e.stopPropagation();
@@ -1035,7 +1108,11 @@
         grid.innerHTML = `<div class="text-sm text-gray-500">No listings in this map area. Pan or zoom out to see more.</div>`;
         return;
       }
-      items.forEach(it => {
+      
+      // Apply seniority sorting to viewport items
+      const sortedItems = sortListings(items);
+      
+      sortedItems.forEach(it => {
         const tile = renderTile(it);
         const listingKey = getListingKey(it);
         tile.dataset.listingId = listingKey;
@@ -1068,16 +1145,20 @@
 
       const q = $("qBox").value.trim();
       const filtered = allDocs.filter(d => matchesFilters(d, q, f));
-      await addDotPriceMarkers(filtered);
+      
+      // Apply seniority priority sorting
+      const sorted = sortListings(filtered);
+      
+      await addDotPriceMarkers(sorted);
 
-      // URL sync (NEW)
+      // URL sync
       syncFiltersToURL();
     }
 
     (async function boot() {
       updateAuthUI();
 
-      // ===== URL params take priority (NEW) =====
+      // ===== URL params take priority =====
       const fromUrl = readFiltersFromURL();
 
       // q precedence: URL -> localStorage -> ""
@@ -1109,15 +1190,22 @@
         console.warn("[search] Firestore fetch failed:", e);
       }
 
-      const filtered = allDocs.filter(d => matchesFilters(d, qParam, lastFilters));
-      await addDotPriceMarkers(filtered);
+      // Apply seniority priority sorting to allDocs
+      allDocs = sortListings(allDocs);
 
-      // Ensure URL reflects what we just applied (NEW)
+      const filtered = allDocs.filter(d => matchesFilters(d, qParam, lastFilters));
+      
+      // Sorting already applied to allDocs, but re-sort filtered just in case
+      const sorted = sortListings(filtered);
+      
+      await addDotPriceMarkers(sorted);
+
+      // Ensure URL reflects what we just applied
       syncFiltersToURL();
 
       console.log('[search] Boot complete, listings loaded:', allDocs.length);
 
-      // Enter key in search box (UPDATED: no reload; keeps shareable URL)
+      // Enter key in search box
       $("qBox").addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -1138,9 +1226,10 @@
         updateDropdownLabels({});
         const q = $("qBox").value.trim();
         const refiltered = allDocs.filter(d => matchesFilters(d, q, {}));
-        await addDotPriceMarkers(refiltered);
+        const resorted = sortListings(refiltered);
+        await addDotPriceMarkers(resorted);
 
-        // URL sync after clear (NEW)
+        // URL sync after clear
         syncFiltersToURL();
       };
 
