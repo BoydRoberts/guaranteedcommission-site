@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2026-01-15 (Task C: FSBO contact completeness in tiles) -->
+<!-- index.html - Build 2026-01-30 (Seniority Priority Sorting: Pin > Premium > Standard) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -959,7 +959,7 @@
       localStorage.setItem('loginOrigin', 'box2');
       localStorage.setItem('nextAfterLogin', '/verify-code.html');
 
-      // ✅ Email normalization (used for Firestore fields)
+      // Email normalization (used for Firestore fields)
       function normEmail(v){
         return String(v || '').trim().toLowerCase();
       }
@@ -979,10 +979,7 @@
           var agentEmailRaw = plan.indexOf('FSBO') >= 0 ? "" : (formData.agentEmail || "");
           var ownerEmailRaw = plan.indexOf('FSBO') >= 0 ? (formData.fsboEmail || "") : "";
 
-          // =========================================================================
-          // TASK E: Create listing IMMEDIATELY (no geo fields yet)
-          // Geo fields will be added by background updateDoc after redirect
-          // =========================================================================
+          // Create listing IMMEDIATELY (no geo fields yet)
           var payload = {
             address: formData.address,
             shortAddress: (formData.address.split(",")[0] || "").trim(),
@@ -1007,7 +1004,7 @@
             brokerage: plan.indexOf('FSBO') >= 0 ? "" : (formData.brokerage || ""),
             deviceKey: getDeviceKey(),
 
-            // TASK E: Initialize geo fields as pending (background will fill)
+            // Initialize geo fields as pending (background will fill)
             geoStatus: "pending",
 
             createdAt: serverTimestamp(),
@@ -1021,10 +1018,7 @@
           localStorage.setItem("lastListingAddress", payload.address || "");
           localStorage.setItem('formData:' + ref.id, JSON.stringify(formData));
 
-          // =========================================================================
-          // TASK E: Fire-and-forget background geocode + updateDoc
-          // User is already redirected - this runs in background
-          // =========================================================================
+          // Fire-and-forget background geocode + updateDoc
           (async function backgroundGeocode() {
             try {
               var geoResult = await geocodeAddress(formData.address);
@@ -1034,7 +1028,6 @@
                 geoStatus: geoResult.status,
                 geoProvider: geoResult.provider
               };
-              // Only add these fields if we have values (cleaner Firestore docs)
               if (geoResult.placeName) {
                 geoUpdate.geoPlaceName = geoResult.placeName;
               }
@@ -1047,7 +1040,6 @@
               console.warn("[Task E] Background geocode failed:", e);
             }
           })();
-          // =========================================================================
 
         } else {
           console.warn("[firestore] db not available - skipped server save");
@@ -1058,10 +1050,7 @@
         return;
       }
 
-      // =========================================================================
-      // TASK E: Small delay before redirect to let background geocode start
-      // 250ms is imperceptible to user but lets fetch + updateDoc fire
-      // =========================================================================
+      // Small delay before redirect to let background geocode start
       setTimeout(function() {
         window.location.href = "/login.html";
       }, 250);
@@ -1136,7 +1125,7 @@
   </script>
 
   <!-- Strip 2 Tiles: Load from Firestore using shared tile-renderer.js -->
-  <!-- TASK C (2026-01-15): Now passes ownerName + ownerPhone for FSBO contact completeness -->
+  <!-- SENIORITY PRIORITY SORTING: Pin > Premium > Standard -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -1148,6 +1137,51 @@
         onLikeIncrement: window.gcIncLike
       });
     };
+
+    // ===== SENIORITY PRIORITY SORTING =====
+    // Business Rules:
+    // 1. Pin Placement: Top tier, sorted by createdAt ASCENDING (oldest first = seniority)
+    // 2. Premium Placement: Second tier, sorted by createdAt ASCENDING (oldest first = seniority)
+    // 3. Standard Listings: Third tier, sorted by createdAt DESCENDING (newest first)
+    function sortListings(items) {
+      function getCreatedAtMs(doc) {
+        var ca = doc.createdAt;
+        if (!ca) return 0;
+        if (typeof ca.toMillis === 'function') return ca.toMillis();
+        if (typeof ca.toDate === 'function') return ca.toDate().getTime();
+        if (typeof ca === 'number') return ca;
+        if (typeof ca === 'string') return new Date(ca).getTime() || 0;
+        return 0;
+      }
+
+      return items.slice().sort(function(a, b) {
+        var aPin = !!(a.paidUpgrades && a.paidUpgrades.pin);
+        var bPin = !!(b.paidUpgrades && b.paidUpgrades.pin);
+        var aPremium = !!(a.paidUpgrades && a.paidUpgrades.premium);
+        var bPremium = !!(b.paidUpgrades && b.paidUpgrades.premium);
+
+        // Tier 1: Pin Placement wins over everything
+        if (aPin && !bPin) return -1;
+        if (!aPin && bPin) return 1;
+
+        // Both have Pin: sort by createdAt ASCENDING (oldest first = seniority)
+        if (aPin && bPin) {
+          return getCreatedAtMs(a) - getCreatedAtMs(b);
+        }
+
+        // Tier 2: Premium Placement wins over Standard
+        if (aPremium && !bPremium) return -1;
+        if (!aPremium && bPremium) return 1;
+
+        // Both have Premium: sort by createdAt ASCENDING (oldest first = seniority)
+        if (aPremium && bPremium) {
+          return getCreatedAtMs(a) - getCreatedAtMs(b);
+        }
+
+        // Tier 3: Standard listings - sort by createdAt DESCENDING (newest first)
+        return getCreatedAtMs(b) - getCreatedAtMs(a);
+      });
+    }
 
     (async function loadTilesFromFirestore(){
       try {
@@ -1167,11 +1201,6 @@
 
           if (!signed && !isActive) return;
 
-          // =========================================================================
-          // TASK C (2026-01-15): Add ownerName + ownerPhone for FSBO contact display
-          // These fields are now passed to tile-renderer.js which conditionally
-          // displays "FOR SALE BY OWNER - [Name] - [Phone]" for FSBO listings
-          // =========================================================================
           items.push({
             id: docu.id,
             address: d.address || "",
@@ -1185,17 +1214,24 @@
             brokerage: d.brokerage || "",
             agentName: d.agentName || "",
             agentPhone: d.agentPhone || "",
-            ownerName: d.ownerName || "",      // NEW: FSBO owner name
-            ownerPhone: d.ownerPhone || "",    // NEW: FSBO owner phone
+            ownerName: d.ownerName || "",
+            ownerPhone: d.ownerPhone || "",
             plan: d.plan || "Listed Property Basic",
             bedrooms: d.bedrooms != null ? d.bedrooms : "",
             bathrooms: d.bathrooms != null ? d.bathrooms : "",
             sqft: d.sqft != null ? d.sqft : "",
             propertyType: d.propertyType || "",
             views: Number(d.views || 0),
-            likes: Number(d.likes || 0)
+            likes: Number(d.likes || 0),
+            paidUpgrades: d.paidUpgrades || null,  // NEW: Required for seniority sorting
+            createdAt: d.createdAt || null           // NEW: Required for seniority sorting
           });
         });
+
+        // ===== APPLY SENIORITY PRIORITY SORTING =====
+        // Pin > Premium > Standard (with date-based sub-sorting)
+        items = sortListings(items);
+        console.log('[index] Tiles sorted by seniority priority. Total:', items.length);
 
         var lastQ = (localStorage.getItem('lastSearch') || '').trim();
         renderStrip2TilesFrom(items, lastQ);
@@ -1240,9 +1276,9 @@
           const needsAnimation = newDigit !== oldDigit || newStr.length !== oldStr.length;
 
           if (needsAnimation) {
-            html += `<span class="gc-counter-digit"><span class="gc-counter-digit-inner rolling">${newDigit}</span></span>`;
+            html += '<span class="gc-counter-digit"><span class="gc-counter-digit-inner rolling">' + newDigit + '</span></span>';
           } else {
-            html += `<span class="gc-counter-digit"><span class="gc-counter-digit-inner">${newDigit}</span></span>`;
+            html += '<span class="gc-counter-digit"><span class="gc-counter-digit-inner">' + newDigit + '</span></span>';
           }
         }
 
@@ -1257,7 +1293,6 @@
       }
 
       // Direct count from listings collection (ALL documents - no filters)
-      // This shows total historical volume of the platform
       try {
         const listingsCol = collection(db, "listings");
         const snapshot = await getCountFromServer(listingsCol);
