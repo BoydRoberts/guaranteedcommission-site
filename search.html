@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-01-30 (SENIORITY PRIORITY SORTING: Pin > Premium > Standard) -->
+<!-- search.html - Build 2026-02-05 (SENIORITY SORTING preserved; tile badges removed to avoid covering banner text) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -78,15 +78,15 @@
 
     /* ===== SOLD marker styles ===== */
     .gc-marker-wrap.sold .gc-marker-dot {
-      background:#6b7280; /* gray */
+      background:#6b7280;
     }
     .gc-marker-wrap.sold .gc-marker-label {
-      background: rgba(55,65,81,0.90); /* dark gray */
+      background: rgba(55,65,81,0.90);
       border-color:#374151;
       color:#fff;
     }
     .gc-marker-wrap.sold.highlighted .gc-marker-label {
-      background:#111827; /* darker when highlighted */
+      background:#111827;
       border-color:#111827;
       color:#fff;
     }
@@ -97,7 +97,7 @@
 
     /* ===== PIN marker styles (gold/premium look) ===== */
     .gc-marker-wrap.pinned .gc-marker-dot {
-      background:#f59e0b; /* amber */
+      background:#f59e0b;
       border-color:#fbbf24;
     }
     .gc-marker-wrap.pinned .gc-marker-label {
@@ -110,7 +110,7 @@
       color:#fff;
     }
 
-    /* Filter bar dropdown styling - All buttons use #4DA6FF with white text */
+    /* Filter bar dropdown styling */
     .filter-dropdown { position:relative; display:inline-block; }
     .filter-btn {
       display:inline-flex;
@@ -466,7 +466,6 @@
       const dropdowns = document.querySelectorAll('.filter-dropdown');
 
       dropdowns.forEach(dd => {
-        // Only target the direct child button (dropdown trigger), not buttons inside the panel
         const btn = dd.querySelector(':scope > button');
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -601,7 +600,6 @@
     // 2. Premium Placement: Second tier, sorted by createdAt ASCENDING (oldest first = seniority)
     // 3. Standard Listings: Third tier, sorted by createdAt DESCENDING (newest first)
     function sortListings(items) {
-      // Helper to get timestamp in milliseconds
       function getCreatedAtMs(doc) {
         const ca = doc.createdAt;
         if (!ca) return 0;
@@ -618,25 +616,14 @@
         const aPremium = !!(a.paidUpgrades && a.paidUpgrades.premium);
         const bPremium = !!(b.paidUpgrades && b.paidUpgrades.premium);
         
-        // Tier 1: Pin Placement wins over everything
         if (aPin && !bPin) return -1;
         if (!aPin && bPin) return 1;
+        if (aPin && bPin) return getCreatedAtMs(a) - getCreatedAtMs(b);
         
-        // Both have Pin: sort by createdAt ASCENDING (oldest first = seniority)
-        if (aPin && bPin) {
-          return getCreatedAtMs(a) - getCreatedAtMs(b);
-        }
-        
-        // Tier 2: Premium Placement wins over Standard
         if (aPremium && !bPremium) return -1;
         if (!aPremium && bPremium) return 1;
+        if (aPremium && bPremium) return getCreatedAtMs(a) - getCreatedAtMs(b);
         
-        // Both have Premium: sort by createdAt ASCENDING (oldest first = seniority)
-        if (aPremium && bPremium) {
-          return getCreatedAtMs(a) - getCreatedAtMs(b);
-        }
-        
-        // Tier 3: Standard listings - sort by createdAt DESCENDING (newest first)
         return getCreatedAtMs(b) - getCreatedAtMs(a);
       });
     }
@@ -665,7 +652,6 @@
       const val = input.toLowerCase().trim();
       const searches = getSavedSearches();
 
-      // Gate by login - saved searches require auth
       if (!isLoggedIn() || val.length < 2 || searches.length === 0) {
         autocomplete.classList.remove('show');
         return;
@@ -721,12 +707,10 @@
         const params = new URLSearchParams();
 
         if (q) params.set("q", q);
-
         if (f.priceMin != null) params.set("priceMin", String(f.priceMin));
         if (f.priceMax != null) params.set("priceMax", String(f.priceMax));
         if (f.bedsMin != null) params.set("bedsMin", String(f.bedsMin));
         if (f.bathsMin != null) params.set("bathsMin", String(f.bathsMin));
-
         if (f.status) params.set("status", f.status);
         if (f.propType) params.set("propType", f.propType);
 
@@ -960,10 +944,6 @@
 
       const contactLine = buildContactLine(doc);
 
-      // Check for paid upgrades for visual indicators
-      const hasPin = !!(doc.paidUpgrades && doc.paidUpgrades.pin);
-      const hasPremium = !!(doc.paidUpgrades && doc.paidUpgrades.premium);
-
       const card = document.createElement("article");
       card.className = "gc-tile relative";
       card.onclick = () => { window.location.href = `/listing.html?id=${encodeURIComponent(id)}`; };
@@ -972,11 +952,7 @@
         <div class="relative">
           <img class="gc-photo" alt="Listing photo" src="${primaryPhoto}">
           ${banner ? `<div class="gc-ribbon">${banner}</div>` : ''}
-
           ${isSold ? `<div class="absolute top-2 left-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
-          ${hasPin && !isSold ? `<div class="absolute top-2 left-2 bg-amber-500 text-white font-bold text-[11px] px-2 py-1 rounded shadow">📌 PINNED</div>` : ''}
-          ${hasPremium && !hasPin && !isSold ? `<div class="absolute top-2 left-2 bg-blue-500 text-white font-bold text-[11px] px-2 py-1 rounded shadow">⭐ PREMIUM</div>` : ''}
-
           <button type="button" class="gc-heart" aria-label="Like"></button>
           <button type="button" class="gc-share gc-share-left" data-share="email">Email</button>
           <button type="button" class="gc-share gc-share-right" data-share="text">Text</button>
@@ -1059,7 +1035,7 @@
           wrap.classList.add('sold');
         }
 
-        // ===== PIN marker check =====
+        // ===== PIN marker check (map only — no tile badge) =====
         const hasPin = !!(it.paidUpgrades && it.paidUpgrades.pin);
         if (hasPin && !isSold) {
           wrap.classList.add('pinned');
@@ -1071,7 +1047,6 @@
         const label = document.createElement('div');
         label.className = 'gc-marker-label';
 
-        // Price label text + SOLD suffix
         const basePrice = formatPriceShort(it.price);
         label.textContent = isSold ? (basePrice + ' (SOLD)') : (hasPin ? ('📌 ' + basePrice) : basePrice);
 
@@ -1161,17 +1136,14 @@
       // ===== URL params take priority =====
       const fromUrl = readFiltersFromURL();
 
-      // q precedence: URL -> localStorage -> ""
       const qParam = (fromUrl.hasAny ? fromUrl.q : (getParam('q') || localStorage.getItem('lastSearch') || '')).trim();
       $("qBox").value = qParam;
       localStorage.setItem('lastSearch', qParam);
 
-      // Filters precedence: URL -> localStorage -> {}
       const lastFilters = fromUrl.hasAny ? fromUrl.filters : getJSON('lastFilters', {});
       writeFiltersToUI(lastFilters);
       updateDropdownLabels(lastFilters);
 
-      // Keep localStorage in sync for continuity
       setJSON('lastFilters', lastFilters);
 
       await initMap(qParam);
@@ -1194,13 +1166,10 @@
       allDocs = sortListings(allDocs);
 
       const filtered = allDocs.filter(d => matchesFilters(d, qParam, lastFilters));
-      
-      // Sorting already applied to allDocs, but re-sort filtered just in case
       const sorted = sortListings(filtered);
       
       await addDotPriceMarkers(sorted);
 
-      // Ensure URL reflects what we just applied
       syncFiltersToURL();
 
       console.log('[search] Boot complete, listings loaded:', allDocs.length);
@@ -1229,13 +1198,11 @@
         const resorted = sortListings(refiltered);
         await addDotPriceMarkers(resorted);
 
-        // URL sync after clear
         syncFiltersToURL();
       };
 
       // ===== GATED ACTIONS =====
 
-      // Save search button
       $("saveSearchBtn").onclick = () => {
         requireAuth(() => {
           const q = $("qBox").value.trim();
@@ -1248,7 +1215,6 @@
         });
       };
 
-      // Email search button
       $("emailSearchBtn").onclick = () => {
         requireAuth(() => {
           const q = $("qBox").value.trim();
@@ -1258,7 +1224,6 @@
         });
       };
 
-      // Text search button
       $("textSearchBtn").onclick = () => {
         requireAuth(() => {
           const body = encodeURIComponent(`Check out these listings:\n\n${window.location.href}`);
@@ -1266,7 +1231,6 @@
         });
       };
 
-      // Auto-Email button
       $("autoEmailBtn").onclick = () => {
         requireAuth(() => {
           const q = $("qBox").value.trim();
@@ -1276,7 +1240,6 @@
         });
       };
 
-      // Auto-Text button
       $("autoTextBtn").onclick = () => {
         requireAuth(() => {
           const q = $("qBox").value.trim();
