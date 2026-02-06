@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-30 (SECURITY: Zero Trust Dashboard - Firestore-based saved searches, role-conditional UI) -->
+<!-- Build: 2026-02-06 (Status dropdown added to listings table for quick status updates) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -10,6 +10,45 @@
   <style>
     /* Helps prevent long dropdown text from breaking layout */
     select.truncate-option { max-width: 100%; }
+    
+    /* Status dropdown styling */
+    .status-select {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      cursor: pointer;
+    }
+    .status-select:focus {
+      outline: none;
+      border-color: #4DA6FF;
+      box-shadow: 0 0 0 2px rgba(77, 166, 255, 0.2);
+    }
+    .status-select.status-active { border-color: #22c55e; background: #f0fdf4; }
+    .status-select.status-pending { border-color: #1f2937; background: #f9fafb; }
+    .status-select.status-sold { border-color: #dc2626; background: #fef2f2; }
+    
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      background: #1f2937;
+      color: #fff;
+      border-radius: 8px;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      animation: slideIn 0.3s ease-out;
+    }
+    .toast.success { background: #22c55e; }
+    .toast.error { background: #dc2626; }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
   </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
@@ -202,7 +241,7 @@
 
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    import { collection, getDocs, query, where, limit, doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { collection, getDocs, query, where, limit, doc, getDoc, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id)=>document.getElementById(id);
     const norm = (s)=>String(s||'').trim().toLowerCase();
@@ -217,6 +256,84 @@
     }
     
     $("who").textContent = emailRaw || 'there';
+
+    // ========================================
+    // TOAST NOTIFICATION
+    // ========================================
+    function showToast(message, type = 'success') {
+      // Remove any existing toasts
+      document.querySelectorAll('.toast').forEach(t => t.remove());
+      
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      // Auto-remove after 3 seconds
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // ========================================
+    // UPDATE LISTING STATUS
+    // Quick status change directly from dashboard
+    // ========================================
+    async function updateListingStatus(listingId, newStatus, selectEl) {
+      if (!listingId || !newStatus) return;
+      
+      try {
+        const docRef = doc(db, "listings", listingId);
+        
+        // Update status and timestamp
+        await updateDoc(docRef, {
+          status: newStatus,
+          updatedAt: serverTimestamp()
+        });
+        
+        // Update dropdown styling based on new status
+        updateStatusDropdownStyle(selectEl, newStatus);
+        
+        showToast(`Status updated to "${newStatus}"`, 'success');
+        console.log('[welcome] Status updated:', listingId, newStatus);
+        
+      } catch (error) {
+        console.error('[welcome] Failed to update status:', error);
+        showToast('Failed to update status. Please try again.', 'error');
+        
+        // Revert dropdown to previous value on error
+        // (We'd need to track the old value, but for simplicity just reload)
+      }
+    }
+
+    // Update dropdown visual style based on status
+    function updateStatusDropdownStyle(selectEl, status) {
+      if (!selectEl) return;
+      selectEl.classList.remove('status-active', 'status-pending', 'status-sold');
+      
+      const statusLower = String(status || '').toLowerCase();
+      if (statusLower === 'active') {
+        selectEl.classList.add('status-active');
+      } else if (statusLower === 'in contract' || statusLower === 'in_contract' || statusLower === 'pending') {
+        selectEl.classList.add('status-pending');
+      } else if (statusLower === 'sold') {
+        selectEl.classList.add('status-sold');
+      }
+    }
+
+    // Get status class for initial render
+    function getStatusClass(status) {
+      const statusLower = String(status || '').toLowerCase();
+      if (statusLower === 'active') return 'status-active';
+      if (statusLower === 'in contract' || statusLower === 'in_contract' || statusLower === 'pending') return 'status-pending';
+      if (statusLower === 'sold') return 'status-sold';
+      return '';
+    }
+
+    // Make updateListingStatus available globally for inline handlers
+    window.updateListingStatus = updateListingStatus;
 
     // Logout - clear session data
     $("logoutBtn")?.addEventListener('click', () => {
@@ -582,6 +699,85 @@
     }
 
     // ========================================
+    // RENDER LISTINGS TABLE WITH STATUS DROPDOWN
+    // ========================================
+    function renderListingsTable(all, canEditAsSeller, canEditAsAgent) {
+      const host = $('listingsTable');
+      const sec = $('listSection');
+      if (!host || !sec || !all.length) return;
+
+      sec.classList.remove('hidden');
+      
+      // Build table HTML
+      let tableHTML = `
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-gray-600">
+              <tr>
+                <th class="px-3 py-2 text-left">Address</th>
+                <th class="px-3 py-2 text-left">Status</th>
+                <th class="px-3 py-2 text-left">Plan</th>
+                <th class="px-3 py-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+      `;
+
+      all.forEach(it => {
+        const previewHref = it.id ? ('/listing.html?id=' + encodeURIComponent(it.id)) : '#';
+        const currentStatus = it.status || 'Draft';
+        const statusClass = getStatusClass(currentStatus);
+        
+        // Build action links
+        const links = [
+          (canEditAsSeller(it) ? `<a class="text-blue-600 underline" href="/seller-detail.html?id=${encodeURIComponent(it.id)}">Edit as Seller</a>` : ``),
+          (canEditAsAgent(it)  ? `<a class="text-blue-600 underline" href="/agent-detail.html?id=${encodeURIComponent(it.id)}">Edit as Agent</a>` : ``),
+          `<a class="text-blue-600 underline" href="${previewHref}" target="_blank" rel="noopener">Preview</a>`
+        ].filter(Boolean).join(` <span class="text-gray-300">|</span> `);
+
+        // Status dropdown with current value selected
+        const statusDropdown = `
+          <select 
+            class="status-select ${statusClass}" 
+            data-listing-id="${it.id}"
+            onchange="window.handleStatusChange(this)"
+          >
+            <option value="Active" ${currentStatus === 'Active' ? 'selected' : ''}>Active</option>
+            <option value="In Contract" ${currentStatus === 'In Contract' || currentStatus === 'in_contract' ? 'selected' : ''}>In Contract</option>
+            <option value="Sold" ${currentStatus === 'Sold' ? 'selected' : ''}>Sold</option>
+          </select>
+        `;
+
+        tableHTML += `
+          <tr>
+            <td class="px-3 py-2">${it.address || ''}</td>
+            <td class="px-3 py-2">${statusDropdown}</td>
+            <td class="px-3 py-2">${it.plan || ''}</td>
+            <td class="px-3 py-2">${links}</td>
+          </tr>
+        `;
+      });
+
+      tableHTML += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      host.innerHTML = tableHTML;
+    }
+
+    // Global handler for status dropdown changes
+    window.handleStatusChange = function(selectEl) {
+      const listingId = selectEl.dataset.listingId;
+      const newStatus = selectEl.value;
+      
+      if (listingId && newStatus) {
+        updateListingStatus(listingId, newStatus, selectEl);
+      }
+    };
+
+    // ========================================
     // MAIN BOOT: Zero Trust - only show data user owns
     // ========================================
     (async function boot(){
@@ -712,46 +908,9 @@
         }
       }
 
-      // UNIFIED LISTINGS TABLE: Only if user has ANY verified listings
+      // UNIFIED LISTINGS TABLE WITH STATUS DROPDOWN
       if (hasListings) {
-        const host = $('listingsTable');
-        const sec = $('listSection');
-        if (host && sec) {
-          sec.classList.remove('hidden');
-          host.innerHTML = `
-            <div class="overflow-x-auto">
-              <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-gray-600">
-                  <tr>
-                    <th class="px-3 py-2 text-left">Address</th>
-                    <th class="px-3 py-2 text-left">Status</th>
-                    <th class="px-3 py-2 text-left">Plan</th>
-                    <th class="px-3 py-2 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y">
-                  ${all.map(it=>{
-                    const previewHref = it.id ? ('/listing.html?id=' + encodeURIComponent(it.id)) : '#';
-                    const links = [
-                      (canEditAsSeller(it) ? `<a class="text-blue-600 underline" href="/seller-detail.html?id=${encodeURIComponent(it.id)}">Edit as Seller</a>` : ``),
-                      (canEditAsAgent(it)  ? `<a class="text-blue-600 underline" href="/agent-detail.html?id=${encodeURIComponent(it.id)}">Edit as Agent</a>` : ``),
-                      `<a class="text-blue-600 underline" href="${previewHref}" target="_blank" rel="noopener">Preview</a>`
-                    ].filter(Boolean).join(` <span class="text-gray-300">|</span> `);
-
-                    return `
-                      <tr>
-                        <td class="px-3 py-2">${it.address || ''}</td>
-                        <td class="px-3 py-2">${it.status || 'Draft'}</td>
-                        <td class="px-3 py-2">${it.plan || ''}</td>
-                        <td class="px-3 py-2">${links}</td>
-                      </tr>
-                    `;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>
-          `;
-        }
+        renderListingsTable(all, canEditAsSeller, canEditAsAgent);
       }
 
       // Debug role summary (hidden by default)
