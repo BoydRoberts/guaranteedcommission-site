@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-02-06 (Map markers: Blue=Active, Black=Pending, Red=Sold; no pinned visual distinction) -->
+<!-- search.html - Build 2026-02-06 (Sold tiles show date/price; Map markers: Blue=Active, Black=Pending, Red=Sold) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -919,6 +919,44 @@
       }
     }
 
+    // Format date from YYYY-MM-DD to M/D/YYYY
+    function formatSoldDate(dateStr) {
+      if (!dateStr) return null;
+      try {
+        const parts = String(dateStr).split('-');
+        if (parts.length !== 3) return null;
+        const year = parts[0];
+        const month = parseInt(parts[1], 10); // Remove leading zero
+        const day = parseInt(parts[2], 10);   // Remove leading zero
+        return `${month}/${day}/${year}`;
+      } catch {
+        return null;
+      }
+    }
+
+    // Build status display string with sold details if available
+    function buildStatusDisplay(doc) {
+      const status = String(doc.status || "Active");
+      const isSold = status.trim().toLowerCase() === "sold";
+      
+      if (!isSold) return status;
+      
+      // Check for sold details
+      const soldDate = doc.soldDate;
+      const soldPrice = doc.soldPrice;
+      
+      if (soldDate && soldPrice) {
+        const formattedDate = formatSoldDate(soldDate);
+        const formattedPrice = money(soldPrice);
+        if (formattedDate && formattedPrice) {
+          return `Sold ${formattedDate} for ${formattedPrice}`;
+        }
+      }
+      
+      // Legacy data without sold details
+      return "Sold";
+    }
+
     function renderTile(doc) {
       const id = doc.id;
       const address = String(doc.address || "").trim();
@@ -944,6 +982,9 @@
       const likes = Number(doc.likes || 0);
 
       const contactLine = buildContactLine(doc);
+      
+      // Build status display with sold details if available
+      const statusDisplay = buildStatusDisplay(doc);
 
       const card = document.createElement("article");
       card.className = "gc-tile relative";
@@ -964,7 +1005,7 @@
             <div class="truncate text-red-600">Commission ${cPctLbl} | ${cAmt ? money(cAmt) : "$—"}</div>
           </div>
           <div class="text-[12px] text-gray-700">
-            ${bds} bd | ${ba} ba | ${sqft} sqft${pType ? " | " + pType : ""} | ${status}
+            ${bds} bd | ${ba} ba | ${sqft} sqft${pType ? " | " + pType : ""} | ${statusDisplay}
           </div>
           <div class="text-sm font-medium truncate">${address || "[address]"}</div>
           <div class="text-[11px] text-gray-600 truncate">
