@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-02-06 (Status dropdown added to listings table for quick status updates) -->
+<!-- Build: 2026-02-06 (Status dropdown + Sold Details modal for capturing sold date/price) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -48,6 +48,37 @@
     @keyframes slideIn {
       from { transform: translateX(100%); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
+    }
+    
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    .modal-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .modal-content {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      transform: scale(0.95);
+      transition: transform 0.2s;
+    }
+    .modal-overlay.show .modal-content {
+      transform: scale(1);
     }
   </style>
 </head>
@@ -237,6 +268,68 @@
     </section>
   </main>
 
+  <!-- ========================================
+       SOLD DETAILS MODAL
+       Captures sold date and sold price when marking listing as Sold
+       ======================================== -->
+  <div id="soldDetailsModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="text-lg font-bold mb-1">Sold Details</h3>
+      <p class="text-sm text-gray-600 mb-4">Please enter the sale details for this listing.</p>
+      
+      <div class="space-y-4">
+        <!-- Sold Date -->
+        <div>
+          <label for="soldDateInput" class="block text-sm font-medium text-gray-700 mb-1">
+            Sold Date <span class="text-red-500">*</span>
+          </label>
+          <input 
+            type="date" 
+            id="soldDateInput" 
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            required
+          >
+        </div>
+        
+        <!-- Sold Price -->
+        <div>
+          <label for="soldPriceInput" class="block text-sm font-medium text-gray-700 mb-1">
+            Sold Price <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+            <input 
+              type="number" 
+              id="soldPriceInput" 
+              class="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="0"
+              min="0"
+              step="1000"
+              required
+            >
+          </div>
+        </div>
+      </div>
+      
+      <!-- Action buttons -->
+      <div class="flex gap-3 mt-6">
+        <button 
+          id="soldModalCancel" 
+          class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button 
+          id="soldModalConfirm" 
+          class="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
+          style="background:#dc2626;"
+        >
+          Confirm Sale
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="/scripts/firebase-init.js"></script>
 
   <script type="module">
@@ -278,33 +371,142 @@
     }
 
     // ========================================
+    // SOLD DETAILS MODAL STATE
+    // ========================================
+    let pendingSoldData = {
+      listingId: null,
+      selectEl: null,
+      previousStatus: null
+    };
+
+    function openSoldModal(listingId, selectEl, previousStatus) {
+      pendingSoldData = { listingId, selectEl, previousStatus };
+      
+      // Reset form fields
+      $('soldDateInput').value = '';
+      $('soldPriceInput').value = '';
+      
+      // Set default date to today
+      const today = new Date().toISOString().split('T')[0];
+      $('soldDateInput').value = today;
+      
+      // Show modal
+      $('soldDetailsModal').classList.add('show');
+      
+      // Focus on date input
+      setTimeout(() => $('soldDateInput').focus(), 100);
+    }
+
+    function closeSoldModal(revert = false) {
+      $('soldDetailsModal').classList.remove('show');
+      
+      // If reverting, set dropdown back to previous status
+      if (revert && pendingSoldData.selectEl && pendingSoldData.previousStatus) {
+        pendingSoldData.selectEl.value = pendingSoldData.previousStatus;
+        updateStatusDropdownStyle(pendingSoldData.selectEl, pendingSoldData.previousStatus);
+      }
+      
+      // Clear pending data
+      pendingSoldData = { listingId: null, selectEl: null, previousStatus: null };
+    }
+
+    // Wire modal buttons
+    $('soldModalCancel')?.addEventListener('click', () => {
+      closeSoldModal(true); // Revert dropdown
+    });
+
+    $('soldModalConfirm')?.addEventListener('click', async () => {
+      const soldDate = $('soldDateInput').value;
+      const soldPrice = $('soldPriceInput').value;
+      
+      // Validate inputs
+      if (!soldDate) {
+        showToast('Please enter the sold date.', 'error');
+        $('soldDateInput').focus();
+        return;
+      }
+      
+      if (!soldPrice || Number(soldPrice) <= 0) {
+        showToast('Please enter a valid sold price.', 'error');
+        $('soldPriceInput').focus();
+        return;
+      }
+      
+      // Proceed with update
+      const { listingId, selectEl } = pendingSoldData;
+      
+      if (listingId) {
+        await updateListingStatus(listingId, 'Sold', selectEl, {
+          soldDate: soldDate,
+          soldPrice: Number(soldPrice)
+        });
+      }
+      
+      closeSoldModal(false); // Don't revert, update was successful
+    });
+
+    // Close modal on overlay click
+    $('soldDetailsModal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'soldDetailsModal') {
+        closeSoldModal(true);
+      }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && $('soldDetailsModal').classList.contains('show')) {
+        closeSoldModal(true);
+      }
+    });
+
+    // ========================================
     // UPDATE LISTING STATUS
     // Quick status change directly from dashboard
+    // Now supports optional soldDetails for Sold status
     // ========================================
-    async function updateListingStatus(listingId, newStatus, selectEl) {
+    async function updateListingStatus(listingId, newStatus, selectEl, soldDetails = null) {
       if (!listingId || !newStatus) return;
       
       try {
         const docRef = doc(db, "listings", listingId);
         
-        // Update status and timestamp
-        await updateDoc(docRef, {
+        // Build update object
+        const updateData = {
           status: newStatus,
           updatedAt: serverTimestamp()
-        });
+        };
+        
+        // Add sold details if provided
+        if (soldDetails && newStatus === 'Sold') {
+          updateData.soldDate = soldDetails.soldDate;
+          updateData.soldPrice = soldDetails.soldPrice;
+        }
+        
+        // Update Firestore
+        await updateDoc(docRef, updateData);
         
         // Update dropdown styling based on new status
         updateStatusDropdownStyle(selectEl, newStatus);
         
-        showToast(`Status updated to "${newStatus}"`, 'success');
-        console.log('[welcome] Status updated:', listingId, newStatus);
+        // Show appropriate toast message
+        if (newStatus === 'Sold' && soldDetails) {
+          const priceFormatted = '$' + Number(soldDetails.soldPrice).toLocaleString();
+          showToast(`Marked as Sold for ${priceFormatted}`, 'success');
+        } else {
+          showToast(`Status updated to "${newStatus}"`, 'success');
+        }
+        
+        console.log('[welcome] Status updated:', listingId, newStatus, soldDetails || '');
         
       } catch (error) {
         console.error('[welcome] Failed to update status:', error);
         showToast('Failed to update status. Please try again.', 'error');
         
-        // Revert dropdown to previous value on error
-        // (We'd need to track the old value, but for simplicity just reload)
+        // Revert dropdown on error
+        if (selectEl && pendingSoldData.previousStatus) {
+          selectEl.value = pendingSoldData.previousStatus;
+          updateStatusDropdownStyle(selectEl, pendingSoldData.previousStatus);
+        }
       }
     }
 
@@ -736,10 +938,12 @@
         ].filter(Boolean).join(` <span class="text-gray-300">|</span> `);
 
         // Status dropdown with current value selected
+        // data-previous-status stores the current status for revert on cancel
         const statusDropdown = `
           <select 
             class="status-select ${statusClass}" 
             data-listing-id="${it.id}"
+            data-previous-status="${currentStatus}"
             onchange="window.handleStatusChange(this)"
           >
             <option value="Active" ${currentStatus === 'Active' ? 'selected' : ''}>Active</option>
@@ -767,14 +971,28 @@
       host.innerHTML = tableHTML;
     }
 
-    // Global handler for status dropdown changes
+    // ========================================
+    // GLOBAL HANDLER FOR STATUS DROPDOWN CHANGES
+    // Intercepts "Sold" to show modal, others update immediately
+    // ========================================
     window.handleStatusChange = function(selectEl) {
       const listingId = selectEl.dataset.listingId;
       const newStatus = selectEl.value;
+      const previousStatus = selectEl.dataset.previousStatus || 'Active';
       
-      if (listingId && newStatus) {
-        updateListingStatus(listingId, newStatus, selectEl);
+      if (!listingId || !newStatus) return;
+      
+      // If selecting "Sold", show the modal instead of immediate update
+      if (newStatus === 'Sold') {
+        openSoldModal(listingId, selectEl, previousStatus);
+        return;
       }
+      
+      // For Active / In Contract, update immediately
+      updateListingStatus(listingId, newStatus, selectEl);
+      
+      // Update the data attribute for future changes
+      selectEl.dataset.previousStatus = newStatus;
     };
 
     // ========================================
