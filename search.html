@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-02-05 (SENIORITY SORTING preserved; tile badges removed to avoid covering banner text) -->
+<!-- search.html - Build 2026-02-06 (Map markers: Blue=Active, Black=Pending, Red=Sold; no pinned visual distinction) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -40,12 +40,13 @@
       .search-results #grid { grid-template-columns:1fr; }
     }
 
-    /* Marker styles */
+    /* ===== MARKER STYLES ===== */
+    /* Default: ACTIVE listings = BLUE (#4DA6FF) */
     .gc-marker-wrap { position:relative; width:0; height:0; }
     .gc-marker-dot {
       position:absolute;
       width:10px; height:10px;
-      background:#dc2626;
+      background:#4DA6FF;
       border:2px solid #fff;
       border-radius:9999px;
       box-shadow:0 1px 2px rgba(0,0,0,.3);
@@ -61,53 +62,53 @@
       align-items:center;
       justify-content:center;
       background:#fff;
-      border:2px solid #dc2626;
+      border:2px solid #4DA6FF;
       border-radius:9999px;
       padding:2px 8px;
       font-size:12px;
       font-weight:700;
-      color:#dc2626;
+      color:#4DA6FF;
       white-space:nowrap;
       box-shadow:0 2px 6px rgba(0,0,0,.18);
       cursor:pointer;
       user-select:none;
     }
-    .gc-marker-wrap.highlighted .gc-marker-label { background:#dc2626; color:#fff; }
-    .gc-marker-wrap.highlighted .gc-marker-dot { box-shadow:0 3px 10px rgba(220,38,38,.45); }
-    .gc-tile.highlighted { outline:3px solid #dc2626; outline-offset:2px; box-shadow:0 4px 12px rgba(220,38,38,.3); }
+    .gc-marker-wrap.highlighted .gc-marker-label { background:#4DA6FF; color:#fff; }
+    .gc-marker-wrap.highlighted .gc-marker-dot { box-shadow:0 3px 10px rgba(77,166,255,.45); }
+    .gc-tile.highlighted { outline:3px solid #4DA6FF; outline-offset:2px; box-shadow:0 4px 12px rgba(77,166,255,.3); }
 
-    /* ===== SOLD marker styles ===== */
-    .gc-marker-wrap.sold .gc-marker-dot {
-      background:#6b7280;
+    /* ===== PENDING / IN CONTRACT = BLACK (#1f2937) ===== */
+    .gc-marker-wrap.pending .gc-marker-dot {
+      background:#1f2937;
     }
-    .gc-marker-wrap.sold .gc-marker-label {
-      background: rgba(55,65,81,0.90);
-      border-color:#374151;
+    .gc-marker-wrap.pending .gc-marker-label {
+      background:#fff;
+      border-color:#1f2937;
+      color:#1f2937;
+    }
+    .gc-marker-wrap.pending.highlighted .gc-marker-label {
+      background:#1f2937;
       color:#fff;
     }
+    .gc-marker-wrap.pending.highlighted .gc-marker-dot {
+      box-shadow:0 3px 10px rgba(31,41,55,.45);
+    }
+
+    /* ===== SOLD = RED (#dc2626) ===== */
+    .gc-marker-wrap.sold .gc-marker-dot {
+      background:#dc2626;
+    }
+    .gc-marker-wrap.sold .gc-marker-label {
+      background:#fff;
+      border-color:#dc2626;
+      color:#dc2626;
+    }
     .gc-marker-wrap.sold.highlighted .gc-marker-label {
-      background:#111827;
-      border-color:#111827;
+      background:#dc2626;
       color:#fff;
     }
     .gc-marker-wrap.sold.highlighted .gc-marker-dot {
-      background:#111827;
-      box-shadow:0 3px 10px rgba(17,24,39,.45);
-    }
-
-    /* ===== PIN marker styles (gold/premium look) ===== */
-    .gc-marker-wrap.pinned .gc-marker-dot {
-      background:#f59e0b;
-      border-color:#fbbf24;
-    }
-    .gc-marker-wrap.pinned .gc-marker-label {
-      background:#fef3c7;
-      border-color:#f59e0b;
-      color:#92400e;
-    }
-    .gc-marker-wrap.pinned.highlighted .gc-marker-label {
-      background:#f59e0b;
-      color:#fff;
+      box-shadow:0 3px 10px rgba(220,38,38,.45);
     }
 
     /* Filter bar dropdown styling */
@@ -1003,6 +1004,11 @@
       return card;
     }
 
+    // =========================================================================
+    // Map Marker Logic
+    // Color scheme: Active=Blue, Pending/InContract=Black, Sold=Red
+    // NO visual distinction for Pin placement (sorting only)
+    // =========================================================================
     async function addDotPriceMarkers(items) {
       if (!map) return;
       clearMarkers();
@@ -1029,17 +1035,17 @@
         wrap.dataset.listingId = listingKey;
         wrap.title = addr;
 
-        // ===== SOLD marker check =====
-        const isSold = String(it.status || '').trim().toLowerCase() === 'sold';
-        if (isSold) {
-          wrap.classList.add('sold');
-        }
+        // ===== STATUS-BASED MARKER COLORS =====
+        const statusLower = String(it.status || '').trim().toLowerCase();
+        const isSold = statusLower === 'sold';
+        const isPending = statusLower === 'in contract' || statusLower === 'in_contract' || statusLower === 'pending';
 
-        // ===== PIN marker check (map only — no tile badge) =====
-        const hasPin = !!(it.paidUpgrades && it.paidUpgrades.pin);
-        if (hasPin && !isSold) {
-          wrap.classList.add('pinned');
+        if (isSold) {
+          wrap.classList.add('sold');       // Red markers
+        } else if (isPending) {
+          wrap.classList.add('pending');    // Black markers
         }
+        // else: default Blue markers (no class needed)
 
         const dot = document.createElement('div');
         dot.className = 'gc-marker-dot';
@@ -1047,8 +1053,15 @@
         const label = document.createElement('div');
         label.className = 'gc-marker-label';
 
+        // Price label with status suffix for Sold/Pending
         const basePrice = formatPriceShort(it.price);
-        label.textContent = isSold ? (basePrice + ' (SOLD)') : (hasPin ? ('📌 ' + basePrice) : basePrice);
+        if (isSold) {
+          label.textContent = basePrice + ' (SOLD)';
+        } else if (isPending) {
+          label.textContent = basePrice + ' (PENDING)';
+        } else {
+          label.textContent = basePrice;
+        }
 
         const goListing = (e) => {
           e.stopPropagation();
