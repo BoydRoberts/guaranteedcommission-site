@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-02-06 (Sold tiles show date/price; Map markers: Blue=Active, Black=Pending, Red=Sold) -->
+<!-- search.html - Build 2026-02-07 (FIXED: Inline sold date/price display in tiles with visual debug) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -204,6 +204,12 @@
       font-size:11px;
       color:#4DA6FF;
       margin-left:8px;
+    }
+    
+    /* SOLD STATUS DISPLAY - Visual Debug Styling */
+    .sold-details-text {
+      color: #991b1b; /* Dark red for visibility */
+      font-weight: 600;
     }
   </style>
 </head>
@@ -873,9 +879,12 @@
     }
 
     // =========================================================================
-    // Tile Renderer with FSBO contact completeness
+    // CURRENCY FORMATTER - Used for price and commission
     // =========================================================================
-    function money(n) { const v = Number(n || 0); return v ? ("$" + v.toLocaleString()) : "$—"; }
+    function money(n) { 
+      const v = Number(n || 0); 
+      return v ? ("$" + v.toLocaleString()) : "$—"; 
+    }
 
     function commissionAmount(price, commission, type) {
       const p = Number(price || 0), c = Number(commission || 0);
@@ -919,50 +928,13 @@
       }
     }
 
-    // Format date from YYYY-MM-DD to M/D/YYYY
-    function formatSoldDate(dateStr) {
-      if (!dateStr) return null;
-      try {
-        const parts = String(dateStr).split('-');
-        if (parts.length !== 3) return null;
-        const year = parts[0];
-        const month = parseInt(parts[1], 10); // Remove leading zero
-        const day = parseInt(parts[2], 10);   // Remove leading zero
-        return `${month}/${day}/${year}`;
-      } catch {
-        return null;
-      }
-    }
-
-    // Build status display string with sold details if available
-    function buildStatusDisplay(doc) {
-      const status = String(doc.status || "Active");
-      const isSold = status.trim().toLowerCase() === "sold";
-      
-      if (!isSold) return status;
-      
-      // Check for sold details
-      const soldDate = doc.soldDate;
-      const soldPrice = doc.soldPrice;
-      
-      if (soldDate && soldPrice) {
-        const formattedDate = formatSoldDate(soldDate);
-        const formattedPrice = money(soldPrice);
-        if (formattedDate && formattedPrice) {
-          return `Sold ${formattedDate} for ${formattedPrice}`;
-        }
-      }
-      
-      // Legacy data without sold details
-      return "Sold";
-    }
-
+    // =========================================================================
+    // TILE RENDERER - FIXED INLINE SOLD DATE/PRICE LOGIC
+    // =========================================================================
     function renderTile(doc) {
       const id = doc.id;
       const address = String(doc.address || "").trim();
       const banner = String(doc.bannerText || "");
-      const status = String(doc.status || "Active");
-      const isSold = status.trim().toLowerCase() === "sold";
       const pType = String(doc.propertyType || "");
       const bds = doc.bedrooms ?? "—";
       const ba = doc.bathrooms ?? "—";
@@ -983,12 +955,93 @@
 
       const contactLine = buildContactLine(doc);
       
-      // Build status display with sold details if available
-      const statusDisplay = buildStatusDisplay(doc);
+      // =====================================================
+      // INLINE SOLD DATE/PRICE LOGIC - ROBUST IMPLEMENTATION
+      // =====================================================
+      const rawStatus = doc.status;
+      const statusStr = String(rawStatus || "Active").trim();
+      const statusLower = statusStr.toLowerCase();
+      const isSold = (statusLower === "sold");
+      
+      // Debug log to verify data
+      console.log('[renderTile] Listing:', id, '| Status:', statusStr, '| soldDate:', doc.soldDate, '| soldPrice:', doc.soldPrice);
+      
+      // Build status display text with sold details
+      let statusDisplayText = statusStr; // Default: use status as-is
+      let statusDisplayClass = ""; // CSS class for styling
+      
+      if (isSold) {
+        // Extract sold details directly from doc
+        const soldDateRaw = doc.soldDate; // Expected: "YYYY-MM-DD" string
+        const soldPriceRaw = doc.soldPrice; // Expected: number
+        
+        // Check if we have BOTH fields
+        if (soldDateRaw && soldPriceRaw) {
+          // Format date: YYYY-MM-DD -> M/D/YYYY
+          let formattedDate = null;
+          try {
+            const dateStr = String(soldDateRaw);
+            if (dateStr.includes('-')) {
+              const parts = dateStr.split('-');
+              if (parts.length === 3) {
+                const year = parts[0];
+                const month = parseInt(parts[1], 10); // Remove leading zero
+                const day = parseInt(parts[2], 10);   // Remove leading zero
+                if (year && month && day) {
+                  formattedDate = `${month}/${day}/${year}`;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('[renderTile] Date parsing failed:', e);
+          }
+          
+          // Format price: number -> $X,XXX,XXX
+          let formattedPrice = null;
+          try {
+            const priceNum = Number(soldPriceRaw);
+            if (priceNum > 0) {
+              formattedPrice = "$" + priceNum.toLocaleString();
+            }
+          } catch (e) {
+            console.warn('[renderTile] Price parsing failed:', e);
+          }
+          
+          // Build the full sold string
+          if (formattedDate && formattedPrice) {
+            statusDisplayText = `Sold ${formattedDate} for ${formattedPrice}`;
+            statusDisplayClass = "sold-details-text"; // Visual debug class
+            console.log('[renderTile] SUCCESS - Built sold string:', statusDisplayText);
+          } else {
+            // Partial data - show what we can
+            if (formattedDate) {
+              statusDisplayText = `Sold ${formattedDate}`;
+            } else if (formattedPrice) {
+              statusDisplayText = `Sold for ${formattedPrice}`;
+            } else {
+              statusDisplayText = "Sold";
+            }
+            statusDisplayClass = "sold-details-text";
+          }
+        } else {
+          // Legacy: No sold details, just show "Sold"
+          statusDisplayText = "Sold";
+          statusDisplayClass = "sold-details-text";
+          console.log('[renderTile] Legacy sold listing - no date/price data');
+        }
+      }
+      // =====================================================
+      // END INLINE SOLD LOGIC
+      // =====================================================
 
       const card = document.createElement("article");
       card.className = "gc-tile relative";
       card.onclick = () => { window.location.href = `/listing.html?id=${encodeURIComponent(id)}`; };
+
+      // Build the status span with optional class
+      const statusSpan = statusDisplayClass 
+        ? `<span class="${statusDisplayClass}">${statusDisplayText}</span>`
+        : statusDisplayText;
 
       card.innerHTML = `
         <div class="relative">
@@ -1005,7 +1058,7 @@
             <div class="truncate text-red-600">Commission ${cPctLbl} | ${cAmt ? money(cAmt) : "$—"}</div>
           </div>
           <div class="text-[12px] text-gray-700">
-            ${bds} bd | ${ba} ba | ${sqft} sqft${pType ? " | " + pType : ""} | ${statusDisplay}
+            ${bds} bd | ${ba} ba | ${sqft} sqft${pType ? " | " + pType : ""} | ${statusSpan}
           </div>
           <div class="text-sm font-medium truncate">${address || "[address]"}</div>
           <div class="text-[11px] text-gray-600 truncate">
@@ -1210,6 +1263,12 @@
           const signed = !!(data.signedISC && typeof data.signedISC === 'object' && data.signedISC.date);
           const isActive = String(data.status || '').toLowerCase() === 'active';
           if (!signed && !isActive) return;
+          
+          // DEBUG: Log sold listings to verify data
+          if (String(data.status || '').toLowerCase() === 'sold') {
+            console.log('[boot] Found SOLD listing:', d.id, '| soldDate:', data.soldDate, '| soldPrice:', data.soldPrice);
+          }
+          
           allDocs.push({ id: d.id, ...data });
         });
       } catch (e) {
