@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-02-06 (Status dropdown + Sold Details modal for capturing sold date/price) -->
+<!-- Build: 2026-02-06 (Status dropdowns in Edit blocks + Sold Details modal + sync across all dropdowns) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -19,6 +19,11 @@
       border: 1px solid #d1d5db;
       background: #fff;
       cursor: pointer;
+    }
+    .status-select:disabled {
+      background: #f3f4f6;
+      cursor: not-allowed;
+      opacity: 0.6;
     }
     .status-select:focus {
       outline: none;
@@ -154,13 +159,24 @@
             <select id="sellerListings" class="border rounded px-2 py-2 text-sm grow">
               <option value="">Select your listing…</option>
             </select>
+            <!-- Status Dropdown for quick status change -->
+            <select 
+              id="sellerStatusSelect" 
+              class="status-select" 
+              disabled
+              title="Select a listing first"
+            >
+              <option value="Active">Active</option>
+              <option value="In Contract">In Contract</option>
+              <option value="Sold">Sold</option>
+            </select>
             <div class="flex gap-2">
               <button id="sellerEditGo" class="px-3 py-2 rounded text-white text-sm" style="background:#4DA6FF;">Edit</button>
               <a id="sellerPreview" class="px-3 py-2 rounded border text-sm hover:bg-gray-50" href="#" target="_blank" rel="noopener">Preview</a>
             </div>
           </div>
           <p class="text-[11px] text-gray-500 mt-2">
-            Seller edit = seller intake (commission locked; commission change is a paid flow).
+            Use the Status dropdown to quickly mark as Sold (with date/price) or change status.
           </p>
         </div>
 
@@ -173,13 +189,24 @@
             <select id="agentListings" class="border rounded px-2 py-2 text-sm grow">
               <option value="">Select your listing…</option>
             </select>
+            <!-- Status Dropdown for quick status change -->
+            <select 
+              id="agentStatusSelect" 
+              class="status-select" 
+              disabled
+              title="Select a listing first"
+            >
+              <option value="Active">Active</option>
+              <option value="In Contract">In Contract</option>
+              <option value="Sold">Sold</option>
+            </select>
             <div class="flex gap-2">
               <button id="agentEditGo" class="px-3 py-2 rounded text-white text-sm" style="background:#4DA6FF;">Edit</button>
               <a id="agentPreview" class="px-3 py-2 rounded border text-sm hover:bg-gray-50" href="#" target="_blank" rel="noopener">Preview</a>
             </div>
           </div>
           <p class="text-[11px] text-gray-500 mt-2">
-            Agent edit = agent intake (commission locked; agents can apply free upgrades per promo rules).
+            Use the Status dropdown to quickly mark as Sold (with date/price) or change status.
           </p>
         </div>
 
@@ -460,6 +487,32 @@
     });
 
     // ========================================
+    // SYNC ALL STATUS DROPDOWNS FOR A LISTING
+    // Updates all dropdowns on the page that represent the same listingId
+    // ========================================
+    function syncAllStatusDropdowns(listingId, newStatus) {
+      // Find all status dropdowns with this listingId
+      const allDropdowns = document.querySelectorAll(`[data-listing-id="${listingId}"]`);
+      
+      allDropdowns.forEach(selectEl => {
+        // Update value
+        if (newStatus === 'In Contract' || newStatus === 'in_contract') {
+          selectEl.value = 'In Contract';
+        } else {
+          selectEl.value = newStatus;
+        }
+        
+        // Update data attribute
+        selectEl.dataset.previousStatus = newStatus;
+        
+        // Update styling
+        updateStatusDropdownStyle(selectEl, newStatus);
+      });
+      
+      console.log('[welcome] Synced', allDropdowns.length, 'dropdowns for listing', listingId, 'to', newStatus);
+    }
+
+    // ========================================
     // UPDATE LISTING STATUS
     // Quick status change directly from dashboard
     // Now supports optional soldDetails for Sold status
@@ -485,8 +538,8 @@
         // Update Firestore
         await updateDoc(docRef, updateData);
         
-        // Update dropdown styling based on new status
-        updateStatusDropdownStyle(selectEl, newStatus);
+        // SYNC ALL DROPDOWNS ON THE PAGE
+        syncAllStatusDropdowns(listingId, newStatus);
         
         // Show appropriate toast message
         if (newStatus === 'Sold' && soldDetails) {
@@ -723,14 +776,77 @@
       }
     }
 
-    function wireEditor(selectEl, editBtn, previewA, list, mode) {
+    // ========================================
+    // WIRE EDITOR WITH STATUS DROPDOWN
+    // Now includes status dropdown sync and event handling
+    // ========================================
+    function wireEditor(selectEl, editBtn, previewA, statusSelectEl, list, mode) {
       if (!selectEl || !editBtn || !previewA) return;
 
+      // Helper to update status dropdown when listing changes
+      function updateStatusDropdownForListing(listingId) {
+        if (!statusSelectEl) return;
+        
+        const it = list.find(x => x.id === listingId);
+        
+        if (!it || !listingId) {
+          // No listing selected - disable status dropdown
+          statusSelectEl.disabled = true;
+          statusSelectEl.value = 'Active';
+          statusSelectEl.removeAttribute('data-listing-id');
+          statusSelectEl.removeAttribute('data-previous-status');
+          statusSelectEl.title = 'Select a listing first';
+          updateStatusDropdownStyle(statusSelectEl, '');
+          return;
+        }
+        
+        // Enable and configure status dropdown
+        statusSelectEl.disabled = false;
+        statusSelectEl.title = 'Change listing status';
+        
+        // Set data attributes for handleStatusChange
+        statusSelectEl.dataset.listingId = it.id;
+        const currentStatus = it.status || 'Active';
+        statusSelectEl.dataset.previousStatus = currentStatus;
+        
+        // Set value (handle "in_contract" variants)
+        if (currentStatus.toLowerCase() === 'in contract' || currentStatus === 'in_contract') {
+          statusSelectEl.value = 'In Contract';
+        } else if (currentStatus.toLowerCase() === 'sold') {
+          statusSelectEl.value = 'Sold';
+        } else {
+          statusSelectEl.value = 'Active';
+        }
+        
+        // Apply styling
+        updateStatusDropdownStyle(statusSelectEl, currentStatus);
+      }
+
+      // Initial state if there's a pre-selected listing
+      if (selectEl.value) {
+        updateStatusDropdownForListing(selectEl.value);
+      }
+
+      // When listing selection changes
       selectEl.addEventListener('change', () => {
-        const it = list.find(x => x.id === selectEl.value);
+        const selectedId = selectEl.value;
+        const it = list.find(x => x.id === selectedId);
+        
+        // Update preview link
         previewA.href = it ? safePreviewHref(it) : '#';
+        
+        // Update status dropdown
+        updateStatusDropdownForListing(selectedId);
       });
 
+      // Wire status dropdown change handler
+      if (statusSelectEl) {
+        statusSelectEl.addEventListener('change', () => {
+          window.handleStatusChange(statusSelectEl);
+        });
+      }
+
+      // Edit button handler
       editBtn.addEventListener('click', () => {
         const it = list.find(x => x.id === selectEl.value);
         if (!it) { alert('Pick a listing first.'); return; }
@@ -991,7 +1107,7 @@
       // For Active / In Contract, update immediately
       updateListingStatus(listingId, newStatus, selectEl);
       
-      // Update the data attribute for future changes
+      // Update the data attribute for future changes (syncAllStatusDropdowns will handle this too)
       selectEl.dataset.previousStatus = newStatus;
     };
 
@@ -1054,8 +1170,9 @@
         const sellerSel = $('sellerListings');
         const sellerPrev = $('sellerPreview');
         const sellerGo = $('sellerEditGo');
+        const sellerStatusSel = $('sellerStatusSelect');
         fillDropdown(sellerSel, owner, sellerPrev);
-        wireEditor(sellerSel, sellerGo, sellerPrev, owner, 'seller');
+        wireEditor(sellerSel, sellerGo, sellerPrev, sellerStatusSel, owner, 'seller');
       }
 
       // AGENT EDIT: Only if user owns agent listings
@@ -1064,8 +1181,9 @@
         const agentSel = $('agentListings');
         const agentPrev = $('agentPreview');
         const agentGo = $('agentEditGo');
+        const agentStatusSel = $('agentStatusSelect');
         fillDropdown(agentSel, agent, agentPrev);
-        wireEditor(agentSel, agentGo, agentPrev, agent, 'agent');
+        wireEditor(agentSel, agentGo, agentPrev, agentStatusSel, agent, 'agent');
       }
 
       // SAVED SEARCHES: Only if user has saved searches (FROM FIRESTORE)
