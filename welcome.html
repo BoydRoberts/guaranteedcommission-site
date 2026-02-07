@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-02-06 (Global event delegation for status dropdowns + Sold Details modal + sync across all dropdowns) -->
+<!-- Build: 2026-02-07 (Strict role visibility: Agents CANNOT create listings + Global event delegation + Sold modal) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -45,7 +45,7 @@
       border-radius: 8px;
       font-size: 14px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 1000;
+      z-index: 2000;
       animation: slideIn 0.3s ease-out;
     }
     .toast.success { background: #22c55e; }
@@ -63,7 +63,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 1000;
+      z-index: 3000;
       opacity: 0;
       visibility: hidden;
       transition: opacity 0.2s, visibility 0.2s;
@@ -135,7 +135,7 @@
         </div>
 
         <!-- ======================
-             SELLER: Enter new listing (ALL LOGGED-IN USERS)
+             SELLER: Enter new listing (ONLY for Sellers, NOT Agents)
              ====================== -->
         <div id="blkSellerNew" class="hidden border rounded-lg p-4">
           <h3 class="font-semibold mb-2">Enter a new listing</h3>
@@ -151,7 +151,7 @@
         </div>
 
         <!-- ======================
-             SELLER: Edit listing as Seller (ONLY if user has seller listings)
+             SELLER: Edit listing as Seller (ONLY if user is Seller AND NOT Agent)
              ====================== -->
         <div id="blkSellerEdit" class="hidden border rounded-lg p-4">
           <h3 class="font-semibold mb-2">Edit a current listing</h3>
@@ -181,7 +181,7 @@
         </div>
 
         <!-- ======================
-             AGENT: Edit listing as Agent (ONLY if user has agent listings)
+             AGENT: Edit listing as Agent (ONLY if user is Agent)
              ====================== -->
         <div id="blkAgentEdit" class="hidden border rounded-lg p-4">
           <h3 class="font-semibold mb-2">Edit a current listing (as Agent)</h3>
@@ -211,7 +211,7 @@
         </div>
 
         <!-- ======================
-             SEARCH (ALL LOGGED-IN USERS)
+             SEARCH (ALL LOGGED-IN USERS with listings)
              ====================== -->
         <div id="blkSearch" class="hidden border rounded-lg p-4">
           <h3 class="font-semibold mb-2">Search Guaranteed Commissions</h3>
@@ -383,7 +383,7 @@
     // Ensures "Sold" modal is triggered from any dropdown
     // ========================================
     document.addEventListener('change', (e) => {
-      if (e.target.classList.contains('status-select')) {
+      if (e.target && e.target.classList.contains('status-select')) {
         handleStatusChange(e.target);
       }
     });
@@ -420,6 +420,8 @@
     function openSoldModal(listingId, selectEl, previousStatus) {
       pendingSoldData = { listingId, selectEl, previousStatus };
       
+      console.log('[openSoldModal] Opening for listing:', listingId, 'previousStatus:', previousStatus);
+      
       // Reset form fields
       $('soldDateInput').value = '';
       $('soldPriceInput').value = '';
@@ -431,8 +433,8 @@
       // Show modal
       $('soldDetailsModal').classList.add('show');
       
-      // Focus on date input
-      setTimeout(() => $('soldDateInput').focus(), 100);
+      // Focus on price input (date is already set)
+      setTimeout(() => $('soldPriceInput').focus(), 100);
     }
 
     function closeSoldModal(revert = false) {
@@ -440,6 +442,7 @@
       
       // If reverting, set dropdown back to previous status
       if (revert && pendingSoldData.selectEl && pendingSoldData.previousStatus) {
+        console.log('[closeSoldModal] Reverting to:', pendingSoldData.previousStatus);
         pendingSoldData.selectEl.value = pendingSoldData.previousStatus;
         updateStatusDropdownStyle(pendingSoldData.selectEl, pendingSoldData.previousStatus);
       }
@@ -472,6 +475,8 @@
       
       // Proceed with update
       const { listingId, selectEl } = pendingSoldData;
+      
+      console.log('[soldModalConfirm] Saving sold details:', { listingId, soldDate, soldPrice });
       
       if (listingId) {
         await updateListingStatus(listingId, 'Sold', selectEl, {
@@ -520,16 +525,18 @@
         updateStatusDropdownStyle(selectEl, newStatus);
       });
       
-      console.log('[welcome] Synced', allDropdowns.length, 'dropdowns for listing', listingId, 'to', newStatus);
+      console.log('[syncAllStatusDropdowns] Synced', allDropdowns.length, 'dropdowns for listing', listingId, 'to', newStatus);
     }
 
     // ========================================
     // UPDATE LISTING STATUS
     // Quick status change directly from dashboard
-    // Now supports optional soldDetails for Sold status
+    // Saves soldDate and soldPrice to Firestore for Sold status
     // ========================================
     async function updateListingStatus(listingId, newStatus, selectEl, soldDetails = null) {
       if (!listingId || !newStatus) return;
+      
+      console.log('[updateListingStatus] Updating:', { listingId, newStatus, soldDetails });
       
       try {
         const docRef = doc(db, "listings", listingId);
@@ -540,14 +547,17 @@
           updatedAt: serverTimestamp()
         };
         
-        // Add sold details if provided
+        // Add sold details if provided (CRITICAL: Save soldDate and soldPrice)
         if (soldDetails && newStatus === 'Sold') {
-          updateData.soldDate = soldDetails.soldDate;
-          updateData.soldPrice = soldDetails.soldPrice;
+          updateData.soldDate = soldDetails.soldDate;   // String: "YYYY-MM-DD"
+          updateData.soldPrice = soldDetails.soldPrice; // Number
+          console.log('[updateListingStatus] Including sold details:', updateData.soldDate, updateData.soldPrice);
         }
         
         // Update Firestore
         await updateDoc(docRef, updateData);
+        
+        console.log('[updateListingStatus] Firestore update successful');
         
         // SYNC ALL DROPDOWNS ON THE PAGE
         syncAllStatusDropdowns(listingId, newStatus);
@@ -560,16 +570,14 @@
           showToast(`Status updated to "${newStatus}"`, 'success');
         }
         
-        console.log('[welcome] Status updated:', listingId, newStatus, soldDetails || '');
-        
       } catch (error) {
-        console.error('[welcome] Failed to update status:', error);
+        console.error('[updateListingStatus] Failed:', error);
         showToast('Failed to update status. Please try again.', 'error');
         
         // Revert dropdown on error
-        if (selectEl && pendingSoldData.previousStatus) {
-          selectEl.value = pendingSoldData.previousStatus;
-          updateStatusDropdownStyle(selectEl, pendingSoldData.previousStatus);
+        if (selectEl && selectEl.dataset.previousStatus) {
+          selectEl.value = selectEl.dataset.previousStatus;
+          updateStatusDropdownStyle(selectEl, selectEl.dataset.previousStatus);
         }
       }
     }
@@ -598,8 +606,33 @@
       return '';
     }
 
-    // Make updateListingStatus available globally for inline handlers
-    window.updateListingStatus = updateListingStatus;
+    // ========================================
+    // GLOBAL HANDLER FOR STATUS DROPDOWN CHANGES
+    // Called via event delegation - intercepts "Sold" to show modal
+    // ========================================
+    function handleStatusChange(selectEl) {
+      const listingId = selectEl.dataset.listingId;
+      const newStatus = selectEl.value;
+      const previousStatus = selectEl.dataset.previousStatus || 'Active';
+      
+      // Guard: Must have a listing ID
+      if (!listingId || !newStatus) {
+        console.warn('[handleStatusChange] Missing listingId or newStatus');
+        return;
+      }
+      
+      console.log('[handleStatusChange] Triggered:', { listingId, newStatus, previousStatus });
+      
+      // CRITICAL: If selecting "Sold", MUST show modal and STOP
+      if (newStatus === 'Sold') {
+        console.log('[handleStatusChange] Opening Sold modal...');
+        openSoldModal(listingId, selectEl, previousStatus);
+        return; // STOP - do not update status yet
+      }
+      
+      // For Active / In Contract, update immediately
+      updateListingStatus(listingId, newStatus, selectEl);
+    }
 
     // Logout - clear session data
     $("logoutBtn")?.addEventListener('click', () => {
@@ -622,9 +655,6 @@
     $("searchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
 
     // Saved searches - NOW FROM FIRESTORE (not localStorage)
-    // This prevents cross-user data leaks on shared computers
-    // The safeQueryByEmail function will be used to fetch from "savedSearches" collection
-    
     function fillSavedSearchDropdown(selectEl, list) {
       selectEl.innerHTML = `<option value="">Select a saved search…</option>`;
 
@@ -741,10 +771,6 @@
         (await getDocs(q2b)).forEach(d => upsert(agent, d.id, d.data()));
       } catch {}
 
-      // SECURITY: DO NOT trust lastListingId from localStorage
-      // Only server-verified ownership (via email match) is allowed
-      // This prevents users from seeing listings they don't own
-
       const byId = {};
       [...owner, ...agent].forEach(it => byId[it.id] = it);
       const all = Object.values(byId);
@@ -789,7 +815,7 @@
 
     // ========================================
     // WIRE EDITOR WITH STATUS DROPDOWN
-    // Now includes status dropdown sync and event handling
+    // Status dropdown events handled by global delegation
     // ========================================
     function wireEditor(selectEl, editBtn, previewA, statusSelectEl, list, mode) {
       if (!selectEl || !editBtn || !previewA) return;
@@ -851,7 +877,7 @@
       });
 
       // NOTE: Status dropdown change events are handled by global event delegation
-      // No need to add individual listeners here
+      // No individual listener needed here
 
       // Edit button handler
       editBtn.addEventListener('click', () => {
@@ -1025,6 +1051,7 @@
 
     // ========================================
     // RENDER LISTINGS TABLE WITH STATUS DROPDOWN
+    // Shows ONLY relevant edit links per listing based on user's role
     // ========================================
     function renderListingsTable(all, canEditAsSeller, canEditAsAgent) {
       const host = $('listingsTable');
@@ -1053,16 +1080,28 @@
         const currentStatus = it.status || 'Draft';
         const statusClass = getStatusClass(currentStatus);
         
-        // Build action links
-        const links = [
-          (canEditAsSeller(it) ? `<a class="text-blue-600 underline" href="/seller-detail.html?id=${encodeURIComponent(it.id)}">Edit as Seller</a>` : ``),
-          (canEditAsAgent(it)  ? `<a class="text-blue-600 underline" href="/agent-detail.html?id=${encodeURIComponent(it.id)}">Edit as Agent</a>` : ``),
-          `<a class="text-blue-600 underline" href="${previewHref}" target="_blank" rel="noopener">Preview</a>`
-        ].filter(Boolean).join(` <span class="text-gray-300">|</span> `);
+        // Determine user's role for THIS specific listing
+        const isSeller = canEditAsSeller(it);
+        const isAgent = canEditAsAgent(it);
+        
+        // Build action links - ONLY show ONE edit option per listing (no duplicates)
+        // Priority: If user is Agent for this listing, show Agent edit. Otherwise show Seller edit.
+        const actionLinks = [];
+        
+        if (isAgent) {
+          // User is Agent for this listing - show Agent edit ONLY
+          actionLinks.push(`<a class="text-blue-600 underline" href="/agent-detail.html?id=${encodeURIComponent(it.id)}">Edit</a>`);
+        } else if (isSeller) {
+          // User is Seller for this listing - show Seller edit
+          actionLinks.push(`<a class="text-blue-600 underline" href="/seller-detail.html?id=${encodeURIComponent(it.id)}">Edit</a>`);
+        }
+        
+        // Always add Preview link
+        actionLinks.push(`<a class="text-blue-600 underline" href="${previewHref}" target="_blank" rel="noopener">Preview</a>`);
+        
+        const links = actionLinks.join(` <span class="text-gray-300">|</span> `);
 
-        // Status dropdown with current value selected
-        // data-previous-status stores the current status for revert on cancel
-        // NOTE: No onchange needed - global event delegation handles all .status-select changes
+        // Status dropdown - NO onchange needed (global event delegation handles it)
         const statusDropdown = `
           <select 
             class="status-select ${statusClass}" 
@@ -1095,38 +1134,8 @@
     }
 
     // ========================================
-    // GLOBAL HANDLER FOR STATUS DROPDOWN CHANGES
-    // Called via event delegation - intercepts "Sold" to show modal
-    // ========================================
-    function handleStatusChange(selectEl) {
-      const listingId = selectEl.dataset.listingId;
-      const newStatus = selectEl.value;
-      const previousStatus = selectEl.dataset.previousStatus || 'Active';
-      
-      // Guard: Must have a listing ID
-      if (!listingId || !newStatus) {
-        console.warn('[handleStatusChange] Missing listingId or newStatus');
-        return;
-      }
-      
-      console.log('[handleStatusChange] Triggered:', { listingId, newStatus, previousStatus });
-      
-      // CRITICAL: If selecting "Sold", MUST show modal and STOP
-      if (newStatus === 'Sold') {
-        console.log('[handleStatusChange] Opening Sold modal...');
-        openSoldModal(listingId, selectEl, previousStatus);
-        return; // STOP - do not update status yet
-      }
-      
-      // For Active / In Contract, update immediately
-      updateListingStatus(listingId, newStatus, selectEl);
-    }
-
-    // Make available globally for any edge cases
-    window.handleStatusChange = handleStatusChange;
-
-    // ========================================
     // MAIN BOOT: Zero Trust - only show data user owns
+    // STRICT ROLE-BASED VISIBILITY
     // ========================================
     (async function boot(){
       // Fetch all data in parallel (strict email ownership)
@@ -1154,6 +1163,8 @@
       // Determine if user is "new" (no data at all)
       const isNewUser = !hasListings && !hasSubscriptions && !hasSavedSearches;
 
+      console.log('[boot] Role detection:', { hasSeller, hasAgent, hasListings, isNewUser });
+
       // ========================================
       // UI: Show blocks based on verified ownership
       // ========================================
@@ -1164,33 +1175,30 @@
         $('subtitle').textContent = 'Get started with GuaranteedCommission.com';
       }
 
-      // "Enter new listing" - ONLY for sellers (NOT agents)
-      // Business Rule: Agents cannot create listings or sign the ISC
-      // - New users see this (to list their first home)
-      // - Sellers see this (to list another home)
-      // - Agents do NOT see this (they cannot sign ISC)
-      if (!hasAgent || hasSeller) {
-        $('blkSellerNew').classList.remove('hidden');
-      }
+      // ========================================
+      // STRICT ROLE-BASED BLOCK VISIBILITY
+      // Four cases: Pure Agent, Pure Seller, Both Roles, No Listing Role
+      // ========================================
       
-      // "Search" - ONLY for sellers, agents, or users with saved searches
-      if (hasSeller || hasAgent || hasSavedSearches) {
-        $('blkSearch').classList.remove('hidden');
-      }
+      // Determine role combinations for LISTING visibility
+      const isPureAgent = hasAgent && !hasSeller;
+      const isPureSeller = hasSeller && !hasAgent;
+      const isBothRoles = hasSeller && hasAgent;
+      const hasNoListingRole = !hasSeller && !hasAgent; // Different from isNewUser (which checks all data)
 
-      // SELLER EDIT: Only if user owns seller listings
-      if (hasSeller) {
-        $('blkSellerEdit').classList.remove('hidden');
-        const sellerSel = $('sellerListings');
-        const sellerPrev = $('sellerPreview');
-        const sellerGo = $('sellerEditGo');
-        const sellerStatusSel = $('sellerStatusSelect');
-        fillDropdown(sellerSel, owner, sellerPrev);
-        wireEditor(sellerSel, sellerGo, sellerPrev, sellerStatusSel, owner, 'seller');
-      }
+      console.log('[boot] Role detection:', { 
+        hasSeller, hasAgent, isPureAgent, isPureSeller, isBothRoles, hasNoListingRole, isNewUser 
+      });
 
-      // AGENT EDIT: Only if user owns agent listings
-      if (hasAgent) {
+      // ----------------------------------------
+      // CASE 1: PURE AGENT (agent only, no seller listings)
+      // - HIDE blkSellerNew (Agents cannot create listings)
+      // - HIDE blkSellerEdit (No seller listings)
+      // - SHOW blkAgentEdit
+      // ----------------------------------------
+      if (isPureAgent) {
+        console.log('[boot] PURE AGENT - showing agent edit only');
+        
         $('blkAgentEdit').classList.remove('hidden');
         const agentSel = $('agentListings');
         const agentPrev = $('agentPreview');
@@ -1198,6 +1206,75 @@
         const agentStatusSel = $('agentStatusSelect');
         fillDropdown(agentSel, agent, agentPrev);
         wireEditor(agentSel, agentGo, agentPrev, agentStatusSel, agent, 'agent');
+        
+        // blkSellerNew and blkSellerEdit stay HIDDEN
+      }
+      
+      // ----------------------------------------
+      // CASE 2: PURE SELLER (seller only, no agent listings)
+      // - SHOW blkSellerNew
+      // - SHOW blkSellerEdit
+      // - HIDE blkAgentEdit
+      // ----------------------------------------
+      if (isPureSeller) {
+        console.log('[boot] PURE SELLER - showing seller blocks only');
+        
+        $('blkSellerNew').classList.remove('hidden');
+        $('blkSellerEdit').classList.remove('hidden');
+        
+        const sellerSel = $('sellerListings');
+        const sellerPrev = $('sellerPreview');
+        const sellerGo = $('sellerEditGo');
+        const sellerStatusSel = $('sellerStatusSelect');
+        fillDropdown(sellerSel, owner, sellerPrev);
+        wireEditor(sellerSel, sellerGo, sellerPrev, sellerStatusSel, owner, 'seller');
+        
+        // blkAgentEdit stays HIDDEN
+      }
+      
+      // ----------------------------------------
+      // CASE 3: BOTH ROLES (has both seller AND agent listings)
+      // - HIDE blkSellerNew (Agent restriction OVERRIDES seller privilege - Agents cannot sign ISC)
+      // - SHOW blkSellerEdit (for their existing seller/FSBO listings)
+      // - SHOW blkAgentEdit (for agent listings)
+      // ----------------------------------------
+      if (isBothRoles) {
+        console.log('[boot] BOTH ROLES - showing edit blocks only, hiding new listing (Agent restriction)');
+        
+        // blkSellerNew stays HIDDEN - Agents cannot create new listings
+        
+        // Show Seller Edit block (for existing FSBO listings)
+        $('blkSellerEdit').classList.remove('hidden');
+        const sellerSel = $('sellerListings');
+        const sellerPrev = $('sellerPreview');
+        const sellerGo = $('sellerEditGo');
+        const sellerStatusSel = $('sellerStatusSelect');
+        fillDropdown(sellerSel, owner, sellerPrev);
+        wireEditor(sellerSel, sellerGo, sellerPrev, sellerStatusSel, owner, 'seller');
+        
+        // Show Agent block
+        $('blkAgentEdit').classList.remove('hidden');
+        const agentSel = $('agentListings');
+        const agentPrev = $('agentPreview');
+        const agentGo = $('agentEditGo');
+        const agentStatusSel = $('agentStatusSelect');
+        fillDropdown(agentSel, agent, agentPrev);
+        wireEditor(agentSel, agentGo, agentPrev, agentStatusSel, agent, 'agent');
+      }
+      
+      // ----------------------------------------
+      // CASE 4: NO LISTING ROLE (no seller or agent listings)
+      // - SHOW blkSellerNew so they can list their first property
+      // Note: This is different from isNewUser which also requires no subscriptions/searches
+      // ----------------------------------------
+      if (hasNoListingRole) {
+        console.log('[boot] NO LISTING ROLE - showing seller new block');
+        $('blkSellerNew').classList.remove('hidden');
+      }
+
+      // "Search" - Show for anyone with listings or saved searches
+      if (hasListings || hasSavedSearches) {
+        $('blkSearch').classList.remove('hidden');
       }
 
       // SAVED SEARCHES: Only if user has saved searches (FROM FIRESTORE)
@@ -1259,6 +1336,7 @@
       }
 
       // UNIFIED LISTINGS TABLE WITH STATUS DROPDOWN
+      // Shows listings with role-appropriate edit links
       if (hasListings) {
         renderListingsTable(all, canEditAsSeller, canEditAsAgent);
       }
@@ -1266,15 +1344,15 @@
       // Debug role summary (hidden by default)
       const rs = $('roleSummary');
       if (rs) {
-        rs.textContent = `roles: seller=${hasSeller} agent=${hasAgent} localPros=${hasPros} localBrokers=${hasBrokers} serviceProviders=${hasServiceProviders} savedSearches=${hasSavedSearches}`;
+        rs.textContent = `roles: seller=${hasSeller} agent=${hasAgent} pureAgent=${isPureAgent} pureSeller=${isPureSeller} bothRoles=${isBothRoles} noListingRole=${hasNoListingRole}`;
         // rs.classList.remove('hidden'); // enable for debugging
       }
 
-      console.log('[welcome] SECURE dashboard loaded', { 
+      console.log('[welcome] Dashboard loaded', { 
         email: emailLower,
-        hasSeller, hasAgent, hasListings, 
-        hasPros, hasBrokers, hasServiceProviders, hasSubscriptions,
-        hasSavedSearches, isNewUser
+        hasSeller, hasAgent, isPureAgent, isPureSeller, isBothRoles, hasNoListingRole,
+        isNewUser, hasListings, hasPros, hasBrokers, hasServiceProviders,
+        hasSavedSearches
       });
     })();
   </script>
