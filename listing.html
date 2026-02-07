@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-17 (Sold state badge + inquiry lockdown; preserves existing logic) -->
+<!-- Build: 2026-02-07 (Sold date/price display + removed inquiry lockdown notice) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -19,7 +19,7 @@
     .tile-banner { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:600; border-radius:9999px; padding:4px 8px; }
     .heart-btn { position:absolute; top:12px; right:12px; width: 32px; height: 32px; border-radius:9999px; background:rgba(255,255,255,.95); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.2); }
 
-    /* SOLD badge (NEW) */
+    /* SOLD badge */
     .sold-badge {
       position: absolute;
       top: 12px;
@@ -57,6 +57,15 @@
     .isc-iframe { width:100%; border:0; margin:0; display:block; background:transparent; }
 
     .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    
+    /* Sold details display - high visibility */
+    .sold-details-banner {
+      background: #fef2f2;
+      border: 2px solid #dc2626;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 8px;
+    }
   </style>
 
   <!-- Open Graph Meta Tags -->
@@ -97,13 +106,6 @@
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- SOLD inquiry lockdown notice (NEW) -->
-    <section id="soldInquiryNotice" class="hidden">
-      <div class="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 text-sm font-semibold">
-        This property has been sold and is no longer accepting inquiries.
-      </div>
-    </section>
-
     <!-- Top strip: 40 | 20 | 40 -->
     <section id="topRow" class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start hidden">
 
@@ -138,6 +140,11 @@
           <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] - [listing agent] - [agent phone]</div>
           <!-- Centered "Viewed N times | Liked M times" -->
           <div id="tileStats" class="text-[12px] text-gray-500 text-center">Viewed — | Liked —</div>
+          
+          <!-- SOLD DETAILS BANNER - Shows date and price when available -->
+          <div id="soldDetailsBanner" class="sold-details-banner hidden">
+            <div id="soldDetailsText" class="text-red-700 font-bold text-lg text-center"></div>
+          </div>
         </div>
       </article>
 
@@ -375,29 +382,70 @@
       window.location.href = `sms:&body=${msg}`;
     }
 
-    // Inquiry lockdown helper (NEW): if you later add inquiry buttons/forms, Sold will disable them
-    function applyInquiryLockdown(isSold) {
-      const notice = document.getElementById("soldInquiryNotice");
-      if (notice) notice.classList.toggle("hidden", !isSold);
-
-      const idsToDisable = [
-        "contactSellerBtn",
-        "inquireBtn",
-        "scheduleTourBtn",
-        "contactForm",
-        "inquiryForm"
-      ];
-      idsToDisable.forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        if (isSold) {
-          el.classList.add("hidden");
-          try { el.disabled = true; } catch {}
-        } else {
-          el.classList.remove("hidden");
-          try { el.disabled = false; } catch {}
+    // ========================================
+    // SOLD DETAILS DISPLAY
+    // Formats and displays sold date and price
+    // ========================================
+    function displaySoldDetails(soldDate, soldPrice) {
+      const banner = $("soldDetailsBanner");
+      const textEl = $("soldDetailsText");
+      if (!banner || !textEl) return;
+      
+      console.log('[displaySoldDetails] Input:', { soldDate, soldPrice });
+      
+      // Format date: YYYY-MM-DD -> M/D/YYYY
+      let formattedDate = null;
+      if (soldDate) {
+        try {
+          const dateStr = String(soldDate);
+          if (dateStr.includes('-')) {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+              const year = parts[0];
+              const month = parseInt(parts[1], 10); // Remove leading zero
+              const day = parseInt(parts[2], 10);   // Remove leading zero
+              if (year && month && day) {
+                formattedDate = `${month}/${day}/${year}`;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[displaySoldDetails] Date parsing failed:', e);
         }
-      });
+      }
+      
+      // Format price: number -> $X,XXX,XXX
+      let formattedPrice = null;
+      if (soldPrice) {
+        try {
+          const priceNum = Number(soldPrice);
+          if (priceNum > 0) {
+            formattedPrice = "$" + priceNum.toLocaleString();
+          }
+        } catch (e) {
+          console.warn('[displaySoldDetails] Price parsing failed:', e);
+        }
+      }
+      
+      // Build display text
+      let displayText = "";
+      
+      if (formattedDate && formattedPrice) {
+        displayText = `Sold on ${formattedDate} for ${formattedPrice}`;
+        console.log('[displaySoldDetails] SUCCESS:', displayText);
+      } else if (formattedDate) {
+        displayText = `Sold on ${formattedDate}`;
+      } else if (formattedPrice) {
+        displayText = `Sold for ${formattedPrice}`;
+      } else {
+        // Fallback for legacy listings without date/price
+        displayText = "Sold (Price/Date not recorded)";
+        console.log('[displaySoldDetails] Legacy listing - no date/price data');
+      }
+      
+      // Show the banner
+      textEl.textContent = displayText;
+      banner.classList.remove("hidden");
     }
 
     // --- ISC auto-fit ---
@@ -780,11 +828,21 @@
         const plan = String(d.plan || "Listed Property Basic");
         const status = String(d.status || "Active");
 
-        // SOLD state (NEW)
+        // ========================================
+        // SOLD STATE HANDLING
+        // Show badge and sold details if status is "Sold"
+        // ========================================
         const isSold = status.trim().toLowerCase() === "sold";
-        applyInquiryLockdown(isSold);
+        
+        // Show SOLD badge on photo
         const soldBadge = document.getElementById("soldBadge");
         if (soldBadge) soldBadge.classList.toggle("hidden", !isSold);
+        
+        // Display sold details if available
+        if (isSold) {
+          console.log('[listing] Sold listing detected. soldDate:', d.soldDate, 'soldPrice:', d.soldPrice);
+          displaySoldDetails(d.soldDate, d.soldPrice);
+        }
 
         const price = asNumOrEmpty(d.price);
         const cRaw  = dflt(d.commission, "");
