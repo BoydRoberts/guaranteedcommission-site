@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-02-06 (Status dropdowns in Edit blocks + Sold Details modal + sync across all dropdowns) -->
+<!-- Build: 2026-02-06 (Global event delegation for status dropdowns + Sold Details modal + sync across all dropdowns) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -376,6 +376,17 @@
     }
     
     $("who").textContent = emailRaw || 'there';
+
+    // ========================================
+    // GLOBAL EVENT DELEGATION FOR STATUS DROPDOWNS
+    // Single listener catches ALL .status-select changes
+    // Ensures "Sold" modal is triggered from any dropdown
+    // ========================================
+    document.addEventListener('change', (e) => {
+      if (e.target.classList.contains('status-select')) {
+        handleStatusChange(e.target);
+      }
+    });
 
     // ========================================
     // TOAST NOTIFICATION
@@ -839,12 +850,8 @@
         updateStatusDropdownForListing(selectedId);
       });
 
-      // Wire status dropdown change handler
-      if (statusSelectEl) {
-        statusSelectEl.addEventListener('change', () => {
-          window.handleStatusChange(statusSelectEl);
-        });
-      }
+      // NOTE: Status dropdown change events are handled by global event delegation
+      // No need to add individual listeners here
 
       // Edit button handler
       editBtn.addEventListener('click', () => {
@@ -1055,12 +1062,12 @@
 
         // Status dropdown with current value selected
         // data-previous-status stores the current status for revert on cancel
+        // NOTE: No onchange needed - global event delegation handles all .status-select changes
         const statusDropdown = `
           <select 
             class="status-select ${statusClass}" 
             data-listing-id="${it.id}"
             data-previous-status="${currentStatus}"
-            onchange="window.handleStatusChange(this)"
           >
             <option value="Active" ${currentStatus === 'Active' ? 'selected' : ''}>Active</option>
             <option value="In Contract" ${currentStatus === 'In Contract' || currentStatus === 'in_contract' ? 'selected' : ''}>In Contract</option>
@@ -1089,27 +1096,34 @@
 
     // ========================================
     // GLOBAL HANDLER FOR STATUS DROPDOWN CHANGES
-    // Intercepts "Sold" to show modal, others update immediately
+    // Called via event delegation - intercepts "Sold" to show modal
     // ========================================
-    window.handleStatusChange = function(selectEl) {
+    function handleStatusChange(selectEl) {
       const listingId = selectEl.dataset.listingId;
       const newStatus = selectEl.value;
       const previousStatus = selectEl.dataset.previousStatus || 'Active';
       
-      if (!listingId || !newStatus) return;
-      
-      // If selecting "Sold", show the modal instead of immediate update
-      if (newStatus === 'Sold') {
-        openSoldModal(listingId, selectEl, previousStatus);
+      // Guard: Must have a listing ID
+      if (!listingId || !newStatus) {
+        console.warn('[handleStatusChange] Missing listingId or newStatus');
         return;
+      }
+      
+      console.log('[handleStatusChange] Triggered:', { listingId, newStatus, previousStatus });
+      
+      // CRITICAL: If selecting "Sold", MUST show modal and STOP
+      if (newStatus === 'Sold') {
+        console.log('[handleStatusChange] Opening Sold modal...');
+        openSoldModal(listingId, selectEl, previousStatus);
+        return; // STOP - do not update status yet
       }
       
       // For Active / In Contract, update immediately
       updateListingStatus(listingId, newStatus, selectEl);
-      
-      // Update the data attribute for future changes (syncAllStatusDropdowns will handle this too)
-      selectEl.dataset.previousStatus = newStatus;
-    };
+    }
+
+    // Make available globally for any edge cases
+    window.handleStatusChange = handleStatusChange;
 
     // ========================================
     // MAIN BOOT: Zero Trust - only show data user owns
