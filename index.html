@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2026-01-30 (Seniority Priority Sorting: Pin > Premium > Standard) -->
+<!-- index.html - Build 2026-02-10 (Added Price field + History tracking initialization) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -346,6 +346,9 @@
             <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border py-1.5 px-2 rounded">
           </div>
 
+          <!-- NEW: Listing Price input (before Commission row) -->
+          <input type="text" id="listingPrice" placeholder="Listing Price (e.g., 500000)" class="w-full border py-1.5 px-2 rounded">
+
           <div class="flex gap-2">
             <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border py-1.5 px-2 rounded">
             <select id="commissionType" class="border py-1.5 px-2 rounded">
@@ -525,6 +528,43 @@
       }
     }
     // =========================================================================
+
+    // =========================================================================
+    // HELPER: Parse price from input (remove non-numeric, return number or null)
+    // =========================================================================
+    function parsePriceInput(val) {
+      if (!val) return null;
+      // Remove all non-numeric characters except decimal
+      var cleaned = String(val).replace(/[^0-9.]/g, '');
+      var num = parseFloat(cleaned);
+      return isFinite(num) && num > 0 ? Math.round(num) : null;
+    }
+
+    // =========================================================================
+    // HELPER: Generate current date and time strings for history tracking
+    // Date format: M/D/YYYY (no leading zeros)
+    // Time format: H:MM AM/PM
+    // =========================================================================
+    function getCurrentDateTimeStrings() {
+      var now = new Date();
+      
+      // Date: M/D/YYYY
+      var month = now.getMonth() + 1;
+      var day = now.getDate();
+      var year = now.getFullYear();
+      var dateStr = month + '/' + day + '/' + year;
+      
+      // Time: H:MM AM/PM
+      var hours = now.getHours();
+      var minutes = now.getMinutes();
+      var ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 becomes 12
+      var minuteStr = minutes < 10 ? '0' + minutes : String(minutes);
+      var timeStr = hours + ':' + minuteStr + ' ' + ampm;
+      
+      return { date: dateStr, time: timeStr };
+    }
 
     // Track which plan user explicitly selected this session
     var userSelectedPlanThisSession = null;
@@ -793,7 +833,21 @@
         });
       }
 
-      var syncFields = ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission','commissionType','fsboEmailInput'];
+      // Price input formatting (add commas as user types)
+      var priceInput = document.getElementById('listingPrice');
+      if (priceInput) {
+        priceInput.addEventListener('input', function() {
+          // Allow only digits and format with commas
+          var raw = this.value.replace(/[^0-9]/g, '');
+          if (raw) {
+            this.value = Number(raw).toLocaleString();
+          }
+          syncAll();
+          fitStrip1();
+        });
+      }
+
+      var syncFields = ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission','commissionType','fsboEmailInput','listingPrice'];
       for(var i=0;i<syncFields.length;i++){
         var el = document.getElementById(syncFields[i]);
         if(el){
@@ -811,6 +865,7 @@
       function syncAll(){
         var box3 = document.getElementById('box3');
         var fsboEmailInput = document.getElementById('fsboEmailInput');
+        var priceInputEl = document.getElementById('listingPrice');
         var hasTyped = !!(
           document.getElementById('name').value.trim() ||
           document.getElementById('address').value.trim() ||
@@ -820,6 +875,7 @@
           document.getElementById('agentPhone').value.trim() ||
           document.getElementById('agentEmail').value.trim() ||
           document.getElementById('commission').value.trim() ||
+          (priceInputEl && priceInputEl.value.trim()) ||
           (fsboEmailInput && fsboEmailInput.value.trim())
         );
         if (box3 && hasTyped) box3.classList.add('typing');
@@ -929,6 +985,9 @@
       } catch(e) {}
 
       var fsboEmailEl = document.getElementById('fsboEmailInput');
+      var priceInputEl = document.getElementById('listingPrice');
+      var priceVal = parsePriceInput(priceInputEl ? priceInputEl.value : '');
+
       var formData = {
         name: document.getElementById('name').value.trim(),
         address: addrVal,
@@ -939,7 +998,8 @@
         brokerage: document.getElementById('brokerage').value.trim(),
         agent: document.getElementById('agent').value.trim(),
         agentEmail: document.getElementById('agentEmail').value.trim(),
-        fsboEmail: fsboEmailEl ? fsboEmailEl.value.trim() : ''
+        fsboEmail: fsboEmailEl ? fsboEmailEl.value.trim() : '',
+        price: priceVal  // NEW: Include price in formData
       };
 
       localStorage.setItem("formData", JSON.stringify(formData));
@@ -964,6 +1024,49 @@
         return String(v || '').trim().toLowerCase();
       }
 
+      // =========================================================================
+      // HISTORY TRACKING INITIALIZATION
+      // Create "Original" entries for price, status, and commission
+      // =========================================================================
+      var dt = getCurrentDateTimeStrings();
+      var nowDate = dt.date;  // e.g., "2/10/2026"
+      var nowTime = dt.time;  // e.g., "10:46 AM"
+
+      // Price History: Initial entry (only if price provided)
+      var priceHistory = [];
+      if (priceVal) {
+        priceHistory.push({
+          label: 'Original',
+          price: priceVal,
+          date: nowDate,
+          time: nowTime
+        });
+      }
+
+      // Status History: Initial entry (status is "Active" by default now)
+      var statusHistory = [{
+        label: 'Original',
+        status: 'Active',
+        date: nowDate,
+        time: nowTime
+      }];
+
+      // Commission History: Initial entry (only if commission provided)
+      var commissionHistory = [];
+      var commVal = formData.commission;
+      var commType = formData.commissionType || '%';
+      if (commVal) {
+        commissionHistory.push({
+          label: 'Original',
+          commission: commVal,
+          commissionType: commType,
+          date: nowDate,
+          time: nowTime
+        });
+      }
+
+      console.log('[index] History initialized:', { priceHistory, statusHistory, commissionHistory });
+
       try {
         var db = window.gc && window.gc.db;
         if (db) {
@@ -980,12 +1083,18 @@
           var ownerEmailRaw = plan.indexOf('FSBO') >= 0 ? (formData.fsboEmail || "") : "";
 
           // Create listing IMMEDIATELY (no geo fields yet)
+          // UPDATED: status is now "Active" instead of "Draft"
+          // UPDATED: includes price and all three history arrays
           var payload = {
             address: formData.address,
             shortAddress: (formData.address.split(",")[0] || "").trim(),
             apn: formData.apn || "",
             plan: plan,
-            status: "Draft",
+            status: "Active",  // CHANGED from "Draft" to "Active"
+
+            // NEW: Price field
+            price: priceVal || null,
+
             commission: formData.commission || "",
             commissionType: formData.commissionType || "%",
 
@@ -1007,6 +1116,11 @@
             // Initialize geo fields as pending (background will fill)
             geoStatus: "pending",
 
+            // NEW: History arrays for tracking changes
+            priceHistory: priceHistory,
+            statusHistory: statusHistory,
+            commissionHistory: commissionHistory,
+
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             source: "index.box2"
@@ -1017,6 +1131,8 @@
           localStorage.setItem("lastListingId", ref.id);
           localStorage.setItem("lastListingAddress", payload.address || "");
           localStorage.setItem('formData:' + ref.id, JSON.stringify(formData));
+
+          console.log('[index] Listing created with history tracking. ID:', ref.id);
 
           // Fire-and-forget background geocode + updateDoc
           (async function backgroundGeocode() {
@@ -1223,8 +1339,8 @@
             propertyType: d.propertyType || "",
             views: Number(d.views || 0),
             likes: Number(d.likes || 0),
-            paidUpgrades: d.paidUpgrades || null,  // NEW: Required for seniority sorting
-            createdAt: d.createdAt || null           // NEW: Required for seniority sorting
+            paidUpgrades: d.paidUpgrades || null,  // Required for seniority sorting
+            createdAt: d.createdAt || null           // Required for seniority sorting
           });
         });
 
