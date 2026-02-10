@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-02-07 (Strict role visibility: Agents CANNOT create listings + Global event delegation + Sold modal) -->
+<!-- Build: 2026-02-10 (Status & Price History appending on status changes) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -361,7 +361,7 @@
 
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    import { collection, getDocs, query, where, limit, doc, getDoc, deleteDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { collection, getDocs, query, where, limit, doc, getDoc, deleteDoc, updateDoc, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id)=>document.getElementById(id);
     const norm = (s)=>String(s||'').trim().toLowerCase();
@@ -376,6 +376,32 @@
     }
     
     $("who").textContent = emailRaw || 'there';
+
+    // =========================================================================
+    // HELPER: Generate current date and time strings for history tracking
+    // Date format: M/D/YYYY (no leading zeros) - matches index.html
+    // Time format: H:MM AM/PM
+    // =========================================================================
+    function getCurrentDateTimeStrings() {
+      const now = new Date();
+      
+      // Date: M/D/YYYY (no leading zeros)
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
+      const year = now.getFullYear();
+      const dateStr = month + '/' + day + '/' + year;
+      
+      // Time: H:MM AM/PM
+      let hours = now.getHours();
+      const minutes = now.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 becomes 12
+      const minuteStr = minutes < 10 ? '0' + minutes : String(minutes);
+      const timeStr = hours + ':' + minuteStr + ' ' + ampm;
+      
+      return { date: dateStr, time: timeStr };
+    }
 
     // ========================================
     // GLOBAL EVENT DELEGATION FOR STATUS DROPDOWNS
@@ -532,6 +558,7 @@
     // UPDATE LISTING STATUS
     // Quick status change directly from dashboard
     // Saves soldDate and soldPrice to Firestore for Sold status
+    // APPENDS to statusHistory and priceHistory arrays
     // ========================================
     async function updateListingStatus(listingId, newStatus, selectEl, soldDetails = null) {
       if (!listingId || !newStatus) return;
@@ -541,23 +568,57 @@
       try {
         const docRef = doc(db, "listings", listingId);
         
+        // Generate timestamp strings for history
+        const dt = getCurrentDateTimeStrings();
+        const nowDate = dt.date;  // e.g., "2/10/2026"
+        const nowTime = dt.time;  // e.g., "10:46 AM"
+        
         // Build update object
         const updateData = {
           status: newStatus,
           updatedAt: serverTimestamp()
         };
         
+        // =========================================================================
+        // CREATE STATUS HISTORY ENTRY
+        // Label is "Sold" for sold status, "Changed" for others
+        // =========================================================================
+        const statusHistoryEntry = {
+          label: newStatus === 'Sold' ? 'Sold' : 'Changed',
+          status: newStatus,
+          date: nowDate,
+          time: nowTime
+        };
+        
+        // Append to statusHistory using arrayUnion
+        updateData.statusHistory = arrayUnion(statusHistoryEntry);
+        console.log('[updateListingStatus] Status history entry:', statusHistoryEntry);
+        
         // Add sold details if provided (CRITICAL: Save soldDate and soldPrice)
         if (soldDetails && newStatus === 'Sold') {
           updateData.soldDate = soldDetails.soldDate;   // String: "YYYY-MM-DD"
           updateData.soldPrice = soldDetails.soldPrice; // Number
           console.log('[updateListingStatus] Including sold details:', updateData.soldDate, updateData.soldPrice);
+          
+          // =========================================================================
+          // CREATE PRICE HISTORY ENTRY (only for Sold with price)
+          // =========================================================================
+          const priceHistoryEntry = {
+            label: 'Sold',
+            price: soldDetails.soldPrice,
+            date: nowDate,
+            time: nowTime
+          };
+          
+          // Append to priceHistory using arrayUnion
+          updateData.priceHistory = arrayUnion(priceHistoryEntry);
+          console.log('[updateListingStatus] Price history entry:', priceHistoryEntry);
         }
         
         // Update Firestore
         await updateDoc(docRef, updateData);
         
-        console.log('[updateListingStatus] Firestore update successful');
+        console.log('[updateListingStatus] Firestore update successful with history appended');
         
         // SYNC ALL DROPDOWNS ON THE PAGE
         syncAllStatusDropdowns(listingId, newStatus);
