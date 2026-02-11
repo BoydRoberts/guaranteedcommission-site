@@ -1,9 +1,11 @@
+//
 // search.js — Strip 2 skeleton (Mapbox map + listing tiles + ad tiles)
+//
 // Uses local demo data + whatever is in localStorage from your flows.
 // Later we can flip to Firestore geosearch.
 
-// 🔑 TODO: paste your Mapbox token here
-const MAPBOX_TOKEN = "YOUR_MAPBOX_TOKEN_HERE"; // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+//🔑 Mapbox token for map rendering
+const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -212,7 +214,7 @@ function renderTiles(items) {
   items.forEach((item, idx) => {
     // Insert ad first when appropriate
     if (idx > 0 && idx % AD_EVERY === 0 && adIndex < adTiles.length) {
-      grid.appendChild(renderAdTile(adTiles[adIndex++]));
+       grid.appendChild(renderAdTile(adTiles[adIndex++]));
     }
 
     const a = document.createElement("a");
