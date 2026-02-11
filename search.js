@@ -1,6 +1,6 @@
 //
 // search.js — Live Firestore Search + Mapbox Map
-// Build: 2026-02-11 (Firestore integration + city geocoding flyTo)
+// Build: 2026-02-11b (Fixed: map container ID, filter safety checks, qBox/q compat)
 //
 
 import { db } from "/scripts/firebase-init.js";
@@ -18,6 +18,22 @@ const getParam = (k) => new URL(location.href).searchParams.get(k);
 const setJSON = (k, v) => localStorage.setItem(k, JSON.stringify(v));
 const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
 const CAN_HOVER = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+
+// ===== SEARCH INPUT COMPAT =====
+// index.html uses id="q", search.html uses id="qBox" — support both
+function getSearchInput() {
+  return $("q") || $("qBox");
+}
+
+function getSearchValue() {
+  const el = getSearchInput();
+  return (el?.value || "").trim();
+}
+
+function setSearchValue(v) {
+  const el = getSearchInput();
+  if (el) el.value = v;
+}
 
 // ===== STATE =====
 let map;
@@ -68,6 +84,7 @@ function requireAuth(callback) {
 // ===== FILTER DROPDOWN UI =====
 function wireFilterDropdowns() {
   const dropdowns = document.querySelectorAll('.filter-dropdown');
+  if (!dropdowns.length) return; // Safety: no dropdowns on index.html
 
   dropdowns.forEach(dd => {
     const btn = dd.querySelector(':scope > button');
@@ -114,12 +131,19 @@ async function incrementLikeOnce(listingId) {
 }
 
 // ===== FILTERS =====
+// FIX 2: Safety checks — if element doesn't exist, return empty/null instead of crashing
 function readFiltersFromUI() {
-  const val = (id) => (document.getElementById(id)?.value || '').trim();
+  const val = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  };
   const num = (id) => {
-    const v = (document.getElementById(id)?.value || '').trim();
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const v = el.value.trim();
+    if (v === '') return null;
     const n = Number(v);
-    return isFinite(n) && v !== '' ? n : null;
+    return isFinite(n) ? n : null;
   };
   return {
     priceMin: num('priceMin'),
@@ -141,6 +165,7 @@ function writeFiltersToUI(f) {
   set('propType', f.propType ?? '');
 }
 
+// FIX 3: Null-safe dropdown label updates — skip if element not found
 function updateDropdownLabels(f) {
   const statusBtn = document.querySelector('[data-filter="status"] .filter-btn span');
   if (statusBtn) statusBtn.textContent = f.status || 'For Sale';
@@ -164,6 +189,7 @@ function updateDropdownLabels(f) {
 
   document.querySelectorAll('.filter-dropdown').forEach(dd => {
     const filter = dd.dataset.filter;
+    if (!filter) return;
     let isActive = false;
     if (filter === 'status' && f.status) isActive = true;
     if (filter === 'price' && (f.priceMin || f.priceMax)) isActive = true;
@@ -293,8 +319,7 @@ function showSavedSearchAutocomplete(input) {
 }
 
 function loadSavedSearch(saved) {
-  const qBox = $('qBox');
-  if (qBox) qBox.value = saved.q || '';
+  setSearchValue(saved.q || '');
   if (saved.filters) {
     writeFiltersToUI(saved.filters);
     updateDropdownLabels(saved.filters);
@@ -306,7 +331,7 @@ function loadSavedSearch(saved) {
 function syncFiltersToURL() {
   try {
     const f = readFiltersFromUI();
-    const q = ($("qBox")?.value || "").trim();
+    const q = getSearchValue();
 
     const params = new URLSearchParams();
 
@@ -434,9 +459,18 @@ function highlightTile(listingKey, on) {
   if (tile) tile.classList.toggle('highlighted', !!on);
 }
 
+// FIX 1: Map container — try 'map' first, fall back to 'mapCanvas' for legacy pages
 async function initMap(q) {
   const DEFAULT_CENTER = [-98.5795, 39.8283];
   const DEFAULT_ZOOM = 4.2;
+
+  // Determine which container element exists on this page
+  const mapContainer = $('map') || $('mapCanvas');
+  if (!mapContainer) {
+    console.warn('[search] No map container found (#map or #mapCanvas). Skipping map init.');
+    return null;
+  }
+  const containerId = mapContainer.id;
 
   let center = DEFAULT_CENTER;
   let bbox = null;
@@ -449,7 +483,7 @@ async function initMap(q) {
   }
 
   map = new mapboxgl.Map({
-    container: 'mapCanvas',
+    container: containerId,  // FIX 1: uses whichever ID exists on the page
     style: 'mapbox://styles/mapbox/streets-v12',
     center,
     zoom: qTrim ? 11.5 : DEFAULT_ZOOM
@@ -808,7 +842,7 @@ async function applyAllFilters() {
   setJSON('lastFilters', f);
   updateDropdownLabels(f);
 
-  const q = $("qBox")?.value.trim() || "";
+  const q = getSearchValue();
   
   // CRUCIAL UX FIX: If user typed a city/location, fly to it even if 0 listings
   if (q && map) {
@@ -842,8 +876,7 @@ async function applyAllFilters() {
   const fromUrl = readFiltersFromURL();
 
   const qParam = (fromUrl.hasAny ? fromUrl.q : (getParam('q') || localStorage.getItem('lastSearch') || '')).trim();
-  const qBox = $("qBox");
-  if (qBox) qBox.value = qParam;
+  setSearchValue(qParam);
   localStorage.setItem('lastSearch', qParam);
 
   const lastFilters = fromUrl.hasAny ? fromUrl.filters : getJSON('lastFilters', {});
@@ -866,8 +899,8 @@ async function applyAllFilters() {
   await addDotPriceMarkers(sorted);
   syncFiltersToURL();
 
-  // Enter key in search box
-  const qBoxEl = $("qBox");
+  // Wire search input — works with either #q (index.html) or #qBox (search.html)
+  const qBoxEl = getSearchInput();
   if (qBoxEl) {
     qBoxEl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -883,14 +916,25 @@ async function applyAllFilters() {
     });
   }
 
+  // Wire the search button if it exists (index.html has #searchBtn)
+  const searchBtn = $('searchBtn');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      applyAllFilters();
+    });
+  }
+
   // Clear all filters
   const clearBtn = $("clearFiltersBtn");
   if (clearBtn) {
     clearBtn.onclick = async () => {
       setJSON('lastFilters', {});
-      document.querySelectorAll('#priceMin, #priceMax, #bedsMin, #bathsMin, #status, #propType').forEach(el => el.value = '');
+      document.querySelectorAll('#priceMin, #priceMax, #bedsMin, #bathsMin, #status, #propType').forEach(el => {
+        if (el) el.value = '';
+      });
       updateDropdownLabels({});
-      const q = $("qBox")?.value.trim() || "";
+      const q = getSearchValue();
       const refiltered = allDocs.filter(d => matchesFilters(d, q, {}));
       const resorted = sortListings(refiltered);
       await addDotPriceMarkers(resorted);
@@ -903,7 +947,7 @@ async function applyAllFilters() {
   if (saveSearchBtn) {
     saveSearchBtn.onclick = () => {
       requireAuth(() => {
-        const q = $("qBox")?.value.trim() || "";
+        const q = getSearchValue();
         const filters = readFiltersFromUI();
         const nameInput = $("searchNameInput");
         const name = (nameInput?.value || '').trim() || q || "My Search";
@@ -918,7 +962,7 @@ async function applyAllFilters() {
   if (emailSearchBtn) {
     emailSearchBtn.onclick = () => {
       requireAuth(() => {
-        const q = $("qBox")?.value.trim() || "";
+        const q = getSearchValue();
         const subject = encodeURIComponent(`Search Results: ${q || 'All Listings'}`);
         const body = encodeURIComponent(`View my search results:\n\n${window.location.href}`);
         window.location.href = `mailto:?subject=${subject}&body=${body}`;
@@ -940,7 +984,7 @@ async function applyAllFilters() {
   if (autoEmailBtn) {
     autoEmailBtn.onclick = () => {
       requireAuth(() => {
-        const q = $("qBox")?.value.trim() || "";
+        const q = getSearchValue();
         const filters = readFiltersFromUI();
         saveSearchToLocal("Auto-Email: " + (q || "Search"), q, filters);
         alert("Auto-Email saved for this search (delivery wiring is post-MVP).");
@@ -952,7 +996,7 @@ async function applyAllFilters() {
   if (autoTextBtn) {
     autoTextBtn.onclick = () => {
       requireAuth(() => {
-        const q = $("qBox")?.value.trim() || "";
+        const q = getSearchValue();
         const filters = readFiltersFromUI();
         saveSearchToLocal("Auto-Text: " + (q || "Search"), q, filters);
         alert("Auto-Text saved for this search (delivery wiring is post-MVP).");
