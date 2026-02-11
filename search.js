@@ -1,9 +1,11 @@
 // search.js — Strip 2 skeleton (Mapbox map + listing tiles + ad tiles)
-// Uses local demo data + whatever is in localStorage from your flows.
-// Later we can flip to Firestore geosearch.
+// Build: 2026-02-11 — Mapbox activated + Firestore integration
+//
+// Loads live listings from Firestore, merges with local demo data.
+// Falls back to demo-only if Firestore fetch fails.
 
-// 🔑 TODO: paste your Mapbox token here
-const MAPBOX_TOKEN = "YOUR_MAPBOX_TOKEN_HERE"; // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+// 🔑 Mapbox token (activated)
+const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -166,7 +168,7 @@ function addMarkers(items) {
     el.style.border = "2px solid #fff";
     el.style.borderRadius = "50%";
     el.style.boxShadow = "0 1px 2px rgba(0,0,0,.3)";
-    el.title = `${item.shortAddress} — ${fmtUSD(item.price)}`;
+    el.title = `${item.shortAddress || item.address} — ${fmtUSD(item.price)}`;
 
     const marker = new mapboxgl.Marker(el)
       .setLngLat([item.lng, item.lat])
@@ -328,8 +330,71 @@ function useMyLocation() {
   }, () => alert("Could not get your location."));
 }
 
+// --- Firestore: Fetch live listings ------------------------------------------
+async function fetchListingsFromFirestore() {
+  try {
+    const { db } = await import("/scripts/firebase-init.js");
+    const { collection, query, orderBy, getDocs, limit } =
+      await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+
+    const snap = await getDocs(
+      query(collection(db, "listings"), orderBy("createdAt", "desc"), limit(200))
+    );
+
+    const results = [];
+    snap.forEach(d => {
+      const data = d.data() || {};
+
+      // Normalize Firestore doc → the shape our renderer expects
+      const addr = data.address || "";
+      const lat = Number(data.lat || 0);
+      const lng = Number(data.lng || 0);
+
+      // Convert Firestore Timestamp to millis for sorting
+      let createdAtMs = 0;
+      const ca = data.createdAt;
+      if (ca) {
+        if (typeof ca.toMillis === "function") createdAtMs = ca.toMillis();
+        else if (typeof ca.toDate === "function") createdAtMs = ca.toDate().getTime();
+        else if (typeof ca === "number") createdAtMs = ca;
+      }
+
+      results.push({
+        id: d.id,
+        address: addr,
+        shortAddress: addr.split(",")[0] || addr,
+        apn: data.apn || "",
+        price: Number(data.price || 0),
+        commission: Number(data.commission || 0),
+        commissionType: data.commissionType || "%",
+        bannerText: data.bannerText || "",
+        description: data.description || "",
+        plan: data.plan || "Listed Property Basic",
+        lat: lat,
+        lng: lng,
+        photos: Array.isArray(data.photos) ? data.photos : [],
+        primaryIndex: typeof data.primaryIndex === "number" ? data.primaryIndex : 0,
+        contact: {
+          brokerage: data.brokerage || "",
+          agent: data.agentName || data.agent || "",
+          agentPhone: data.agentPhone || "",
+          ownerPhone: data.ownerPhone || "",
+          ownerEmail: data.ownerEmail || "",
+        },
+        createdAt: createdAtMs,
+      });
+    });
+
+    console.log("[search] Loaded", results.length, "listings from Firestore");
+    return results;
+  } catch (err) {
+    console.warn("[search] Firestore fetch failed, falling back to demo data:", err);
+    return [];
+  }
+}
+
 // --- Boot --------------------------------------------------------------------
-function buildDataset() {
+function buildLocalDataset() {
   const current = localCurrentListingToItem();
   const list = [...demoListings];
   if (current) {
@@ -339,6 +404,29 @@ function buildDataset() {
     list.unshift(current);
   }
   return list;
+}
+
+function mergeListings(firestoreDocs, localDocs) {
+  // Firestore listings take priority; de-dupe by address
+  const seen = new Set();
+  const merged = [];
+
+  // Firestore first (real data)
+  firestoreDocs.forEach(doc => {
+    const key = (doc.address || "").toLowerCase().trim();
+    if (key) seen.add(key);
+    merged.push(doc);
+  });
+
+  // Then local/demo (only if not already in Firestore)
+  localDocs.forEach(doc => {
+    const key = (doc.address || "").toLowerCase().trim();
+    if (!seen.has(key)) {
+      merged.push(doc);
+    }
+  });
+
+  return merged;
 }
 
 function initEvents() {
@@ -352,12 +440,24 @@ function initEvents() {
   });
 }
 
-(function main() {
+(async function main() {
   if (!MAPBOX_TOKEN || MAPBOX_TOKEN.includes("YOUR_MAPBOX_TOKEN_HERE")) {
     console.warn("Mapbox token missing. Add your token in search.js for live maps.");
   }
   initMap();
   initEvents();
-  allListings = buildDataset();
+
+  // 1. Build local/demo dataset (instant, no network)
+  const localDocs = buildLocalDataset();
+
+  // 2. Fetch live listings from Firestore
+  const firestoreDocs = await fetchListingsFromFirestore();
+
+  // 3. Merge: Firestore wins on duplicates, demo fills in the rest
+  allListings = mergeListings(firestoreDocs, localDocs);
+
+  console.log("[search] Total listings after merge:", allListings.length,
+    "(Firestore:", firestoreDocs.length, "/ Local:", localDocs.length, ")");
+
   applyFilters();
 })();
