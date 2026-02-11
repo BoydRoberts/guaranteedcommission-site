@@ -1,11 +1,16 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2026-01-30 (Seniority Priority Sorting: Pin > Premium > Standard) -->
+<!-- index.html - Build 2026-02-11 (Shared search.js module integration — no more ghost listings) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GuaranteedCommission.com</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Mapbox GL JS (required by shared search.js) -->
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"/>
+
   <style>
     :root{
       --title-bottom-gap: .75rem;
@@ -147,6 +152,15 @@
       #headerCounterBox {
         padding: 0.75rem 1.5rem;
       }
+    }
+
+    /* --- Strip 2: Map container (search.js will initialize Mapbox here) --- */
+    #map {
+      width: 100%;
+      height: 360px;
+      background: #e5e7eb;
+      border-radius: 0.75rem;
+      overflow: hidden;
     }
   </style>
 
@@ -419,17 +433,26 @@
     </section>
   </div>
 
+  <!-- ================================================================
+       STRIP 2: Search + Map + Tile Grid
+       NOW POWERED BY SHARED search.js MODULE
+       IDs match what search.js expects: #q, #map, #grid
+       ================================================================ -->
   <div style="background-color:#ffffff;">
     <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12 pt-6">
       <div class="text-center mb-4 mt-0">
         <div class="flex items-center justify-center">
           <div class="flex items-center gap-2">
-            <input id="searchBox" type="text" placeholder="City, ZIP, or Saved Search" class="border rounded px-3 py-2 w-72 sm:w-96">
+            <!-- ID changed from "searchBox" → "q" to match search.js -->
+            <input id="q" type="text" placeholder="City, ZIP, or Saved Search" class="border rounded px-3 py-2 w-72 sm:w-96">
             <button id="searchBtn" class="bg-[#4DA6FF] hover:bg-blue-500 text-white px-3 py-2 rounded text-sm font-semibold">Search Guaranteed Commissions</button>
           </div>
         </div>
       </div>
-      <div id="tileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6"></div>
+      <!-- Map container: search.js initializes Mapbox here -->
+      <div id="map" class="mt-4 mb-6"></div>
+      <!-- Tile grid: ID changed from "tileGrid" → "grid" to match search.js -->
+      <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6"></div>
       <p id="tilesEmpty" class="text-sm text-gray-500 text-center hidden mt-6">No listings yet. Create one above, then return here.</p>
     </section>
   </div>
@@ -456,7 +479,9 @@
 
   <!-- ====================================================================
        INLINE SCRIPT: Form logic, plan selection, ISC sync, modals, layout
-       NOTE: Tile rendering moved to /scripts/tile-renderer.js
+       NOTE: Tile rendering, map, and search are now handled by /search.js
+       DELETED: wireSearch, renderStrip2TilesFrom, loadTilesFromFirestore,
+                sortListings, window.gcRenderTile
        ==================================================================== -->
   <script>
     // =========================================================================
@@ -871,7 +896,8 @@
       document.getElementById('signatureDate').textContent = dateStr;
       document.getElementById('signatureDateFSBO').textContent = dateStr;
 
-      wireSearch();
+      /* wireSearch() removed — search.js now owns search input wiring via #q */
+
       fitStrip1();
       setTimeout(fitStrip1, 150);
       window.addEventListener('resize', fitStrip1);
@@ -1056,55 +1082,15 @@
       }, 250);
     }
 
-    /* ========================================
-       Strip 2 Tiles: Uses shared tile-renderer.js
-       Placeholder set here, actual renderer loaded via module
-       ======================================== */
-    window.gcRenderTile = null;
-
-    function renderStrip2TilesFrom(list, filterText){
-      filterText = filterText || "";
-      var grid = document.getElementById('tileGrid');
-      var empty = document.getElementById('tilesEmpty');
-      grid.innerHTML = '';
-
-      var q = (filterText || '').toLowerCase();
-      var arr = q ? list.filter(function(d){
-        return (String(d.address||'').toLowerCase().indexOf(q) >= 0);
-      }) : list;
-
-      if (!arr.length) {
-        empty.classList.remove('hidden');
-        return;
-      }
-
-      empty.classList.add('hidden');
-      for(var i=0;i<arr.length;i++){
-        if (window.gcRenderTile) {
-          grid.appendChild(window.gcRenderTile(arr[i]));
-        }
-      }
-    }
-
-    function wireSearch(){
-      var box = document.getElementById('searchBox');
-      var btn = document.getElementById('searchBtn');
-
-      var go = function() {
-        var q = (box.value || '').trim();
-        localStorage.setItem('lastSearch', q);
-        if (!q) return;
-        window.location.href = '/search.html?q=' + encodeURIComponent(q);
-      };
-
-      btn.addEventListener('click', go);
-      box.addEventListener('keydown', function(e){
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          go();
-        }
-      });
-    }
+    /* ========================================================================
+       DELETED from this inline script (now handled by /search.js):
+       - window.gcRenderTile
+       - renderStrip2TilesFrom()
+       - wireSearch()
+       - sortListings()
+       - The entire loadTilesFromFirestore module script
+       - The tile-renderer.js wiring module script
+       ======================================================================== */
   </script>
 
   <!-- Firebase init -->
@@ -1124,131 +1110,13 @@
     };
   </script>
 
-  <!-- Strip 2 Tiles: Load from Firestore using shared tile-renderer.js -->
-  <!-- SENIORITY PRIORITY SORTING: Pin > Premium > Standard -->
-  <script type="module">
-    import { db } from "/scripts/firebase-init.js";
-    import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { renderTile } from "/tile-renderer.js";
-
-    // Wire shared renderer to use gcIncLike for like increments
-    window.gcRenderTile = function(data) {
-      return renderTile(data, {
-        onLikeIncrement: window.gcIncLike
-      });
-    };
-
-    // ===== SENIORITY PRIORITY SORTING =====
-    // Business Rules:
-    // 1. Pin Placement: Top tier, sorted by createdAt ASCENDING (oldest first = seniority)
-    // 2. Premium Placement: Second tier, sorted by createdAt ASCENDING (oldest first = seniority)
-    // 3. Standard Listings: Third tier, sorted by createdAt DESCENDING (newest first)
-    function sortListings(items) {
-      function getCreatedAtMs(doc) {
-        var ca = doc.createdAt;
-        if (!ca) return 0;
-        if (typeof ca.toMillis === 'function') return ca.toMillis();
-        if (typeof ca.toDate === 'function') return ca.toDate().getTime();
-        if (typeof ca === 'number') return ca;
-        if (typeof ca === 'string') return new Date(ca).getTime() || 0;
-        return 0;
-      }
-
-      return items.slice().sort(function(a, b) {
-        var aPin = !!(a.paidUpgrades && a.paidUpgrades.pin);
-        var bPin = !!(b.paidUpgrades && b.paidUpgrades.pin);
-        var aPremium = !!(a.paidUpgrades && a.paidUpgrades.premium);
-        var bPremium = !!(b.paidUpgrades && b.paidUpgrades.premium);
-
-        // Tier 1: Pin Placement wins over everything
-        if (aPin && !bPin) return -1;
-        if (!aPin && bPin) return 1;
-
-        // Both have Pin: sort by createdAt ASCENDING (oldest first = seniority)
-        if (aPin && bPin) {
-          return getCreatedAtMs(a) - getCreatedAtMs(b);
-        }
-
-        // Tier 2: Premium Placement wins over Standard
-        if (aPremium && !bPremium) return -1;
-        if (!aPremium && bPremium) return 1;
-
-        // Both have Premium: sort by createdAt ASCENDING (oldest first = seniority)
-        if (aPremium && bPremium) {
-          return getCreatedAtMs(a) - getCreatedAtMs(b);
-        }
-
-        // Tier 3: Standard listings - sort by createdAt DESCENDING (newest first)
-        return getCreatedAtMs(b) - getCreatedAtMs(a);
-      });
-    }
-
-    (async function loadTilesFromFirestore(){
-      try {
-        var grid = document.getElementById('tileGrid');
-        var empty = document.getElementById('tilesEmpty');
-        if (!grid || !db) return;
-
-        var snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt","desc"), limit(100)));
-        var items = [];
-
-        snap.forEach(function(docu) {
-          var d = docu.data() || {};
-          if (d.archived === true) return;
-
-          var signed = !!(d.signedISC && typeof d.signedISC === 'object' && d.signedISC.date);
-          var isActive = String(d.status || '').toLowerCase() === 'active';
-
-          if (!signed && !isActive) return;
-
-          items.push({
-            id: docu.id,
-            address: d.address || "",
-            price: d.price != null ? d.price : "",
-            commission: d.commission != null ? d.commission : "",
-            commissionType: d.commissionType || "%",
-            bannerText: d.bannerText || "",
-            photos: Array.isArray(d.photos) ? d.photos : [],
-            primaryIndex: (typeof d.primaryIndex === "number" ? d.primaryIndex : 0),
-            status: d.status || "Active",
-            brokerage: d.brokerage || "",
-            agentName: d.agentName || "",
-            agentPhone: d.agentPhone || "",
-            ownerName: d.ownerName || "",
-            ownerPhone: d.ownerPhone || "",
-            plan: d.plan || "Listed Property Basic",
-            bedrooms: d.bedrooms != null ? d.bedrooms : "",
-            bathrooms: d.bathrooms != null ? d.bathrooms : "",
-            sqft: d.sqft != null ? d.sqft : "",
-            propertyType: d.propertyType || "",
-            views: Number(d.views || 0),
-            likes: Number(d.likes || 0),
-            paidUpgrades: d.paidUpgrades || null,  // NEW: Required for seniority sorting
-            createdAt: d.createdAt || null           // NEW: Required for seniority sorting
-          });
-        });
-
-        // ===== APPLY SENIORITY PRIORITY SORTING =====
-        // Pin > Premium > Standard (with date-based sub-sorting)
-        items = sortListings(items);
-        console.log('[index] Tiles sorted by seniority priority. Total:', items.length);
-
-        var lastQ = (localStorage.getItem('lastSearch') || '').trim();
-        renderStrip2TilesFrom(items, lastQ);
-
-        if (grid && grid.children.length === 0) {
-          try { localStorage.removeItem('lastSearch'); } catch(e) {}
-          renderStrip2TilesFrom(items, '');
-          if (empty) empty.classList.add('hidden');
-        }
-
-      } catch (e) {
-        console.warn("[index] Firestore tiles load failed:", e);
-        var emptyEl = document.getElementById('tilesEmpty');
-        if(emptyEl) emptyEl.classList.remove('hidden');
-      }
-    })();
-  </script>
+  <!-- ================================================================
+       SHARED search.js MODULE — THE SINGLE SOURCE OF TRUTH
+       Handles: Firestore tile loading, seniority priority sorting,
+       Mapbox map init + flyTo, search input wiring.
+       Expects DOM IDs: #q (search input), #map (map container), #grid (tile grid)
+       ================================================================ -->
+  <script type="module" src="/search.js"></script>
 
   <!-- Real-time Guaranteed Commissions Counter (direct count from listings collection) -->
   <script type="module">
