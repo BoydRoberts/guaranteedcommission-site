@@ -1,20 +1,12 @@
+//
 // listing.js
-// Renders listing.html using either Firestore (when enabled) or localStorage fallback.
+// Build: 2026-02-11 (Firestore integration via shared firebase-init.js)
+//
+// Renders listing.html using Firestore (if listing ID provided) or localStorage fallback.
+//
 
-// -----------------------------
-// Toggle Firestore on/off here:
-// -----------------------------
-const USE_FIRESTORE = false; // set to true when you’ve added your Firebase config below
-
-// If enabling Firestore, fill in your config:
-const FIREBASE_CONFIG = {
-  // apiKey: "YOUR_KEY",
-  // authDomain: "YOUR_DOMAIN",
-  // projectId: "YOUR_PROJECT_ID",
-  // storageBucket: "YOUR_BUCKET",
-  // messagingSenderId: "YOUR_SENDER_ID",
-  // appId: "YOUR_APP_ID",
-};
+import { db } from "/scripts/firebase-init.js";
+import { doc, getDoc, updateDoc, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // -----------------------------
 // Utilities
@@ -164,31 +156,108 @@ function renderListing(listing, context = {}) {
       fsboContact.classList.add("hidden");
     }
   }
+
+  // ===== SOLD STATUS DISPLAY =====
+  // If listing is sold, show sold date and price
+  const statusLower = String(listing.status || '').toLowerCase();
+  const isSold = statusLower === 'sold';
+  
+  const soldInfoEl = $("soldInfo");
+  if (soldInfoEl) {
+    if (isSold && listing.soldDate && listing.soldPrice) {
+      // Format date: YYYY-MM-DD -> M/D/YYYY
+      let formattedDate = listing.soldDate;
+      try {
+        const dateStr = String(listing.soldDate);
+        if (dateStr.includes('-')) {
+          const parts = dateStr.split('-');
+          if (parts.length === 3) {
+            const year = parts[0];
+            const month = parseInt(parts[1], 10);
+            const day = parseInt(parts[2], 10);
+            if (year && month && day) {
+              formattedDate = `${month}/${day}/${year}`;
+            }
+          }
+        }
+      } catch (e) {}
+      
+      const formattedPrice = "$" + Number(listing.soldPrice).toLocaleString();
+      soldInfoEl.textContent = `SOLD ${formattedDate} for ${formattedPrice}`;
+      soldInfoEl.classList.remove("hidden");
+    } else if (isSold) {
+      soldInfoEl.textContent = "SOLD";
+      soldInfoEl.classList.remove("hidden");
+    } else {
+      soldInfoEl.classList.add("hidden");
+    }
+  }
+
+  // ===== STATUS BADGE =====
+  const statusBadge = $("statusBadge");
+  if (statusBadge) {
+    const status = listing.status || "Active";
+    statusBadge.textContent = status;
+    
+    // Color coding
+    statusBadge.classList.remove("bg-green-600", "bg-gray-800", "bg-red-600");
+    if (isSold) {
+      statusBadge.classList.add("bg-red-600");
+    } else if (statusLower === 'in contract' || statusLower === 'in_contract' || statusLower === 'pending') {
+      statusBadge.classList.add("bg-gray-800");
+    } else {
+      statusBadge.classList.add("bg-green-600");
+    }
+    statusBadge.classList.remove("hidden");
+  }
+
+  // ===== VIEWS/LIKES DISPLAY =====
+  const viewsEl = $("viewCount");
+  const likesEl = $("likeCount");
+  if (viewsEl) viewsEl.textContent = Number(listing.views || 0).toLocaleString();
+  if (likesEl) likesEl.textContent = Number(listing.likes || 0).toLocaleString();
 }
 
 // -----------------------------
 // Data loaders
 // -----------------------------
+
+/**
+ * Load listing from Firestore using shared db instance
+ * @param {string} listingId - Firestore document ID
+ * @returns {Promise<object>} Normalized listing data
+ */
 async function loadFromFirestore(listingId) {
-  // Lightweight dynamic import so listing.html loads even without Firebase
-  const [{ initializeApp }, { getFirestore, doc, getDoc }] = await Promise.all([
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
-  ]);
+  if (!db) {
+    throw new Error("Firestore not initialized");
+  }
 
-  const app = initializeApp(FIREBASE_CONFIG);
-  const db = getFirestore(app);
-
-  // Assuming collection "listings" with document = listingId
   const ref = doc(db, "listings", listingId);
   const snap = await getDoc(ref);
+  
   if (!snap.exists()) {
     throw new Error("Listing not found in Firestore.");
   }
+  
   const data = snap.data();
+
+  // Increment view count (fire-and-forget)
+  try {
+    const viewedKey = 'viewed:' + listingId;
+    if (!localStorage.getItem(viewedKey)) {
+      updateDoc(ref, { 
+        views: increment(1), 
+        updatedAt: serverTimestamp() 
+      }).catch(() => {});
+      localStorage.setItem(viewedKey, '1');
+    }
+  } catch (e) {
+    // Ignore view tracking errors
+  }
 
   // Normalize Firestore shape to expected render shape:
   const normalized = {
+    id: snap.id,
     address: data.address || "",
     price: data.price ?? "",
     apn: data.apn || "",
@@ -199,18 +268,28 @@ async function loadFromFirestore(listingId) {
     description: data.description || "",
     photos: Array.isArray(data.photos) ? data.photos : [],
     primaryIndex: typeof data.primaryIndex === "number" ? data.primaryIndex : 0,
+    status: data.status || "Active",
+    soldDate: data.soldDate || null,
+    soldPrice: data.soldPrice || null,
+    views: data.views || 0,
+    likes: data.likes || 0,
     contact: {
       brokerage: data.brokerage || "",
-      agent: data.agent || "",
+      agent: data.agentName || data.agent || "",
       agentPhone: data.agentPhone || "",
       ownerPhone: data.ownerPhone || "",
       ownerEmail: data.ownerEmail || "",
     },
   };
 
+  console.log('[listing.js] Loaded from Firestore:', listingId);
   return normalized;
 }
 
+/**
+ * Load listing from localStorage (fallback for draft/preview mode)
+ * @returns {object} { data, context }
+ */
 function loadFromLocalStorage() {
   const formData = JSON.parse(localStorage.getItem("formData") || "{}");
   const agentListing = JSON.parse(localStorage.getItem("agentListing") || "{}");
@@ -228,6 +307,11 @@ function loadFromLocalStorage() {
     description: (agentListing.description || "").trim(),
     photos: Array.isArray(agentListing.photos) ? agentListing.photos : [],
     primaryIndex: (typeof agentListing.primaryIndex === "number" ? agentListing.primaryIndex : 0),
+    status: "Draft",
+    soldDate: null,
+    soldPrice: null,
+    views: 0,
+    likes: 0,
     contact: {
       brokerage: formData.brokerage || "",
       agent: formData.agent || "",
@@ -246,6 +330,7 @@ function loadFromLocalStorage() {
     ownerEmail: formData.fsboEmail || "",   // FIXED: read FSBO email from fsboEmail
   };
 
+  console.log('[listing.js] Loaded from localStorage (fallback)');
   return { data, context };
 }
 
@@ -255,23 +340,34 @@ function loadFromLocalStorage() {
 (async function boot() {
   try {
     const url = new URL(window.location.href);
-    const listingId = url.searchParams.get("id"); // if present, try Firestore when enabled
+    const listingId = url.searchParams.get("id");
 
-    if (USE_FIRESTORE && listingId) {
-      const data = await loadFromFirestore(listingId);
-      renderListing(data);
-    } else {
-      const { data, context } = loadFromLocalStorage();
-      renderListing(data, context);
+    if (listingId) {
+      // Try to load from Firestore first
+      try {
+        const data = await loadFromFirestore(listingId);
+        renderListing(data);
+        console.log('[listing.js] Rendered listing from Firestore:', listingId);
+        return;
+      } catch (firestoreErr) {
+        console.warn('[listing.js] Firestore load failed:', firestoreErr.message);
+        // Fall through to localStorage fallback
+      }
     }
+
+    // Fallback: Load from localStorage (draft/preview mode)
+    const { data, context } = loadFromLocalStorage();
+    renderListing(data, context);
+    
   } catch (err) {
-    console.error("Failed to load listing:", err);
-    // Graceful fallback to localStorage if Firestore path failed for some reason
+    console.error("[listing.js] Failed to load listing:", err);
+    
+    // Final fallback attempt
     try {
       const { data, context } = loadFromLocalStorage();
       renderListing(data, context);
     } catch (err2) {
-      console.error("Local fallback also failed:", err2);
+      console.error("[listing.js] Local fallback also failed:", err2);
     }
   }
 })();
