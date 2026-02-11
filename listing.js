@@ -4,17 +4,7 @@
 // -----------------------------
 // Toggle Firestore on/off here:
 // -----------------------------
-const USE_FIRESTORE = false; // set to true when you’ve added your Firebase config below
-
-// If enabling Firestore, fill in your config:
-const FIREBASE_CONFIG = {
-  // apiKey: "YOUR_KEY",
-  // authDomain: "YOUR_DOMAIN",
-  // projectId: "YOUR_PROJECT_ID",
-  // storageBucket: "YOUR_BUCKET",
-  // messagingSenderId: "YOUR_SENDER_ID",
-  // appId: "YOUR_APP_ID",
-};
+const USE_FIRESTORE = true; // ACTIVATED — reads live listings from Firestore
 
 // -----------------------------
 // Utilities
@@ -170,16 +160,10 @@ function renderListing(listing, context = {}) {
 // Data loaders
 // -----------------------------
 async function loadFromFirestore(listingId) {
-  // Lightweight dynamic import so listing.html loads even without Firebase
-  const [{ initializeApp }, { getFirestore, doc, getDoc }] = await Promise.all([
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
-  ]);
+  // Import the shared db instance from firebase-init.js (already initialized)
+  const { db } = await import("/scripts/firebase-init.js");
+  const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
 
-  const app = initializeApp(FIREBASE_CONFIG);
-  const db = getFirestore(app);
-
-  // Assuming collection "listings" with document = listingId
   const ref = doc(db, "listings", listingId);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
@@ -201,7 +185,7 @@ async function loadFromFirestore(listingId) {
     primaryIndex: typeof data.primaryIndex === "number" ? data.primaryIndex : 0,
     contact: {
       brokerage: data.brokerage || "",
-      agent: data.agent || "",
+      agent: data.agentName || data.agent || "",
       agentPhone: data.agentPhone || "",
       ownerPhone: data.ownerPhone || "",
       ownerEmail: data.ownerEmail || "",
