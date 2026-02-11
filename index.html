@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2026-02-11 (Firestore integration matching search.js + Price/History tracking) -->
+<!-- index.html - Build 2026-01-30 (Seniority Priority Sorting: Pin > Premium > Standard) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -346,9 +346,6 @@
             <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border py-1.5 px-2 rounded">
           </div>
 
-          <!-- NEW: Listing Price input -->
-          <input type="text" id="listingPrice" placeholder="Listing Price (e.g., 500000)" class="w-full border py-1.5 px-2 rounded">
-
           <div class="flex gap-2">
             <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border py-1.5 px-2 rounded">
             <select id="commissionType" class="border py-1.5 px-2 rounded">
@@ -459,15 +456,22 @@
 
   <!-- ====================================================================
        INLINE SCRIPT: Form logic, plan selection, ISC sync, modals, layout
+       NOTE: Tile rendering moved to /scripts/tile-renderer.js
        ==================================================================== -->
   <script>
     // =========================================================================
-    // Mapbox geocoding for lat/lng at listing creation
+    // TASK E: Mapbox geocoding for lat/lng at listing creation
     // Non-blocking: uses timeout, never blocks listing creation
     // =========================================================================
     var MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
-    var GEO_TIMEOUT_MS = 3000;
+    var GEO_TIMEOUT_MS = 3000; // 3 second timeout - don't block creation
 
+    /**
+     * Geocode a full address using Mapbox with timeout.
+     * Returns { lat, lng, placeName, status, provider } or failure object.
+     * Works nationwide - no bbox constraints.
+     * NEVER blocks listing creation - returns gracefully on timeout/error.
+     */
     async function geocodeAddress(address) {
       var failResult = {
         lat: null,
@@ -487,6 +491,7 @@
                   encodeURIComponent(address) +
                   ".json?limit=1&access_token=" + MAPBOX_TOKEN;
 
+        // Race between fetch and timeout - never block more than GEO_TIMEOUT_MS
         var fetchPromise = fetch(url);
         var timeoutPromise = new Promise(function(_, reject) {
           setTimeout(function() { reject(new Error("timeout")); }, GEO_TIMEOUT_MS);
@@ -505,6 +510,7 @@
           return failResult;
         }
 
+        // Mapbox returns [lng, lat]
         return {
           lng: feature.center[0],
           lat: feature.center[1],
@@ -518,43 +524,7 @@
         return failResult;
       }
     }
-
     // =========================================================================
-    // HELPER: Parse price input (removes non-numeric, returns integer or null)
-    // =========================================================================
-    function parsePriceInput(val) {
-      if (!val) return null;
-      var cleaned = String(val).replace(/[^0-9.]/g, '');
-      var num = parseFloat(cleaned);
-      if (isNaN(num) || num <= 0) return null;
-      return Math.round(num);
-    }
-
-    // =========================================================================
-    // HELPER: Generate current date and time strings for history tracking
-    // Date format: M/D/YYYY (no leading zeros)
-    // Time format: H:MM AM/PM
-    // =========================================================================
-    function getCurrentDateTimeStrings() {
-      var now = new Date();
-      
-      // Date: M/D/YYYY (no leading zeros)
-      var month = now.getMonth() + 1;
-      var day = now.getDate();
-      var year = now.getFullYear();
-      var dateStr = month + '/' + day + '/' + year;
-      
-      // Time: H:MM AM/PM
-      var hours = now.getHours();
-      var minutes = now.getMinutes();
-      var ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12;
-      var minuteStr = minutes < 10 ? '0' + minutes : String(minutes);
-      var timeStr = hours + ':' + minuteStr + ' ' + ampm;
-      
-      return { date: dateStr, time: timeStr };
-    }
 
     // Track which plan user explicitly selected this session
     var userSelectedPlanThisSession = null;
@@ -764,6 +734,7 @@
         frame.style.height = h + 'px';
         frame.style.width = w + 'px';
 
+        // Size counter box to exactly match video
         if (counterBox) {
           counterBox.style.height = h + 'px';
           counterBox.style.width = w + 'px';
@@ -801,7 +772,6 @@
       sizeHeaderVideo();
       setTimeout(sizeHeaderVideo, 80);
 
-      // Phone input formatting
       var phoneInput = document.getElementById('agentPhone');
       var phoneError = document.getElementById('phoneError');
       if(phoneInput){
@@ -823,18 +793,7 @@
         });
       }
 
-      // Price input formatting (adds commas as user types)
-      var priceInput = document.getElementById('listingPrice');
-      if (priceInput) {
-        priceInput.addEventListener('input', function() {
-          var raw = this.value.replace(/[^0-9]/g, '');
-          if (raw) {
-            this.value = Number(raw).toLocaleString();
-          }
-        });
-      }
-
-      var syncFields = ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission','commissionType','fsboEmailInput','listingPrice'];
+      var syncFields = ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission','commissionType','fsboEmailInput'];
       for(var i=0;i<syncFields.length;i++){
         var el = document.getElementById(syncFields[i]);
         if(el){
@@ -970,23 +929,17 @@
       } catch(e) {}
 
       var fsboEmailEl = document.getElementById('fsboEmailInput');
-      var priceInput = document.getElementById('listingPrice');
-      var priceVal = parsePriceInput(priceInput ? priceInput.value : '');
-      var commVal = (document.getElementById('commission').value || '').trim();
-      var commType = document.getElementById('commissionType').value;
-
       var formData = {
         name: document.getElementById('name').value.trim(),
         address: addrVal,
         apn: document.getElementById('apn').value.trim(),
-        commission: commVal,
-        commissionType: commType,
+        commission: document.getElementById('commission').value.trim(),
+        commissionType: document.getElementById('commissionType').value,
         phone: document.getElementById('agentPhone').value.trim(),
         brokerage: document.getElementById('brokerage').value.trim(),
         agent: document.getElementById('agent').value.trim(),
         agentEmail: document.getElementById('agentEmail').value.trim(),
-        fsboEmail: fsboEmailEl ? fsboEmailEl.value.trim() : '',
-        price: priceVal
+        fsboEmail: fsboEmailEl ? fsboEmailEl.value.trim() : ''
       };
 
       localStorage.setItem("formData", JSON.stringify(formData));
@@ -1006,6 +959,7 @@
       localStorage.setItem('loginOrigin', 'box2');
       localStorage.setItem('nextAfterLogin', '/verify-code.html');
 
+      // Email normalization (used for Firestore fields)
       function normEmail(v){
         return String(v || '').trim().toLowerCase();
       }
@@ -1025,68 +979,15 @@
           var agentEmailRaw = plan.indexOf('FSBO') >= 0 ? "" : (formData.agentEmail || "");
           var ownerEmailRaw = plan.indexOf('FSBO') >= 0 ? (formData.fsboEmail || "") : "";
 
-          // =========================================================================
-          // HISTORY ARRAYS INITIALIZATION
-          // =========================================================================
-          var dt = getCurrentDateTimeStrings();
-          var nowDate = dt.date;
-          var nowTime = dt.time;
-
-          // Price History: Only if price provided
-          var priceHistory = [];
-          if (priceVal) {
-            priceHistory.push({
-              label: 'Original',
-              price: priceVal,
-              date: nowDate,
-              time: nowTime
-            });
-          }
-
-          // Status History: Always created (status defaults to "Active")
-          var statusHistory = [{
-            label: 'Original',
-            status: 'Active',
-            date: nowDate,
-            time: nowTime
-          }];
-
-          // Commission History: Only if commission provided
-          var commissionHistory = [];
-          if (commVal) {
-            commissionHistory.push({
-              label: 'Original',
-              commission: commVal,
-              commissionType: commType,
-              date: nowDate,
-              time: nowTime
-            });
-          }
-
-          console.log('[submitForm] History arrays initialized:', {
-            priceHistory: priceHistory,
-            statusHistory: statusHistory,
-            commissionHistory: commissionHistory
-          });
-
-          // Create listing with history arrays
+          // Create listing IMMEDIATELY (no geo fields yet)
           var payload = {
             address: formData.address,
             shortAddress: (formData.address.split(",")[0] || "").trim(),
             apn: formData.apn || "",
             plan: plan,
-            status: "Active",  // CHANGED from "Draft" to "Active"
-
-            // Price field
-            price: priceVal || null,
-
+            status: "Draft",
             commission: formData.commission || "",
             commissionType: formData.commissionType || "%",
-
-            // History arrays
-            priceHistory: priceHistory,
-            statusHistory: statusHistory,
-            commissionHistory: commissionHistory,
 
             ownerName: formData.name || "",
             ownerEmail: ownerEmailRaw,
@@ -1103,6 +1004,7 @@
             brokerage: plan.indexOf('FSBO') >= 0 ? "" : (formData.brokerage || ""),
             deviceKey: getDeviceKey(),
 
+            // Initialize geo fields as pending (background will fill)
             geoStatus: "pending",
 
             createdAt: serverTimestamp(),
@@ -1133,9 +1035,9 @@
                 geoUpdate.geoUpdatedAt = serverTimestamp();
               }
               await updateDoc(doc(db, "listings", ref.id), geoUpdate);
-              console.log("[geocode] Background geocode complete:", geoResult.status);
+              console.log("[Task E] Background geocode complete:", geoResult.status);
             } catch (e) {
-              console.warn("[geocode] Background geocode failed:", e);
+              console.warn("[Task E] Background geocode failed:", e);
             }
           })();
 
@@ -1148,6 +1050,7 @@
         return;
       }
 
+      // Small delay before redirect to let background geocode start
       setTimeout(function() {
         window.location.href = "/login.html";
       }, 250);
@@ -1155,6 +1058,7 @@
 
     /* ========================================
        Strip 2 Tiles: Uses shared tile-renderer.js
+       Placeholder set here, actual renderer loaded via module
        ======================================== */
     window.gcRenderTile = null;
 
@@ -1221,7 +1125,7 @@
   </script>
 
   <!-- Strip 2 Tiles: Load from Firestore using shared tile-renderer.js -->
-  <!-- MATCHES search.js fetchListings() logic: signed OR active OR sold OR pending -->
+  <!-- SENIORITY PRIORITY SORTING: Pin > Premium > Standard -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -1256,23 +1160,29 @@
         var aPremium = !!(a.paidUpgrades && a.paidUpgrades.premium);
         var bPremium = !!(b.paidUpgrades && b.paidUpgrades.premium);
 
+        // Tier 1: Pin Placement wins over everything
         if (aPin && !bPin) return -1;
         if (!aPin && bPin) return 1;
+
+        // Both have Pin: sort by createdAt ASCENDING (oldest first = seniority)
         if (aPin && bPin) {
           return getCreatedAtMs(a) - getCreatedAtMs(b);
         }
 
+        // Tier 2: Premium Placement wins over Standard
         if (aPremium && !bPremium) return -1;
         if (!aPremium && bPremium) return 1;
+
+        // Both have Premium: sort by createdAt ASCENDING (oldest first = seniority)
         if (aPremium && bPremium) {
           return getCreatedAtMs(a) - getCreatedAtMs(b);
         }
 
+        // Tier 3: Standard listings - sort by createdAt DESCENDING (newest first)
         return getCreatedAtMs(b) - getCreatedAtMs(a);
       });
     }
 
-    // ===== FETCH LISTINGS - MATCHES search.js fetchListings() =====
     (async function loadTilesFromFirestore(){
       try {
         var grid = document.getElementById('tileGrid');
@@ -1286,16 +1196,10 @@
           var d = docu.data() || {};
           if (d.archived === true) return;
 
-          // MATCHING search.js fetchListings() logic:
-          // Include signed ISC listings OR active OR sold OR pending
           var signed = !!(d.signedISC && typeof d.signedISC === 'object' && d.signedISC.date);
-          var statusLower = String(d.status || '').toLowerCase();
-          var isActive = statusLower === 'active';
-          var isSold = statusLower === 'sold';
-          var isPending = statusLower === 'in contract' || statusLower === 'in_contract' || statusLower === 'pending';
+          var isActive = String(d.status || '').toLowerCase() === 'active';
 
-          // Include if signed, active, sold, or pending
-          if (!signed && !isActive && !isSold && !isPending) return;
+          if (!signed && !isActive) return;
 
           items.push({
             id: docu.id,
@@ -1307,8 +1211,6 @@
             photos: Array.isArray(d.photos) ? d.photos : [],
             primaryIndex: (typeof d.primaryIndex === "number" ? d.primaryIndex : 0),
             status: d.status || "Active",
-            soldDate: d.soldDate || null,
-            soldPrice: d.soldPrice || null,
             brokerage: d.brokerage || "",
             agentName: d.agentName || "",
             agentPhone: d.agentPhone || "",
@@ -1321,14 +1223,15 @@
             propertyType: d.propertyType || "",
             views: Number(d.views || 0),
             likes: Number(d.likes || 0),
-            paidUpgrades: d.paidUpgrades || null,
-            createdAt: d.createdAt || null
+            paidUpgrades: d.paidUpgrades || null,  // NEW: Required for seniority sorting
+            createdAt: d.createdAt || null           // NEW: Required for seniority sorting
           });
         });
 
-        // Apply seniority priority sorting
+        // ===== APPLY SENIORITY PRIORITY SORTING =====
+        // Pin > Premium > Standard (with date-based sub-sorting)
         items = sortListings(items);
-        console.log('[index] Tiles loaded from Firestore. Total:', items.length);
+        console.log('[index] Tiles sorted by seniority priority. Total:', items.length);
 
         var lastQ = (localStorage.getItem('lastSearch') || '').trim();
         renderStrip2TilesFrom(items, lastQ);
@@ -1347,7 +1250,7 @@
     })();
   </script>
 
-  <!-- Real-time Guaranteed Commissions Counter -->
+  <!-- Real-time Guaranteed Commissions Counter (direct count from listings collection) -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -1358,12 +1261,14 @@
 
       let currentCount = 0;
 
+      // Rolling animation function
       function animateCountChange(newCount) {
         if (newCount === currentCount) return;
 
         const oldStr = String(currentCount);
         const newStr = String(newCount);
 
+        // Build HTML with rolling digits
         let html = '';
         for (let i = 0; i < newStr.length; i++) {
           const newDigit = newStr[i];
@@ -1380,12 +1285,14 @@
         counterDisplay.innerHTML = html;
         currentCount = newCount;
 
+        // Remove animation class after animation completes
         setTimeout(() => {
           const rollingEls = counterDisplay.querySelectorAll('.rolling');
           rollingEls.forEach(el => el.classList.remove('rolling'));
         }, 450);
       }
 
+      // Direct count from listings collection (ALL documents - no filters)
       try {
         const listingsCol = collection(db, "listings");
         const snapshot = await getCountFromServer(listingsCol);
