@@ -1,5 +1,6 @@
 // search.js — Strip 2 skeleton (Mapbox map + listing tiles + ad tiles)
 // Build: 2026-02-11 — Mapbox activated + Firestore integration
+// IDs: qBox (search input), mapCanvas (map container), grid (tile grid)
 //
 // Loads live listings from Firestore, merges with local demo data.
 // Falls back to demo-only if Firestore fetch fails.
@@ -9,16 +10,22 @@ const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
+// --- DOM refs (null-safe — only elements that exist in the HTML) -------------
 const els = {
-  map: document.getElementById("map"),
-  q: document.getElementById("q"),
+  map:       document.getElementById("mapCanvas"),  // map container
+  q:         document.getElementById("qBox"),        // search input
+  grid:      document.getElementById("grid"),        // tile grid
+  count:     document.getElementById("count"),       // result count label
+  sortSelect: document.getElementById("sortSelect"), // may not exist on every page
+};
+
+// Optional elements that may or may not be in the HTML.
+// We grab them here but always null-check before use.
+const optEls = {
   minCommissionType: document.getElementById("minCommissionType"),
-  planFilter: document.getElementById("planFilter"),
-  applyBtn: document.getElementById("applyBtn"),
-  locateBtn: document.getElementById("locateBtn"),
-  grid: document.getElementById("grid"),
-  count: document.getElementById("count"),
-  sortSelect: document.getElementById("sortSelect"),
+  planFilter:        document.getElementById("planFilter"),
+  applyBtn:          document.getElementById("applyBtn"),
+  locateBtn:         document.getElementById("locateBtn"),
 };
 
 let map;
@@ -144,7 +151,7 @@ let filtered = [];
 // --- Map ---------------------------------------------------------------------
 function initMap(center = [-117.7854, 33.5427], zoom = 12.5) {
   map = new mapboxgl.Map({
-    container: "map",
+    container: "mapCanvas",
     style: "mapbox://styles/mapbox/streets-v12",
     center,
     zoom,
@@ -205,6 +212,7 @@ function commissionLabel(item) {
 
 function renderTiles(items) {
   const grid = els.grid;
+  if (!grid) return;
   grid.innerHTML = "";
 
   // Sprinkle ads every N tiles
@@ -235,7 +243,7 @@ function renderTiles(items) {
     grid.appendChild(a);
   });
 
-  els.count.textContent = String(items.length);
+  if (els.count) els.count.textContent = String(items.length);
 }
 
 function renderAdTile(ad) {
@@ -261,9 +269,12 @@ function escapeHTML(s) {
 
 // --- Filters / sorting -------------------------------------------------------
 function applyFilters() {
-  const q = els.q.value.trim().toLowerCase();
-  const plan = els.planFilter.value;
-  const comm = els.minCommissionType.value; // e.g. "%:2" or "$:10000"
+  // Read search text from #qBox
+  const q = (els.q ? els.q.value : "").trim().toLowerCase();
+
+  // Optional filter elements — read only if they exist in the DOM
+  const plan = optEls.planFilter ? optEls.planFilter.value : "";
+  const comm = optEls.minCommissionType ? optEls.minCommissionType.value : "";
 
   let result = allListings.slice();
 
@@ -297,8 +308,8 @@ function applyFilters() {
     });
   }
 
-  // Sort
-  const sort = els.sortSelect.value;
+  // Sort (only if sortSelect exists)
+  const sort = els.sortSelect ? els.sortSelect.value : "newest";
   if (sort === "newest") {
     result.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
   } else if (sort === "price-asc") {
@@ -306,7 +317,6 @@ function applyFilters() {
   } else if (sort === "price-desc") {
     result.sort((a,b) => (b.price||0) - (a.price||0));
   } else if (sort === "commission-desc") {
-    // order by dollar estimate if possible
     const est = (i) => {
       if (!i.commission) return 0;
       if (i.commissionType === "$") return Number(i.commission) || 0;
@@ -430,14 +440,17 @@ function mergeListings(firestoreDocs, localDocs) {
 }
 
 function initEvents() {
-  els.applyBtn.addEventListener("click", applyFilters);
-  els.locateBtn.addEventListener("click", useMyLocation);
-  els.sortSelect.addEventListener("change", applyFilters);
+  // Wire optional buttons only if they exist
+  if (optEls.applyBtn)  optEls.applyBtn.addEventListener("click", applyFilters);
+  if (optEls.locateBtn) optEls.locateBtn.addEventListener("click", useMyLocation);
+  if (els.sortSelect)   els.sortSelect.addEventListener("change", applyFilters);
 
-  // Enter key runs search
-  els.q.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") applyFilters();
-  });
+  // Enter key in #qBox runs search
+  if (els.q) {
+    els.q.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") applyFilters();
+    });
+  }
 }
 
 (async function main() {
