@@ -2,8 +2,9 @@
 // Build: 2026-02-11 — Mapbox activated + Firestore integration
 // IDs: qBox (search input), mapCanvas (map container), grid (tile grid)
 //
-// Loads live listings from Firestore, merges with local demo data.
-// Falls back to demo-only if Firestore fetch fails.
+// FIX: Text searches are GLOBAL — no viewport filtering.
+//      Map auto-zooms (fitBounds) to show all matching results.
+//      Clearing search resets to all listings.
 
 // 🔑 Mapbox token (activated)
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
@@ -32,13 +33,11 @@ let map;
 let markers = [];
 
 // --- Demo dataset -----------------------------------------------------------
-// Pull any locally created listing (formData + agentListing) and turn into one item.
 function localCurrentListingToItem() {
   const form = JSON.parse(localStorage.getItem("formData") || "{}");
   const agent = JSON.parse(localStorage.getItem("agentListing") || "{}");
   if (!form.address) return null;
 
-  // Naive lat/lng stub (Laguna Beach center) — until we geocode
   const lat = 33.5427;
   const lng = -117.7854;
 
@@ -71,7 +70,6 @@ function localCurrentListingToItem() {
   };
 }
 
-// Some extra demo items so the grid feels real.
 const demoListings = [
   {
     id: "demo-101",
@@ -126,7 +124,6 @@ const demoListings = [
   },
 ];
 
-// Ads to sprinkle in (tile-style)
 const adTiles = [
   {
     id: "ad-1",
@@ -165,9 +162,23 @@ function clearMarkers() {
   markers = [];
 }
 
+// Returns true if lat/lng are real coordinates (not 0,0 or NaN)
+function isValidLatLng(lat, lng) {
+  const la = Number(lat), lo = Number(lng);
+  return isFinite(la) && isFinite(lo) && (la !== 0 || lo !== 0)
+    && la >= -90 && la <= 90 && lo >= -180 && lo <= 180;
+}
+
 function addMarkers(items) {
   clearMarkers();
+
+  const bounds = new mapboxgl.LngLatBounds();
+  let hasValidBounds = false;
+
   items.forEach(item => {
+    // Skip items without valid coordinates
+    if (!isValidLatLng(item.lat, item.lng)) return;
+
     const el = document.createElement("div");
     el.style.width = "10px";
     el.style.height = "10px";
@@ -186,13 +197,13 @@ function addMarkers(items) {
     });
 
     markers.push(marker);
+    bounds.extend([item.lng, item.lat]);
+    hasValidBounds = true;
   });
 
-  if (items.length > 0) {
-    const bounds = new mapboxgl.LngLatBounds();
-    items.forEach(i => bounds.extend([i.lng, i.lat]));
-    if (bounds.isEmpty()) return;
-    map.fitBounds(bounds, { padding: 40, maxZoom: 14 });
+  // AUTO-ZOOM: Fit the map to show ALL result markers
+  if (hasValidBounds && !bounds.isEmpty()) {
+    map.fitBounds(bounds, { padding: 50, maxZoom: 15 });
   }
 }
 
@@ -205,7 +216,6 @@ function fmtUSD(n) {
 function commissionLabel(item) {
   if (!item.commission) return "Commission: —";
   if (item.commissionType === "$") return `Commission: $${Math.round(item.commission).toLocaleString()}`;
-  // % + estimate if price exists
   const est = item.price ? ` (~$${Math.round(item.price * (item.commission / 100)).toLocaleString()})` : "";
   return `Commission: ${item.commission}%${est}`;
 }
@@ -215,12 +225,16 @@ function renderTiles(items) {
   if (!grid) return;
   grid.innerHTML = "";
 
-  // Sprinkle ads every N tiles
+  if (items.length === 0) {
+    grid.innerHTML = `<div class="text-sm text-gray-500 p-4">No listings match your search.</div>`;
+    if (els.count) els.count.textContent = "0";
+    return;
+  }
+
   const AD_EVERY = 6;
   let adIndex = 0;
 
   items.forEach((item, idx) => {
-    // Insert ad first when appropriate
     if (idx > 0 && idx % AD_EVERY === 0 && adIndex < adTiles.length) {
       grid.appendChild(renderAdTile(adTiles[adIndex++]));
     }
@@ -268,6 +282,8 @@ function escapeHTML(s) {
 }
 
 // --- Filters / sorting -------------------------------------------------------
+// CRITICAL: This always searches the ENTIRE allListings array.
+//           There is NO viewport/bounds filtering. The map auto-zooms to fit results.
 function applyFilters() {
   // Read search text from #qBox
   const q = (els.q ? els.q.value : "").trim().toLowerCase();
@@ -276,8 +292,10 @@ function applyFilters() {
   const plan = optEls.planFilter ? optEls.planFilter.value : "";
   const comm = optEls.minCommissionType ? optEls.minCommissionType.value : "";
 
+  // GLOBAL SEARCH: Always start from the full dataset — never from a viewport subset
   let result = allListings.slice();
 
+  // Text filter — matches against full address string
   if (q) {
     result = result.filter(i =>
       (i.address || "").toLowerCase().includes(q) ||
@@ -285,10 +303,12 @@ function applyFilters() {
     );
   }
 
+  // Plan filter (optional UI)
   if (plan) {
     result = result.filter(i => (i.plan || "").toLowerCase() === plan.toLowerCase());
   }
 
+  // Commission filter (optional UI)
   if (comm) {
     const [type, minStr] = comm.split(":");
     const min = Number(minStr);
@@ -297,7 +317,6 @@ function applyFilters() {
       if (type === "%") {
         return i.commissionType === "%" && Number(i.commission) >= min;
       } else {
-        // dollars
         if (i.commissionType === "$") return Number(i.commission) >= min;
         if (i.commissionType === "%" && i.price) {
           const est = i.price * (Number(i.commission) / 100);
@@ -308,7 +327,7 @@ function applyFilters() {
     });
   }
 
-  // Sort (only if sortSelect exists)
+  // Sort
   const sort = els.sortSelect ? els.sortSelect.value : "newest";
   if (sort === "newest") {
     result.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
@@ -327,7 +346,11 @@ function applyFilters() {
   }
 
   filtered = result;
+
+  // Render tiles (full list, no viewport clipping)
   renderTiles(filtered);
+
+  // Place markers + auto-zoom map to fit ALL results
   addMarkers(filtered);
 }
 
@@ -355,12 +378,10 @@ async function fetchListingsFromFirestore() {
     snap.forEach(d => {
       const data = d.data() || {};
 
-      // Normalize Firestore doc → the shape our renderer expects
       const addr = data.address || "";
       const lat = Number(data.lat || 0);
       const lng = Number(data.lng || 0);
 
-      // Convert Firestore Timestamp to millis for sorting
       let createdAtMs = 0;
       const ca = data.createdAt;
       if (ca) {
@@ -408,7 +429,6 @@ function buildLocalDataset() {
   const current = localCurrentListingToItem();
   const list = [...demoListings];
   if (current) {
-    // de-dupe if address same as a demo
     const dupIdx = list.findIndex(x => (x.address||"").toLowerCase() === current.address.toLowerCase());
     if (dupIdx >= 0) list.splice(dupIdx, 1);
     list.unshift(current);
@@ -417,18 +437,15 @@ function buildLocalDataset() {
 }
 
 function mergeListings(firestoreDocs, localDocs) {
-  // Firestore listings take priority; de-dupe by address
   const seen = new Set();
   const merged = [];
 
-  // Firestore first (real data)
   firestoreDocs.forEach(doc => {
     const key = (doc.address || "").toLowerCase().trim();
     if (key) seen.add(key);
     merged.push(doc);
   });
 
-  // Then local/demo (only if not already in Firestore)
   localDocs.forEach(doc => {
     const key = (doc.address || "").toLowerCase().trim();
     if (!seen.has(key)) {
@@ -445,10 +462,20 @@ function initEvents() {
   if (optEls.locateBtn) optEls.locateBtn.addEventListener("click", useMyLocation);
   if (els.sortSelect)   els.sortSelect.addEventListener("change", applyFilters);
 
-  // Enter key in #qBox runs search
+  // Enter key in #qBox runs global search
   if (els.q) {
     els.q.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") applyFilters();
+      if (e.key === "Enter") {
+        e.preventDefault();
+        applyFilters();
+      }
+    });
+
+    // RESET LOGIC: When input is cleared, reset to show all listings
+    els.q.addEventListener("input", () => {
+      if (els.q.value.trim() === "") {
+        applyFilters(); // No query → shows all listings + fits map to all
+      }
     });
   }
 }
@@ -472,5 +499,6 @@ function initEvents() {
   console.log("[search] Total listings after merge:", allListings.length,
     "(Firestore:", firestoreDocs.length, "/ Local:", localDocs.length, ")");
 
+  // Initial render — show all listings, fit map to all markers
   applyFilters();
 })();
