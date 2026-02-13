@@ -303,7 +303,7 @@
     import { updatePaidUpgradesAfterPayment } from "/scripts/paid-upgrades-handler.js";
 
     import {
-      doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs
+      doc, getDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, arrayUnion
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import {
       getStorage, ref, uploadBytes, getDownloadURL
@@ -966,6 +966,18 @@
       }
     }
 
+    // ===== Date/Time helper for history entries =====
+    function getDateTimeParts() {
+      var now = new Date();
+      var date = (now.getMonth()+1) + "/" + now.getDate() + "/" + now.getFullYear();
+      var h = now.getHours();
+      var m = String(now.getMinutes()).padStart(2, "0");
+      var ampm = h >= 12 ? "PM" : "AM";
+      var h12 = h % 12 || 12;
+      var time = h12 + ":" + m + " " + ampm;
+      return { date: date, time: time };
+    }
+
     function buildAutosavePayload() {
       var planNow = (localStorage.getItem("selectedPlan") || plan || "").trim();
 
@@ -1002,6 +1014,7 @@
       return payload;
     }
 
+    // ===== AUTOSAVE WITH HISTORY TRACKING (EDIT 3) =====
     async function doAutosave() {
       if (!listingId) return;
       if (soldLocked) return;
@@ -1010,6 +1023,60 @@
       setAutosaveUI("saving");
       try {
         var payload = buildAutosavePayload();
+
+        // ===== HISTORY TRACKING: detect price/status changes =====
+        var snap = await getDoc(doc(db, "listings", listingId));
+        if (snap.exists()) {
+          var oldData = snap.data() || {};
+          var dt = getDateTimeParts();
+
+          // --- Price History ---
+          var oldPriceNum = Number(oldData.price) || 0;
+          var newPriceNum = Number(payload.price) || 0;
+          if (newPriceNum > 0 && oldPriceNum !== newPriceNum) {
+            if (!Array.isArray(oldData.priceHistory) || oldData.priceHistory.length === 0) {
+              if (oldPriceNum > 0) {
+                payload.priceHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Original", price: oldPriceNum },
+                  { date: dt.date, time: dt.time, label: "Changed", price: newPriceNum }
+                );
+              } else {
+                // First price ever entered
+                payload.priceHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Original", price: newPriceNum }
+                );
+              }
+            } else {
+              payload.priceHistory = arrayUnion(
+                { date: dt.date, time: dt.time, label: "Changed", price: newPriceNum }
+              );
+            }
+          }
+
+          // --- Status History ---
+          var oldStatus = String(oldData.status || "").trim();
+          var newStatus = String(payload.status || "").trim();
+          if (newStatus && oldStatus !== newStatus) {
+            if (!Array.isArray(oldData.statusHistory) || oldData.statusHistory.length === 0) {
+              if (oldStatus) {
+                payload.statusHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Original", status: oldStatus },
+                  { date: dt.date, time: dt.time, label: "Changed", status: newStatus }
+                );
+              } else {
+                payload.statusHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Original", status: newStatus }
+                );
+              }
+            } else {
+              payload.statusHistory = arrayUnion(
+                { date: dt.date, time: dt.time, label: "Changed", status: newStatus }
+              );
+            }
+          }
+        }
+        // ===== END HISTORY TRACKING =====
+
         await updateDoc(doc(db, "listings", listingId), payload);
         if (payload.zip) currentZipOnDoc = String(payload.zip);
 
