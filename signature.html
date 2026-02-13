@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- signature.html - Build 2025-12-30 (Add ownerEmailLower for case-insensitive email matching) -->
+<!-- signature.html - Build 2026-02-13 (Added statusHistory + priceHistory seeding at sign time) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -264,8 +264,13 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
         } catch {}
 
         try {
+          // ===== Compute date/time for all history entries =====
+          const dtNow = now();
+          const dateStr = todayISO();
+          const timeStr = time12(dtNow);
+
           const updates = {
-            signedISC: { name: typed, date: todayISO(), ts: serverTimestamp() },
+            signedISC: { name: typed, date: dateStr, ts: serverTimestamp() },
             status: "Active",
             updatedAt: serverTimestamp()
           };
@@ -279,19 +284,36 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
           // Ensure commissionHistory has "Original" entry if empty
           let currentHistory = Array.isArray(d.commissionHistory) ? d.commissionHistory : [];
           if (currentHistory.length === 0) {
-            const dt = now();
             currentHistory = [{
               commission: d.commission || "",
               commissionType: d.commissionType || "%",
-              date: todayISO(),
-              time: time12(dt),
+              date: dateStr,
+              time: timeStr,
               label: "Original"
             }];
           }
-
           updates.commissionHistory = currentHistory;
 
-          // Save signature + Original history
+          // ===== SEED statusHistory with "Original: Active" =====
+          updates.statusHistory = [{
+            date: dateStr,
+            time: timeStr,
+            label: "Original",
+            status: "Active"
+          }];
+
+          // ===== SEED priceHistory with "Original" if price exists =====
+          var draftPrice = Number(d.price) || 0;
+          if (draftPrice > 0) {
+            updates.priceHistory = [{
+              date: dateStr,
+              time: timeStr,
+              label: "Original",
+              price: draftPrice
+            }];
+          }
+
+          // Save signature + all history seeds
           await updateDoc(doc(db, "listings", listingId), updates);
           $("sigSaved")?.classList.remove("hidden");
 
