@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Build: 2026-02-07 (Added Price History + Status History sections) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -71,6 +72,25 @@
     .fine { font-size: 0.75rem; color: #6b7280; }
     .sig-right { padding-right: 5ch; }
 
+    /* History section styling */
+    .history-section {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid #d1d5db;
+    }
+    .history-title {
+      font-weight: 600;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+    .history-list {
+      font-size: 0.75rem;
+      color: #374151;
+    }
+    .history-list > div {
+      margin-bottom: 0.25rem;
+    }
+
     @media print { .print-hidden { display: none !important; } }
   </style>
 </head>
@@ -100,9 +120,21 @@
         <div id="sigCounterBelow" class="fine text-center mt-1"></div>
 
         <!-- ✅ Commission History Section -->
-        <div id="commissionHistorySection" class="hidden mt-6 pt-4" style="border-top: 1px solid #d1d5db;">
-          <h3 class="font-semibold text-sm mb-2">Commission History</h3>
-          <div id="commissionHistoryList" class="text-xs text-gray-700 space-y-1"></div>
+        <div id="commissionHistorySection" class="history-section hidden">
+          <h3 class="history-title">Commission History</h3>
+          <div id="commissionHistoryList" class="history-list"></div>
+        </div>
+
+        <!-- ✅ Price History Section -->
+        <div id="priceHistorySection" class="history-section hidden">
+          <h3 class="history-title">Price History</h3>
+          <div id="priceHistoryList" class="history-list"></div>
+        </div>
+
+        <!-- ✅ Status History Section -->
+        <div id="statusHistorySection" class="history-section hidden">
+          <h3 class="history-title">Status History</h3>
+          <div id="statusHistoryList" class="history-list"></div>
         </div>
       </div>
     </div>
@@ -137,8 +169,11 @@
       return String(commission) + "%";
     }
 
-    // ✅ FIXED: Shows history even with 1 entry, format: "12/18/2025 — Original — 3.0%"
-    // ✅ HIDE in embed mode to prevent text overflow in listing detail card
+    // =========================================================================
+    // COMMISSION HISTORY
+    // Format: "12/18/2025 10:46 AM — Original — 3.0%"
+    // Hide in embed mode to prevent text overflow
+    // =========================================================================
     function renderCommissionHistory(history) {
       const section = $("commissionHistorySection");
       const list = $("commissionHistoryList");
@@ -151,7 +186,6 @@
         return;
       }
 
-      // Changed from length <= 1 to length < 1
       if (!Array.isArray(history) || history.length < 1) {
         section.classList.add("hidden");
         return;
@@ -167,11 +201,96 @@
 
         const when = entry.time ? `${entry.date} ${entry.time}` : `${entry.date}`;
         const item = document.createElement("div");
-        item.textContent = `${when} — ${entry.label} — ${commDisplay}`;
+        item.textContent = `${when} — ${entry.label || "Entry"} — ${commDisplay}`;
         list.appendChild(item);
       });
     }
 
+    // =========================================================================
+    // PRICE HISTORY
+    // Format: "2026-01-20 10:46 AM — Original — $9,000,000"
+    // Hide in embed mode
+    // =========================================================================
+    function renderPriceHistory(history) {
+      const section = $("priceHistorySection");
+      const list = $("priceHistoryList");
+
+      if (!section || !list) return;
+
+      // Hide history in embed mode
+      if (isEmbed()) {
+        section.classList.add("hidden");
+        return;
+      }
+
+      if (!Array.isArray(history) || history.length < 1) {
+        section.classList.add("hidden");
+        return;
+      }
+
+      section.classList.remove("hidden");
+      list.innerHTML = "";
+
+      history.forEach((entry) => {
+        // Format price with commas
+        let priceDisplay = "—";
+        if (entry.price !== undefined && entry.price !== null) {
+          const priceNum = Number(entry.price);
+          if (isFinite(priceNum) && priceNum > 0) {
+            priceDisplay = "$" + priceNum.toLocaleString();
+          } else if (typeof entry.price === "string" && entry.price.trim()) {
+            priceDisplay = entry.price;
+          }
+        }
+
+        const when = entry.time ? `${entry.date} ${entry.time}` : `${entry.date}`;
+        const label = entry.label || "Entry";
+        
+        const item = document.createElement("div");
+        item.textContent = `${when} — ${label} — ${priceDisplay}`;
+        list.appendChild(item);
+      });
+    }
+
+    // =========================================================================
+    // STATUS HISTORY
+    // Format: "2026-01-20 11:02 AM — Changed — Pending"
+    // Hide in embed mode
+    // =========================================================================
+    function renderStatusHistory(history) {
+      const section = $("statusHistorySection");
+      const list = $("statusHistoryList");
+
+      if (!section || !list) return;
+
+      // Hide history in embed mode
+      if (isEmbed()) {
+        section.classList.add("hidden");
+        return;
+      }
+
+      if (!Array.isArray(history) || history.length < 1) {
+        section.classList.add("hidden");
+        return;
+      }
+
+      section.classList.remove("hidden");
+      list.innerHTML = "";
+
+      history.forEach((entry) => {
+        const statusDisplay = entry.status || "—";
+        const when = entry.time ? `${entry.date} ${entry.time}` : `${entry.date}`;
+        const label = entry.label || "Entry";
+        
+        const item = document.createElement("div");
+        item.textContent = `${when} — ${label} — ${statusDisplay}`;
+        list.appendChild(item);
+      });
+    }
+
+    // =========================================================================
+    // BUILD FROM DATA
+    // =========================================================================
     function buildFromData(d, id) {
       const plan = String(d.plan || "");
       const isFSBO = plan.includes("FSBO");
@@ -243,12 +362,29 @@
         }
       }
 
-      // ✅ Render commission history
+      // =========================================================================
+      // RENDER ALL HISTORY SECTIONS
+      // =========================================================================
+      
+      // ✅ Render Commission History
       if (d.commissionHistory) {
         renderCommissionHistory(d.commissionHistory);
       }
+
+      // ✅ Render Price History
+      if (d.priceHistory) {
+        renderPriceHistory(d.priceHistory);
+      }
+
+      // ✅ Render Status History
+      if (d.statusHistory) {
+        renderStatusHistory(d.statusHistory);
+      }
     }
 
+    // =========================================================================
+    // BOOT
+    // =========================================================================
     (async function boot(){
       const embedded = isEmbed();
       const printRow = document.getElementById('printRow');
