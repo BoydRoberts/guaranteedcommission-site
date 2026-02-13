@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- agent-detail.html - Build 2026-01-21 (Removed manual Save button; Autosave handles all saves) -->
+<!-- agent-detail.html - Build 2026-02-13 (Added Price + Status History Tracking) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -269,7 +269,7 @@
   <!-- Firestore + Storage logic -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     // =========================================================================
@@ -432,19 +432,16 @@
       if (banner) banner.classList.toggle("hidden", !isSold);
 
       if (!isSold) {
-        // unlock only happens by reloading a non-sold record from server (we don't "unlock" sold)
         return false;
       }
 
       autosaveEnabled = false;
 
-      // Disable all form controls + buttons
       const form = document.getElementById("agentForm");
       if (form) {
         form.querySelectorAll("input, select, textarea, button").forEach(el => { el.disabled = true; });
       }
 
-      // Also disable promo button explicitly (it's inside the form? no, but still disable)
       const promoBtn = document.getElementById("applyPromoBtn");
       if (promoBtn) promoBtn.disabled = true;
 
@@ -452,6 +449,7 @@
       return true;
     }
 
+    // ===== EDIT 4: commitSoldNow with Status History Tracking =====
     async function commitSoldNow() {
       if (!listingId) return false;
       if (soldLocked) return true;
@@ -461,6 +459,34 @@
         const payload = buildAutosavePayload();
         payload.status = "Sold";
         payload.updatedAt = serverTimestamp();
+
+        // ===== Track status change to Sold =====
+        try {
+          var snapSold = await getDoc(doc(db, "listings", listingId));
+          if (snapSold.exists()) {
+            var oldSold = snapSold.data() || {};
+            var dtSold = getDateTimeParts();
+            var oldSoldStatus = String(oldSold.status || "").trim();
+            if (oldSoldStatus !== "Sold") {
+              if (!Array.isArray(oldSold.statusHistory) || oldSold.statusHistory.length === 0) {
+                if (oldSoldStatus) {
+                  payload.statusHistory = arrayUnion(
+                    { date: dtSold.date, time: dtSold.time, label: "Original", status: oldSoldStatus },
+                    { date: dtSold.date, time: dtSold.time, label: "Changed", status: "Sold" }
+                  );
+                } else {
+                  payload.statusHistory = arrayUnion(
+                    { date: dtSold.date, time: dtSold.time, label: "Original", status: "Sold" }
+                  );
+                }
+              } else {
+                payload.statusHistory = arrayUnion(
+                  { date: dtSold.date, time: dtSold.time, label: "Changed", status: "Sold" }
+                );
+              }
+            }
+          }
+        } catch (e) { console.warn("[commitSoldNow] history tracking failed:", e); }
 
         await updateDoc(doc(db, "listings", listingId), payload);
 
@@ -673,6 +699,18 @@
       return m2 ? m2[1] : "";
     }
 
+    // ===== EDIT 2: Date/Time helper for history entries =====
+    function getDateTimeParts() {
+      var now = new Date();
+      var date = (now.getMonth()+1) + "/" + now.getDate() + "/" + now.getFullYear();
+      var h = now.getHours();
+      var m = String(now.getMinutes()).padStart(2, "0");
+      var ampm = h >= 12 ? "PM" : "AM";
+      var h12 = h % 12 || 12;
+      var time = h12 + ":" + m + " " + ampm;
+      return { date: date, time: time };
+    }
+
     function buildAutosavePayload() {
       var payload = {
         updatedAt: serverTimestamp(),
@@ -704,6 +742,7 @@
       return payload;
     }
 
+    // ===== EDIT 3: AUTOSAVE WITH HISTORY TRACKING =====
     async function doAutosave() {
       if (!autosaveEnabled) return;
       if (!listingId) return;
@@ -712,6 +751,60 @@
       setAutosaveUI("saving");
       try {
         var payload = buildAutosavePayload();
+
+        // ===== HISTORY TRACKING: detect price/status changes =====
+        var snap = await getDoc(doc(db, "listings", listingId));
+        if (snap.exists()) {
+          var oldData = snap.data() || {};
+          var dt = getDateTimeParts();
+
+          // --- Price History ---
+          var oldPriceNum = Number(oldData.price) || 0;
+          var newPriceNum = Number(payload.price) || 0;
+          if (newPriceNum > 0 && oldPriceNum !== newPriceNum) {
+            if (!Array.isArray(oldData.priceHistory) || oldData.priceHistory.length === 0) {
+              if (oldPriceNum > 0) {
+                payload.priceHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Original", price: oldPriceNum },
+                  { date: dt.date, time: dt.time, label: "Changed", price: newPriceNum }
+                );
+              } else {
+                // First price ever entered
+                payload.priceHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Original", price: newPriceNum }
+                );
+              }
+            } else {
+              payload.priceHistory = arrayUnion(
+                { date: dt.date, time: dt.time, label: "Changed", price: newPriceNum }
+              );
+            }
+          }
+
+          // --- Status History ---
+          var oldStatus = String(oldData.status || "").trim();
+          var newStatus = String(payload.status || "").trim();
+          if (newStatus && oldStatus !== newStatus) {
+            if (!Array.isArray(oldData.statusHistory) || oldData.statusHistory.length === 0) {
+              if (oldStatus) {
+                payload.statusHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Original", status: oldStatus },
+                  { date: dt.date, time: dt.time, label: "Changed", status: newStatus }
+                );
+              } else {
+                payload.statusHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Original", status: newStatus }
+                );
+              }
+            } else {
+              payload.statusHistory = arrayUnion(
+                { date: dt.date, time: dt.time, label: "Changed", status: newStatus }
+              );
+            }
+          }
+        }
+        // ===== END HISTORY TRACKING =====
+
         await updateDoc(doc(db, "listings", listingId), payload);
         if (payload.zip) currentZipOnDoc = String(payload.zip);
 
@@ -814,7 +907,6 @@
 
       const v = String($("status")?.value || "").trim();
       if (v.toLowerCase() === "sold") {
-        // Save SOLD now, then lock only if successful
         await commitSoldNow();
         return;
       }
