@@ -1234,6 +1234,23 @@
       
       await addDotPriceMarkers(sorted);
 
+      // GEOCODE + MAP MOVE: fly to the searched city/location
+      // This ensures the map camera moves when the user searches a new city
+      // (e.g., typing "Newport" while viewing Laguna results)
+      if (q && map) {
+        const geo = await geocodeWithBounds(q);
+        if (geo?.center) {
+          if (geo.bbox && Array.isArray(geo.bbox) && geo.bbox.length === 4) {
+            map.fitBounds(
+              [[geo.bbox[0], geo.bbox[1]], [geo.bbox[2], geo.bbox[3]]],
+              { padding: 70, maxZoom: 14, duration: 1000 }
+            );
+          } else {
+            map.flyTo({ center: geo.center, zoom: 12, duration: 1000 });
+          }
+        }
+      }
+
       // URL sync
       syncFiltersToURL();
     }
