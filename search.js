@@ -5,6 +5,7 @@
 // FIX: Text searches are GLOBAL — no viewport filtering.
 //      Map auto-zooms (fitBounds) to show all matching results.
 //      Clearing search resets to all listings.
+//      Geocoding: search bar geocodes city names and flies the map there.
 
 // 🔑 Mapbox token (activated)
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZ3VhcmFudGVlZGNvbW1pc3Npb24tY29tIiwiYSI6ImNtaW1idDMwbjFjMWUzZHE3ZzY4ZjBob3IifQ.lF5BvHIsT_SVe0f6mT5nRw";
@@ -145,6 +146,42 @@ const adTiles = [
 let allListings = [];
 let filtered = [];
 
+// --- Geocoding ---------------------------------------------------------------
+// Cache to avoid repeat API calls for the same query
+const geocodeCache = new Map();
+
+async function geocodeQuery(queryText) {
+  const q = (queryText || "").trim();
+  if (!q || !MAPBOX_TOKEN) return null;
+
+  // Check cache first
+  if (geocodeCache.has(q.toLowerCase())) return geocodeCache.get(q.toLowerCase());
+
+  try {
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?limit=1&access_token=${MAPBOX_TOKEN}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const feature = data?.features?.[0];
+
+    if (!feature) {
+      geocodeCache.set(q.toLowerCase(), null);
+      return null;
+    }
+
+    const result = {
+      center: feature.center || null,   // [lng, lat]
+      bbox: feature.bbox || null,       // [sw_lng, sw_lat, ne_lng, ne_lat]
+      placeName: feature.place_name || q,
+    };
+
+    geocodeCache.set(q.toLowerCase(), result);
+    return result;
+  } catch (err) {
+    console.warn("[geocode] Failed for:", q, err);
+    return null;
+  }
+}
+
 // --- Map ---------------------------------------------------------------------
 function initMap(center = [-117.7854, 33.5427], zoom = 12.5) {
   map = new mapboxgl.Map({
@@ -201,7 +238,7 @@ function addMarkers(items) {
     hasValidBounds = true;
   });
 
-  // AUTO-ZOOM: Fit the map to show ALL result markers
+  // AUTO-ZOOM: Fit the map to show ALL result markers (if we have any)
   if (hasValidBounds && !bounds.isEmpty()) {
     map.fitBounds(bounds, { padding: 50, maxZoom: 15 });
   }
@@ -284,9 +321,11 @@ function escapeHTML(s) {
 // --- Filters / sorting -------------------------------------------------------
 // CRITICAL: This always searches the ENTIRE allListings array.
 //           There is NO viewport/bounds filtering. The map auto-zooms to fit results.
-function applyFilters() {
+//           When user searches a city/location, the map geocodes and flies there.
+async function applyFilters() {
   // Read search text from #qBox
-  const q = (els.q ? els.q.value : "").trim().toLowerCase();
+  const q = (els.q ? els.q.value : "").trim();
+  const qLower = q.toLowerCase();
 
   // Optional filter elements — read only if they exist in the DOM
   const plan = optEls.planFilter ? optEls.planFilter.value : "";
@@ -296,10 +335,10 @@ function applyFilters() {
   let result = allListings.slice();
 
   // Text filter — matches against full address string
-  if (q) {
+  if (qLower) {
     result = result.filter(i =>
-      (i.address || "").toLowerCase().includes(q) ||
-      (i.shortAddress || "").toLowerCase().includes(q)
+      (i.address || "").toLowerCase().includes(qLower) ||
+      (i.shortAddress || "").toLowerCase().includes(qLower)
     );
   }
 
@@ -350,8 +389,47 @@ function applyFilters() {
   // Render tiles (full list, no viewport clipping)
   renderTiles(filtered);
 
-  // Place markers + auto-zoom map to fit ALL results
-  addMarkers(filtered);
+  // -----------------------------------------------------------------------
+  // GEOCODE + MAP MOVE LOGIC
+  // -----------------------------------------------------------------------
+  // Strategy:
+  //   1. If results have valid coords → fitBounds to show all markers
+  //   2. If the user typed a search query → ALSO geocode the query text
+  //      and fly the map to that city/location. This ensures the map moves
+  //      even when there are zero matching listings in the database.
+  //
+  // This mirrors what the homepage does when it passes ?q=Newport to the
+  // results page — but now it also works for subsequent searches.
+  // -----------------------------------------------------------------------
+
+  // Check if any results have plottable coordinates
+  const hasPlottableResults = result.some(i => isValidLatLng(i.lat, i.lng));
+
+  if (hasPlottableResults) {
+    // Results have coords — place markers and let fitBounds handle the zoom
+    addMarkers(filtered);
+  } else {
+    // No plottable results — clear old markers
+    clearMarkers();
+  }
+
+  // Geocode the query text to move the map to that city/region
+  if (q && map) {
+    const geo = await geocodeQuery(q);
+    if (geo?.center) {
+      // If we have a bounding box (city/region), use fitBounds for better framing
+      if (geo.bbox && Array.isArray(geo.bbox) && geo.bbox.length === 4) {
+        map.fitBounds(
+          [[geo.bbox[0], geo.bbox[1]], [geo.bbox[2], geo.bbox[3]]],
+          { padding: 50, maxZoom: 14, duration: 1200 }
+        );
+      } else {
+        // Point result — fly to center
+        map.flyTo({ center: geo.center, zoom: 12, duration: 1200 });
+      }
+    }
+    // If geocode returned nothing, we still showed tiles above — map just stays put
+  }
 }
 
 // --- Geolocate ---------------------------------------------------------------
@@ -458,11 +536,11 @@ function mergeListings(firestoreDocs, localDocs) {
 
 function initEvents() {
   // Wire optional buttons only if they exist
-  if (optEls.applyBtn)  optEls.applyBtn.addEventListener("click", applyFilters);
+  if (optEls.applyBtn)  optEls.applyBtn.addEventListener("click", () => applyFilters());
   if (optEls.locateBtn) optEls.locateBtn.addEventListener("click", useMyLocation);
-  if (els.sortSelect)   els.sortSelect.addEventListener("change", applyFilters);
+  if (els.sortSelect)   els.sortSelect.addEventListener("change", () => applyFilters());
 
-  // Enter key in #qBox runs global search
+  // Enter key in #qBox runs global search + geocode
   if (els.q) {
     els.q.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -500,5 +578,5 @@ function initEvents() {
     "(Firestore:", firestoreDocs.length, "/ Local:", localDocs.length, ")");
 
   // Initial render — show all listings, fit map to all markers
-  applyFilters();
+  await applyFilters();
 })();
