@@ -293,9 +293,44 @@
     </div>
   </div>
 
+  <!-- Sold Details Modal -->
+  <div id="soldDetailsModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md relative p-6">
+      <button onclick="closeSoldModal()" class="absolute top-2 right-2 text-xl font-bold" aria-label="Close">&times;</button>
+
+      <h2 class="text-lg font-bold mb-2">🎉 Congratulations!</h2>
+      <p class="text-sm text-gray-600 mb-4">Please enter the final closing details before we lock this listing.</p>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Sold Price ($) <span class="text-red-600">*</span></label>
+          <input type="number" id="soldPrice" min="0" step="1000" placeholder="e.g., 875000" class="w-full border p-2 rounded">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Closing Date <span class="text-red-600">*</span></label>
+          <input type="date" id="soldDate" class="w-full border p-2 rounded">
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeSoldModal()" class="px-4 py-2 rounded border">Cancel</button>
+          <button id="confirmSoldBtn" type="button" class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700">Confirm Sold</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     function openChangeCommissionModal() { document.getElementById('changeCommissionModal').classList.remove('hidden'); }
     function closeChangeCommissionModal() { document.getElementById('changeCommissionModal').classList.add('hidden'); }
+    function openSoldModal() { document.getElementById('soldDetailsModal').classList.remove('hidden'); }
+    function closeSoldModal() {
+      document.getElementById('soldDetailsModal').classList.add('hidden');
+      // Revert dropdown to previous status
+      if (window.__preSoldStatus != null) {
+        var el = document.getElementById('status');
+        if (el) el.value = window.__preSoldStatus;
+      }
+    }
   </script>
 
   <script type="module">
@@ -1191,10 +1226,148 @@
       }
     }
 
+    // ===== SOLD MODAL: intercept status change to "Sold" =====
+    var preSoldStatus = "";
+
     $("status")?.addEventListener("change", function(){
-      checkSoldLock($("status")?.value);
+      var val = String($("status")?.value || "").trim();
+
+      if (val.toLowerCase() === "sold") {
+        // Store previous status for Cancel revert
+        preSoldStatus = String(window.__preSoldStatus || "Active");
+        window.__preSoldStatus = preSoldStatus;
+
+        // Pre-fill sold date with today
+        var sdEl = document.getElementById("soldDate");
+        if (sdEl && !sdEl.value) {
+          var today = new Date();
+          var yyyy = today.getFullYear();
+          var mm = String(today.getMonth() + 1).padStart(2, "0");
+          var dd = String(today.getDate()).padStart(2, "0");
+          sdEl.value = yyyy + "-" + mm + "-" + dd;
+        }
+
+        // Pre-fill sold price with current listing price
+        var spEl = document.getElementById("soldPrice");
+        var curPrice = $("price")?.value;
+        if (spEl && !spEl.value && curPrice) spEl.value = curPrice;
+
+        openSoldModal();
+        return;
+      }
+
+      // Track previous status for next time
+      window.__preSoldStatus = val;
+      checkSoldLock(val);
       autosaveDebounced();
     });
+
+    // Track initial status after load
+    setTimeout(function(){
+      var initStatus = $("status")?.value || "";
+      if (initStatus && initStatus.toLowerCase() !== "sold") {
+        window.__preSoldStatus = initStatus;
+      }
+    }, 2000);
+
+    // ===== commitSold(): saves sold details + history, then locks =====
+    async function commitSold() {
+      var soldPriceEl = document.getElementById("soldPrice");
+      var soldDateEl = document.getElementById("soldDate");
+
+      var soldPriceVal = Number(soldPriceEl?.value || 0);
+      var soldDateVal = (soldDateEl?.value || "").trim();
+
+      if (!soldPriceVal || soldPriceVal <= 0) {
+        alert("Please enter the final sold price.");
+        if (soldPriceEl) soldPriceEl.focus();
+        return;
+      }
+      if (!soldDateVal) {
+        alert("Please enter the closing date.");
+        if (soldDateEl) soldDateEl.focus();
+        return;
+      }
+
+      if (!listingId) return;
+
+      setAutosaveUI("saving");
+      try {
+        var payload = buildAutosavePayload();
+        payload.status = "Sold";
+        payload.soldPrice = soldPriceVal;
+        payload.soldDate = soldDateVal;
+        payload.updatedAt = serverTimestamp();
+
+        // ===== Status History: record transition to Sold =====
+        var snap = await getDoc(doc(db, "listings", listingId));
+        if (snap.exists()) {
+          var oldData = snap.data() || {};
+          var dt = getDateTimeParts();
+
+          var oldStatus = String(oldData.status || "").trim();
+          if (oldStatus !== "Sold") {
+            if (!Array.isArray(oldData.statusHistory) || oldData.statusHistory.length === 0) {
+              if (oldStatus) {
+                payload.statusHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Original", status: oldStatus },
+                  { date: dt.date, time: dt.time, label: "Changed", status: "Sold" }
+                );
+              } else {
+                payload.statusHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Original", status: "Sold" }
+                );
+              }
+            } else {
+              payload.statusHistory = arrayUnion(
+                { date: dt.date, time: dt.time, label: "Changed", status: "Sold" }
+              );
+            }
+          }
+
+          // ===== Price History: record sold price if different =====
+          var oldPriceNum = Number(oldData.price) || 0;
+          if (soldPriceVal > 0 && oldPriceNum !== soldPriceVal) {
+            if (!Array.isArray(oldData.priceHistory) || oldData.priceHistory.length === 0) {
+              if (oldPriceNum > 0) {
+                payload.priceHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Original", price: oldPriceNum },
+                  { date: dt.date, time: dt.time, label: "Sold", price: soldPriceVal }
+                );
+              } else {
+                payload.priceHistory = arrayUnion(
+                  { date: dt.date, time: dt.time, label: "Sold", price: soldPriceVal }
+                );
+              }
+            } else {
+              payload.priceHistory = arrayUnion(
+                { date: dt.date, time: dt.time, label: "Sold", price: soldPriceVal }
+              );
+            }
+          }
+        }
+
+        await updateDoc(doc(db, "listings", listingId), payload);
+
+        // Close modal, lock the page
+        document.getElementById("soldDetailsModal").classList.add("hidden");
+        checkSoldLock("Sold");
+        setAutosaveUI("locked");
+        setStatus("Listing marked as SOLD. Locked.", true);
+
+      } catch (e) {
+        console.warn("[commitSold] failed", e);
+        setAutosaveUI("error");
+        setStatus("Could not save sold details.", false);
+        setTimeout(function(){ if (!soldLocked) setAutosaveUI("waiting"); }, 3000);
+      }
+    }
+
+    // Wire the Confirm Sold button
+    (function wireSoldBtn(){
+      var btn = document.getElementById("confirmSoldBtn");
+      if (btn) btn.addEventListener("click", commitSold);
+    })();
 
     (async function wireUpgrades(){
       var checkoutData = getJSON("checkoutData", null) || {};
