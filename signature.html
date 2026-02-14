@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- signature.html - Build 2026-02-13 (Added statusHistory + priceHistory seeding at sign time) -->
+<!-- signature.html - Build 2026-02-14 (Fresh doc re-read at sign time for priceHistory) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -264,6 +264,12 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
         } catch {}
 
         try {
+          // ===== Re-read doc FRESH so price/commission are current =====
+          try {
+            const freshSnap = await getDoc(doc(db, "listings", listingId));
+            if (freshSnap.exists()) d = freshSnap.data() || d || {};
+          } catch (e) { console.warn("[signature] fresh read failed, using cached d", e); }
+
           // ===== Compute date/time for all history entries =====
           const dtNow = now();
           const dateStr = todayISO();
@@ -304,6 +310,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
 
           // ===== SEED priceHistory with "Original" if price exists =====
           var draftPrice = Number(d.price) || 0;
+          console.log("[signature] priceHistory seed check: d.price =", d.price, "→ draftPrice =", draftPrice);
           if (draftPrice > 0) {
             updates.priceHistory = [{
               date: dateStr,
