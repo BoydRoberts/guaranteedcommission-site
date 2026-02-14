@@ -769,6 +769,10 @@
     var paidUpgrades = {};
     var currentZipOnDoc = "";
 
+    // ===== Local price/status tracking for history accuracy =====
+    var __lastRenderedPrice = 0;   // set in refreshFromServer from Firestore
+    var __lastRenderedStatus = "";  // set in refreshFromServer from Firestore
+
     function computePhotoHelp() {
       var remaining = Math.max(0, maxPhotos - (photos ? photos.length : 0));
       var el = $("photoHelp");
@@ -1049,7 +1053,7 @@
       return payload;
     }
 
-    // ===== AUTOSAVE WITH HISTORY TRACKING (EDIT 3) =====
+    // ===== AUTOSAVE WITH HISTORY TRACKING =====
     async function doAutosave() {
       if (!listingId) return;
       if (soldLocked) return;
@@ -1066,22 +1070,29 @@
           var dt = getDateTimeParts();
 
           // --- Price History ---
-          var oldPriceNum = Number(oldData.price) || 0;
+          // Use the best available "old" price: Firestore first, then local tracking
+          var firestoreOldPrice = Number(oldData.price) || 0;
+          var effectiveOldPrice = firestoreOldPrice > 0 ? firestoreOldPrice : __lastRenderedPrice;
           var newPriceNum = Number(payload.price) || 0;
-          if (newPriceNum > 0 && oldPriceNum !== newPriceNum) {
+
+          console.log("[autosave] Price check — Firestore:", firestoreOldPrice, "| Local:", __lastRenderedPrice, "| Effective old:", effectiveOldPrice, "| New:", newPriceNum);
+
+          if (newPriceNum > 0 && effectiveOldPrice !== newPriceNum) {
             if (!Array.isArray(oldData.priceHistory) || oldData.priceHistory.length === 0) {
-              if (oldPriceNum > 0) {
+              if (effectiveOldPrice > 0) {
+                console.log("[autosave] Seeding priceHistory: Original", effectiveOldPrice, "→ Changed", newPriceNum);
                 payload.priceHistory = arrayUnion(
-                  { date: dt.date, time: dt.time, label: "Original", price: oldPriceNum },
+                  { date: dt.date, time: dt.time, label: "Original", price: effectiveOldPrice },
                   { date: dt.date, time: dt.time, label: "Changed", price: newPriceNum }
                 );
               } else {
-                // First price ever entered
+                console.log("[autosave] First price ever:", newPriceNum);
                 payload.priceHistory = arrayUnion(
                   { date: dt.date, time: dt.time, label: "Original", price: newPriceNum }
                 );
               }
             } else {
+              console.log("[autosave] Appending price change:", newPriceNum);
               payload.priceHistory = arrayUnion(
                 { date: dt.date, time: dt.time, label: "Changed", price: newPriceNum }
               );
@@ -1089,13 +1100,15 @@
           }
 
           // --- Status History ---
-          var oldStatus = String(oldData.status || "").trim();
+          var firestoreOldStatus = String(oldData.status || "").trim();
+          var effectiveOldStatus = firestoreOldStatus || __lastRenderedStatus;
           var newStatus = String(payload.status || "").trim();
-          if (newStatus && oldStatus !== newStatus) {
+
+          if (newStatus && effectiveOldStatus !== newStatus) {
             if (!Array.isArray(oldData.statusHistory) || oldData.statusHistory.length === 0) {
-              if (oldStatus) {
+              if (effectiveOldStatus) {
                 payload.statusHistory = arrayUnion(
-                  { date: dt.date, time: dt.time, label: "Original", status: oldStatus },
+                  { date: dt.date, time: dt.time, label: "Original", status: effectiveOldStatus },
                   { date: dt.date, time: dt.time, label: "Changed", status: newStatus }
                 );
               } else {
@@ -1114,6 +1127,12 @@
 
         await updateDoc(doc(db, "listings", listingId), payload);
         if (payload.zip) currentZipOnDoc = String(payload.zip);
+
+        // Update local tracking after successful save
+        var savedPrice = Number(payload.price) || 0;
+        if (savedPrice > 0) __lastRenderedPrice = savedPrice;
+        var savedStatus = String(payload.status || "").trim();
+        if (savedStatus) __lastRenderedStatus = savedStatus;
 
         setAutosaveUI("saved");
         setTimeout(function(){ if (!soldLocked) setAutosaveUI("waiting"); }, 1800);
@@ -1163,6 +1182,11 @@
         $("fullAddress").value = d.address || "";
         $("status").value = d.status || "";
         $("price").value = d.price != null ? d.price : "";
+
+        // Track what Firestore has so doAutosave can compare accurately
+        __lastRenderedPrice = Number(d.price) || 0;
+        __lastRenderedStatus = String(d.status || "").trim();
+
         $("commission").value = d.commission != null ? d.commission : "";
         $("commissionType").value = d.commissionType || "%";
         $("apn").value = d.apn || "";
@@ -1327,11 +1351,12 @@
 
           // ===== Price History: record sold price if different =====
           var oldPriceNum = Number(oldData.price) || 0;
-          if (soldPriceVal > 0 && oldPriceNum !== soldPriceVal) {
+          var effectiveOldPriceSold = oldPriceNum > 0 ? oldPriceNum : __lastRenderedPrice;
+          if (soldPriceVal > 0 && effectiveOldPriceSold !== soldPriceVal) {
             if (!Array.isArray(oldData.priceHistory) || oldData.priceHistory.length === 0) {
-              if (oldPriceNum > 0) {
+              if (effectiveOldPriceSold > 0) {
                 payload.priceHistory = arrayUnion(
-                  { date: dt.date, time: dt.time, label: "Original", price: oldPriceNum },
+                  { date: dt.date, time: dt.time, label: "Original", price: effectiveOldPriceSold },
                   { date: dt.date, time: dt.time, label: "Sold", price: soldPriceVal }
                 );
               } else {
