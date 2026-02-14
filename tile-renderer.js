@@ -3,7 +3,7 @@
  * Shared listing tile renderer for GuaranteedCommission.com
  * Used by: index.html (Strip 2), search.html
  * 
- * Build: 2026-01-17
+ * Build: 2026-02-14
  * 
  * CHANGES (2026-01-15):
  * - Added FSBO owner contact support (ownerName, ownerPhone)
@@ -13,6 +13,12 @@
  * 
  * CHANGES (2026-01-17):
  * - Added SOLD ribbon on tiles when status === "Sold"
+ * 
+ * CHANGES (2026-02-14):
+ * - SOLD badge centered horizontally (was top-left)
+ * - Sold listings now display soldPrice instead of listing price
+ * - Sold price styled in dark red (text-red-700)
+ * - Commission math uses soldPrice for sold listings
  * 
  * IMPORTANT: This file does NOT inject CSS.
  * CSS classes used: .gc-tile, .gc-photo, .gc-ribbon, .gc-heart, .gc-share, .gc-share-left, .gc-share-right
@@ -152,7 +158,7 @@ function heartSvg(filled) {
 }
 
 // ============================================
-// CONTACT LINE BUILDER (NEW)
+// CONTACT LINE BUILDER
 // ============================================
 
 /**
@@ -168,7 +174,6 @@ function heartSvg(filled) {
  */
 function buildContactLine({ isFSBO, brokerage, agentName, agentPhone, ownerName, ownerPhone }) {
   if (isFSBO) {
-    // FSBO: FOR SALE BY OWNER - Owner Name - Owner Phone
     let line = 'FOR SALE BY OWNER';
     if (ownerName) {
       line += ' - ' + ownerName;
@@ -178,7 +183,6 @@ function buildContactLine({ isFSBO, brokerage, agentName, agentPhone, ownerName,
     }
     return line;
   } else {
-    // Listed: BROKERAGE - Agent Name - Agent Phone
     let line = (brokerage || '[listing brokerage]').toUpperCase();
     if (agentName) {
       line += ' - ' + agentName;
@@ -207,29 +211,8 @@ function buildContactLine({ isFSBO, brokerage, agentName, agentPhone, ownerName,
  * - .gc-share-right: Right share button
  * 
  * @param {Object} data - Listing data
- * @param {string} data.id - Listing ID
- * @param {string} data.address - Full address
- * @param {number} data.price - Listing price
- * @param {number} data.commission - Commission value
- * @param {string} data.commissionType - '%' or '$'
- * @param {string} data.bannerText - Optional banner text
- * @param {Array} data.photos - Array of photo URLs
- * @param {number} data.primaryIndex - Index of primary photo
- * @param {string} data.status - Listing status
- * @param {string} data.brokerage - Brokerage name (Listed only)
- * @param {string} data.agentName - Agent name (Listed only)
- * @param {string} data.agentPhone - Agent phone (Listed only)
- * @param {string} data.ownerName - Owner name (FSBO only)
- * @param {string} data.ownerPhone - Owner phone (FSBO only)
- * @param {string} data.plan - Plan type (determines FSBO vs Listed)
- * @param {number} data.bedrooms - Number of bedrooms
- * @param {number} data.bathrooms - Number of bathrooms
- * @param {number} data.sqft - Square footage
- * @param {string} data.propertyType - Property type
- * @param {number} data.views - View count
- * @param {number} data.likes - Like count
  * @param {Object} options - Render options
- * @param {Function} options.onLikeIncrement - Async callback to increment like in Firestore, receives (listingId)
+ * @param {Function} options.onLikeIncrement - Async callback to increment like in Firestore
  * @returns {HTMLElement} The tile element
  */
 export function renderTile(data, options = {}) {
@@ -246,8 +229,8 @@ export function renderTile(data, options = {}) {
   const brokerage = data.brokerage || '';
   const agentName = data.agentName || '';
   const agentPhone = data.agentPhone || '';
-  const ownerName = data.ownerName || '';      // NEW: FSBO owner name
-  const ownerPhone = data.ownerPhone || '';    // NEW: FSBO owner phone
+  const ownerName = data.ownerName || '';
+  const ownerPhone = data.ownerPhone || '';
   const plan = data.plan || 'Listed Property Basic';
   const bedrooms = data.bedrooms;
   const bathrooms = data.bathrooms;
@@ -256,9 +239,15 @@ export function renderTile(data, options = {}) {
   let views = Number(data.views || 0);
   let likes = Number(data.likes || 0);
 
-  // Computed values
-  const commDollars = commissionDollars(price, commission, commissionType);
-  const priceDisplay = money(price);
+  // SOLD flag
+  const isSold = String(status || '').trim().toLowerCase() === 'sold';
+
+  // For sold listings, use soldPrice for display and commission math
+  const finalPrice = (isSold && data.soldPrice) ? Number(data.soldPrice) : price;
+
+  // Computed values using finalPrice
+  const commDollars = commissionDollars(finalPrice, commission, commissionType);
+  const priceDisplay = money(finalPrice);
   const commLabel = commissionLabel(commission, commissionType);
   const commDollarsDisplay = commDollars != null ? ('$' + commDollars.toLocaleString()) : '-';
 
@@ -270,10 +259,7 @@ export function renderTile(data, options = {}) {
   // Determine if FSBO
   const isFSBO = (plan || '').indexOf('FSBO') >= 0;
 
-  // SOLD flag (NEW)
-  const isSold = String(status || '').trim().toLowerCase() === 'sold';
-
-  // Build contact line using new helper
+  // Build contact line using helper
   const contactLine = buildContactLine({
     isFSBO,
     brokerage,
@@ -286,6 +272,9 @@ export function renderTile(data, options = {}) {
   // Property type segment
   const typeSeg = propertyType ? ' | ' + propertyType : '';
 
+  // Price class: dark red for sold listings
+  const priceClass = isSold ? 'text-red-700' : '';
+
   // Create card element
   const card = document.createElement('article');
   card.className = 'gc-tile cursor-pointer';
@@ -297,13 +286,13 @@ export function renderTile(data, options = {}) {
     }
   };
 
-  // Build HTML using existing CSS class names
+  // Build HTML — SOLD badge centered, price uses finalPrice with conditional color
   card.innerHTML = `
     <div class="relative">
       <img class="gc-photo" src="${photoUrl}" alt="Listing photo">
       ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ''}
 
-      ${isSold ? `<div class="absolute top-2 left-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
+      ${isSold ? `<div class="absolute top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
 
       <button type="button" class="gc-heart" aria-label="Like">
         ${heartSvg(false)}
@@ -313,7 +302,7 @@ export function renderTile(data, options = {}) {
     </div>
     <div class="p-3 space-y-2">
       <div class="flex items-center justify-between text-[15px] sm:text-[16px] font-semibold">
-        <div class="truncate">${priceDisplay}</div>
+        <div class="truncate ${priceClass}">${priceDisplay}</div>
         <div class="truncate text-red-600">Commission ${commLabel} | ${commDollarsDisplay}</div>
       </div>
       <div class="text-[12px] text-gray-700">
