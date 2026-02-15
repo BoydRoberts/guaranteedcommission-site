@@ -3,7 +3,7 @@
  * Shared listing tile renderer for GuaranteedCommission.com
  * Used by: index.html (Strip 2), search.html
  * 
- * Build: 2026-02-14
+ * Build: 2026-02-15
  * 
  * CHANGES (2026-01-15):
  * - Added FSBO owner contact support (ownerName, ownerPhone)
@@ -19,6 +19,10 @@
  * - Sold listings now display soldPrice instead of listing price
  * - Sold price styled in dark red (text-red-700)
  * - Commission math uses soldPrice for sold listings
+ * 
+ * CHANGES (2026-02-15):
+ * - Status line now shows "Sold M/D/YYYY for $X,XXX,XXX" when soldDate+soldPrice available
+ *   (was showing generic "Sold")
  * 
  * IMPORTANT: This file does NOT inject CSS.
  * CSS classes used: .gc-tile, .gc-photo, .gc-ribbon, .gc-heart, .gc-share, .gc-share-left, .gc-share-right
@@ -275,6 +279,44 @@ export function renderTile(data, options = {}) {
   // Price class: dark red for sold listings
   const priceClass = isSold ? 'text-red-700' : '';
 
+  // Build status display text (e.g. "Sold 2/14/2026 for $8,100,000")
+  let statusDisplay = status;
+  if (isSold) {
+    const soldDateRaw = data.soldDate;
+    const soldPriceRaw = data.soldPrice;
+
+    if (soldDateRaw && soldPriceRaw) {
+      let formattedDate = null;
+      try {
+        const dateStr = String(soldDateRaw);
+        if (dateStr.includes('-')) {
+          const parts = dateStr.split('-');
+          if (parts.length === 3) {
+            const month = parseInt(parts[1], 10);
+            const day = parseInt(parts[2], 10);
+            if (parts[0] && month && day) {
+              formattedDate = `${month}/${day}/${parts[0]}`;
+            }
+          }
+        }
+      } catch (e) {}
+
+      let formattedPrice = null;
+      try {
+        const priceNum = Number(soldPriceRaw);
+        if (priceNum > 0) formattedPrice = '$' + priceNum.toLocaleString();
+      } catch (e) {}
+
+      if (formattedDate && formattedPrice) {
+        statusDisplay = `Sold ${formattedDate} for ${formattedPrice}`;
+      } else if (formattedDate) {
+        statusDisplay = `Sold ${formattedDate}`;
+      } else if (formattedPrice) {
+        statusDisplay = `Sold for ${formattedPrice}`;
+      }
+    }
+  }
+
   // Create card element
   const card = document.createElement('article');
   card.className = 'gc-tile cursor-pointer';
@@ -306,7 +348,7 @@ export function renderTile(data, options = {}) {
         <div class="truncate text-red-600">Commission ${commLabel} | ${commDollarsDisplay}</div>
       </div>
       <div class="text-[12px] text-gray-700">
-        ${bedrooms != null ? bedrooms : '-'} bds | ${bathrooms != null ? bathrooms : '-'} ba | ${sqft ? Number(sqft).toLocaleString() : '-'} sqft${typeSeg} | ${status}
+        ${bedrooms != null ? bedrooms : '-'} bds | ${bathrooms != null ? bathrooms : '-'} ba | ${sqft ? Number(sqft).toLocaleString() : '-'} sqft${typeSeg} | ${statusDisplay}
       </div>
       <div class="text-sm font-medium">${address}</div>
       <div class="text-[12px] text-gray-600">
