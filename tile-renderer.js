@@ -348,7 +348,7 @@ export function renderTile(data, options = {}) {
         <div class="truncate text-red-600">Commission ${commLabel} | ${commDollarsDisplay}</div>
       </div>
       <div class="text-[12px] text-gray-700">
-        ${bedrooms != null ? bedrooms : '-'} bds | ${bathrooms != null ? bathrooms : '-'} ba | ${sqft ? Number(sqft).toLocaleString() : '-'} sqft${typeSeg} | ${statusDisplay}
+        ${bedrooms != null ? bedrooms : '-'} bds | ${bathrooms != null ? bathrooms : '-'} ba | ${sqft ? Number(sqft).toLocaleString() : '-'} sqft${typeSeg} | ${isSold ? `<span class="text-red-700 font-bold">${statusDisplay}</span>` : statusDisplay}
       </div>
       <div class="text-sm font-medium">${address}</div>
       <div class="text-[12px] text-gray-600">
