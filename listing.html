@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-02-07 (Sold date/price display + removed inquiry lockdown notice) -->
+<!-- Build: 2026-02-15 (Sold: inline status with date/price, red price, removed sold banner box) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -57,15 +57,6 @@
     .isc-iframe { width:100%; border:0; margin:0; display:block; background:transparent; }
 
     .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-    
-    /* Sold details display - high visibility */
-    .sold-details-banner {
-      background: #fef2f2;
-      border: 2px solid #dc2626;
-      border-radius: 8px;
-      padding: 12px 16px;
-      margin-top: 8px;
-    }
   </style>
 
   <!-- Open Graph Meta Tags -->
@@ -140,11 +131,6 @@
           <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] - [listing agent] - [agent phone]</div>
           <!-- Centered "Viewed N times | Liked M times" -->
           <div id="tileStats" class="text-[12px] text-gray-500 text-center">Viewed — | Liked —</div>
-          
-          <!-- SOLD DETAILS BANNER - Shows date and price when available -->
-          <div id="soldDetailsBanner" class="sold-details-banner hidden">
-            <div id="soldDetailsText" class="text-red-700 font-bold text-lg text-center"></div>
-          </div>
         </div>
       </article>
 
@@ -383,17 +369,10 @@
     }
 
     // ========================================
-    // SOLD DETAILS DISPLAY
-    // Formats and displays sold date and price
+    // SOLD STATUS DISPLAY HELPER
+    // Builds "Sold M/D/YYYY for $X,XXX,XXX" string
     // ========================================
-    function displaySoldDetails(soldDate, soldPrice) {
-      const banner = $("soldDetailsBanner");
-      const textEl = $("soldDetailsText");
-      if (!banner || !textEl) return;
-      
-      console.log('[displaySoldDetails] Input:', { soldDate, soldPrice });
-      
-      // Format date: YYYY-MM-DD -> M/D/YYYY
+    function buildSoldStatusText(soldDate, soldPrice) {
       let formattedDate = null;
       if (soldDate) {
         try {
@@ -401,51 +380,30 @@
           if (dateStr.includes('-')) {
             const parts = dateStr.split('-');
             if (parts.length === 3) {
-              const year = parts[0];
-              const month = parseInt(parts[1], 10); // Remove leading zero
-              const day = parseInt(parts[2], 10);   // Remove leading zero
-              if (year && month && day) {
-                formattedDate = `${month}/${day}/${year}`;
+              const month = parseInt(parts[1], 10);
+              const day = parseInt(parts[2], 10);
+              if (parts[0] && month && day) {
+                formattedDate = `${month}/${day}/${parts[0]}`;
               }
             }
           }
         } catch (e) {
-          console.warn('[displaySoldDetails] Date parsing failed:', e);
+          console.warn('[buildSoldStatusText] Date parsing failed:', e);
         }
       }
-      
-      // Format price: number -> $X,XXX,XXX
+
       let formattedPrice = null;
       if (soldPrice) {
         try {
           const priceNum = Number(soldPrice);
-          if (priceNum > 0) {
-            formattedPrice = "$" + priceNum.toLocaleString();
-          }
-        } catch (e) {
-          console.warn('[displaySoldDetails] Price parsing failed:', e);
-        }
+          if (priceNum > 0) formattedPrice = '$' + priceNum.toLocaleString();
+        } catch (e) {}
       }
-      
-      // Build display text
-      let displayText = "";
-      
-      if (formattedDate && formattedPrice) {
-        displayText = `Sold on ${formattedDate} for ${formattedPrice}`;
-        console.log('[displaySoldDetails] SUCCESS:', displayText);
-      } else if (formattedDate) {
-        displayText = `Sold on ${formattedDate}`;
-      } else if (formattedPrice) {
-        displayText = `Sold for ${formattedPrice}`;
-      } else {
-        // Fallback for legacy listings without date/price
-        displayText = "Sold (Price/Date not recorded)";
-        console.log('[displaySoldDetails] Legacy listing - no date/price data');
-      }
-      
-      // Show the banner
-      textEl.textContent = displayText;
-      banner.classList.remove("hidden");
+
+      if (formattedDate && formattedPrice) return `Sold ${formattedDate} for ${formattedPrice}`;
+      if (formattedDate) return `Sold ${formattedDate}`;
+      if (formattedPrice) return `Sold for ${formattedPrice}`;
+      return 'Sold';
     }
 
     // --- ISC auto-fit ---
@@ -830,21 +788,17 @@
 
         // ========================================
         // SOLD STATE HANDLING
-        // Show badge and sold details if status is "Sold"
         // ========================================
         const isSold = status.trim().toLowerCase() === "sold";
         
         // Show SOLD badge on photo
         const soldBadge = document.getElementById("soldBadge");
         if (soldBadge) soldBadge.classList.toggle("hidden", !isSold);
-        
-        // Display sold details if available
-        if (isSold) {
-          console.log('[listing] Sold listing detected. soldDate:', d.soldDate, 'soldPrice:', d.soldPrice);
-          displaySoldDetails(d.soldDate, d.soldPrice);
-        }
 
-        const price = asNumOrEmpty(d.price);
+        // Determine display price: use soldPrice when sold
+        const rawPrice = asNumOrEmpty(d.price);
+        const finalPrice = (isSold && d.soldPrice) ? Number(d.soldPrice) : rawPrice;
+
         const cRaw  = dflt(d.commission, "");
         const cType = (d.commissionType === "%" || d.commissionType === "$") ? d.commissionType : "%";
         const pType = String(d.propertyType || "");
@@ -873,15 +827,30 @@
         const bEl = document.getElementById("tileBanner");
         if (banner) { bEl.textContent = banner; bEl.classList.remove('hidden'); } else { bEl.classList.add('hidden'); }
 
+        // Commission uses finalPrice (soldPrice for sold, listing price otherwise)
         const cAmt = (function(p, c, t){
           const P=Number(p||0), C=Number(c||0);
           if(!C) return 0; return t==='$'?Math.round(C):(P?Math.round(P*(C/100)):0);
-        })(price, cRaw, cType);
+        })(finalPrice, cRaw, cType);
         const cPctLabel = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw)+'%')) : "—";
 
-        document.getElementById("tilePrice").textContent = money(price);
+        // Price display: dark red for sold listings
+        const tilePriceEl = document.getElementById("tilePrice");
+        tilePriceEl.textContent = money(finalPrice);
+        if (isSold) tilePriceEl.classList.add("text-red-700");
+
         document.getElementById("tileCommission").textContent = `Commission ${cPctLabel} | ${cAmt ? money(cAmt) : "$—"}`;
-        document.getElementById("tileFacts").textContent = `${bds || "—"} bds | ${ba || "—"} ba | ${sqft || "—"} sqft${pType ? " | "+pType : ""} | ${status}`;
+
+        // Status line: inline "Sold 2/14/2026 for $8,100,000" in bold red, or plain status
+        const factsBase = `${bds || "—"} bds | ${ba || "—"} ba | ${sqft || "—"} sqft${pType ? " | "+pType : ""}`;
+        const tileFactsEl = document.getElementById("tileFacts");
+        if (isSold) {
+          const soldText = buildSoldStatusText(d.soldDate, d.soldPrice);
+          tileFactsEl.innerHTML = `${factsBase} | <span class="text-red-700 font-bold">${soldText}</span>`;
+        } else {
+          tileFactsEl.textContent = `${factsBase} | ${status}`;
+        }
+
         document.getElementById("tileAddress").textContent = address || "[full address]";
 
         const isFSBO = plan.includes("FSBO");
