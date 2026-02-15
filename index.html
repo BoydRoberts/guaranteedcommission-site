@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2026-01-30 (Seniority Priority Sorting: Pin > Premium > Standard) -->
+<!-- index.html - Build 2026-02-14 (Status sort: Active > In Contract > Sold + soldPrice/soldDate pass-through) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -444,7 +444,7 @@
           Accredited Investors Only
         </button>
       </div>
-      <p>© 2025 GuaranteedCommission.com. All rights reserved.</p>
+      <p>&copy; 2025 GuaranteedCommission.com. All rights reserved.</p>
       <p>Boyd Roberts - California Licensed Real Estate Broker - DRE License #01354788</p>
       <p>
         <a href="/privacy.html" class="hover:underline">Privacy Policy</a> -
@@ -491,7 +491,6 @@
                   encodeURIComponent(address) +
                   ".json?limit=1&access_token=" + MAPBOX_TOKEN;
 
-        // Race between fetch and timeout - never block more than GEO_TIMEOUT_MS
         var fetchPromise = fetch(url);
         var timeoutPromise = new Promise(function(_, reject) {
           setTimeout(function() { reject(new Error("timeout")); }, GEO_TIMEOUT_MS);
@@ -510,7 +509,6 @@
           return failResult;
         }
 
-        // Mapbox returns [lng, lat]
         return {
           lng: feature.center[0],
           lat: feature.center[1],
@@ -524,9 +522,7 @@
         return failResult;
       }
     }
-    // =========================================================================
 
-    // Track which plan user explicitly selected this session
     var userSelectedPlanThisSession = null;
 
     function tabInitialized() {
@@ -549,7 +545,6 @@
     function hasActiveFlowState() {
       try {
         if (localStorage.getItem("lastListingId")) return true;
-
         const raw = localStorage.getItem("checkoutData");
         if (raw) {
           try {
@@ -558,10 +553,8 @@
             if (hasUpgrades) return true;
           } catch(e) {}
         }
-
         if (localStorage.getItem("nextAfterLogin")) return true;
         if (localStorage.getItem("loginOrigin")) return true;
-
         return false;
       } catch(e) { return false; }
     }
@@ -638,10 +631,8 @@
         agentEmailInput.style.display = 'none';
         fsboEmailRow.classList.remove('hidden');
         if (apnRow) apnRow.classList.remove('hidden');
-
         document.getElementById('iscTextListed').classList.add('hidden');
         document.getElementById('iscTextFSBO').classList.remove('hidden');
-
         box1.classList.add('fsbo-compact');
       } else {
         title.textContent = (type === 'plus' ? 'Listed Property Plus Communication Form' : 'Listed Property Communication Form');
@@ -652,10 +643,8 @@
         agentEmailInput.style.display = 'block';
         fsboEmailRow.classList.add('hidden');
         if (apnRow) apnRow.classList.add('hidden');
-
         document.getElementById('iscTextListed').classList.remove('hidden');
         document.getElementById('iscTextFSBO').classList.add('hidden');
-
         box1.classList.remove('fsbo-compact');
       }
     }
@@ -701,7 +690,6 @@
         if(el) els.push(el);
       }
       if (!els.length) return;
-
       var mo = new MutationObserver(function(){ fitStrip1(); });
       for(var j=0;j<els.length;j++){
         mo.observe(els[j], { childList:true, subtree:true, characterData:true });
@@ -713,32 +701,19 @@
         var frame = document.getElementById('headerVideoFrame');
         var counterBox = document.getElementById('headerCounterBox');
         var titleBlock = document.getElementById('headerTitleBlock');
-        
         if (!frame || !titleBlock) return;
-
         if (window.innerWidth < 768) {
           frame.style.width = '';
           frame.style.height = '';
-          if (counterBox) {
-            counterBox.style.width = '';
-            counterBox.style.height = '';
-          }
+          if (counterBox) { counterBox.style.width = ''; counterBox.style.height = ''; }
           return;
         }
-
         var h = Math.round(titleBlock.getBoundingClientRect().height);
         if (!h || h < 40) return;
-
         var w = Math.round(h * (16 / 9));
-
         frame.style.height = h + 'px';
         frame.style.width = w + 'px';
-
-        // Size counter box to exactly match video
-        if (counterBox) {
-          counterBox.style.height = h + 'px';
-          counterBox.style.width = w + 'px';
-        }
+        if (counterBox) { counterBox.style.height = h + 'px'; counterBox.style.width = w + 'px'; }
       } catch(e) { console.warn('[sizeHeaderVideo]', e); }
     }
 
@@ -753,10 +728,8 @@
       } else {
         let explicit = "";
         try { explicit = (sessionStorage.getItem("gc_user_selected_plan") || "").trim(); } catch(e) {}
-
         const validPlans = ["Listed Property Basic", "Listed Property Plus", "FSBO Plus"];
         const isValid = validPlans.indexOf(explicit) >= 0;
-
         if (isValid) {
           setPlan(explicit, true);
           showForm(planToFormMode(explicit));
@@ -768,7 +741,6 @@
       }
 
       markTabInitialized();
-
       sizeHeaderVideo();
       setTimeout(sizeHeaderVideo, 80);
 
@@ -781,13 +753,9 @@
           if (d.length > 6) v = '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
           else if (d.length > 3) v = '(' + d.slice(0,3) + ') ' + d.slice(3);
           this.value = v;
-
           var ok = /^\(\d{3}\)\s\d{3}-\d{4}$/.test(this.value);
-          if(phoneError){
-            phoneError.classList.toggle('hidden', ok || d.length < 10);
-          }
+          if(phoneError){ phoneError.classList.toggle('hidden', ok || d.length < 10); }
           this.classList.toggle('border-red-500', !ok && d.length === 10);
-
           syncAll();
           fitStrip1();
         });
@@ -797,14 +765,8 @@
       for(var i=0;i<syncFields.length;i++){
         var el = document.getElementById(syncFields[i]);
         if(el){
-          el.addEventListener('input', function(){
-            syncAll();
-            fitStrip1();
-          });
-          el.addEventListener('change', function(){
-            syncAll();
-            fitStrip1();
-          });
+          el.addEventListener('input', function(){ syncAll(); fitStrip1(); });
+          el.addEventListener('change', function(){ syncAll(); fitStrip1(); });
         }
       }
 
@@ -867,7 +829,6 @@
       var day = today.getDate();
       var year = today.getFullYear();
       var dateStr = month + '/' + day + '/' + year;
-
       document.getElementById('signatureDate').textContent = dateStr;
       document.getElementById('signatureDateFSBO').textContent = dateStr;
 
@@ -954,15 +915,11 @@
       else plan = 'Listed Property Basic';
 
       localStorage.setItem('selectedPlan', plan);
-
       localStorage.setItem('postSignatureOptions', plan.indexOf('FSBO') >= 0 ? 'fsbo' : 'listed');
       localStorage.setItem('loginOrigin', 'box2');
       localStorage.setItem('nextAfterLogin', '/verify-code.html');
 
-      // Email normalization (used for Firestore fields)
-      function normEmail(v){
-        return String(v || '').trim().toLowerCase();
-      }
+      function normEmail(v){ return String(v || '').trim().toLowerCase(); }
 
       try {
         var db = window.gc && window.gc.db;
@@ -979,7 +936,6 @@
           var agentEmailRaw = plan.indexOf('FSBO') >= 0 ? "" : (formData.agentEmail || "");
           var ownerEmailRaw = plan.indexOf('FSBO') >= 0 ? (formData.fsboEmail || "") : "";
 
-          // Create listing IMMEDIATELY (no geo fields yet)
           var payload = {
             address: formData.address,
             shortAddress: (formData.address.split(",")[0] || "").trim(),
@@ -988,25 +944,17 @@
             status: "Draft",
             commission: formData.commission || "",
             commissionType: formData.commissionType || "%",
-
             ownerName: formData.name || "",
             ownerEmail: ownerEmailRaw,
             ownerEmailLower: normEmail(ownerEmailRaw),
-
             ownerPhone: plan.indexOf('FSBO') >= 0 ? (formData.phone || "") : "",
-
             agentName: plan.indexOf('FSBO') >= 0 ? "" : (formData.agent || ""),
             agentPhone: plan.indexOf('FSBO') >= 0 ? "" : (formData.phone || ""),
-
             agentEmail: agentEmailRaw,
             agentEmailLower: normEmail(agentEmailRaw),
-
             brokerage: plan.indexOf('FSBO') >= 0 ? "" : (formData.brokerage || ""),
             deviceKey: getDeviceKey(),
-
-            // Initialize geo fields as pending (background will fill)
             geoStatus: "pending",
-
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             source: "index.box2"
@@ -1018,7 +966,6 @@
           localStorage.setItem("lastListingAddress", payload.address || "");
           localStorage.setItem('formData:' + ref.id, JSON.stringify(formData));
 
-          // Fire-and-forget background geocode + updateDoc
           (async function backgroundGeocode() {
             try {
               var geoResult = await geocodeAddress(formData.address);
@@ -1028,12 +975,8 @@
                 geoStatus: geoResult.status,
                 geoProvider: geoResult.provider
               };
-              if (geoResult.placeName) {
-                geoUpdate.geoPlaceName = geoResult.placeName;
-              }
-              if (geoResult.status === "ok") {
-                geoUpdate.geoUpdatedAt = serverTimestamp();
-              }
+              if (geoResult.placeName) geoUpdate.geoPlaceName = geoResult.placeName;
+              if (geoResult.status === "ok") geoUpdate.geoUpdatedAt = serverTimestamp();
               await updateDoc(doc(db, "listings", ref.id), geoUpdate);
               console.log("[Task E] Background geocode complete:", geoResult.status);
             } catch (e) {
@@ -1050,7 +993,6 @@
         return;
       }
 
-      // Small delay before redirect to let background geocode start
       setTimeout(function() {
         window.location.href = "/login.html";
       }, 250);
@@ -1058,7 +1000,6 @@
 
     /* ========================================
        Strip 2 Tiles: Uses shared tile-renderer.js
-       Placeholder set here, actual renderer loaded via module
        ======================================== */
     window.gcRenderTile = null;
 
@@ -1125,7 +1066,7 @@
   </script>
 
   <!-- Strip 2 Tiles: Load from Firestore using shared tile-renderer.js -->
-  <!-- SENIORITY PRIORITY SORTING: Pin > Premium > Standard -->
+  <!-- STATUS + SENIORITY PRIORITY SORTING: Active > In Contract > Sold, then Pin > Premium > Standard -->
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -1138,11 +1079,12 @@
       });
     };
 
-    // ===== SENIORITY PRIORITY SORTING =====
+    // ===== STATUS + SENIORITY PRIORITY SORTING =====
     // Business Rules:
-    // 1. Pin Placement: Top tier, sorted by createdAt ASCENDING (oldest first = seniority)
-    // 2. Premium Placement: Second tier, sorted by createdAt ASCENDING (oldest first = seniority)
-    // 3. Standard Listings: Third tier, sorted by createdAt DESCENDING (newest first)
+    // 0. Status Group: Active first, In Contract second, Sold last
+    // 1. Pin Placement: Top tier within status group, sorted by createdAt ASCENDING (oldest first = seniority)
+    // 2. Premium Placement: Second tier within status group, sorted by createdAt ASCENDING (oldest first = seniority)
+    // 3. Standard Listings: Third tier within status group, sorted by createdAt DESCENDING (newest first)
     function sortListings(items) {
       function getCreatedAtMs(doc) {
         var ca = doc.createdAt;
@@ -1154,31 +1096,33 @@
         return 0;
       }
 
+      function statusRank(doc) {
+        var s = String(doc.status || '').trim().toLowerCase();
+        if (s === 'sold') return 2;
+        if (s === 'in contract' || s === 'in_contract' || s === 'pending') return 1;
+        return 0; // Active and everything else
+      }
+
       return items.slice().sort(function(a, b) {
+        // Status group first: Active (0) < In Contract (1) < Sold (2)
+        var aStatus = statusRank(a);
+        var bStatus = statusRank(b);
+        if (aStatus !== bStatus) return aStatus - bStatus;
+
+        // Within same status group: pin > premium > standard
         var aPin = !!(a.paidUpgrades && a.paidUpgrades.pin);
         var bPin = !!(b.paidUpgrades && b.paidUpgrades.pin);
         var aPremium = !!(a.paidUpgrades && a.paidUpgrades.premium);
         var bPremium = !!(b.paidUpgrades && b.paidUpgrades.premium);
 
-        // Tier 1: Pin Placement wins over everything
         if (aPin && !bPin) return -1;
         if (!aPin && bPin) return 1;
+        if (aPin && bPin) return getCreatedAtMs(a) - getCreatedAtMs(b);
 
-        // Both have Pin: sort by createdAt ASCENDING (oldest first = seniority)
-        if (aPin && bPin) {
-          return getCreatedAtMs(a) - getCreatedAtMs(b);
-        }
-
-        // Tier 2: Premium Placement wins over Standard
         if (aPremium && !bPremium) return -1;
         if (!aPremium && bPremium) return 1;
+        if (aPremium && bPremium) return getCreatedAtMs(a) - getCreatedAtMs(b);
 
-        // Both have Premium: sort by createdAt ASCENDING (oldest first = seniority)
-        if (aPremium && bPremium) {
-          return getCreatedAtMs(a) - getCreatedAtMs(b);
-        }
-
-        // Tier 3: Standard listings - sort by createdAt DESCENDING (newest first)
         return getCreatedAtMs(b) - getCreatedAtMs(a);
       });
     }
@@ -1223,15 +1167,16 @@
             propertyType: d.propertyType || "",
             views: Number(d.views || 0),
             likes: Number(d.likes || 0),
-            paidUpgrades: d.paidUpgrades || null,  // NEW: Required for seniority sorting
-            createdAt: d.createdAt || null           // NEW: Required for seniority sorting
+            paidUpgrades: d.paidUpgrades || null,
+            createdAt: d.createdAt || null,
+            soldPrice: d.soldPrice || null,   // Required for sold tile display
+            soldDate: d.soldDate || null       // Required for sold tile display
           });
         });
 
-        // ===== APPLY SENIORITY PRIORITY SORTING =====
-        // Pin > Premium > Standard (with date-based sub-sorting)
+        // ===== APPLY STATUS + SENIORITY PRIORITY SORTING =====
         items = sortListings(items);
-        console.log('[index] Tiles sorted by seniority priority. Total:', items.length);
+        console.log('[index] Tiles sorted by status + seniority priority. Total:', items.length);
 
         var lastQ = (localStorage.getItem('lastSearch') || '').trim();
         renderStrip2TilesFrom(items, lastQ);
@@ -1261,14 +1206,12 @@
 
       let currentCount = 0;
 
-      // Rolling animation function
       function animateCountChange(newCount) {
         if (newCount === currentCount) return;
 
         const oldStr = String(currentCount);
         const newStr = String(newCount);
 
-        // Build HTML with rolling digits
         let html = '';
         for (let i = 0; i < newStr.length; i++) {
           const newDigit = newStr[i];
@@ -1285,14 +1228,12 @@
         counterDisplay.innerHTML = html;
         currentCount = newCount;
 
-        // Remove animation class after animation completes
         setTimeout(() => {
           const rollingEls = counterDisplay.querySelectorAll('.rolling');
           rollingEls.forEach(el => el.classList.remove('rolling'));
         }, 450);
       }
 
-      // Direct count from listings collection (ALL documents - no filters)
       try {
         const listingsCol = collection(db, "listings");
         const snapshot = await getCountFromServer(listingsCol);
