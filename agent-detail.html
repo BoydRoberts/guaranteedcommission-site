@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- agent-detail.html - Build 2026-02-13 (Added Sold Details Modal + History Tracking) -->
+<!-- agent-detail.html - Build 2026-02-16 (Smart Threshold for Price Autosave) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -474,19 +474,16 @@
       if (banner) banner.classList.toggle("hidden", !isSold);
 
       if (!isSold) {
-        // unlock only happens by reloading a non-sold record from server (we don't "unlock" sold)
         return false;
       }
 
       autosaveEnabled = false;
 
-      // Disable all form controls + buttons
       const form = document.getElementById("agentForm");
       if (form) {
         form.querySelectorAll("input, select, textarea, button").forEach(el => { el.disabled = true; });
       }
 
-      // Also disable promo button explicitly
       const promoBtn = document.getElementById("applyPromoBtn");
       if (promoBtn) promoBtn.disabled = true;
 
@@ -523,7 +520,6 @@
         payload.soldDate = soldDateVal;
         payload.updatedAt = serverTimestamp();
 
-        // ===== Track status change to Sold =====
         try {
           var snapSold = await getDoc(doc(db, "listings", listingId));
           if (snapSold.exists()) {
@@ -549,7 +545,6 @@
               }
             }
 
-            // ===== Price History: record sold price if different =====
             var oldPriceNum = Number(oldSold.price) || 0;
             var effectiveOldPriceSold = oldPriceNum > 0 ? oldPriceNum : __lastRenderedPrice;
             if (soldPriceVal > 0 && effectiveOldPriceSold !== soldPriceVal) {
@@ -575,10 +570,8 @@
 
         await updateDoc(doc(db, "listings", listingId), payload);
 
-        // Ensure geo in background
         ensureLatLng(listingId, $("fullAddress")?.value || "");
 
-        // Close modal, lock the page
         document.getElementById("soldDetailsModal").classList.add("hidden");
         checkSoldLock("Sold");
         setAutosaveUI("locked");
@@ -591,7 +584,6 @@
       }
     }
 
-    // Wire the Confirm Sold button
     (function wireSoldBtn(){
       var btn = document.getElementById("confirmSoldBtn");
       if (btn) btn.addEventListener("click", commitSold);
@@ -734,7 +726,6 @@
         $("status").value = d.status || "";
         $("price").value = d.price ?? "";
 
-        // Track what Firestore has so doAutosave can compare accurately
         __lastRenderedPrice = Number(d.price) || 0;
         __lastRenderedStatus = String(d.status || "").trim();
 
@@ -774,13 +765,11 @@
 
         ensureLatLng(listingId, d.address);
 
-        // Track initial status for sold modal revert
         var initStatus = String(d.status || "").trim();
         if (initStatus && initStatus.toLowerCase() !== "sold") {
           window.__preSoldStatus = initStatus;
         }
 
-        // Sold lock last
         if (checkSoldLock(d.status)) return;
 
         autosaveEnabled = true;
@@ -850,6 +839,21 @@
       if (!listingId) return;
       if (soldLocked || checkSoldLock($("status")?.value)) return;
 
+      // =========================================================================
+      // SMART THRESHOLD: Prevent saving "junk" partial prices (e.g. "$2")
+      // If user is focused on the price field and the value is unrealistically
+      // low (< $10,000), assume they are still typing and skip this save cycle.
+      // The debounce will fire again once they finish typing or click away.
+      // =========================================================================
+      var activeEl = document.activeElement;
+      if (activeEl && activeEl.id === "price") {
+        var currentVal = Number(String(activeEl.value).replace(/[^0-9.]/g, '') || 0);
+        if (currentVal < 10000) {
+          console.log("[autosave] Skipping partial price input:", currentVal);
+          return;
+        }
+      }
+
       setAutosaveUI("saving");
       try {
         var payload = buildAutosavePayload();
@@ -861,7 +865,6 @@
           var dt = getDateTimeParts();
 
           // --- Price History ---
-          // Use the best available "old" price: Firestore first, then local tracking
           var firestoreOldPrice = Number(oldData.price) || 0;
           var effectiveOldPrice = firestoreOldPrice > 0 ? firestoreOldPrice : __lastRenderedPrice;
           var newPriceNum = Number(payload.price) || 0;
@@ -919,7 +922,6 @@
         await updateDoc(doc(db, "listings", listingId), payload);
         if (payload.zip) currentZipOnDoc = String(payload.zip);
 
-        // Update local tracking after successful save
         var savedPrice = Number(payload.price) || 0;
         if (savedPrice > 0) __lastRenderedPrice = savedPrice;
         var savedStatus = String(payload.status || "").trim();
@@ -1025,10 +1027,8 @@
       const v = String($("status")?.value || "").trim();
 
       if (v.toLowerCase() === "sold") {
-        // Store previous status for Cancel revert
         window.__preSoldStatus = window.__preSoldStatus || "Active";
 
-        // Pre-fill sold date with today
         var sdEl = document.getElementById("soldDate");
         if (sdEl && !sdEl.value) {
           var today = new Date();
@@ -1038,7 +1038,6 @@
           sdEl.value = yyyy + "-" + mm + "-" + dd;
         }
 
-        // Pre-fill sold price with current listing price
         var spEl = document.getElementById("soldPrice");
         var curPrice = $("price")?.value;
         if (spEl && !spEl.value && curPrice) spEl.value = curPrice;
@@ -1047,10 +1046,7 @@
         return;
       }
 
-      // Track previous status for next time
       window.__preSoldStatus = v;
-
-      // otherwise normal autosave
       autosaveDebounced();
     });
 
@@ -1107,7 +1103,6 @@
         badge.classList.add("hidden");
       }
 
-      // If sold, force disable
       if (soldLocked) {
         btn.disabled = true;
       } else {
@@ -1185,7 +1180,6 @@
       computePhotoHelp();
       wireAutosaveListeners();
 
-      // If server says sold, lock already happened in refreshFromServer()
       if (!soldLocked) setAutosaveUI("waiting");
 
       paintPromoState();
