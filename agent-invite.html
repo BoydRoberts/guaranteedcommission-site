@@ -14,7 +14,7 @@
     <div class="w-full max-w-xl bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
         <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">
-          agent-invite build 2025-12-30 (agentEmailLower for case-insensitive matching)
+          agent-invite build 2026-02-16 (Smart Threshold for price saves)
         </span>
       </div>
 
@@ -130,6 +130,16 @@
         if (raw !== null && raw !== undefined && String(raw).trim() !== "") {
           const n = Number(raw);
           priceVal = isFinite(n) ? n : null;
+        }
+
+        // =====================================================================
+        // SMART THRESHOLD: Don't save unrealistic partial prices to DB
+        // If the user is still typing (e.g. "2" on the way to "2,000,000"),
+        // skip the save. The next input/change/blur event will retry.
+        // =====================================================================
+        if (priceVal !== null && priceVal < 10000) {
+          console.log("[agent-invite] Skipping partial price input:", priceVal);
+          return;
         }
 
         const current = getJSON("agentListing", {});
