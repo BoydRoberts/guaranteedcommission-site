@@ -85,9 +85,9 @@
 
     // ✅ Initialize first step in history (use replaceState to avoid extra entry)
     if (!history.state || history.state.page !== 'upsell') {
-      const state = { page: 'upsell', step: idx };  // ✅ Use idx (may be from URL)
+      const state = { page: 'upsell', step: idx };
       const url = new URL(window.location.href);
-      url.searchParams.set('step', String(idx));  // ✅ Use idx, not hardcoded 0
+      url.searchParams.set('step', String(idx));
       history.replaceState(state, '', url.toString());
     } else if (typeof history.state.step === 'number') {
       idx = history.state.step;
@@ -155,6 +155,23 @@
         // On all other steps: show "Add & Continue", hide "Add & Go to Checkout"
         $('#btnAdd').classList.remove('hidden');
         $('#btnCheckout').classList.add('hidden');
+      }
+
+      // =====================================================================
+      // AUTO-ADVANCE: When user checks the box, instantly trigger Add action.
+      // Reuses existing button click logic for consistency (including the
+      // special "Upgrade to Plus" reload on the first Basic step).
+      // =====================================================================
+      var ckEl = document.getElementById('ck');
+      if (ckEl) {
+        ckEl.addEventListener('change', function(e) {
+          if (!e.target.checked) return;  // Only auto-advance on CHECK, not uncheck
+          if (isLastStep) {
+            $('#btnCheckout').click();
+          } else {
+            $('#btnAdd').click();
+          }
+        });
       }
     }
 
