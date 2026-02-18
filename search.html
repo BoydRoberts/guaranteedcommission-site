@@ -1199,18 +1199,16 @@
       });
 
       grid.innerHTML = `
-        <article class="gc-tile" style="overflow:hidden; grid-column: 1 / -1; max-width:400px;">
-          <a href="/index.html" class="block hover:bg-blue-50 transition" style="padding:1.5rem 1rem; text-align:center; min-height:180px; display:flex; align-items:center; justify-content:center; background:#f8fafc;">
-            <span>
-              <span style="font-size:14px; color:#374151; line-height:1.6;">
-                There are not any<br>
-                <strong style="color:#4DA6FF; font-size:16px;">GUARANTEED COMMISSIONS</strong><br>
-                in<br>
-                <strong style="color:#dc2626; font-size:18px;">${safeArea}</strong>
-              </span>
-              <br><br>
-              <span style="color:#2563eb; text-decoration:underline; font-size:13px; font-weight:600;">Click to be the first</span>
-            </span>
+        <article class="gc-tile" style="overflow:hidden;">
+          <a href="/index.html"
+             class="block w-full flex flex-col items-center justify-center text-center p-4 border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 transition"
+             style="height:180px;">
+            <div class="text-gray-500 text-sm font-medium leading-relaxed">
+              There are not any<br>
+              <span style="color:#4DA6FF;" class="font-bold">GUARANTEED COMMISSIONS</span><br>
+              in ${safeArea}
+            </div>
+            <div class="text-xs text-gray-400 mt-1">Click to be the first</div>
           </a>
           <div style="position:relative; padding-top:56.25%; background:#000;">
             <iframe
