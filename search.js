@@ -257,13 +257,44 @@ function commissionLabel(item) {
   return `Commission: ${item.commission}%${est}`;
 }
 
+function renderGhostTile(grid) {
+  var searchTerm = (els.q ? els.q.value : "").trim();
+  var areaName = searchTerm ? searchTerm.toUpperCase() : "THIS AREA";
+
+  grid.innerHTML = `
+    <article class="tile" style="overflow:hidden;">
+      <a href="/index.html" class="block hover:bg-blue-50 transition" style="padding:1.5rem 1rem; text-align:center; min-height:180px; display:flex; align-items:center; justify-content:center; background:#f8fafc;">
+        <span>
+          <span style="font-size:14px; color:#374151; line-height:1.6;">
+            There are not any<br>
+            <strong style="color:#4DA6FF; font-size:16px;">GUARANTEED COMMISSIONS</strong><br>
+            in<br>
+            <strong style="color:#dc2626; font-size:18px;">${escapeHTML(areaName)}</strong>
+          </span>
+          <br><br>
+          <span style="color:#2563eb; text-decoration:underline; font-size:13px; font-weight:600;">Click to be the first</span>
+        </span>
+      </a>
+      <div style="position:relative; padding-top:56.25%; background:#000;">
+        <iframe
+          style="position:absolute; top:0; left:0; width:100%; height:100%;"
+          src="https://www.youtube.com/embed/3PtTT17ILXY?rel=0"
+          frameborder="0"
+          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen>
+        </iframe>
+      </div>
+    </article>
+  `;
+}
+
 function renderTiles(items) {
   const grid = els.grid;
   if (!grid) return;
   grid.innerHTML = "";
 
   if (items.length === 0) {
-    grid.innerHTML = `<div class="text-sm text-gray-500 p-4">No listings match your search.</div>`;
+    renderGhostTile(grid);
     if (els.count) els.count.textContent = "0";
     return;
   }
