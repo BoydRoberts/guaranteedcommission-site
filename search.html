@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-02-14 (Sold: centered badge, soldPrice display, dark red, clean markers) -->
+<!-- search.html - Build 2026-02-07 (Sold date/price display on tiles + visual styling) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -604,10 +604,9 @@
 
     // ===== SENIORITY PRIORITY SORTING =====
     // Business Rules:
-    // 0. Status Group: Active first, In Contract second, Sold last
-    // 1. Pin Placement: Top tier within status group, sorted by createdAt ASCENDING (oldest first = seniority)
-    // 2. Premium Placement: Second tier within status group, sorted by createdAt ASCENDING (oldest first = seniority)
-    // 3. Standard Listings: Third tier within status group, sorted by createdAt DESCENDING (newest first)
+    // 1. Pin Placement: Top tier, sorted by createdAt ASCENDING (oldest first = seniority)
+    // 2. Premium Placement: Second tier, sorted by createdAt ASCENDING (oldest first = seniority)
+    // 3. Standard Listings: Third tier, sorted by createdAt DESCENDING (newest first)
     function sortListings(items) {
       function getCreatedAtMs(doc) {
         const ca = doc.createdAt;
@@ -619,20 +618,7 @@
         return 0;
       }
 
-      function statusRank(doc) {
-        const s = String(doc.status || '').trim().toLowerCase();
-        if (s === 'sold') return 2;
-        if (s === 'in contract' || s === 'in_contract' || s === 'pending') return 1;
-        return 0; // Active and everything else
-      }
-
       return [...items].sort((a, b) => {
-        // Status group first: Active (0) < In Contract (1) < Sold (2)
-        const aStatus = statusRank(a);
-        const bStatus = statusRank(b);
-        if (aStatus !== bStatus) return aStatus - bStatus;
-
-        // Within same status group: pin > premium > standard
         const aPin = !!(a.paidUpgrades && a.paidUpgrades.pin);
         const bPin = !!(b.paidUpgrades && b.paidUpgrades.pin);
         const aPremium = !!(a.paidUpgrades && a.paidUpgrades.premium);
@@ -957,16 +943,7 @@
       const price = (typeof doc.price === "number") ? doc.price : (Number(doc.price) || 0);
       const cType = (doc.commissionType === "%" || doc.commissionType === "$") ? doc.commissionType : "%";
       const cRaw = doc.commission ?? "";
-
-      // Determine sold status early so we can use soldPrice
-      const statusStr = String(doc.status || "Active").trim();
-      const statusLower = statusStr.toLowerCase();
-      const isSold = (statusLower === "sold");
-
-      // For sold listings, use soldPrice for display and commission math
-      const finalPrice = (isSold && doc.soldPrice) ? Number(doc.soldPrice) : price;
-
-      const cAmt = commissionAmount(finalPrice, cRaw, cType);
+      const cAmt = commissionAmount(price, cRaw, cType);
       const cPctLbl = cRaw ? (cType === '$' ? money(cRaw) : (Number(cRaw) + '%')) : "—";
 
       const photos = Array.isArray(doc.photos) ? doc.photos.filter(u => typeof u === "string" && u) : [];
@@ -982,7 +959,10 @@
       // =====================================================
       // INLINE SOLD DATE/PRICE LOGIC - ROBUST IMPLEMENTATION
       // =====================================================
-      // (isSold already determined above for price/commission logic)
+      const rawStatus = doc.status;
+      const statusStr = String(rawStatus || "Active").trim();
+      const statusLower = statusStr.toLowerCase();
+      const isSold = (statusLower === "sold");
       
       // Debug log to verify data
       console.log('[renderTile] Listing:', id, '| Status:', statusStr, '| soldDate:', doc.soldDate, '| soldPrice:', doc.soldPrice);
@@ -1068,14 +1048,14 @@
         <div class="relative">
           <img class="gc-photo" alt="Listing photo" src="${primaryPhoto}">
           ${banner ? `<div class="gc-ribbon">${banner}</div>` : ''}
-          ${isSold ? `<div class="absolute top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
+          ${isSold ? `<div class="absolute top-2 left-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
           <button type="button" class="gc-heart" aria-label="Like"></button>
           <button type="button" class="gc-share gc-share-left" data-share="email">Email</button>
           <button type="button" class="gc-share gc-share-right" data-share="text">Text</button>
         </div>
         <div class="p-3 space-y-1">
           <div class="flex items-center justify-between text-[15px] font-semibold">
-            <div class="truncate ${isSold ? 'text-red-700' : ''}">${finalPrice ? money(finalPrice) : "$—"}</div>
+            <div class="truncate">${price ? money(price) : "$—"}</div>
             <div class="truncate text-red-600">Commission ${cPctLbl} | ${cAmt ? money(cAmt) : "$—"}</div>
           </div>
           <div class="text-[12px] text-gray-700">
@@ -1168,10 +1148,15 @@
         const label = document.createElement('div');
         label.className = 'gc-marker-label';
 
-        // Price label — color coding is sufficient, no text suffix needed
-        // For sold listings, show soldPrice if available
-        const markerPrice = (isSold && it.soldPrice) ? it.soldPrice : it.price;
-        label.textContent = formatPriceShort(markerPrice);
+        // Price label with status suffix for Sold/Pending
+        const basePrice = formatPriceShort(it.price);
+        if (isSold) {
+          label.textContent = basePrice + ' (SOLD)';
+        } else if (isPending) {
+          label.textContent = basePrice + ' (PENDING)';
+        } else {
+          label.textContent = basePrice;
+        }
 
         const goListing = (e) => {
           e.stopPropagation();
@@ -1200,10 +1185,50 @@
       syncTilesToViewport();
     }
 
+    // =================================================================
+    // GHOST TILE: Call-to-action when zero results in viewport
+    // Top half: clickable CTA → index.html (Strip 1 intake)
+    // Bottom half: founder's YouTube video (click to play)
+    // Auto-disappears when real listings are visible.
+    // =================================================================
+    function renderGhostTile(grid) {
+      var searchTerm = ($("qBox")?.value || "").trim();
+      var areaName = searchTerm ? searchTerm.toUpperCase() : "THIS AREA";
+      var safeArea = String(areaName).replace(/[&<>"']/g, function(c) {
+        return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c];
+      });
+
+      grid.innerHTML = `
+        <article class="gc-tile" style="overflow:hidden; grid-column: 1 / -1; max-width:400px;">
+          <a href="/index.html" class="block hover:bg-blue-50 transition" style="padding:1.5rem 1rem; text-align:center; min-height:180px; display:flex; align-items:center; justify-content:center; background:#f8fafc;">
+            <span>
+              <span style="font-size:14px; color:#374151; line-height:1.6;">
+                There are not any<br>
+                <strong style="color:#4DA6FF; font-size:16px;">GUARANTEED COMMISSIONS</strong><br>
+                in<br>
+                <strong style="color:#dc2626; font-size:18px;">${safeArea}</strong>
+              </span>
+              <br><br>
+              <span style="color:#2563eb; text-decoration:underline; font-size:13px; font-weight:600;">Click to be the first</span>
+            </span>
+          </a>
+          <div style="position:relative; padding-top:56.25%; background:#000;">
+            <iframe
+              style="position:absolute; top:0; left:0; width:100%; height:100%;"
+              src="https://www.youtube.com/embed/3PtTT17ILXY?rel=0"
+              frameborder="0"
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen>
+            </iframe>
+          </div>
+        </article>
+      `;
+    }
+
     function renderTilesWithHover(grid, items) {
       grid.innerHTML = '';
       if (!items.length) {
-        grid.innerHTML = `<div class="text-sm text-gray-500">No listings in this map area. Pan or zoom out to see more.</div>`;
+        renderGhostTile(grid);
         return;
       }
       
