@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<!-- index.html - Build 2026-02-14 (Status sort: Active > In Contract > Sold + soldPrice/soldDate pass-through) -->
+
+<!-- index.html - Build 2026-02-14 (Status sort: Active > In Contract > Sold + soldPrice/soldDate pass-through + strip2Wrapper intake mode) -->
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -419,7 +421,7 @@
     </section>
   </div>
 
-  <div style="background-color:#ffffff;">
+  <div id="strip2Wrapper" style="background-color:#ffffff;">
     <section id="strip2Search" class="max-w-7xl mx-auto px-4 pb-12 pt-6">
       <div class="text-center mb-4 mt-0">
         <div class="flex items-center justify-center">
@@ -718,6 +720,14 @@
     }
 
     window.addEventListener('DOMContentLoaded', function() {
+      // ISOLATE STRIP 1: Hide Strip 2 if URL contains ?mode=intake
+      if (window.location.search.includes('mode=intake')) {
+        var strip2 = document.getElementById('strip2Wrapper');
+        if (strip2) {
+          strip2.style.display = 'none';
+        }
+      }
+
       const returning = cameFromFlow() || hasActiveFlowState();
       const alreadyInit = tabInitialized();
 
