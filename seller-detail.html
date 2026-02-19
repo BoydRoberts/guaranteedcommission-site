@@ -230,41 +230,26 @@
       </section>
 
       <section id="prosSidebar" class="bg-white rounded shadow p-5">
-        <div class="flex items-center justify-between mb-3">
+        <div class="mb-3">
           <h3 class="font-semibold">Local Professionals in <span id="prosZip">—</span></h3>
-          <a id="prosCtaBtn" href="/local-professionals.html" class="text-xs px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700">Local Professionals</a>
         </div>
         <div id="prosList" class="space-y-3"></div>
-        <div id="prosEmpty" class="hidden text-sm text-gray-600 mt-2">
-          Your business card here. <a id="prosEmptyLink" href="/local-professionals.html" class="underline text-blue-600">Become a Local Professional</a>.
-        </div>
       </section>
     </aside>
 
     <section id="brokerStrip" class="lg:col-span-3 bg-white rounded shadow p-5">
-      <div class="flex items-center justify-between mb-3">
+      <div class="mb-3">
         <h3 class="text-lg font-semibold">Local Real Estate Brokerage in <span id="brokerZip">—</span></h3>
-        <a id="brokerCtaBtn" href="/local-brokers.html" class="text-sm px-3 py-1 rounded bg-amber-600 text-white hover:bg-amber-700">Local Brokers</a>
       </div>
-      <div id="brokerAd" class="min-h-[140px] flex items-center justify-center bg-gray-50 rounded border border-gray-200"></div>
-      <div id="brokerEmpty" class="hidden text-sm text-gray-600 mt-2">
-        Your brokerage here. <a id="brokerEmptyLink" href="/local-brokers.html" class="underline text-blue-600">Reserve this ZIP</a>.
-      </div>
+      <div id="brokerAd" class="max-h-[400px] overflow-y-auto min-h-[140px] flex items-center justify-center bg-gray-50 rounded border border-gray-200"></div>
     </section>
 
     <!-- Local Service Providers Strip -->
     <section id="serviceProvidersStrip" class="lg:col-span-3 bg-white rounded shadow p-5" style="display:none;">
-      <div class="flex items-center justify-between mb-3">
+      <div class="mb-3">
         <h3 class="text-lg font-semibold">Local Service Providers in <span id="serviceProvidersZip">—</span></h3>
-        <a id="serviceProvidersCtaBtn" href="/local-service-providers.html" class="text-sm px-3 py-1 rounded text-white hover:opacity-90" style="background-color:#4DA6FF;">Join This List</a>
       </div>
-      <div id="serviceProvidersGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"></div>
-      <div id="serviceProvidersEmpty" class="hidden">
-        <a href="/local-service-providers.html" class="block p-4 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-blue-400 hover:bg-blue-50 transition">
-          <div class="text-gray-500 text-sm font-medium">Your Business Card Here</div>
-          <div class="text-xs text-gray-400 mt-1">Click to become a Local Service Provider</div>
-        </a>
-      </div>
+      <div id="serviceProvidersGrid" class="max-h-[400px] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4"></div>
     </section>
 
   </main>
@@ -530,14 +515,17 @@
 
       var currentPlan = plan.trim();
       var isFSBO = currentPlan.includes("FSBO");
-      if (!isFSBO) { card.classList.add("hidden"); return; }
+      if (!isFSBO) { card.style.display = "none"; return; }
+
+      // Hide entire box if no results
+      if (agents.length === 0 && lenders.length === 0) {
+        card.style.display = "none";
+        return;
+      }
 
       $("prosZip").textContent = zip || "—";
-      $("prosCtaBtn").href = "/local-professionals.html?zip=" + encodeURIComponent(zip) + "&mode=search";
-      $("prosEmptyLink").href = "/local-professionals.html?zip=" + encodeURIComponent(zip) + "&mode=apply";
 
       var list = $("prosList");
-      var empty = $("prosEmpty");
       list.innerHTML = "";
 
       function noImageFSBO(){
@@ -568,10 +556,8 @@
       agents.forEach(function(a) { tiles.push(tileFSBO(a)); });
       lenders.forEach(function(l) { tiles.push(tileFSBO(l)); });
 
-      if (tiles.length) { tiles.forEach(function(t) { list.appendChild(t); }); empty.classList.add("hidden"); }
-      else { empty.classList.remove("hidden"); }
-
-      card.classList.remove("hidden");
+      tiles.forEach(function(t) { list.appendChild(t); });
+      card.style.display = "block";
     }
 
     async function loadLocalBroker(zip) {
@@ -603,30 +589,29 @@
       var isFSBO = currentPlan.includes("FSBO");
       if (!isFSBO) { strip.style.display = "none"; return; }
 
+      // Hide entire box if no broker
+      if (!broker || (!broker.photoUrl && !broker.name)) {
+        strip.style.display = "none";
+        return;
+      }
+
       $("brokerZip").textContent = zip || "—";
-      $("brokerCtaBtn").href = "/local-brokers.html?zip=" + encodeURIComponent(zip);
-      $("brokerEmptyLink").href = "/local-brokers.html?zip=" + encodeURIComponent(zip) + "&mode=apply";
 
       var ad = $("brokerAd");
-      var empty = $("brokerEmpty");
       ad.innerHTML = "";
 
-      if (broker && (broker.photoUrl || broker.name)) {
-        var img = document.createElement("img");
-        img.src = broker.photoUrl || "";
-        img.alt = broker.name || "Local Brokerage";
-        img.className = "max-h-44 object-contain";
-        img.onerror = function() {
-          var ph = document.createElement("div");
-          ph.className = "w-full h-44 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
-          ph.textContent = "No Logo";
-          ad.appendChild(ph);
-        };
-        ad.appendChild(img);
-        empty.classList.add("hidden");
-      } else {
-        empty.classList.remove("hidden");
-      }
+      var img = document.createElement("img");
+      img.src = broker.photoUrl || "";
+      img.alt = broker.name || "Local Brokerage";
+      img.className = "max-h-44 object-contain";
+      img.onerror = function() {
+        var ph = document.createElement("div");
+        ph.className = "w-full h-44 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
+        ph.textContent = "No Logo";
+        ad.appendChild(ph);
+      };
+      ad.appendChild(img);
+
       strip.style.display = "block";
     }
 
@@ -679,22 +664,16 @@
       var isFSBO = currentPlan.includes("FSBO");
       if (!isFSBO) { strip.style.display = "none"; return; }
 
-      $("serviceProvidersZip").textContent = zip || "—";
-      $("serviceProvidersCtaBtn").href = "/local-service-providers.html?zip=" + encodeURIComponent(zip);
-
-      var grid = $("serviceProvidersGrid");
-      var empty = $("serviceProvidersEmpty");
-      grid.innerHTML = "";
-
+      // Hide entire box if no providers
       if (!providers || providers.length === 0) {
-        grid.classList.add("hidden");
-        empty.classList.remove("hidden");
-        strip.style.display = "block";
+        strip.style.display = "none";
         return;
       }
 
-      grid.classList.remove("hidden");
-      empty.classList.add("hidden");
+      $("serviceProvidersZip").textContent = zip || "—";
+
+      var grid = $("serviceProvidersGrid");
+      grid.innerHTML = "";
 
       providers.forEach(function(sp) {
         var card = document.createElement("div");
@@ -1061,9 +1040,6 @@
 
       // =========================================================================
       // SMART THRESHOLD: Prevent saving "junk" partial prices (e.g. "$2")
-      // If user is focused on the price field and the value is unrealistically
-      // low (< $10,000), assume they are still typing and skip this save cycle.
-      // The debounce will fire again once they finish typing or click away.
       // =========================================================================
       var activeEl = document.activeElement;
       if (activeEl && activeEl.id === "price") {
@@ -1085,7 +1061,6 @@
           var dt = getDateTimeParts();
 
           // --- Price History ---
-          // Use the best available "old" price: Firestore first, then local tracking
           var firestoreOldPrice = Number(oldData.price) || 0;
           var effectiveOldPrice = firestoreOldPrice > 0 ? firestoreOldPrice : __lastRenderedPrice;
           var newPriceNum = Number(payload.price) || 0;
@@ -1593,49 +1568,38 @@
 
       // =========================================================================
       // FIX: "Always On" Price Consistency Check
-      // We do not rely on URL flags or Referrers anymore.
-      // If the local receipt says $0, we strictly enforce "Basic".
       // =========================================================================
       try {
         var lidFresh = (localStorage.getItem("lastListingId") || "").trim();
         if (lidFresh) {
           var cdSync = getJSON("checkoutData", null);
           
-          // Only run if we actually have recent checkout data
           if (cdSync && cdSync.plan) {
             var rawTotal = Number(cdSync.total);
             
-            // THE GOLDEN RULE: If you paid $0, you are BASIC.
             if (rawTotal === 0) {
-              // Check if we are currently out of sync
-              // 'plan' variable comes from refreshFromServer() above
               if (plan !== "Listed Property Basic") {
                 console.log("[seller-detail] DETECTED SYNC ERROR: Plan is '" + plan + "' but Receipt is $0.");
                 console.log("[seller-detail] FORCING DOWNGRADE TO BASIC.");
                 
                 var targetPlan = "Listed Property Basic";
                 
-                // 1. Force Database
                 await updateDoc(doc(db, "listings", lidFresh), {
                   plan: targetPlan,
                   updatedAt: serverTimestamp()
                 });
 
-                // 2. Force Local State
                 plan = targetPlan;
                 isFSBO = false;
                 isPlus = false;
                 maxPhotos = 1;
 
-                // 3. Force UI
                 $("planPill").textContent = plan;
                 
-                // Re-run UI dependencies
                 applyFieldLocking(plan, paidUpgrades);
                 computePhotoHelp();
                 try { renderThumbs(); } catch(e) {}
                 
-                // Alert removed to reduce friction, but console log remains
                 console.log("Plan corrected to Basic ($0) to match receipt.");
               }
             }
