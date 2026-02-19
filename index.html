@@ -33,13 +33,6 @@
 
     .gc-form-offset { margin-top: var(--box2-first-input-offset); }
 
-    /* Box 1 FSBO compact mode */
-    #box1.fsbo-compact { font-size: 0.75rem; }
-    #box1.fsbo-compact .gc-title { font-size: 1.125rem; }
-    #box1.fsbo-compact ul { --tw-space-y-reverse: 0; margin-bottom: calc(0.5rem * var(--tw-space-y-reverse)); }
-    #box1.fsbo-compact ul > * + * { margin-top: 0.5rem; }
-    #box1.fsbo-compact p.text-base { font-size: 0.875rem; }
-
     /* Box 1: justified text with minimal spacing */
     #box1 p { text-align: justify; hyphens: auto; }
 
@@ -635,7 +628,6 @@
         if (apnRow) apnRow.classList.remove('hidden');
         document.getElementById('iscTextListed').classList.add('hidden');
         document.getElementById('iscTextFSBO').classList.remove('hidden');
-        box1.classList.add('fsbo-compact');
       } else {
         title.textContent = (type === 'plus' ? 'Listed Property Plus Communication Form' : 'Listed Property Communication Form');
         listedPhoneRow.classList.remove('hidden');
@@ -647,7 +639,6 @@
         if (apnRow) apnRow.classList.add('hidden');
         document.getElementById('iscTextListed').classList.remove('hidden');
         document.getElementById('iscTextFSBO').classList.add('hidden');
-        box1.classList.remove('fsbo-compact');
       }
     }
 
