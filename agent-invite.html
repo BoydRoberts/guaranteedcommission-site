@@ -14,7 +14,7 @@
     <div class="w-full max-w-xl bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
         <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">
-          agent-invite build 2026-02-16 (Smart Threshold for price saves)
+          agent-invite build 2026-02-21 (Price History logging on final submit)
         </span>
       </div>
 
@@ -89,7 +89,7 @@
 
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
-    import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { doc, updateDoc, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const $ = (id) => document.getElementById(id);
     const getJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
@@ -122,7 +122,7 @@
 
     function normEmail(v){ return String(v||"").trim().toLowerCase(); }
 
-    async function saveCurrentPrice() {
+    async function saveCurrentPrice(isFinalSubmit = false) {
       try {
         const cp = $("currentPrice"); if (!cp) return;
         const raw = cp.value;
@@ -152,7 +152,21 @@
 
         const listingId = (localStorage.getItem("lastListingId") || "").trim();
         if (listingId && db && priceVal !== null) {
-          await updateDoc(doc(db, "listings", listingId), { price: priceVal, updatedAt: serverTimestamp() });
+          const payload = { price: priceVal, updatedAt: serverTimestamp() };
+
+          if (isFinalSubmit === true) {
+            const now = new Date();
+            const dStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+            const tStr = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+            payload.priceHistory = arrayUnion({
+              price: priceVal,
+              date: dStr,
+              time: tStr,
+              label: "Original"
+            });
+          }
+
+          await updateDoc(doc(db, "listings", listingId), payload);
         }
       } catch (e) {
         console.warn("[agent-invite] could not save current price:", e);
@@ -161,9 +175,9 @@
 
     const cpInput = $("currentPrice");
     if (cpInput) {
-      cpInput.addEventListener("input",  saveCurrentPrice);
-      cpInput.addEventListener("change", saveCurrentPrice);
-      cpInput.addEventListener("blur",   saveCurrentPrice);
+      cpInput.addEventListener("input",  () => saveCurrentPrice(false));
+      cpInput.addEventListener("change", () => saveCurrentPrice(false));
+      cpInput.addEventListener("blur",   () => saveCurrentPrice(false));
     }
 
     // ✅ UPDATED: also write agentEmailLower
@@ -187,7 +201,7 @@
     if (inviteBtn) {
       inviteBtn.addEventListener("click", async (e) => {
         e.preventDefault();
-        await saveCurrentPrice();
+        await saveCurrentPrice(true);
 
         const emailEl = $("agentEmail");
         if (!emailEl) return;
@@ -218,7 +232,7 @@
     if (sellerBtn) {
       sellerBtn.addEventListener("click", async (e) => {
         e.preventDefault();
-        await saveCurrentPrice();
+        await saveCurrentPrice(true);
         window.location.href = "/seller-detail.html";
       });
     }
