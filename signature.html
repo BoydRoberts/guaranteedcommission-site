@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- signature.html - Build 2026-02-14 (Fresh doc re-read at sign time for priceHistory) -->
+<!-- signature.html - Build 2026-02-21 (Guard: only seed history arrays if empty) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -264,12 +264,6 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
         } catch {}
 
         try {
-          // ===== Re-read doc FRESH so price/commission are current =====
-          try {
-            const freshSnap = await getDoc(doc(db, "listings", listingId));
-            if (freshSnap.exists()) d = freshSnap.data() || d || {};
-          } catch (e) { console.warn("[signature] fresh read failed, using cached d", e); }
-
           // ===== Compute date/time for all history entries =====
           const dtNow = now();
           const dateStr = todayISO();
@@ -300,18 +294,20 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
           }
           updates.commissionHistory = currentHistory;
 
-          // ===== SEED statusHistory with "Original: Active" =====
-          updates.statusHistory = [{
-            date: dateStr,
-            time: timeStr,
-            label: "Original",
-            status: "Active"
-          }];
+          // ===== SEED statusHistory with "Original: Active" (only if empty) =====
+          if (!Array.isArray(d.statusHistory) || d.statusHistory.length === 0) {
+            updates.statusHistory = [{
+              date: dateStr,
+              time: timeStr,
+              label: "Original",
+              status: "Active"
+            }];
+          }
 
-          // ===== SEED priceHistory with "Original" if price exists =====
+          // ===== SEED priceHistory with "Original" if price exists (only if empty) =====
           var draftPrice = Number(d.price) || 0;
           console.log("[signature] priceHistory seed check: d.price =", d.price, "→ draftPrice =", draftPrice);
-          if (draftPrice > 0) {
+          if (draftPrice > 0 && (!Array.isArray(d.priceHistory) || d.priceHistory.length === 0)) {
             updates.priceHistory = [{
               date: dateStr,
               time: timeStr,
