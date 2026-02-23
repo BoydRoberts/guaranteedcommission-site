@@ -382,17 +382,7 @@
       }
     }
 
-    // Process paid upgrades FIRST (before any other logic)
-    (async function() {
-      if (window.__paidUpgradesHandled) return;
-      window.__paidUpgradesHandled = true;
-      try {
-        const result = await updatePaidUpgradesAfterPayment();
-        if (result?.processed) console.log('[seller-detail] Upgrades processed successfully');
-      } catch (e) {
-        console.warn('[seller-detail] paid-upgrades-handler failed:', e);
-      }
-    })();
+    // Paid upgrades processing moved into boot() for proper sequencing
 
     // utilities
     var $ = function(id) { return document.getElementById(id); };
@@ -1207,6 +1197,7 @@
         primaryIndex = (typeof d.primaryIndex === "number") ? d.primaryIndex : 0;
 
         applyFieldLocking(plan, paidUpgrades);
+        renderUpgradesBox(d);
 
         renderThumbs();
         setStatus(note || "Loaded from server.", true);
@@ -1384,18 +1375,10 @@
       if (btn) btn.addEventListener("click", commitSold);
     })();
 
-    (async function wireUpgrades(){
+    function renderUpgradesBox(listingData) {
       var checkoutData = getJSON("checkoutData", null) || {};
 
-      var listingData = {};
-      if (listingId) {
-        try {
-          var snap = await getDoc(doc(db, "listings", listingId));
-          if (snap.exists()) listingData = snap.data() || {};
-        } catch (e) { console.warn("[upgrades] could not fetch listing data:", e); }
-      }
-
-      var currentPlan = plan.trim();
+      var currentPlan = (listingData.plan || plan || "Listed Property Basic").trim();
       var isFSBONow = currentPlan.includes("FSBO");
       var isPlusNow = currentPlan === "Listed Property Plus";
       var isBasicNow = currentPlan === "Listed Property Basic";
@@ -1497,7 +1480,8 @@
       }
 
       var checkoutBtn = $("goCheckoutBtn");
-      if (checkoutBtn) {
+      if (checkoutBtn && !checkoutBtn.dataset.wired) {
+        checkoutBtn.dataset.wired = "true";
         checkoutBtn.addEventListener("click", function() {
           if (soldLocked || checkSoldLock($("status")?.value)) {
             alert("This listing is SOLD and locked. Upgrades are disabled.");
@@ -1510,7 +1494,7 @@
           window.location.href = "/checkout.html";
         });
       }
-    })();
+    }
 
     (function wireConfirmCommissionOnce() {
       var btn = document.getElementById("confirmCommissionBtn");
@@ -1563,6 +1547,14 @@
 
       var formData = getJSON("formData", {});
       if (formData.address && !$("fullAddress").value) $("fullAddress").value = formData.address;
+
+      // Process paid upgrades FIRST (before fetching data)
+      try {
+        const result = await updatePaidUpgradesAfterPayment();
+        if (result?.processed) console.log('[seller-detail] Upgrades processed successfully');
+      } catch (e) {
+        console.warn('[seller-detail] paid-upgrades-handler failed:', e);
+      }
 
       await refreshFromServer();
 
