@@ -179,7 +179,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Paid upgrades snapshot (from Firestore via meta)
     var pu = paid();
-    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus);
+    var origPlan = (localStorage.getItem("originalPlan") || localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromSellerDetail && origPlan === "Listed Property Plus");
 
     // ===== CRITICAL FIX #1 =====
     // Commission change: base MUST be 0 (no Plus or FSBO base), only change-commission item is charged.
@@ -276,7 +277,13 @@ document.addEventListener("DOMContentLoaded", function() {
     var pu = paid();
     var sel = [];
 
-    if (data.upgrades.upgradeToPlus) sel.push("Upgrade to Listed Property Plus (" + (promo ? "$0 - November promo" : "$" + (data.prices.plus || 20)) + ")");
+    var isUpgradeFromSellerDetail = !!(data.meta && data.meta.fromSellerDetail === true);
+    var origPlan = (localStorage.getItem("originalPlan") || localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromSellerDetail && origPlan === "Listed Property Plus");
+
+    if (plusAlreadyPaid || data.upgrades.upgradeToPlus) {
+      sel.push(plusAlreadyPaid ? "Listed Property Plus (Already paid)" : "Upgrade to Listed Property Plus (" + (promo ? "$0 - November promo" : "$" + (data.prices.plus || 20)) + ")");
+    }
 
     var bannerPrice  = promo ? 0 : (data.prices.banner  || 10);
     var premiumPrice = promo ? 0 : (data.prices.premium || 10);
@@ -332,7 +339,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
     if (!isFSBO) {
       // Determine if checkbox should be disabled
-      var plusAlreadyPaid = !!(pu && pu.upgradeToPlus);
+      var isUpgradeFromSellerDetail = !!(data.meta && data.meta.fromSellerDetail === true);
+      var origPlan = (localStorage.getItem("originalPlan") || localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
+      var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromSellerDetail && origPlan === "Listed Property Plus");
       var plusDisabled = isCommissionChange || plusAlreadyPaid;
 
       // Determine note text
