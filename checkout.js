@@ -1,6 +1,7 @@
-// /checkout.js - build 2026-01-21b (CC Who Row shows NEW commission; preserve downgrade + CC base=0 fix)
+// /checkout.js - build 2026-02-21 (Foolproof: dashboard upgrades always base $0)
+
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("[checkout.js] build 2026-01-21b - CC Who Row shows new commission");
+  console.log("[checkout.js] build 2026-02-21 - Dashboard upgrades base $0 fix");
 
   var $ = function(id) { return document.getElementById(id); };
   var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
@@ -161,7 +162,7 @@ document.addEventListener("DOMContentLoaded", function() {
     return pu || {};
   }
 
-  // Pricing recompute (FIXED: commission change base=0 + force ID in cc successUrl; preserve all existing logic)
+  // Pricing recompute (FIXED: dashboard upgrades always base $0)
   function recompute(d) {
     var freshPlan = (localStorage.getItem("selectedPlan") || "").trim();
     var plan = freshPlan || d.plan || "Listed Property Basic";
@@ -188,36 +189,44 @@ document.addEventListener("DOMContentLoaded", function() {
       d.plan = plan;
       // do NOT return yet; allow total calculation to add the change commission item later.
     } else {
-      // Special-case: if a user somehow uses this as selectedPlan, treat as $100 base intent
       var selectedIsConfidentialPlan = (plan === "Confidential FSBO Upgrade");
       if (selectedIsConfidentialPlan) {
         base = (pu && pu.confidential) ? 0 : (d.prices.confidential || 100);
         d.plan = plan;
         d.base = base;
-        // keep upgrades.confidential false here to avoid double charge
-      }
-
-      if (!selectedIsConfidentialPlan) {
-        if (isFSBOPlan(plan)) {
-          base = isUpgradeFromSellerDetail ? 0 : (d.prices.fsbo || 100);
-        } else if (isUpgradingToPlus) {
-          base = promo ? 0 : (plusAlreadyPaid ? 0 : (d.prices.plus || 20));
-          plan = "Listed Property Plus";
-          localStorage.setItem("selectedPlan", "Listed Property Plus");
-        } else if (plan === "Listed Property Plus") {
-          var freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
-
-          if (promo || d.payer === "agent" || freeFlag) {
-            base = 0;
+      } else {
+        // FOOLPROOF DASHBOARD UPGRADE CHECK:
+        // If coming from Seller Detail, base is always $0 unless actively upgrading to Plus right now
+        if (isUpgradeFromSellerDetail) {
+          if (isUpgradingToPlus) {
+            base = promo ? 0 : (plusAlreadyPaid ? 0 : (d.prices.plus || 20));
+            plan = "Listed Property Plus";
+            localStorage.setItem("selectedPlan", "Listed Property Plus");
           } else {
-            base = plusAlreadyPaid ? 0 : (d.prices.plus || 20);
+            base = 0;
           }
-
-          if (!plusAlreadyPaid && d.payer === "seller") {
-            d.upgrades.upgradeToPlus = true;
+        }
+        // Standard intake flow (not from Seller Detail)
+        else {
+          if (isFSBOPlan(plan)) {
+            base = (d.prices.fsbo || 100);
+          } else if (isUpgradingToPlus) {
+            base = promo ? 0 : (plusAlreadyPaid ? 0 : (d.prices.plus || 20));
+            plan = "Listed Property Plus";
+            localStorage.setItem("selectedPlan", "Listed Property Plus");
+          } else if (plan === "Listed Property Plus") {
+            var freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
+            if (promo || d.payer === "agent" || freeFlag) {
+              base = 0;
+            } else {
+              base = plusAlreadyPaid ? 0 : (d.prices.plus || 20);
+            }
+            if (!plusAlreadyPaid && d.payer === "seller") {
+              d.upgrades.upgradeToPlus = true;
+            }
+          } else {
+            base = 0; // Listed Property Basic
           }
-        } else {
-          base = 0;
         }
       }
     }
