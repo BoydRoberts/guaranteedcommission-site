@@ -1384,12 +1384,26 @@
       var isBasicNow = currentPlan === "Listed Property Basic";
 
       var paidUpgradesNow = listingData.paidUpgrades || {};
+      var agentUpgradesNow = listingData.agentUpgrades || {};
 
-      function row(label, price, key, paid, description) {
-        var checked = paid || !!(checkoutData.upgrades && checkoutData.upgrades[key]);
-        var disabled = paid ? "disabled" : "";
-        var grayedClass = paid ? "bg-gray-100 opacity-60" : "";
-        var paidLabel = paid ? "<span class=\"text-xs text-green-600 ml-2\">Paid</span>" : "";
+      function isAgentPaid(k) {
+        return agentUpgradesNow[k] === true || String(paidUpgradesNow[k]).toLowerCase() === "agent";
+      }
+      function isSellerPaid(k) {
+        return !!paidUpgradesNow[k] && String(paidUpgradesNow[k]).toLowerCase() !== "agent";
+      }
+
+      function row(label, price, key, sellerPaid, description, agentPaid) {
+        var isPaid = sellerPaid || agentPaid;
+        var checked = isPaid || !!(checkoutData.upgrades && checkoutData.upgrades[key]);
+        var disabled = isPaid ? "disabled" : "";
+        var grayedClass = isPaid ? "bg-gray-100 opacity-60" : "";
+        var paidLabel = "";
+        if (agentPaid) {
+          paidLabel = "<span class=\"text-xs text-green-600 font-bold ml-2\">Upgraded by Agent</span>";
+        } else if (sellerPaid) {
+          paidLabel = "<span class=\"text-xs text-green-600 font-bold ml-2\">Paid</span>";
+        }
         var desc = description ? "<div class=\"text-xs text-gray-500\">" + description + "</div>" : "";
 
         var inputId = (key === "changeCommission") ? "changeCommissionChk" : "";
@@ -1410,18 +1424,20 @@
 
       var upgrades = [];
 
-      if (isBasicNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", false, "20 photos + full property description"));
-      if (isPlusNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", true, "Current Plan"));
+      var sPlus = isSellerPaid("upgradeToPlus");
+      var aPlus = isAgentPaid("upgradeToPlus");
+      if (isBasicNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", sPlus, "20 photos + full property description", aPlus));
+      if (isPlusNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", !aPlus, "Current Plan", aPlus));
 
-      upgrades.push(row("Banner", 10, "banner", paidUpgradesNow.banner));
-      upgrades.push(row("Premium Placement", 10, "premium", paidUpgradesNow.premium));
-      upgrades.push(row("Pin Placement", 50, "pin", paidUpgradesNow.pin));
+      upgrades.push(row("Banner", 10, "banner", isSellerPaid("banner"), "", isAgentPaid("banner")));
+      upgrades.push(row("Premium Placement", 10, "premium", isSellerPaid("premium"), "", isAgentPaid("premium")));
+      upgrades.push(row("Pin Placement", 50, "pin", isSellerPaid("pin"), "", isAgentPaid("pin")));
 
       if (isFSBONow) {
-        upgrades.push(row("Confidential FSBO Upgrade", 100, "confidential", paidUpgradesNow.confidential));
-        upgrades.push(row("Change Commission", 50, "changeCommission", false, ""));
+        upgrades.push(row("Confidential FSBO Upgrade", 100, "confidential", isSellerPaid("confidential"), "", isAgentPaid("confidential")));
+        upgrades.push(row("Change Commission", 50, "changeCommission", false, "", false));
       } else {
-        upgrades.push(row("Change Commission", 10, "changeCommission", false, ""));
+        upgrades.push(row("Change Commission", 10, "changeCommission", false, "", false));
       }
 
       box.innerHTML = upgrades.join("");
