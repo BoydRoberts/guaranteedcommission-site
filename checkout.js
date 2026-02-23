@@ -178,8 +178,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // BULLETPROOF "ALREADY PAID" DEFINITION:
     // 1. Paid as an upgrade previously (pu.upgradeToPlus)
-    // 2. OR started with it as a base plan (plan == Plus AND not actively checking the upgrade box)
-    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (plan === "Listed Property Plus" && !d.upgrades.upgradeToPlus);
+    // 2. OR coming from the Seller Dashboard with an established Plus plan
+    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromSellerDetail && plan === "Listed Property Plus");
     var activelyBuyingPlus = !!d.upgrades.upgradeToPlus && !plusAlreadyPaid;
 
     var base = 0;
@@ -263,7 +263,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var pu = paid();
     var sel = [];
 
-    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (data.plan === "Listed Property Plus" && !data.upgrades.upgradeToPlus);
+    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (!!(data.meta && data.meta.fromSellerDetail === true) && data.plan === "Listed Property Plus");
 
     if (plusAlreadyPaid || data.upgrades.upgradeToPlus) {
       sel.push(plusAlreadyPaid ? "Listed Property Plus (Already paid)" : "Upgrade to Listed Property Plus (" + (promo ? "$0 - November promo" : "$" + (data.prices.plus || 20)) + ")");
@@ -323,7 +323,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     if (!isFSBO) {
       // Determine if checkbox should be disabled
-      var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (plan === "Listed Property Plus" && !data.upgrades.upgradeToPlus);
+      var isUpgradeFromSellerDetail = !!(data.meta && data.meta.fromSellerDetail === true);
+      var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromSellerDetail && plan === "Listed Property Plus");
       var plusDisabled = isCommissionChange || plusAlreadyPaid;
 
       // Determine note text
