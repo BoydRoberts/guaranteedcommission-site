@@ -1,4 +1,5 @@
 // /scripts/paid-upgrades-handler.js
+
 // Single source of truth for finalizing paid upgrades after Stripe payment
 // Idempotent - safe to call multiple times using payment_processed flag
 //
@@ -7,6 +8,8 @@
 //
 // Commission changes are finalized in signature.html when the seller signs the new ISC.
 // This ensures commission updates happen at the legally correct moment (signature time).
+//
+// Build 2026-02-23: Agent purchases tagged as "agent" in paidUpgrades for UI differentiation
 
 import { db } from "/scripts/firebase-init.js";
 import {
@@ -23,6 +26,7 @@ import {
  * - Loads the listing from Firestore
  * - Merges upgrades into paidUpgrades (doesn't overwrite existing)
  * - Processes: banner, premium, pin, confidential, plus upgrade
+ * - Tags agent purchases as "agent" (vs true for seller) for UI differentiation
  * - Upgrades plan to Plus only if upgradeToPlus is true OR checkoutData.plan is Plus
  * - For commission change, does NOT auto-upgrade to Plus (unless upgradeToPlus is also true)
  * - Marks as processed using localStorage flag
@@ -91,29 +95,46 @@ export async function updatePaidUpgradesAfterPayment() {
     // Determine what was purchased from checkoutData
     const upgrades = checkoutData.upgrades || {};
     const meta = checkoutData.meta || {};
+    const payer = checkoutData.payer || 'seller';
+    const paidVal = payer === 'agent' ? 'agent' : true;
     
+    console.log('[paid-upgrades] Payer:', payer, '→ paidVal:', paidVal);
+
     // Build new paidUpgrades object by MERGING with existing
     const newPaidUpgrades = { ...existingPaidUpgrades };
     
     if (upgrades.banner) {
-      newPaidUpgrades.banner = true;
-      console.log('[paid-upgrades] Adding banner upgrade');
+      newPaidUpgrades.banner = paidVal;
+      console.log('[paid-upgrades] Adding banner upgrade (payer:', payer + ')');
     }
     
     if (upgrades.premium) {
-      newPaidUpgrades.premium = true;
-      console.log('[paid-upgrades] Adding premium upgrade');
+      newPaidUpgrades.premium = paidVal;
+      console.log('[paid-upgrades] Adding premium upgrade (payer:', payer + ')');
     }
     
     if (upgrades.pin) {
-      newPaidUpgrades.pin = true;
-      newPaidUpgrades.premium = true; // Pin includes Premium
-      console.log('[paid-upgrades] Adding pin upgrade (includes premium)');
+      newPaidUpgrades.pin = paidVal;
+      newPaidUpgrades.premium = paidVal; // Pin includes Premium
+      console.log('[paid-upgrades] Adding pin upgrade (includes premium, payer:', payer + ')');
     }
     
     if (upgrades.confidential) {
-      newPaidUpgrades.confidential = true;
-      console.log('[paid-upgrades] Adding confidential upgrade');
+      newPaidUpgrades.confidential = paidVal;
+      console.log('[paid-upgrades] Adding confidential upgrade (payer:', payer + ')');
+    }
+
+    // Evaluate Plus upgrade intent BEFORE paidUpgradesChanged check
+    const shouldUpgradeToPlusExplicit = upgrades.upgradeToPlus === true;
+    const checkoutPlanIsPlus = checkoutData.plan === 'Listed Property Plus';
+    const isCommissionChangeOnly = upgrades.changeCommission === true && 
+                                    meta.fromChangeCommission === true &&
+                                    !shouldUpgradeToPlusExplicit;
+
+    // Tag the Plus upgrade into paidUpgrades so the UI knows who paid
+    if ((shouldUpgradeToPlusExplicit || checkoutPlanIsPlus) && !isCommissionChangeOnly) {
+      newPaidUpgrades.upgradeToPlus = paidVal;
+      console.log('[paid-upgrades] Tagging upgradeToPlus (payer:', payer + ')');
     }
 
     // Check if paidUpgrades actually changed
@@ -133,17 +154,6 @@ export async function updatePaidUpgradesAfterPayment() {
     }
 
     // Handle plan upgrade to Plus
-    // Upgrade to Plus if:
-    // 1. upgradeToPlus was purchased, OR
-    // 2. checkoutData.plan is "Listed Property Plus"
-    // BUT NOT if this was ONLY a commission change (unless upgradeToPlus is also true)
-    
-    const shouldUpgradeToPlusExplicit = upgrades.upgradeToPlus === true;
-    const checkoutPlanIsPlus = checkoutData.plan === 'Listed Property Plus';
-    const isCommissionChangeOnly = upgrades.changeCommission === true && 
-                                    meta.fromChangeCommission === true &&
-                                    !shouldUpgradeToPlusExplicit;
-    
     if ((shouldUpgradeToPlusExplicit || checkoutPlanIsPlus) && !isCommissionChangeOnly) {
       if (currentPlan === 'Listed Property Basic') {
         updateData.plan = 'Listed Property Plus';
