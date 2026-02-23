@@ -1,7 +1,7 @@
-// /checkout.js - build 2026-02-21 (Foolproof: dashboard upgrades always base $0)
+// /checkout.js - build 2026-02-23 (Bulletproof: plusAlreadyPaid from plan state, no originalPlan)
 
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("[checkout.js] build 2026-02-21 - Dashboard upgrades base $0 fix");
+  console.log("[checkout.js] build 2026-02-23 - Bulletproof plusAlreadyPaid, no originalPlan dependency");
 
   var $ = function(id) { return document.getElementById(id); };
   var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
@@ -172,59 +172,45 @@ document.addEventListener("DOMContentLoaded", function() {
 
     var isUpgradeFromSellerDetail = !!(d.meta && d.meta.fromSellerDetail === true);
     var isCommissionChangeFlow = isChangeCommissionEnabled();
-    var isUpgradingToPlus = !isFSBOPlan(plan) && plan === "Listed Property Basic" && d.upgrades.upgradeToPlus;
     var promo = isAgentNovemberPromoActive();
+
+    var pu = paid();
+
+    // BULLETPROOF "ALREADY PAID" DEFINITION:
+    // 1. Paid as an upgrade previously (pu.upgradeToPlus)
+    // 2. OR started with it as a base plan (plan == Plus AND not actively checking the upgrade box)
+    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (plan === "Listed Property Plus" && !d.upgrades.upgradeToPlus);
+    var activelyBuyingPlus = !!d.upgrades.upgradeToPlus && !plusAlreadyPaid;
 
     var base = 0;
 
-    // Paid upgrades snapshot (from Firestore via meta)
-    var pu = paid();
-    var origPlan = (localStorage.getItem("originalPlan") || localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromSellerDetail && origPlan === "Listed Property Plus");
-
-    // ===== CRITICAL FIX #1 =====
-    // Commission change: base MUST be 0 (no Plus or FSBO base), only change-commission item is charged.
     if (isCommissionChangeFlow) {
       base = 0;
-      d.base = 0;
-      d.plan = plan;
-      // do NOT return yet; allow total calculation to add the change commission item later.
     } else {
       var selectedIsConfidentialPlan = (plan === "Confidential FSBO Upgrade");
       if (selectedIsConfidentialPlan) {
         base = (pu && pu.confidential) ? 0 : (d.prices.confidential || 100);
-        d.plan = plan;
-        d.base = base;
       } else {
-        // FOOLPROOF DASHBOARD UPGRADE CHECK:
-        // If coming from Seller Detail, base is always $0 unless actively upgrading to Plus right now
         if (isUpgradeFromSellerDetail) {
-          if (isUpgradingToPlus) {
-            base = promo ? 0 : (plusAlreadyPaid ? 0 : (d.prices.plus || 20));
+          // DASHBOARD UPGRADE: Base is always $0, UNLESS actively checking the box to buy Plus right now
+          if (activelyBuyingPlus) {
+            base = promo ? 0 : (d.prices.plus || 20);
             plan = "Listed Property Plus";
-            localStorage.setItem("selectedPlan", "Listed Property Plus");
           } else {
             base = 0;
           }
-        }
-        // Standard intake flow (not from Seller Detail)
-        else {
+        } else {
+          // INITIAL INTAKE FLOW
           if (isFSBOPlan(plan)) {
             base = (d.prices.fsbo || 100);
-          } else if (isUpgradingToPlus) {
-            base = promo ? 0 : (plusAlreadyPaid ? 0 : (d.prices.plus || 20));
-            plan = "Listed Property Plus";
-            localStorage.setItem("selectedPlan", "Listed Property Plus");
-          } else if (plan === "Listed Property Plus") {
+          } else if (plan === "Listed Property Plus" || activelyBuyingPlus) {
             var freeFlag = !!(d.meta && (d.meta.novemberAgentFree || d.meta.octoberAgentFree));
-            if (promo || d.payer === "agent" || freeFlag) {
+            if (promo || d.payer === "agent" || freeFlag || plusAlreadyPaid) {
               base = 0;
             } else {
-              base = plusAlreadyPaid ? 0 : (d.prices.plus || 20);
+              base = (d.prices.plus || 20);
             }
-            if (!plusAlreadyPaid && d.payer === "seller") {
-              d.upgrades.upgradeToPlus = true;
-            }
+            plan = "Listed Property Plus";
           } else {
             base = 0; // Listed Property Basic
           }
@@ -277,9 +263,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var pu = paid();
     var sel = [];
 
-    var isUpgradeFromSellerDetail = !!(data.meta && data.meta.fromSellerDetail === true);
-    var origPlan = (localStorage.getItem("originalPlan") || localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromSellerDetail && origPlan === "Listed Property Plus");
+    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (data.plan === "Listed Property Plus" && !data.upgrades.upgradeToPlus);
 
     if (plusAlreadyPaid || data.upgrades.upgradeToPlus) {
       sel.push(plusAlreadyPaid ? "Listed Property Plus (Already paid)" : "Upgrade to Listed Property Plus (" + (promo ? "$0 - November promo" : "$" + (data.prices.plus || 20)) + ")");
@@ -339,9 +323,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     if (!isFSBO) {
       // Determine if checkbox should be disabled
-      var isUpgradeFromSellerDetail = !!(data.meta && data.meta.fromSellerDetail === true);
-      var origPlan = (localStorage.getItem("originalPlan") || localStorage.getItem("selectedPlan") || "Listed Property Basic").trim();
-      var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromSellerDetail && origPlan === "Listed Property Plus");
+      var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (plan === "Listed Property Plus" && !data.upgrades.upgradeToPlus);
       var plusDisabled = isCommissionChange || plusAlreadyPaid;
 
       // Determine note text
@@ -545,8 +527,6 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
   }
-
-  if (!localStorage.getItem("originalPlan")) localStorage.setItem("originalPlan", planLS);
 
   renderSummary();
   renderLastChance();
