@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-02-07 (Sold date/price display on tiles + visual styling) -->
+<!-- search.html - Build 2026-02-24 (SOLD badge centered, map marker text cleaned) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -1048,7 +1048,7 @@
         <div class="relative">
           <img class="gc-photo" alt="Listing photo" src="${primaryPhoto}">
           ${banner ? `<div class="gc-ribbon">${banner}</div>` : ''}
-          ${isSold ? `<div class="absolute top-2 left-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
+          ${isSold ? `<div class="absolute top-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow" style="left:50%;transform:translateX(-50%);z-index:10;">SOLD</div>` : ''}
           <button type="button" class="gc-heart" aria-label="Like"></button>
           <button type="button" class="gc-share gc-share-left" data-share="email">Email</button>
           <button type="button" class="gc-share gc-share-right" data-share="text">Text</button>
@@ -1151,7 +1151,7 @@
         // Price label with status suffix for Sold/Pending
         const basePrice = formatPriceShort(it.price);
         if (isSold) {
-          label.textContent = basePrice + ' (SOLD)';
+          label.textContent = basePrice;
         } else if (isPending) {
           label.textContent = basePrice + ' (PENDING)';
         } else {
