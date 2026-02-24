@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-02-24 (SOLD badge centered, map marker text cleaned) -->
+<!-- search.html - Build 2026-02-24b (Map markers: no status suffixes, SOLD badge centered) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -1148,15 +1148,9 @@
         const label = document.createElement('div');
         label.className = 'gc-marker-label';
 
-        // Price label with status suffix for Sold/Pending
+        // Price label (clean — no status suffix)
         const basePrice = formatPriceShort(it.price);
-        if (isSold) {
-          label.textContent = basePrice;
-        } else if (isPending) {
-          label.textContent = basePrice + ' (PENDING)';
-        } else {
-          label.textContent = basePrice;
-        }
+        label.textContent = basePrice;
 
         const goListing = (e) => {
           e.stopPropagation();
