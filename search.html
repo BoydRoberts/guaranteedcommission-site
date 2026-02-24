@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-02-24b (Map markers: no status suffixes, SOLD badge centered) -->
+<!-- search.html - Build 2026-02-24c (Share preserves map view, clean markers) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -845,29 +845,36 @@
       if (tile) tile.classList.toggle('highlighted', !!on);
     }
 
-    async function initMap(q) {
+    async function initMap(q, mapState) {
       const DEFAULT_CENTER = [-98.5795, 39.8283];
       const DEFAULT_ZOOM = 4.2;
 
       let center = DEFAULT_CENTER;
+      let zoom = DEFAULT_ZOOM;
       let bbox = null;
 
+      const hasMapState = mapState && mapState.lat && mapState.lng && mapState.z;
       const qTrim = String(q || '').trim();
-      if (qTrim) {
+
+      if (hasMapState) {
+        center = [mapState.lng, mapState.lat];
+        zoom = mapState.z;
+      } else if (qTrim) {
         const geo = await geocodeWithBounds(qTrim);
         if (geo?.center) center = geo.center;
         if (geo?.bbox && Array.isArray(geo.bbox) && geo.bbox.length === 4) bbox = geo.bbox;
+        zoom = 11.5;
       }
 
       map = new mapboxgl.Map({
         container: 'mapCanvas',
         style: 'mapbox://styles/mapbox/streets-v12',
         center,
-        zoom: qTrim ? 11.5 : DEFAULT_ZOOM
+        zoom
       });
       map.addControl(new mapboxgl.NavigationControl());
 
-      if (bbox) {
+      if (bbox && !hasMapState) {
         map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], {
           padding: 70,
           maxZoom: 12.8,
@@ -1296,7 +1303,15 @@
 
       setJSON('lastFilters', lastFilters);
 
-      await initMap(qParam);
+      // ===== Parse shared map state from URL (lat, lng, zoom) =====
+      const sp = new URLSearchParams(window.location.search);
+      const mapState = {
+        lat: sp.get('lat') ? Number(sp.get('lat')) : null,
+        lng: sp.get('lng') ? Number(sp.get('lng')) : null,
+        z: sp.get('z') ? Number(sp.get('z')) : null
+      };
+
+      await initMap(qParam, mapState);
       wireMapSync();
 
       try {
@@ -1371,18 +1386,31 @@
         });
       };
 
+      // ===== Share URL builder: captures current map pan/zoom =====
+      function getShareUrl() {
+        let url = new URL(window.location.href);
+        if (map) {
+          const center = map.getCenter();
+          const zoom = map.getZoom();
+          url.searchParams.set('lat', center.lat.toFixed(5));
+          url.searchParams.set('lng', center.lng.toFixed(5));
+          url.searchParams.set('z', zoom.toFixed(2));
+        }
+        return url.toString();
+      }
+
       $("emailSearchBtn").onclick = () => {
         requireAuth(() => {
           const q = $("qBox").value.trim();
           const subject = encodeURIComponent(`Search Results: ${q || 'All Listings'}`);
-          const body = encodeURIComponent(`View my search results:\n\n${window.location.href}`);
+          const body = encodeURIComponent(`View my search results:\n\n${getShareUrl()}`);
           window.location.href = `mailto:?subject=${subject}&body=${body}`;
         });
       };
 
       $("textSearchBtn").onclick = () => {
         requireAuth(() => {
-          const body = encodeURIComponent(`Check out these listings:\n\n${window.location.href}`);
+          const body = encodeURIComponent(`Check out these listings:\n\n${getShareUrl()}`);
           window.location.href = `sms:&body=${body}`;
         });
       };
