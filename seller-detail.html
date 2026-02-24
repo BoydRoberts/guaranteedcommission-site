@@ -1574,50 +1574,6 @@
 
       await refreshFromServer();
 
-      // =========================================================================
-      // FIX: "Always On" Price Consistency Check
-      // =========================================================================
-      try {
-        var lidFresh = (localStorage.getItem("lastListingId") || "").trim();
-        if (lidFresh) {
-          var cdSync = getJSON("checkoutData", null);
-          
-          if (cdSync && cdSync.plan) {
-            var rawTotal = Number(cdSync.total);
-            
-            if (rawTotal === 0) {
-              if (plan !== "Listed Property Basic") {
-                console.log("[seller-detail] DETECTED SYNC ERROR: Plan is '" + plan + "' but Receipt is $0.");
-                console.log("[seller-detail] FORCING DOWNGRADE TO BASIC.");
-                
-                var targetPlan = "Listed Property Basic";
-                
-                await updateDoc(doc(db, "listings", lidFresh), {
-                  plan: targetPlan,
-                  updatedAt: serverTimestamp()
-                });
-
-                plan = targetPlan;
-                isFSBO = false;
-                isPlus = false;
-                maxPhotos = 1;
-
-                $("planPill").textContent = plan;
-                
-                applyFieldLocking(plan, paidUpgrades);
-                computePhotoHelp();
-                try { renderThumbs(); } catch(e) {}
-                
-                console.log("Plan corrected to Basic ($0) to match receipt.");
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("[seller-detail] sync check failed:", e);
-      }
-      // =========================================================================
-
       computePhotoHelp();
       wireAutosaveListeners();
       if (!soldLocked) setAutosaveUI("waiting");
