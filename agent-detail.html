@@ -1155,10 +1155,18 @@
       computePhotoHelp();
 
       if (listingId) {
-        updateDoc(doc(db, "listings", listingId), {
+        const updates = {
           plan: newPlan,
           updatedAt: serverTimestamp()
-        }).then(() => {
+        };
+
+        // Only tag as agent if the seller hasn't already paid for it
+        if (!paidUpgrades.upgradeToPlus) updates["paidUpgrades.upgradeToPlus"] = "agent";
+        if (!paidUpgrades.banner) updates["paidUpgrades.banner"] = "agent";
+        if (!paidUpgrades.premium) updates["paidUpgrades.premium"] = "agent";
+        if (!paidUpgrades.pin) updates["paidUpgrades.pin"] = "agent";
+
+        updateDoc(doc(db, "listings", listingId), updates).then(() => {
           setStatus("Upgraded to Plus (FREE via promo)!", true);
         }).catch(err => {
           console.warn("[promo] Firestore update failed:", err);
