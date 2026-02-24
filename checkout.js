@@ -1,7 +1,7 @@
-// /checkout.js - build 2026-02-23 (Bulletproof: plusAlreadyPaid from plan state, no originalPlan)
+// /checkout.js - build 2026-02-23b (Role-based payer identity, dashboard recognition for agents)
 
 document.addEventListener("DOMContentLoaded", function() {
-  console.log("[checkout.js] build 2026-02-23 - Bulletproof plusAlreadyPaid, no originalPlan dependency");
+  console.log("[checkout.js] build 2026-02-23b - Role-based payer, dashboard recognition for agents");
 
   var $ = function(id) { return document.getElementById(id); };
   var getJSON = function(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch(e) { return fb; } };
@@ -46,11 +46,6 @@ document.addEventListener("DOMContentLoaded", function() {
   var isFSBOPlan = function(p) {
     return typeof p === "string" && (p.includes("FSBO") || p === "Confidential FSBO Upgrade");
   };
-
-  var hasSellerEmail = !!(formData && (formData.fsboEmail || formData.ownerEmail || formData.sellerEmail));
-  var hasAgentData = !!(agentListing && (agentListing.agentEmail || agentListing.brokerage));
-  var roleIsAgent = (role === "listing_agent" || role === "buyers_agent");
-  var likelySellerFlow = hasSellerEmail || (!hasAgentData && !roleIsAgent);
 
   // ===== WHO ROW FUNCTION (moved to named function, called after data is initialized) =====
   // This allows us to check data.meta.fromChangeCommission for the new commission value
@@ -142,8 +137,12 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!data.meta) data.meta = {};
   }
 
-  if (likelySellerFlow) data.payer = "seller";
-  else if (!data.payer && role === "listing_agent") data.payer = "agent";
+  // Strict role-based payer identity (no guessing from stale formData)
+  if (role === "listing_agent" || role === "buyers_agent") {
+    data.payer = "agent";
+  } else {
+    data.payer = "seller";
+  }
 
   function isAgentNovemberPromoActive() {
     try {
@@ -170,7 +169,7 @@ document.addEventListener("DOMContentLoaded", function() {
     if (d.payer === "agent" && d.upgrades.changeCommission) d.upgrades.changeCommission = false;
     if (d.upgrades.changeCommission && !isChangeCommissionEnabled()) d.upgrades.changeCommission = false;
 
-    var isUpgradeFromSellerDetail = !!(d.meta && d.meta.fromSellerDetail === true);
+    var isUpgradeFromDashboard = !!(d.meta && (d.meta.fromSellerDetail === true || d.meta.fromAgentDetail === true));
     var isCommissionChangeFlow = isChangeCommissionEnabled();
     var promo = isAgentNovemberPromoActive();
 
@@ -179,7 +178,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // BULLETPROOF "ALREADY PAID" DEFINITION:
     // 1. Paid as an upgrade previously (pu.upgradeToPlus)
     // 2. OR coming from the Seller Dashboard with an established Plus plan
-    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromSellerDetail && plan === "Listed Property Plus");
+    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromDashboard && plan === "Listed Property Plus");
     var activelyBuyingPlus = !!d.upgrades.upgradeToPlus && !plusAlreadyPaid;
 
     var base = 0;
@@ -191,7 +190,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (selectedIsConfidentialPlan) {
         base = (pu && pu.confidential) ? 0 : (d.prices.confidential || 100);
       } else {
-        if (isUpgradeFromSellerDetail) {
+        if (isUpgradeFromDashboard) {
           // DASHBOARD UPGRADE: Base is always $0, UNLESS actively checking the box to buy Plus right now
           if (activelyBuyingPlus) {
             base = promo ? 0 : (d.prices.plus || 20);
@@ -263,7 +262,8 @@ document.addEventListener("DOMContentLoaded", function() {
     var pu = paid();
     var sel = [];
 
-    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (!!(data.meta && data.meta.fromSellerDetail === true) && data.plan === "Listed Property Plus");
+    var isUpgradeFromDashboard = !!(data.meta && (data.meta.fromSellerDetail === true || data.meta.fromAgentDetail === true));
+    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromDashboard && data.plan === "Listed Property Plus");
 
     if (plusAlreadyPaid || data.upgrades.upgradeToPlus) {
       sel.push(plusAlreadyPaid ? "Listed Property Plus (Already paid)" : "Upgrade to Listed Property Plus (" + (promo ? "$0 - November promo" : "$" + (data.prices.plus || 20)) + ")");
@@ -323,8 +323,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     if (!isFSBO) {
       // Determine if checkbox should be disabled
-      var isUpgradeFromSellerDetail = !!(data.meta && data.meta.fromSellerDetail === true);
-      var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromSellerDetail && plan === "Listed Property Plus");
+      var isUpgradeFromDashboard = !!(data.meta && (data.meta.fromSellerDetail === true || data.meta.fromAgentDetail === true));
+      var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromDashboard && plan === "Listed Property Plus");
       var plusDisabled = isCommissionChange || plusAlreadyPaid;
 
       // Determine note text
@@ -422,7 +422,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         var listingId = (localStorage.getItem("lastListingId") || "").trim();
         var isCommissionChange = isChangeCommissionEnabled();
-        var isUpgradeFromSellerDetail = !!(data.meta && data.meta.fromSellerDetail === true);
+        var isUpgradeFromDashboard = !!(data.meta && (data.meta.fromSellerDetail === true || data.meta.fromAgentDetail === true));
 
         // ===== CRITICAL FIX #2 =====
         // Commission change must ALWAYS have an ID in the successUrl
@@ -453,7 +453,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var successUrl;
         if (data.payer === "agent") successUrl = successAgent;
         else if (isCommissionChange) successUrl = successSignatureCC;
-        else if (isUpgradeFromSellerDetail) successUrl = successSellerDetail;
+        else if (isUpgradeFromDashboard) successUrl = successSellerDetail;
         else successUrl = successSignature;
 
         if ((data.total || 0) <= 0) {
