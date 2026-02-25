@@ -14,7 +14,7 @@
     <div class="w-full max-w-xl bg-white rounded-2xl shadow p-6">
       <div class="text-center mb-2">
         <span class="inline-block text-[11px] px-2 py-1 rounded bg-gray-100 text-gray-600">
-          agent-invite build 2026-02-21 (Price History logging on final submit)
+          agent-invite build 2026-02-24 (Fix seller-continue routing with listing ID)
         </span>
       </div>
 
@@ -233,7 +233,8 @@
       sellerBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         await saveCurrentPrice(true);
-        window.location.href = "/seller-detail.html";
+        const listingId = (localStorage.getItem("lastListingId") || "").trim();
+        window.location.href = "/seller-detail.html" + (listingId ? "?id=" + encodeURIComponent(listingId) : "");
       });
     }
   </script>
