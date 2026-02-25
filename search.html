@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-02-24c (Share preserves map view, clean markers) -->
+<!-- search.html - Build 2026-02-07 (Sold date/price display on tiles + visual styling) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -845,36 +845,29 @@
       if (tile) tile.classList.toggle('highlighted', !!on);
     }
 
-    async function initMap(q, mapState) {
+    async function initMap(q) {
       const DEFAULT_CENTER = [-98.5795, 39.8283];
       const DEFAULT_ZOOM = 4.2;
 
       let center = DEFAULT_CENTER;
-      let zoom = DEFAULT_ZOOM;
       let bbox = null;
 
-      const hasMapState = mapState && mapState.lat && mapState.lng && mapState.z;
       const qTrim = String(q || '').trim();
-
-      if (hasMapState) {
-        center = [mapState.lng, mapState.lat];
-        zoom = mapState.z;
-      } else if (qTrim) {
+      if (qTrim) {
         const geo = await geocodeWithBounds(qTrim);
         if (geo?.center) center = geo.center;
         if (geo?.bbox && Array.isArray(geo.bbox) && geo.bbox.length === 4) bbox = geo.bbox;
-        zoom = 11.5;
       }
 
       map = new mapboxgl.Map({
         container: 'mapCanvas',
         style: 'mapbox://styles/mapbox/streets-v12',
         center,
-        zoom
+        zoom: qTrim ? 11.5 : DEFAULT_ZOOM
       });
       map.addControl(new mapboxgl.NavigationControl());
 
-      if (bbox && !hasMapState) {
+      if (bbox) {
         map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], {
           padding: 70,
           maxZoom: 12.8,
@@ -1055,7 +1048,7 @@
         <div class="relative">
           <img class="gc-photo" alt="Listing photo" src="${primaryPhoto}">
           ${banner ? `<div class="gc-ribbon">${banner}</div>` : ''}
-          ${isSold ? `<div class="absolute top-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow" style="left:50%;transform:translateX(-50%);z-index:10;">SOLD</div>` : ''}
+          ${isSold ? `<div class="absolute top-2 left-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
           <button type="button" class="gc-heart" aria-label="Like"></button>
           <button type="button" class="gc-share gc-share-left" data-share="email">Email</button>
           <button type="button" class="gc-share gc-share-right" data-share="text">Text</button>
@@ -1155,9 +1148,15 @@
         const label = document.createElement('div');
         label.className = 'gc-marker-label';
 
-        // Price label (clean — no status suffix)
+        // Price label with status suffix for Sold/Pending
         const basePrice = formatPriceShort(it.price);
-        label.textContent = basePrice;
+        if (isSold) {
+          label.textContent = basePrice + ' (SOLD)';
+        } else if (isPending) {
+          label.textContent = basePrice + ' (PENDING)';
+        } else {
+          label.textContent = basePrice;
+        }
 
         const goListing = (e) => {
           e.stopPropagation();
@@ -1303,15 +1302,7 @@
 
       setJSON('lastFilters', lastFilters);
 
-      // ===== Parse shared map state from URL (lat, lng, zoom) =====
-      const sp = new URLSearchParams(window.location.search);
-      const mapState = {
-        lat: sp.get('lat') ? Number(sp.get('lat')) : null,
-        lng: sp.get('lng') ? Number(sp.get('lng')) : null,
-        z: sp.get('z') ? Number(sp.get('z')) : null
-      };
-
-      await initMap(qParam, mapState);
+      await initMap(qParam);
       wireMapSync();
 
       try {
@@ -1386,31 +1377,18 @@
         });
       };
 
-      // ===== Share URL builder: captures current map pan/zoom =====
-      function getShareUrl() {
-        let url = new URL(window.location.href);
-        if (map) {
-          const center = map.getCenter();
-          const zoom = map.getZoom();
-          url.searchParams.set('lat', center.lat.toFixed(5));
-          url.searchParams.set('lng', center.lng.toFixed(5));
-          url.searchParams.set('z', zoom.toFixed(2));
-        }
-        return url.toString();
-      }
-
       $("emailSearchBtn").onclick = () => {
         requireAuth(() => {
           const q = $("qBox").value.trim();
           const subject = encodeURIComponent(`Search Results: ${q || 'All Listings'}`);
-          const body = encodeURIComponent(`View my search results:\n\n${getShareUrl()}`);
+          const body = encodeURIComponent(`View my search results:\n\n${window.location.href}`);
           window.location.href = `mailto:?subject=${subject}&body=${body}`;
         });
       };
 
       $("textSearchBtn").onclick = () => {
         requireAuth(() => {
-          const body = encodeURIComponent(`Check out these listings:\n\n${getShareUrl()}`);
+          const body = encodeURIComponent(`Check out these listings:\n\n${window.location.href}`);
           window.location.href = `sms:&body=${body}`;
         });
       };
