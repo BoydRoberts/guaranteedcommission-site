@@ -1400,9 +1400,9 @@
         var grayedClass = isPaid ? "bg-gray-100 opacity-60" : "";
         var paidLabel = "";
         if (agentPaid) {
-          paidLabel = "<span class=\"text-xs text-green-600 font-bold ml-2\">Upgraded by Agent</span>";
+          paidLabel = "<span class=\"text-[10px] text-green-600 font-bold ml-2\">Upgraded by Agent</span>";
         } else if (sellerPaid) {
-          paidLabel = "<span class=\"text-xs text-green-600 font-bold ml-2\">Paid</span>";
+          paidLabel = "<span class=\"text-[10px] text-green-600 font-bold ml-2\">Paid</span>";
         }
         var desc = description ? "<div class=\"text-xs text-gray-500\">" + description + "</div>" : "";
 
@@ -1427,7 +1427,7 @@
       var sPlus = isSellerPaid("upgradeToPlus");
       var aPlus = isAgentPaid("upgradeToPlus");
       if (isBasicNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", sPlus, "20 photos + full property description", aPlus));
-      if (isPlusNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", !aPlus, "Current Plan", aPlus));
+      if (isPlusNow) upgrades.push(row("Listed Property Plus", 20, "upgradeToPlus", !aPlus, "", aPlus));
 
       upgrades.push(row("Banner", 10, "banner", isSellerPaid("banner"), "", isAgentPaid("banner")));
       upgrades.push(row("Premium Placement", 10, "premium", isSellerPaid("premium"), "", isAgentPaid("premium")));
