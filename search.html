@@ -604,9 +604,9 @@
 
     // ===== SENIORITY PRIORITY SORTING =====
     // Business Rules:
-    // 1. Pin Placement: Top tier, sorted by createdAt ASCENDING (oldest first = seniority)
-    // 2. Premium Placement: Second tier, sorted by createdAt ASCENDING (oldest first = seniority)
-    // 3. Standard Listings: Third tier, sorted by createdAt DESCENDING (newest first)
+    // 1. Status: Active > In Contract > Sold
+    // 2. Upgrades: Pin Placement > Premium Placement > Standard
+    // 3. Seniority: Oldest first for paid, Newest first for standard
     function sortListings(items) {
       function getCreatedAtMs(doc) {
         const ca = doc.createdAt;
@@ -618,21 +618,39 @@
         return 0;
       }
 
+      function getStatusWeight(status) {
+        const s = String(status || 'active').trim().toLowerCase();
+        if (s === 'active') return 1;
+        if (s === 'in contract' || s === 'in_contract' || s === 'pending') return 2;
+        if (s === 'sold') return 3;
+        return 1; // Default fallback
+      }
+
       return [...items].sort((a, b) => {
+        // 1. Primary Sort by Status
+        const weightA = getStatusWeight(a.status);
+        const weightB = getStatusWeight(b.status);
+
+        if (weightA !== weightB) {
+          return weightA - weightB; // 1 (Active) comes before 3 (Sold)
+        }
+
+        // 2. Secondary Sort by Upgrades (only if statuses are identical)
         const aPin = !!(a.paidUpgrades && a.paidUpgrades.pin);
         const bPin = !!(b.paidUpgrades && b.paidUpgrades.pin);
         const aPremium = !!(a.paidUpgrades && a.paidUpgrades.premium);
         const bPremium = !!(b.paidUpgrades && b.paidUpgrades.premium);
-        
+
         if (aPin && !bPin) return -1;
         if (!aPin && bPin) return 1;
-        if (aPin && bPin) return getCreatedAtMs(a) - getCreatedAtMs(b);
-        
+        if (aPin && bPin) return getCreatedAtMs(a) - getCreatedAtMs(b); // ASC
+
         if (aPremium && !bPremium) return -1;
         if (!aPremium && bPremium) return 1;
-        if (aPremium && bPremium) return getCreatedAtMs(a) - getCreatedAtMs(b);
-        
-        return getCreatedAtMs(b) - getCreatedAtMs(a);
+        if (aPremium && bPremium) return getCreatedAtMs(a) - getCreatedAtMs(b); // ASC
+
+        // 3. Tertiary Sort for Standard Listings
+        return getCreatedAtMs(b) - getCreatedAtMs(a); // DESC
       });
     }
 
