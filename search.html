@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-02-25 (Clean marker labels, no status text suffix) -->
+<!-- search.html - Build 2026-02-25b (Clean markers + centered SOLD badge) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -1048,7 +1048,7 @@
         <div class="relative">
           <img class="gc-photo" alt="Listing photo" src="${primaryPhoto}">
           ${banner ? `<div class="gc-ribbon">${banner}</div>` : ''}
-          ${isSold ? `<div class="absolute top-2 left-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
+          ${isSold ? `<div class="absolute top-2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow" style="left:50%;transform:translateX(-50%);z-index:10;">SOLD</div>` : ''}
           <button type="button" class="gc-heart" aria-label="Like"></button>
           <button type="button" class="gc-share gc-share-left" data-share="email">Email</button>
           <button type="button" class="gc-share gc-share-right" data-share="text">Text</button>
