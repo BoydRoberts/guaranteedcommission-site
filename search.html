@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- search.html - Build 2026-02-07 (Sold date/price display on tiles + visual styling) -->
+<!-- search.html - Build 2026-02-25 (Clean marker labels, no status text suffix) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -1148,15 +1148,9 @@
         const label = document.createElement('div');
         label.className = 'gc-marker-label';
 
-        // Price label with status suffix for Sold/Pending
+        // Price label (clean — no status suffix)
         const basePrice = formatPriceShort(it.price);
-        if (isSold) {
-          label.textContent = basePrice + ' (SOLD)';
-        } else if (isPending) {
-          label.textContent = basePrice + ' (PENDING)';
-        } else {
-          label.textContent = basePrice;
-        }
+        label.textContent = basePrice;
 
         const goListing = (e) => {
           e.stopPropagation();
@@ -1377,6 +1371,7 @@
         });
       };
 
+      // ===== Share URL builder: captures current map pan/zoom =====
       $("emailSearchBtn").onclick = () => {
         requireAuth(() => {
           const q = $("qBox").value.trim();
