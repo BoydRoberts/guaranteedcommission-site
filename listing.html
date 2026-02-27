@@ -129,12 +129,14 @@
           <div id="tileFacts" class="text-[12px] text-gray-700">— bds | — ba | — sqft | Draft</div>
           <div id="tileAddress" class="text-sm font-medium">[full address]</div>
           <div id="tileContact" class="text-[12px] text-gray-600">[LISTING BROKERAGE] - [listing agent] - [agent phone]</div>
-          <!-- Centered "Viewed N times | Liked M times" -->
-          <div id="tileStats" class="text-[12px] text-gray-500 text-center">Viewed — | Liked —</div>
-          <button id="reportListingBtn" class="text-[11px] text-red-600 hover:underline mt-3 flex items-center justify-center gap-1 w-full hidden">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
-            Report this listing
-          </button>
+          <!-- Centered "Viewed N times | Liked M times" + Report flag -->
+          <div class="relative flex items-center justify-center mt-1">
+            <div id="tileStats" class="text-[12px] text-gray-500 text-center">Viewed — | Liked —</div>
+            <button id="reportListingBtn" class="absolute right-0 text-[11px] text-red-600 hover:underline flex items-center gap-1 hidden" title="Report this listing">
+              <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
+              Report
+            </button>
+          </div>
         </div>
       </article>
 
