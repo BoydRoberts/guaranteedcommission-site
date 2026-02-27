@@ -90,23 +90,24 @@
 <body class="bg-gray-100 text-gray-900">
 
   <!-- Header (matches home/search/listing) -->
-  <header class="bg-white border-b">
-    <div class="max-w-7xl mx-auto px-4 py-3">
-      <div class="flex items-center justify-between">
-        <a href="/index.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Home</a>
+  <header class="bg-white shadow">
+    <div class="relative flex items-center justify-center max-w-7xl mx-auto px-4 py-4">
+      <a href="/index.html" class="absolute left-4 text-xs font-semibold hover:underline" style="color:#4DA6FF;">Home</a>
 
-        <div class="text-center">
-          <div class="flex items-end justify-center gap-0">
-            <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
-            <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
-          </div>
+      <div class="text-center">
+        <div class="flex items-end justify-center gap-0">
+          <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+          <h1 class="text-3xl font-bold tracking-tight text-gray-900">GuaranteedCommission.com</h1>
         </div>
+        <p class="text-sm text-red-600 font-semibold mt-1 whitespace-nowrap">
+          Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.
+        </p>
+      </div>
 
-        <div class="flex items-center gap-4">
-          <a href="/advertise.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Advertise</a>
-          <a href="/search.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Search</a>
-          <button id="logoutBtn" class="text-sm px-3 py-1 rounded border hover:bg-gray-50">Log out</button>
-        </div>
+      <div class="absolute right-4 flex items-center gap-4">
+        <a href="/advertise.html" class="text-xs font-semibold hover:underline" style="color:#4DA6FF;">Advertise</a>
+        <a href="/search.html" class="text-xs font-semibold hover:underline" style="color:#4DA6FF;">Search</a>
+        <button id="logoutBtn" class="text-xs font-semibold px-3 py-1 rounded border hover:bg-gray-50">Log out</button>
       </div>
     </div>
   </header>
@@ -357,6 +358,39 @@
     </div>
   </div>
 
+  <!-- ========================================
+       MANAGE SUBSCRIPTION INTERCEPT MODAL
+       Lets user choose: edit profile/card OR manage billing via Stripe
+       ======================================== -->
+  <div id="manageInterceptModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="text-lg font-bold mb-1">Manage Subscription</h3>
+      <p class="text-sm text-gray-600 mb-5">What would you like to update?</p>
+
+      <div class="flex flex-col gap-3">
+        <button
+          id="manageProfileBtn"
+          class="w-full px-4 py-3 rounded-lg text-sm font-medium text-white transition-colors hover:opacity-90"
+          style="background:#4DA6FF;"
+        >
+          Update Profile &amp; Business Card
+        </button>
+        <button
+          id="manageBillingBtn"
+          class="w-full px-4 py-3 rounded-lg text-sm font-medium text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+        >
+          Manage Billing &amp; Payment (Stripe)
+        </button>
+        <button
+          id="manageCancelBtn"
+          class="w-full px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="/scripts/firebase-init.js"></script>
 
   <script type="module">
@@ -495,10 +529,70 @@
       }
     });
 
-    // Close modal on Escape key
+    // ========================================
+    // MANAGE SUBSCRIPTION INTERCEPT MODAL STATE
+    // ========================================
+    let pendingManageData = {
+      type: null,       // 'Local Professional', 'Local Broker', 'Service Provider'
+      email: null,
+      profileId: null,
+      collection: null  // Firestore collection name for building edit URL
+    };
+
+    function openManageModal(type, email, profileId, collectionName) {
+      pendingManageData = { type, email, profileId, collection: collectionName };
+      console.log('[manageModal] Opening:', pendingManageData);
+      $('manageInterceptModal').classList.add('show');
+    }
+
+    function closeManageModal() {
+      $('manageInterceptModal').classList.remove('show');
+      pendingManageData = { type: null, email: null, profileId: null, collection: null };
+    }
+
+    // "Update Profile & Business Card" → redirect to edit page
+    $('manageProfileBtn')?.addEventListener('click', () => {
+      const { profileId, collection: col } = pendingManageData;
+      if (!profileId || !col) {
+        showToast('Please select a profile first.', 'error');
+        closeManageModal();
+        return;
+      }
+      closeManageModal();
+      location.href = '/edit-profile.html?id=' + encodeURIComponent(profileId)
+                     + '&type=' + encodeURIComponent(col);
+    });
+
+    // "Manage Billing & Payment (Stripe)" → open Stripe portal
+    $('manageBillingBtn')?.addEventListener('click', async () => {
+      const { email, type } = pendingManageData;
+      closeManageModal();
+      if (email && type) {
+        await openStripePortal(email, type);
+      }
+    });
+
+    // "Cancel"
+    $('manageCancelBtn')?.addEventListener('click', () => {
+      closeManageModal();
+    });
+
+    // Close on overlay click
+    $('manageInterceptModal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'manageInterceptModal') {
+        closeManageModal();
+      }
+    });
+
+    // Close both modals on Escape key
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && $('soldDetailsModal').classList.contains('show')) {
-        closeSoldModal(true);
+      if (e.key === 'Escape') {
+        if ($('soldDetailsModal').classList.contains('show')) {
+          closeSoldModal(true);
+        }
+        if ($('manageInterceptModal').classList.contains('show')) {
+          closeManageModal();
+        }
       }
     });
 
@@ -1290,13 +1384,15 @@
         fillProfileDropdown($('proProfiles'), pros, proLabel);
         $('proStatusText').textContent = getStatusSummary(pros, 'pro') + ' — $5/month per ZIP';
         
-        // Manage Subscription button - calls Cloud Function to get Stripe Portal URL
+        // Manage Subscription button → opens intercept modal
         const manageBtn = $('proManageBtn');
         if (manageBtn) {
           manageBtn.href = '#';
-          manageBtn.addEventListener('click', async (e) => {
+          manageBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            await openStripePortal(emailLower, 'Local Professional');
+            const profileId = $('proProfiles')?.value || '';
+            if (!profileId) { showToast('Please select a profile first.', 'error'); return; }
+            openManageModal('Local Professional', emailLower, profileId, 'localPros');
           });
         }
       }
@@ -1307,13 +1403,15 @@
         fillProfileDropdown($('brokerProfiles'), brokers, brokerLabel);
         $('brokerStatusText').textContent = getStatusSummary(brokers, 'broker') + ' — $100/month per ZIP (exclusive)';
         
-        // Manage Subscription button - calls Cloud Function
+        // Manage Subscription button → opens intercept modal
         const manageBtn = $('brokerManageBtn');
         if (manageBtn) {
           manageBtn.href = '#';
-          manageBtn.addEventListener('click', async (e) => {
+          manageBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            await openStripePortal(emailLower, 'Local Broker');
+            const profileId = $('brokerProfiles')?.value || '';
+            if (!profileId) { showToast('Please select a profile first.', 'error'); return; }
+            openManageModal('Local Broker', emailLower, profileId, 'localBrokers');
           });
         }
       }
@@ -1324,13 +1422,15 @@
         fillProfileDropdown($('serviceProviderProfiles'), serviceProviders, serviceProviderLabel);
         $('serviceProviderStatusText').textContent = getStatusSummary(serviceProviders, 'service') + ' — $5/month per ZIP';
         
-        // Manage Subscription button - calls Cloud Function
+        // Manage Subscription button → opens intercept modal
         const manageBtn = $('serviceProviderManageBtn');
         if (manageBtn) {
           manageBtn.href = '#';
-          manageBtn.addEventListener('click', async (e) => {
+          manageBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            await openStripePortal(emailLower, 'Service Provider');
+            const profileId = $('serviceProviderProfiles')?.value || '';
+            if (!profileId) { showToast('Please select a profile first.', 'error'); return; }
+            openManageModal('Service Provider', emailLower, profileId, 'localServiceProviders');
           });
         }
       }
@@ -1356,5 +1456,8 @@
       });
     })();
   </script>
+
+  <!-- Global Nav Sync: smart login/logout/dashboard -->
+  <script src="/scripts/global-nav.js"></script>
 </body>
 </html>
