@@ -67,7 +67,10 @@
         </p>
       </div>
 
-      <a href="/advertise.html" class="absolute right-4 text-xs font-semibold hover:underline" style="color:#4DA6FF;">Advertise</a>
+      <div class="absolute right-4 flex items-center gap-4">
+        <a href="/advertise.html" class="text-xs font-semibold hover:underline" style="color:#4DA6FF;">Advertise</a>
+        <a href="/login.html" id="authLink" class="text-xs font-semibold hover:underline" style="color:#4DA6FF;">Log In</a>
+      </div>
     </div>
   </header>
 
@@ -1193,5 +1196,8 @@
       paintPromoState();
     })();
   </script>
+
+  <!-- Global Nav Sync: smart login/logout/dashboard -->
+  <script src="/scripts/global-nav.js"></script>
 </body>
 </html>
