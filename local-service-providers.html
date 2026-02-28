@@ -330,15 +330,21 @@
         // Trigger availability check to update button state
         debouncedAvailabilityCheck();
         
-        // Show status message
-        setStatus('Welcome back! Your form has been restored. Please click the button below to continue.', true);
-        
         // Clear the draft (one-time restore)
         localStorage.removeItem('localServiceFormDraft');
         
-        // Clear the return path if we're back
+        // Clear the return path and auto-submit to Stripe
         if (localStorage.getItem('nextAfterLogin') === window.location.href) {
           localStorage.removeItem('nextAfterLogin');
+          setStatus('Welcome back! Resuming your checkout...', true);
+
+          // Auto-submit after 1.5s so debouncedAvailabilityCheck can finish
+          setTimeout(() => {
+            const btn = $("serviceProviderForm")?.querySelector('button[type="submit"]');
+            if (btn && !btn.disabled) {
+              btn.click();
+            }
+          }, 1500);
         }
       } catch (e) {
         console.warn('[service-providers] Draft restore failed:', e);
