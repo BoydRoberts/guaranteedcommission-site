@@ -106,8 +106,8 @@
 
       <!-- Business Card Upload -->
       <div>
-        <label for="photoInput" class="block text-sm font-semibold mb-1">Business Card Image <span class="text-gray-400">(Optional)</span></label>
-        <input id="photoInput" type="file" accept=".png,.jpg,.jpeg" class="block w-full text-sm">
+        <label for="photoInput" class="block text-sm font-semibold mb-1">Business Card Image <span class="text-red-600">*</span></label>
+        <input id="photoInput" type="file" accept=".png,.jpg,.jpeg" required class="block w-full text-sm">
         <p class="text-xs text-gray-500 mt-1">PNG or JPG. This will be displayed on listing pages in your ZIP codes.</p>
         <div id="photoPreview" class="mt-3 hidden">
           <img id="previewImg" class="card-preview" alt="Business Card Preview">
@@ -337,15 +337,8 @@
         // Clear the return path and auto-submit to Stripe
         if (localStorage.getItem('nextAfterLogin') === window.location.href) {
           localStorage.removeItem('nextAfterLogin');
-          setStatus('Welcome back! Resuming your checkout...', true);
-
-          // Auto-submit after 1.5s so debouncedAvailabilityCheck can finish
-          setTimeout(() => {
-            const btn = $("serviceProviderForm")?.querySelector('button[type="submit"]');
-            if (btn && !btn.disabled) {
-              btn.click();
-            }
-          }, 1500);
+          setStatus('Welcome back! For security, please re-attach your business card image, then click Continue.', true);
+          // We intentionally do not auto-submit here because the browser clears file inputs during redirects.
         }
       } catch (e) {
         console.warn('[service-providers] Draft restore failed:', e);
@@ -425,6 +418,11 @@
         // ========== STEP 1: VALIDATION ==========
         if (!role || !name || !email || !phone) {
           setStatus("Please complete all required fields.");
+          return;
+        }
+
+        if (!photoFile) {
+          setStatus("Please attach your business card image.");
           return;
         }
 
