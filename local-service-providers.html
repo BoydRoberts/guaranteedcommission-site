@@ -148,7 +148,7 @@
     const MAX_PER_ZIP = 8;
     const MAX_ZIPS = 3;
     const PRICE_PER_ZIP = 5;
-    const STRIPE_LINK = "https://buy.stripe.com/test_6oU9AVa0LaVc7QPg6o4ow04";
+    // Stripe checkout is handled via /api/create-subscription-session (dynamic quantity)
 
     // Waitlist state
     let isWaitlistMode = false;
@@ -551,10 +551,33 @@
 
         setStatus("Redirecting to payment...", true);
 
-        // Redirect to Stripe
-        setTimeout(() => {
-          window.location.href = `${STRIPE_LINK}?prefilled_email=${encodeURIComponent(email)}&client_reference_id=${docRef.id}`;
-        }, 800);
+        // Create dynamic Stripe checkout session via backend API
+        const payload = {
+          roleType: "local_service",
+          zipCodes: zips,
+          successUrl: window.location.origin + "/local-service-providers.html?status=success",
+          cancelUrl:  window.location.origin + "/local-service-providers.html?status=cancel",
+          metadata: {
+            email: email,
+            name: name,
+            company: company,
+            draftId: docRef.id
+          }
+        };
+
+        const resp = await fetch("/api/create-subscription-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const out = await resp.json();
+        if (!resp.ok) throw new Error(out.error || "Subscription session failed.");
+        if (out.url) {
+          window.location.href = out.url;
+          return;
+        }
+        throw new Error("Server did not return checkout url.");
 
       } catch (err) {
         console.error("[service-provider] Error:", err);
