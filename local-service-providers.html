@@ -291,6 +291,17 @@
 
     // Helper to save form draft for auth gate
     function saveFormDraft() {
+      // Cache the Base64 preview image (if under ~3MB to avoid localStorage limits)
+      let photoBase64 = null;
+      const previewEl = $("previewImg");
+      const previewBox = $("photoPreview");
+      if (previewEl && previewBox && !previewBox.classList.contains("hidden") && previewEl.src) {
+        // Only cache if it's a data URL and under ~3MB
+        if (previewEl.src.startsWith("data:") && previewEl.src.length < 3_000_000) {
+          photoBase64 = previewEl.src;
+        }
+      }
+
       const draft = {
         role: $('role')?.value || '',
         name: $('name')?.value || '',
@@ -301,10 +312,11 @@
         zip1: $('zip1')?.value || '',
         zip2: $('zip2')?.value || '',
         zip3: $('zip3')?.value || '',
+        photoBase64: photoBase64,
         savedAt: Date.now()
       };
       localStorage.setItem('localServiceFormDraft', JSON.stringify(draft));
-      console.log('[service-providers] Form draft saved for auth gate');
+      console.log('[service-providers] Form draft saved for auth gate', photoBase64 ? '(with photo)' : '(no photo)');
     }
 
     // ========== DRAFT RESTORATION (Auth Gate Support) ==========
@@ -328,6 +340,16 @@
         if (draft.zip2 && $('zip2')) $('zip2').value = draft.zip2;
         if (draft.zip3 && $('zip3')) $('zip3').value = draft.zip3;
         
+        // Restore Base64 photo preview (survives the auth gate redirect)
+        if (draft.photoBase64) {
+          $("previewImg").src = draft.photoBase64;
+          $("previewImg").className = "card-preview";
+          $("photoPreview").classList.remove("hidden");
+          window.restoredBase64 = draft.photoBase64;
+          $("photoInput").removeAttribute("required"); // Bypass since image is in memory
+          console.log('[service-providers] Photo restored from Base64 cache');
+        }
+
         // Trigger availability check to update button state
         debouncedAvailabilityCheck();
         
@@ -338,8 +360,18 @@
         const nextUrl = localStorage.getItem('nextAfterLogin');
         if (nextUrl && window.location.href.includes(nextUrl.split('?')[0])) {
           localStorage.removeItem('nextAfterLogin');
-          setStatus('Welcome back! For security, please re-attach your business card image, then click Continue.', true);
-          // We intentionally do not auto-submit here because the browser clears file inputs during redirects.
+
+          if (draft.photoBase64) {
+            // Photo survived via Base64 — auto-submit straight to Stripe
+            setStatus('Welcome back! Resuming your checkout...', true);
+            setTimeout(() => {
+              const btn = $("serviceProviderForm")?.querySelector('button[type="submit"]');
+              if (btn && !btn.disabled) btn.click();
+            }, 1500);
+          } else {
+            // Photo was too large to cache — ask user to re-attach
+            setStatus('Welcome back! For security, please re-attach your business card image, then click Continue.', true);
+          }
         }
       } catch (e) {
         console.warn('[service-providers] Draft restore failed:', e);
@@ -422,7 +454,7 @@
           return;
         }
 
-        if (!photoFile) {
+        if (!photoFile && !window.restoredBase64) {
           setStatus("Please attach your business card image.");
           return;
         }
@@ -469,14 +501,19 @@
             updatedAt: serverTimestamp()
           };
 
-          // Upload photo if provided
-          if (photoFile) {
+          // Upload photo (from file input OR restored Base64 cache)
+          if (photoFile || window.restoredBase64) {
             try {
               const storage = getStorage(undefined, STORAGE_BUCKET_GS);
-              const safeName = String(photoFile.name || "waitlist_card").replace(/[^\w\-.]+/g, "_");
+              let fileToUpload = photoFile;
+              if (!fileToUpload && window.restoredBase64) {
+                const fetchRes = await fetch(window.restoredBase64);
+                fileToUpload = await fetchRes.blob();
+              }
+              const safeName = String(fileToUpload.name || "waitlist_card").replace(/[^\w\-.]+/g, "_");
               const path = `waitlist_localServiceProviders/${email.replace(/[^a-z0-9]/g,'_')}/${Date.now()}_${safeName}`;
               const r = ref(storage, path);
-              await uploadBytes(r, photoFile);
+              await uploadBytes(r, fileToUpload);
               waitlistData.photoUrl = await getDownloadURL(r);
             } catch (uploadErr) {
               console.warn("[waitlist] photo upload failed:", uploadErr);
@@ -529,16 +566,26 @@
         const docRef = await addDoc(collection(db, COLLECTION), docData);
         console.log("[service-provider] Created doc:", docRef.id);
 
-        // Upload photo if provided
+        // Upload photo (from file input OR restored Base64 cache)
         let photoUrl = "";
         if (photoFile) {
           try {
             photoUrl = await uploadPhoto(photoFile, docRef.id);
-            // Update the document with the photo URL
             await updateDoc(doc(db, COLLECTION, docRef.id), { photoUrl: photoUrl });
             console.log("[service-provider] Photo URL saved:", photoUrl);
           } catch (uploadErr) {
             console.warn("[service-provider] Photo upload failed:", uploadErr);
+          }
+        } else if (window.restoredBase64) {
+          try {
+            const fetchRes = await fetch(window.restoredBase64);
+            const blob = await fetchRes.blob();
+            // Blobs don't have .name; uploadPhoto falls back to "card"
+            photoUrl = await uploadPhoto(blob, docRef.id);
+            await updateDoc(doc(db, COLLECTION, docRef.id), { photoUrl: photoUrl });
+            console.log("[service-provider] Restored photo URL saved:", photoUrl);
+          } catch (uploadErr) {
+            console.warn("[service-provider] Restored photo upload failed:", uploadErr);
           }
         }
 
