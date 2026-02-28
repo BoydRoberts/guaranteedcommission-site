@@ -335,7 +335,8 @@
         localStorage.removeItem('localServiceFormDraft');
         
         // Clear the return path and auto-submit to Stripe
-        if (localStorage.getItem('nextAfterLogin') === window.location.href) {
+        const nextUrl = localStorage.getItem('nextAfterLogin');
+        if (nextUrl && window.location.href.includes(nextUrl.split('?')[0])) {
           localStorage.removeItem('nextAfterLogin');
           setStatus('Welcome back! For security, please re-attach your business card image, then click Continue.', true);
           // We intentionally do not auto-submit here because the browser clears file inputs during redirects.
