@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-01-16 (Bulk ZIP subscription checkout - Local Professionals | License REQUIRED | Green Pay Button) -->
+<!-- Build: 2026-02-28 (Auth gate fix: /login.html + email prefill | Success UI: hide form on return) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -388,11 +388,13 @@
       return (localStorage.getItem('loggedInEmail') || localStorage.getItem('verifyTarget') || '').trim();
     }
 
-    // Success handling with fallback activation
+    // ========== SUCCESS HANDLING WITH FALLBACK ACTIVATION ==========
+    // FIX: Hide #proForm on success return so user only sees the thank-you message
     (async function(){
       const u = new URL(location.href);
       if (u.searchParams.get('status') === 'success') {
         $('thanks')?.classList.remove('hidden');
+        $('proForm')?.classList.add('hidden');       // ← FIX: hide blank form on success
         
         // Fallback activation: If pendingLocalProId exists, activate immediately
         const pendingId = localStorage.getItem("pendingLocalProId");
@@ -467,7 +469,8 @@
         }
 
         // ========== STEP 2: AUTH GATE ==========
-        // User must be logged in before proceeding to payment or waitlist
+        // FIX: Redirect to /login.html (not /login.html?tab=create) with email prefill
+        // Returning users already have accounts — don't force them to the "Create" tab
         if (!isLoggedIn()) {
           setStatus('Please log in or create an account to continue. Redirecting...', true);
           
@@ -477,9 +480,9 @@
           // Set return path so login redirects back here
           localStorage.setItem('nextAfterLogin', window.location.href);
           
-          // Redirect to login page
+          // Redirect to login page with email prefill (no tab= param)
           setTimeout(() => {
-            window.location.href = '/login.html?tab=create';
+            window.location.href = '/login.html?email=' + encodeURIComponent(email);
           }, 1000);
           
           return;
