@@ -149,6 +149,7 @@
     const MAX_ZIPS = 3;
     const PRICE_PER_ZIP = 5;
     // Stripe checkout is handled via /api/create-subscription-session (dynamic quantity)
+    const PRICE_ID_LOCAL_SERVICE = "price_1Stz0hPTiT2zuxx0S4zezAW4"; // $5/mo per ZIP
 
     // Waitlist state
     let isWaitlistMode = false;
@@ -555,6 +556,7 @@
         const payload = {
           roleType: "local_service",
           zipCodes: zips,
+          priceId: PRICE_ID_LOCAL_SERVICE,
           successUrl: window.location.origin + "/local-service-providers.html?status=success",
           cancelUrl:  window.location.origin + "/local-service-providers.html?status=cancel",
           metadata: {
