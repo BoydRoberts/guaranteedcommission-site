@@ -72,8 +72,8 @@
           <input id="name" type="text" required placeholder="First Last" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
         <div>
-          <label for="company" class="block text-sm font-semibold mb-1">Company Name <span class="text-red-600">*</span></label>
-          <input id="company" type="text" required placeholder="Your Company LLC" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <label for="company" class="block text-sm font-semibold mb-1">Company Name <span class="text-gray-400">(Optional)</span></label>
+          <input id="company" type="text" placeholder="Your Company LLC" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
       </div>
 
@@ -416,7 +416,7 @@
         const photoFile = $("photoInput")?.files?.[0] || null;
 
         // ========== STEP 1: VALIDATION ==========
-        if (!role || !name || !company || !email || !phone) {
+        if (!role || !name || !email || !phone) {
           setStatus("Please complete all required fields.");
           return;
         }
