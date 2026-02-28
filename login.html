@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Build: 2026-02-28 (Advertiser auth gate sync + blessed header) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -11,9 +12,11 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <!-- Header -->
+  <!-- Header (blessed pattern) -->
   <header class="bg-white shadow">
-    <div class="max-w-7xl mx-auto px-4 py-4">
+    <div class="relative flex items-center justify-center max-w-7xl mx-auto px-4 py-4">
+      <a href="/index.html" class="absolute left-4 text-xs font-semibold hover:underline" style="color:#4DA6FF;">Home</a>
+
       <div class="text-center">
         <div class="flex items-end justify-center gap-0">
           <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
@@ -23,13 +26,17 @@
           Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.
         </p>
       </div>
+
+      <div class="absolute right-4 flex items-center gap-4">
+        <a href="/advertise.html" class="text-xs font-semibold hover:underline" style="color:#4DA6FF;">Advertise</a>
+      </div>
     </div>
   </header>
 
   <main class="min-h-[calc(100vh-80px)] flex items-start justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow p-6 relative">
       <div class="text-center mb-3">
-        <span class="badge">secure access build 2025-11-29</span>
+        <span class="badge">secure access build 2026-02-28</span>
       </div>
 
       <!-- Tabs -->
@@ -158,6 +165,7 @@
             <option value="listing_agent">Listing Agent</option>
             <option value="buyers_agent">Buyer's Agent</option>
             <option value="buyer">Buyer</option>
+            <option value="advertiser">Advertiser / Local Pro</option>
             <option value="other">Other</option>
           </select>
           <div id="localProLink" class="hidden mt-2">
@@ -188,7 +196,7 @@
   </main>
 
   <script>
-    console.log('[login] secure access build 2025-11-29');
+    console.log('[login] secure access build 2026-02-28');
 
     // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
@@ -240,34 +248,79 @@
       else $('localProLink').classList.add('hidden');
     });
 
-    // Prefill (FSBO-only email/phone). For Basic/Plus: **do not prefill createEmail**
+    // ================================================================
+    // PREFILL — reads Seller drafts, Advertiser drafts, AND URL params
+    // ================================================================
     (function prefill() {
       const fd = safeJSON(localStorage.getItem('formData')) || {};
       const plan = (localStorage.getItem('selectedPlan') || 'Listed Property Basic').trim();
+      const url = new URL(location.href);
+      const tabParam = (url.searchParams.get('tab') || '').toLowerCase();
 
-      // Name (if present)
-      if (fd.name) $('c_name').value = fd.name;
-
-      // Email rules:
-      // FSBO → prefill from fsboEmail; Basic/Plus → leave blank (seller must type).
-      if (plan.includes('FSBO') && fd.fsboEmail) {
-        $('c_email').value = fd.fsboEmail;
-      } else {
-        $('c_email').value = '';
+      // ----------------------------------------------------------
+      // 1. URL email param (sent by all 3 ad pages + seller flow)
+      // ----------------------------------------------------------
+      const urlEmail = (url.searchParams.get('email') || '').trim();
+      if (urlEmail) {
+        $('email').value = urlEmail;     // Sign-in tab
+        $('c_email').value = urlEmail;   // Create Account tab
       }
 
-      // Sign-in convenience prefill (harmless)
-      const last = localStorage.getItem('loggedInEmail') || '';
-      if (last) $('email').value = last;
+      // ----------------------------------------------------------
+      // 2. Existing Seller draft logic (unchanged)
+      // ----------------------------------------------------------
+      if (fd.name && !$('c_name').value) $('c_name').value = fd.name;
 
-      // Phone FSBO-only
-      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone)) {
+      if (plan.includes('FSBO') && fd.fsboEmail && !$('c_email').value) {
+        $('c_email').value = fd.fsboEmail;
+      }
+
+      // Sign-in convenience prefill (harmless) — only if URL didn't set it
+      const last = localStorage.getItem('loggedInEmail') || '';
+      if (last && !$('email').value) $('email').value = last;
+
+      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone) && !$('c_phone').value) {
         $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
 
-      // *** Force default to Create tab when arriving from Box 2 or ?tab=create ***
-      const url = new URL(location.href);
-      const tabParam = (url.searchParams.get('tab') || '').toLowerCase();
+      // ----------------------------------------------------------
+      // 3. NEW: Advertiser draft detection + auto-populate
+      //    Checks all three ad page drafts in priority order
+      // ----------------------------------------------------------
+      const adDraft =
+        safeJSON(localStorage.getItem('localServiceFormDraft')) ||
+        safeJSON(localStorage.getItem('localBrokerFormDraft'))  ||
+        safeJSON(localStorage.getItem('localProFormDraft'));
+
+      if (adDraft) {
+        console.log('[login] Advertiser draft detected:', adDraft);
+
+        // Name: ad pages store as "name" or "personalName"
+        const draftName = (adDraft.name || adDraft.personalName || '').trim();
+        if (draftName && !$('c_name').value) $('c_name').value = draftName;
+
+        // Email: draft might have it too
+        const draftEmail = (adDraft.email || '').trim();
+        if (draftEmail && !$('c_email').value) $('c_email').value = draftEmail;
+
+        // Also prefill Sign-in email for returning users
+        if (draftEmail && !$('email').value) $('email').value = draftEmail;
+
+        // Phone
+        const draftPhone = (adDraft.phone || '').trim();
+        if (draftPhone && !$('c_phone').value) $('c_phone').value = formatPhone(draftPhone);
+
+        // Auto-select Advertiser role
+        $('createRole').value = 'advertiser';
+
+        // Auto-switch to Create Account tab (they need an account)
+        showCreate();
+        return; // skip the tab logic below, we already showed Create
+      }
+
+      // ----------------------------------------------------------
+      // 4. Tab selection (original logic, only if no ad draft)
+      // ----------------------------------------------------------
       if (localStorage.getItem('nextAfterLogin') || tabParam === 'create') {
         showCreate();
       }
@@ -406,12 +459,17 @@
         verificationCode: localStorage.getItem('verificationCode'),
         verifyTarget: localStorage.getItem('verifyTarget'),
         nextAfterLogin: localStorage.getItem('nextAfterLogin'),
-        loginOrigin: localStorage.getItem('loginOrigin')
+        loginOrigin: localStorage.getItem('loginOrigin'),
+        localServiceFormDraft: localStorage.getItem('localServiceFormDraft'),
+        localBrokerFormDraft: localStorage.getItem('localBrokerFormDraft'),
+        localProFormDraft: localStorage.getItem('localProFormDraft')
       };
       const p = $('dbgPanel');
       p.classList.toggle('hidden');
       p.textContent = JSON.stringify(dump, null, 2);
     });
   </script>
+
+  <script src="/scripts/global-nav.js"></script>
 </body>
 </html>
