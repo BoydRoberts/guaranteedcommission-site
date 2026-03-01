@@ -363,15 +363,10 @@
               <hr class="my-3 border-gray-200">
 
               <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Share Results Now</label>
-                <div class="grid grid-cols-2 gap-2">
-                  <button id="emailSearchBtn" class="px-3 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;">
-                    Email Results
-                  </button>
-                  <button id="textSearchBtn" class="px-3 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;">
-                    Text Results
-                  </button>
-                </div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Share Results</label>
+                <button id="nativeShareBtn" class="w-full px-3 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;">
+                  Share Search Link
+                </button>
               </div>
             </div>
           </div>
@@ -381,25 +376,6 @@
             Clear
           </button>
 
-          <!-- Auto-Notify -->
-          <div class="filter-dropdown" data-filter="auto-notify">
-            <button class="px-4 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;" type="button">
-              Auto-Notify
-              <svg class="inline-block ml-1 w-3 h-3" viewBox="0 0 24 24"><path fill="currentColor" d="M12 15.5L5 8.5l1.4-1.4L12 12.7l5.6-5.6L19 8.5z"/></svg>
-            </button>
-            <div class="filter-panel right" style="min-width:280px;">
-              <label class="block text-sm font-semibold text-gray-700 mb-2">Auto-Notify on New Listings</label>
-              <p class="text-xs text-gray-500 mb-3">Get notified when new listings match this search</p>
-              <div class="grid grid-cols-2 gap-2">
-                <button id="autoEmailBtn" class="px-3 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;">
-                  Auto-Email
-                </button>
-                <button id="autoTextBtn" class="px-3 py-2 text-sm font-medium text-white rounded-lg" style="background:#4DA6FF;">
-                  Auto-Text
-                </button>
-              </div>
-            </div>
-          </div>
 
         </div>
       </div>
@@ -1441,38 +1417,28 @@
         return url.toString();
       }
 
-      $("emailSearchBtn").onclick = () => {
-        requireAuth(() => {
-          const q = $("qBox").value.trim();
-          const subject = encodeURIComponent(`Search Results: ${q || 'All Listings'}`);
-          const body = encodeURIComponent(`View my search results:\n\n${getShareUrl()}`);
-          window.location.href = `mailto:?subject=${subject}&body=${body}`;
-        });
-      };
+      $("nativeShareBtn").onclick = async () => {
+        const shareData = {
+          title: 'Guaranteed Commission Search',
+          text: 'Check out these guaranteed commission listings:',
+          url: getShareUrl()
+        };
 
-      $("textSearchBtn").onclick = () => {
-        requireAuth(() => {
-          const body = encodeURIComponent(`Check out these listings:\n\n${getShareUrl()}`);
-          window.location.href = `sms:&body=${body}`;
-        });
-      };
-
-      $("autoEmailBtn").onclick = () => {
-        requireAuth(async () => {
-          const q = $("qBox").value.trim();
-          const filters = readFiltersFromUI();
-          await saveSearchToFirestore("Auto-Email: " + (q || "Search"), q, filters);
-          alert("Auto-Email saved for this search (delivery wiring is post-MVP).");
-        });
-      };
-
-      $("autoTextBtn").onclick = () => {
-        requireAuth(async () => {
-          const q = $("qBox").value.trim();
-          const filters = readFiltersFromUI();
-          await saveSearchToFirestore("Auto-Text: " + (q || "Search"), q, filters);
-          alert("Auto-Text saved for this search (delivery wiring is post-MVP).");
-        });
+        if (navigator.share) {
+          try {
+            await navigator.share(shareData);
+          } catch (err) {
+            console.log('Error sharing:', err);
+          }
+        } else {
+          // Fallback for browsers that don't support Web Share API
+          try {
+            await navigator.clipboard.writeText(shareData.url);
+            alert("Link copied to clipboard!");
+          } catch (err) {
+            alert("Failed to copy link. Please copy the URL from your browser.");
+          }
+        }
       };
 
     })();
