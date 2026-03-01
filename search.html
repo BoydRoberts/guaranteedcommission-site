@@ -418,7 +418,7 @@
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { 
-      collection, query, orderBy, getDocs, limit, doc as fdoc, updateDoc, increment, serverTimestamp
+      collection, query, orderBy, getDocs, limit, doc as fdoc, updateDoc, increment, serverTimestamp, addDoc, where
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     // Mapbox token
@@ -654,29 +654,50 @@
       });
     }
 
-    // ===== Saved Searches (localStorage) =====
-    function getSavedSearches() { return getJSON('savedSearches', []); }
-    function setSavedSearches(arr) { setJSON('savedSearches', arr); }
+    // ===== Saved Searches (Firestore) =====
+    // Cached in-memory for autocomplete; persisted to Firestore for cross-device access
+    let cachedSavedSearches = [];
 
-    function saveSearchToLocal(name, q, filters) {
-      const arr = getSavedSearches();
-      const record = {
-        id: 'ss_' + Date.now(),
-        name: name || q || 'My Search',
-        q,
-        filters,
-        createdAt: Date.now()
-      };
-      arr.unshift(record);
-      setSavedSearches(arr);
-      return record;
+    async function loadSavedSearchesFromFirestore() {
+      if (!db || !isLoggedIn()) return;
+      const email = getLoggedInEmail().toLowerCase();
+      try {
+        const q1 = query(collection(db, "savedSearches"), where("emailLower", "==", email), limit(50));
+        const snap = await getDocs(q1);
+        cachedSavedSearches = [];
+        snap.forEach(d => cachedSavedSearches.push({ id: d.id, ...d.data() }));
+      } catch (e) {
+        console.warn("[search] Failed to load saved searches from Firestore:", e);
+      }
+    }
+
+    async function saveSearchToFirestore(name, q, filters) {
+      if (!db) return;
+      const email = getLoggedInEmail();
+      if (!email) return;
+
+      try {
+        const docRef = await addDoc(collection(db, "savedSearches"), {
+          email: email,
+          emailLower: email.toLowerCase(),
+          name: name || q || 'My Search',
+          q: q,
+          filters: filters,
+          createdAt: serverTimestamp()
+        });
+        // Update local cache so autocomplete picks it up immediately
+        cachedSavedSearches.unshift({ id: docRef.id, name: name || q || 'My Search', q, filters });
+        console.log('[search] Saved search to Firestore:', docRef.id);
+      } catch (e) {
+        console.error("[search] Failed to save search to Firestore:", e);
+      }
     }
 
     // ===== Saved Search Autocomplete =====
     function showSavedSearchAutocomplete(input) {
       const autocomplete = $('searchAutocomplete');
       const val = input.toLowerCase().trim();
-      const searches = getSavedSearches();
+      const searches = cachedSavedSearches;
 
       if (!isLoggedIn() || val.length < 2 || searches.length === 0) {
         autocomplete.classList.remove('show');
@@ -1308,6 +1329,9 @@
     (async function boot() {
       updateAuthUI();
 
+      // Load saved searches from Firestore for autocomplete
+      await loadSavedSearchesFromFirestore();
+
       // ===== URL params take priority =====
       const fromUrl = readFiltersFromURL();
 
@@ -1393,12 +1417,12 @@
       // ===== GATED ACTIONS =====
 
       $("saveSearchBtn").onclick = () => {
-        requireAuth(() => {
+        requireAuth(async () => {
           const q = $("qBox").value.trim();
           const filters = readFiltersFromUI();
           const nameInput = $("searchNameInput");
           const name = (nameInput?.value || '').trim() || q || "My Search";
-          saveSearchToLocal(name, q, filters);
+          await saveSearchToFirestore(name, q, filters);
           if (nameInput) nameInput.value = '';
           alert("Search saved as: " + name);
         });
@@ -1434,19 +1458,19 @@
       };
 
       $("autoEmailBtn").onclick = () => {
-        requireAuth(() => {
+        requireAuth(async () => {
           const q = $("qBox").value.trim();
           const filters = readFiltersFromUI();
-          saveSearchToLocal("Auto-Email: " + (q || "Search"), q, filters);
+          await saveSearchToFirestore("Auto-Email: " + (q || "Search"), q, filters);
           alert("Auto-Email saved for this search (delivery wiring is post-MVP).");
         });
       };
 
       $("autoTextBtn").onclick = () => {
-        requireAuth(() => {
+        requireAuth(async () => {
           const q = $("qBox").value.trim();
           const filters = readFiltersFromUI();
-          saveSearchToLocal("Auto-Text: " + (q || "Search"), q, filters);
+          await saveSearchToFirestore("Auto-Text: " + (q || "Search"), q, filters);
           alert("Auto-Text saved for this search (delivery wiring is post-MVP).");
         });
       };
