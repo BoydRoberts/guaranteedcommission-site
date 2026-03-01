@@ -344,9 +344,7 @@
           <input type="text" id="name" placeholder="Owner/Seller Name" class="w-full border py-1.5 px-2 rounded gc-form-offset" required>
           <input type="text" id="address" placeholder="Full Property Address (Street, City, ST 12345)" class="w-full border py-1.5 px-2 rounded" autocomplete="street-address" spellcheck="false" required>
 
-          <div id="apnRow" class="hidden">
-            <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border py-1.5 px-2 rounded">
-          </div>
+          <input type="text" id="apn" placeholder="Parcel # / Pin # / Tax ID # / Folio # / APN #" class="w-full border py-1.5 px-2 rounded hidden">
 
           <input type="text" id="agent" placeholder="Listing Agent" class="w-full border py-1.5 px-2 rounded">
           <input type="text" id="brokerage" placeholder="Listing Brokerage" class="w-full border py-1.5 px-2 rounded">
@@ -359,9 +357,7 @@
 
           <input type="email" id="agentEmail" placeholder="Agent Email - NOT Your Email" class="w-full border py-1.5 px-2 rounded">
 
-          <div id="fsboEmailRow" class="hidden">
-            <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border py-1.5 px-2 rounded">
-          </div>
+          <input type="email" id="fsboEmailInput" placeholder="Owner/Seller email" class="w-full border py-1.5 px-2 rounded hidden">
 
           <div class="flex gap-2">
             <input type="text" id="commission" placeholder="Buyer Agent Commission" class="w-full border py-1.5 px-2 rounded">
@@ -639,31 +635,39 @@
       var brokerageInput = document.getElementById('brokerage');
       var agentInput = document.getElementById('agent');
       var agentEmailInput = document.getElementById('agentEmail');
-      var fsboEmailRow = document.getElementById('fsboEmailRow');
+      var fsboEmailInputEl = document.getElementById('fsboEmailInput');
       var listedPhoneRow = document.getElementById('listedPhoneRow');
       var box1 = document.getElementById('box1');
-      var apnRow = document.getElementById('apnRow');
+      var apnInputEl = document.getElementById('apn');
 
       if(type === 'fsbo'){
         title.textContent = 'FSBO Communication Form';
         listedPhoneRow.classList.remove('hidden');
         phoneInput.placeholder = 'Owner/Seller phone number';
-        brokerageInput.style.display = 'none';
-        agentInput.style.display = 'none';
-        agentEmailInput.style.display = 'none';
-        fsboEmailRow.classList.remove('hidden');
-        if (apnRow) apnRow.classList.remove('hidden');
+
+        // Use Tailwind hidden class instead of style.display
+        brokerageInput.classList.add('hidden');
+        agentInput.classList.add('hidden');
+        agentEmailInput.classList.add('hidden');
+
+        if (fsboEmailInputEl) fsboEmailInputEl.classList.remove('hidden');
+        if (apnInputEl) apnInputEl.classList.remove('hidden');
+
         document.getElementById('iscTextListed').classList.add('hidden');
         document.getElementById('iscTextFSBO').classList.remove('hidden');
       } else {
         title.textContent = (type === 'plus' ? 'Listed Property Plus Communication Form' : 'Listed Property Communication Form');
         listedPhoneRow.classList.remove('hidden');
         phoneInput.placeholder = "Agent Phone - NOT Your Phone";
-        brokerageInput.style.display = 'block';
-        agentInput.style.display = 'block';
-        agentEmailInput.style.display = 'block';
-        fsboEmailRow.classList.add('hidden');
-        if (apnRow) apnRow.classList.add('hidden');
+
+        // Use Tailwind hidden class instead of style.display
+        brokerageInput.classList.remove('hidden');
+        agentInput.classList.remove('hidden');
+        agentEmailInput.classList.remove('hidden');
+
+        if (fsboEmailInputEl) fsboEmailInputEl.classList.add('hidden');
+        if (apnInputEl) apnInputEl.classList.add('hidden');
+
         document.getElementById('iscTextListed').classList.remove('hidden');
         document.getElementById('iscTextFSBO').classList.add('hidden');
       }
