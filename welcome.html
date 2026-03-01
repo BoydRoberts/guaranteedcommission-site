@@ -212,30 +212,6 @@
         </div>
 
         <!-- ======================
-             SEARCH (ALL LOGGED-IN USERS with listings)
-             ====================== -->
-        <div id="blkSearch" class="hidden border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">Search Guaranteed Commissions</h3>
-          <button id="searchGo" class="px-3 py-2 rounded text-white text-sm" style="background:#4DA6FF;">Open Search with filters</button>
-        </div>
-
-        <!-- ======================
-             SAVED SEARCHES / AUTO NOTIFICATIONS (shown if user has saved searches)
-             ====================== -->
-        <div id="blkSavedSearches" class="hidden border rounded-lg p-4">
-          <h3 class="font-semibold mb-2">View a saved search or auto notification</h3>
-          <div class="flex flex-col gap-2 md:flex-row md:items-center">
-            <select id="savedSearches" class="border rounded px-2 py-2 text-sm grow">
-              <option value="">Select a saved search…</option>
-            </select>
-            <div class="flex gap-2">
-              <button id="savedEditGo" class="px-3 py-2 rounded text-white text-sm" style="background:#4DA6FF;">View</button>
-              <button id="savedDeleteGo" class="px-3 py-2 rounded border text-sm hover:bg-gray-50">Delete</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ======================
              LOCAL PROFESSIONALS SUBSCRIPTION (shown if user has pro profiles)
              ====================== -->
         <div id="blkLocalPros" class="hidden border rounded-lg p-4">
@@ -284,6 +260,22 @@
             </div>
           </div>
           <p id="serviceProviderStatusText" class="text-xs text-gray-600 mt-2"></p>
+        </div>
+
+        <!-- ======================
+             SAVED SEARCHES / AUTO NOTIFICATIONS (shown if user has saved searches)
+             ====================== -->
+        <div id="blkSavedSearches" class="hidden border rounded-lg p-4">
+          <h3 class="font-semibold mb-2">View a saved search or auto notification</h3>
+          <div class="flex flex-col gap-2 md:flex-row md:items-center">
+            <select id="savedSearches" class="border rounded px-2 py-2 text-sm grow">
+              <option value="">Select a saved search…</option>
+            </select>
+            <div class="flex gap-2">
+              <button id="savedEditGo" class="px-3 py-2 rounded text-white text-sm" style="background:#4DA6FF;">View</button>
+              <button id="savedDeleteGo" class="px-3 py-2 rounded border text-sm hover:bg-gray-50">Delete</button>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -744,9 +736,6 @@
       location.href = '/index.html#strip2Search';
       window.scrollTo(0,0);
     });
-
-    // Search button
-    $("searchGo")?.addEventListener('click', ()=> location.href='/search.html?open=filters&prompt=save');
 
     // Saved searches - NOW FROM FIRESTORE (not localStorage)
     function fillSavedSearchDropdown(selectEl, list) {
@@ -1364,11 +1353,6 @@
       if (hasNoListingRole) {
         console.log('[boot] NO LISTING ROLE - showing seller new block');
         $('blkSellerNew').classList.remove('hidden');
-      }
-
-      // "Search" - Show for anyone with listings or saved searches
-      if (hasListings || hasSavedSearches) {
-        $('blkSearch').classList.remove('hidden');
       }
 
       // SAVED SEARCHES: Only if user has saved searches (FROM FIRESTORE)
