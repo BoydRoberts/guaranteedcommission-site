@@ -32,7 +32,10 @@
     .gc-share-right{ right:10px; }
 
     #box1, #formBlock, #box3 { overflow: hidden; padding-top: 1rem; }
-    .gc-title { text-align:center; font-weight:700; font-size:1.125rem; line-height:1.25; margin-top:0; margin-bottom:var(--title-bottom-gap); }
+    .gc-title { text-align:center; font-weight:700; font-size:1.05rem; line-height:1.25; margin-top:0; margin-bottom:var(--title-bottom-gap); }
+    @media (min-width: 768px) {
+      .gc-title { font-size: 1.125rem; }
+    }
     .gc-body-top-box1 { margin-top: calc(var(--box2-first-input-offset) - 12px); }
     .gc-body-top-box3 { margin-top: calc(var(--box2-first-input-offset) - 12px); }
 
