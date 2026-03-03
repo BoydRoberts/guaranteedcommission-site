@@ -335,9 +335,9 @@ export function renderTile(data, options = {}) {
   card.innerHTML = `
     <div class="relative">
       <img class="gc-photo" src="${photoUrl}" alt="Listing photo">
-      ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ''}
+      ${bannerText ? `<div class="gc-ribbon ${isSold ? 'hidden md:block' : ''}">${bannerText}</div>` : ''}
 
-      ${isSold ? `<div class="hidden md:block absolute top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
+      ${isSold ? `<div class="absolute top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
 
       <button type="button" class="gc-heart" aria-label="Like">
         ${heartSvg(false)}
