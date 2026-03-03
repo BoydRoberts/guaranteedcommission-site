@@ -24,6 +24,9 @@
  * - Status line now shows "Sold M/D/YYYY for $X,XXX,XXX" when soldDate+soldPrice available
  *   (was showing generic "Sold")
  * 
+ * CHANGES (2026-03-03):
+ * - SOLD badge hidden on mobile (hidden md:block) to declutter iPhone view
+ * 
  * IMPORTANT: This file does NOT inject CSS.
  * CSS classes used: .gc-tile, .gc-photo, .gc-ribbon, .gc-heart, .gc-share, .gc-share-left, .gc-share-right
  * These must be defined in the consuming page's <style> block.
@@ -328,13 +331,13 @@ export function renderTile(data, options = {}) {
     }
   };
 
-  // Build HTML — SOLD badge centered, price uses finalPrice with conditional color
+  // Build HTML — SOLD badge hidden on mobile (hidden md:block), price uses finalPrice with conditional color
   card.innerHTML = `
     <div class="relative">
       <img class="gc-photo" src="${photoUrl}" alt="Listing photo">
       ${bannerText ? `<div class="gc-ribbon">${bannerText}</div>` : ''}
 
-      ${isSold ? `<div class="absolute top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
+      ${isSold ? `<div class="hidden md:block absolute top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white font-bold text-[11px] px-2 py-1 rounded shadow">SOLD</div>` : ''}
 
       <button type="button" class="gc-heart" aria-label="Like">
         ${heartSvg(false)}
