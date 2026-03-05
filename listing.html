@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-03-05 (Standard header + nav strip) -->
+<!-- Build: 2026-03-05 (Standard header + ISC alignment fix) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -51,6 +51,9 @@
     .tile-body > *:last-child,
     .isc-body > *:last-child { margin-bottom:0 !important; }
 
+    /* ISC embed */
+    .click-wrap { position: relative; width:100%; height:100%; }
+    .click-wrap a.overlay { position:absolute; inset:0; z-index:10; text-indent:-9999px; }
     .isc-iframe { width:100%; border:0; margin:0; display:block; background:transparent; }
 
     .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
@@ -145,12 +148,12 @@
         <div id="mapCanvas" style="width:100%; height:100%;"></div>
       </aside>
 
-      <!-- Right: ISC (iframe preview—auto fits content height, but clamped to tile) -->
-      <aside id="iscCard" class="lg:col-span-2 card p-0 m-0">
+      <!-- Right: ISC (click overlay opens full printable-isc.html) -->
+      <aside id="iscCard" class="lg:col-span-2 card p-0 m-0" style="height:auto;">
         <div class="isc-body">
-          <iframe id="iscIframe" src="/printable-isc.html" class="isc-iframe" scrolling="no"></iframe>
-          <div class="mt-4 pt-4 border-t border-gray-100">
-            <a id="iscPrintBtn" href="/printable-isc.html" target="_blank" class="block w-full text-center py-2 rounded border border-blue-600 text-blue-600 font-semibold hover:bg-blue-50 text-sm transition">View / Print Full Document</a>
+          <div class="click-wrap">
+            <a id="iscOpenLink" class="overlay" href="/printable-isc.html" target="_blank" aria-label="Open full ISC">Open</a>
+            <iframe id="iscIframe" src="/printable-isc.html" class="isc-iframe" scrolling="no"></iframe>
           </div>
         </div>
       </aside>
@@ -170,8 +173,9 @@
 
       <!-- START local-pros: Horizontal Local Professionals block under Description -->
       <section id="prosCard" class="card p-5">
-        <div class="mb-3">
-          <h3 class="text-sm sm:text-lg font-semibold whitespace-nowrap tracking-tight truncate">Local Professionals in <span id="prosZip">—</span></h3>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-lg font-semibold">Local Professionals in <span id="prosZip">—</span></h3>
+          <a id="prosCtaBtn" href="/local-professionals.html" class="text-sm px-4 py-1.5 rounded text-white hover:opacity-90 text-center min-w-[200px]" style="background-color:#4DA6FF;">Local Professionals</a>
         </div>
         <div id="prosGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
       </section>
@@ -179,8 +183,9 @@
 
       <!-- Horizontal Local Real Estate Brokers strip (below Pros) -->
       <section id="brokersCard" class="card p-5">
-        <div class="mb-3">
-          <h3 class="text-sm sm:text-lg font-semibold whitespace-nowrap tracking-tight truncate">Local Brokers in <span id="brokersZip">—</span></h3>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-lg font-semibold">Local Brokers in <span id="brokersZip">—</span></h3>
+          <a id="brokersCtaBtn" href="/local-brokers.html" class="text-sm px-4 py-1.5 rounded text-white hover:opacity-90 text-center min-w-[200px]" style="background-color:#4DA6FF;">Local Brokers</a>
         </div>
         <div id="brokersGrid" class="w-full"></div>
       </section>
@@ -188,8 +193,9 @@
 
       <!-- Local Service Providers strip (below Brokers) -->
       <section id="serviceProvidersCard" class="card p-5">
-        <div class="mb-3">
-          <h3 class="text-sm sm:text-lg font-semibold whitespace-nowrap tracking-tight truncate">Local Service Providers in <span id="serviceProvidersZip">—</span></h3>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-lg font-semibold">Local Service Providers in <span id="serviceProvidersZip">—</span></h3>
+          <a id="serviceProvidersCtaBtn" href="/local-service-providers.html" class="text-sm px-4 py-1.5 rounded text-white hover:opacity-90 text-center min-w-[200px]" style="background-color:#4DA6FF;">Local Service Providers</a>
         </div>
         <div id="serviceProvidersGrid" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
       </section>
@@ -216,15 +222,31 @@
     const $ = (id) => document.getElementById(id);
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
 
-    // Match map to tile (ISC now freely expands)
+    // Force Map and ISC cards to perfectly match the height of the Listing Tile
     function alignHeights(){
       const tile = $("tileCard");
       const mapCard = $("mapCard");
-      if (!tile || !mapCard) return;
+      const iscCard = $("iscCard");
+      const iscIframe = $("iscIframe");
+      if (!tile) return;
 
-      mapCard.style.height = '';
+      if (mapCard) mapCard.style.height = '';
+      if (iscCard) iscCard.style.height = '';
+      if (iscIframe) iscIframe.style.height = '';
+
       const h = Math.max(0, tile.getBoundingClientRect().height);
-      mapCard.style.height = h + "px";
+
+      if (mapCard) mapCard.style.height = h + "px";
+      
+      if (iscCard) {
+        iscCard.style.height = h + "px";
+        iscCard.style.overflowY = "auto"; // Allows scrolling inside the card if text is long
+      }
+      
+      // Iframe takes up 100% of the available space minus padding
+      if (iscIframe) {
+        iscIframe.style.height = "100%";
+      }
     }
 
     // Heart wiring after we know the listing id
@@ -395,20 +417,6 @@
       return 'Sold';
     }
 
-    // --- ISC auto-fit (unclamped) ---
-    window.addEventListener('message', (ev) => {
-      try {
-        const data = ev.data || {};
-        if (data.type === 'gc-isc-embed-size') {
-          const f = document.getElementById("iscIframe");
-          if (f) {
-            const desired = Math.max(0, Number(data.height || 0));
-            f.style.height = desired + 'px';
-          }
-        }
-      } catch {}
-    });
-
     function parseZipFromAddress(addr="") {
       const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\s*$/);
       return m ? m[1] : "";
@@ -466,9 +474,11 @@
       const card = document.getElementById("prosCard");
       const grid = document.getElementById("prosGrid");
       const zipSpan = document.getElementById("prosZip");
+      const ctaBtn = document.getElementById("prosCtaBtn");
       if (!card || !grid) return;
 
       zipSpan.textContent = zip || "—";
+      ctaBtn.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
 
       grid.innerHTML = "";
 
@@ -480,7 +490,7 @@
           const img = document.createElement("img");
           img.src = src;
           img.alt = "Local Professional";
-          img.className = "w-full aspect-[3/2] object-contain bg-white";
+          img.className = "w-full h-40 object-contain bg-white";
           img.onerror = () => { img.replaceWith(noImage()); };
           div.appendChild(img);
         } else {
@@ -490,7 +500,7 @@
       }
       function noImage() {
         const ph = document.createElement("div");
-        ph.className = "w-full aspect-[3/2] bg-gray-200 flex items-center justify-center text-xs text-gray-600";
+        ph.className = "w-full h-40 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
         ph.textContent = "No Image";
         return ph;
       }
@@ -499,7 +509,7 @@
         a.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&role=agent`;
         a.className = "block overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 transition";
         const inner = document.createElement("div");
-        inner.className = "w-full aspect-[3/2] flex flex-col items-center justify-center text-center p-3";
+        inner.className = "w-full h-40 flex flex-col items-center justify-center text-center p-3";
         inner.innerHTML = `
           <div class="text-gray-500 text-sm font-medium">Agent Slot Available</div>
           <div class="text-xs text-gray-400 mt-1">Click to advertise</div>
@@ -512,7 +522,7 @@
         a.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&role=lender`;
         a.className = "block overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 transition";
         const inner = document.createElement("div");
-        inner.className = "w-full aspect-[3/2] flex flex-col items-center justify-center text-center p-3";
+        inner.className = "w-full h-40 flex flex-col items-center justify-center text-center p-3";
         inner.innerHTML = `
           <div class="text-gray-500 text-sm font-medium">Lender Slot Available</div>
           <div class="text-xs text-gray-400 mt-1">Click to advertise</div>
@@ -567,9 +577,11 @@
       const card = document.getElementById("brokersCard");
       const grid = document.getElementById("brokersGrid");
       const zipSpan = document.getElementById("brokersZip");
+      const cta = document.getElementById("brokersCtaBtn");
       if (!card || !grid) return;
 
       zipSpan.textContent = zip || "—";
+      cta.href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
 
       grid.innerHTML = "";
 
@@ -659,9 +671,11 @@
       const card = document.getElementById("serviceProvidersCard");
       const grid = document.getElementById("serviceProvidersGrid");
       const zipSpan = document.getElementById("serviceProvidersZip");
+      const ctaBtn = document.getElementById("serviceProvidersCtaBtn");
       if (!card || !grid) return;
 
       zipSpan.textContent = zip || "—";
+      ctaBtn.href = `/local-service-providers.html?zip=${encodeURIComponent(zip)}`;
 
       grid.innerHTML = "";
 
@@ -670,7 +684,7 @@
         a.href = `/local-service-providers.html?zip=${encodeURIComponent(zip)}`;
         a.className = "block overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 transition";
         const inner = document.createElement("div");
-        inner.className = "w-full aspect-[3/2] flex flex-col items-center justify-center text-center p-3";
+        inner.className = "w-full h-40 flex flex-col items-center justify-center text-center p-3";
         inner.innerHTML = `
           <div class="text-gray-500 text-sm font-medium">Your Service Here</div>
           <div class="text-xs text-gray-400 mt-1">Click to advertise</div>
@@ -690,17 +704,17 @@
           const img = document.createElement("img");
           img.src = photoSrc;
           img.alt = sp.company || sp.name || "Service Provider";
-          img.className = "w-full aspect-[3/2] object-contain bg-white";
+          img.className = "w-full h-40 object-contain bg-white";
           img.onerror = () => {
             const ph = document.createElement("div");
-            ph.className = "w-full aspect-[3/2] bg-gray-200 flex items-center justify-center text-xs text-gray-600";
+            ph.className = "w-full h-40 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
             ph.textContent = "No Image";
             img.replaceWith(ph);
           };
           tile.appendChild(img);
         } else {
           const ph = document.createElement("div");
-          ph.className = "w-full aspect-[3/2] bg-gray-200 flex items-center justify-center text-xs text-gray-600";
+          ph.className = "w-full h-40 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
           ph.textContent = "No Image";
           tile.appendChild(ph);
         }
@@ -724,10 +738,10 @@
         if (!idParam)  idParam  = (localStorage.getItem('lastListingId') || '').trim();
         if (!addrParam) addrParam = (localStorage.getItem('lastListingAddress') || '').trim();
 
-        const printBtn = document.getElementById("iscPrintBtn");
+        const openA = document.getElementById("iscOpenLink");
         const iscIframe = document.getElementById("iscIframe");
         const base = "/printable-isc.html?embed=1";
-        if (printBtn) printBtn.href = idParam
+        if (openA) openA.href = idParam
           ? `/printable-isc.html?id=${encodeURIComponent(idParam)}`
           : (addrParam ? `/printable-isc.html?addr=${encodeURIComponent(addrParam)}` : `/printable-isc.html`);
         if (iscIframe) iscIframe.src = idParam
