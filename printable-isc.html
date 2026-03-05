@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-02-07 (Added Price History + Status History sections) -->
+<!-- Build: 2026-03-05 (Title nowrap + Signature side-by-side fix) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -39,10 +39,12 @@
     }
 
     .h1 {
-      font-size: 1.125rem;
+      font-size: clamp(0.9rem, 4vw, 1.125rem); /* Responsive fluid sizing */
       font-weight: 700;
       text-align: center;
       margin: 0 0 0.5rem 0;
+      white-space: nowrap;
+      letter-spacing: -0.02em; /* Tighter tracking to fit mobile */
     }
 
     .p {
@@ -60,17 +62,29 @@
     }
 
     .sig-row {
-      margin-top: 1rem;
+      margin-top: 1.5rem;
       display: flex;
+      flex-direction: row;
       align-items: baseline;
       justify-content: space-between;
       gap: 1rem;
       font-size: 0.95rem;
+      border-bottom: 1px solid #e5e7eb; /* Adds a nice signature underline */
+      padding-bottom: 0.25rem;
     }
-    .sig-left { padding-left: 5ch; }
-    .sig-name { font-family: "Brush Script MT", cursive; font-size: 1.1rem; color:#1d4ed8; }
+    .sig-name { 
+      font-family: "Brush Script MT", cursive; 
+      font-size: 1.25rem; 
+      color: #1d4ed8; 
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sig-date {
+      white-space: nowrap;
+      color: #374151;
+    }
     .fine { font-size: 0.75rem; color: #6b7280; }
-    .sig-right { padding-right: 5ch; }
 
     /* History section styling */
     .history-section {
@@ -110,12 +124,10 @@
         <p id="p2" class="p"></p>
 
         <div class="sig-row">
-          <div class="sig-left">
-            <div id="sigName" class="sig-name">[Name]</div>
-            <div id="sigLabel" class="fine">Electronic Signature</div>
-          </div>
-          <div id="sigDate" class="sig-right">[date]</div>
+          <div id="sigName" class="sig-name">[Name]</div>
+          <div id="sigDate" class="sig-date">[date]</div>
         </div>
+        <div id="sigLabel" class="fine text-left mt-1">Electronic Signature</div>
 
         <div id="sigCounterBelow" class="fine text-center mt-1"></div>
 
