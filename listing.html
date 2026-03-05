@@ -170,9 +170,8 @@
 
       <!-- START local-pros: Horizontal Local Professionals block under Description -->
       <section id="prosCard" class="card p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-lg font-semibold">Local Professionals in <span id="prosZip">—</span></h3>
-          <a id="prosCtaBtn" href="/local-professionals.html" class="text-sm px-4 py-1.5 rounded text-white hover:opacity-90 text-center min-w-[200px]" style="background-color:#4DA6FF;">Local Professionals</a>
+        <div class="mb-3">
+          <h3 class="text-sm sm:text-lg font-semibold whitespace-nowrap tracking-tight truncate">Local Professionals in <span id="prosZip">—</span></h3>
         </div>
         <div id="prosGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
       </section>
@@ -180,9 +179,8 @@
 
       <!-- Horizontal Local Real Estate Brokers strip (below Pros) -->
       <section id="brokersCard" class="card p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-lg font-semibold">Local Brokers in <span id="brokersZip">—</span></h3>
-          <a id="brokersCtaBtn" href="/local-brokers.html" class="text-sm px-4 py-1.5 rounded text-white hover:opacity-90 text-center min-w-[200px]" style="background-color:#4DA6FF;">Local Brokers</a>
+        <div class="mb-3">
+          <h3 class="text-sm sm:text-lg font-semibold whitespace-nowrap tracking-tight truncate">Local Brokers in <span id="brokersZip">—</span></h3>
         </div>
         <div id="brokersGrid" class="w-full"></div>
       </section>
@@ -190,9 +188,8 @@
 
       <!-- Local Service Providers strip (below Brokers) -->
       <section id="serviceProvidersCard" class="card p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-lg font-semibold">Local Service Providers in <span id="serviceProvidersZip">—</span></h3>
-          <a id="serviceProvidersCtaBtn" href="/local-service-providers.html" class="text-sm px-4 py-1.5 rounded text-white hover:opacity-90 text-center min-w-[200px]" style="background-color:#4DA6FF;">Local Service Providers</a>
+        <div class="mb-3">
+          <h3 class="text-sm sm:text-lg font-semibold whitespace-nowrap tracking-tight truncate">Local Service Providers in <span id="serviceProvidersZip">—</span></h3>
         </div>
         <div id="serviceProvidersGrid" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
       </section>
@@ -469,11 +466,9 @@
       const card = document.getElementById("prosCard");
       const grid = document.getElementById("prosGrid");
       const zipSpan = document.getElementById("prosZip");
-      const ctaBtn = document.getElementById("prosCtaBtn");
       if (!card || !grid) return;
 
       zipSpan.textContent = zip || "—";
-      ctaBtn.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&mode=search`;
 
       grid.innerHTML = "";
 
@@ -485,7 +480,7 @@
           const img = document.createElement("img");
           img.src = src;
           img.alt = "Local Professional";
-          img.className = "w-full h-40 object-contain bg-white";
+          img.className = "w-full aspect-[3/2] object-contain bg-white";
           img.onerror = () => { img.replaceWith(noImage()); };
           div.appendChild(img);
         } else {
@@ -495,7 +490,7 @@
       }
       function noImage() {
         const ph = document.createElement("div");
-        ph.className = "w-full h-40 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
+        ph.className = "w-full aspect-[3/2] bg-gray-200 flex items-center justify-center text-xs text-gray-600";
         ph.textContent = "No Image";
         return ph;
       }
@@ -504,7 +499,7 @@
         a.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&role=agent`;
         a.className = "block overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 transition";
         const inner = document.createElement("div");
-        inner.className = "w-full h-40 flex flex-col items-center justify-center text-center p-3";
+        inner.className = "w-full aspect-[3/2] flex flex-col items-center justify-center text-center p-3";
         inner.innerHTML = `
           <div class="text-gray-500 text-sm font-medium">Agent Slot Available</div>
           <div class="text-xs text-gray-400 mt-1">Click to advertise</div>
@@ -517,7 +512,7 @@
         a.href = `/local-professionals.html?zip=${encodeURIComponent(zip)}&role=lender`;
         a.className = "block overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 transition";
         const inner = document.createElement("div");
-        inner.className = "w-full h-40 flex flex-col items-center justify-center text-center p-3";
+        inner.className = "w-full aspect-[3/2] flex flex-col items-center justify-center text-center p-3";
         inner.innerHTML = `
           <div class="text-gray-500 text-sm font-medium">Lender Slot Available</div>
           <div class="text-xs text-gray-400 mt-1">Click to advertise</div>
@@ -572,11 +567,9 @@
       const card = document.getElementById("brokersCard");
       const grid = document.getElementById("brokersGrid");
       const zipSpan = document.getElementById("brokersZip");
-      const cta = document.getElementById("brokersCtaBtn");
       if (!card || !grid) return;
 
       zipSpan.textContent = zip || "—";
-      cta.href = `/local-brokers.html?zip=${encodeURIComponent(zip)}`;
 
       grid.innerHTML = "";
 
@@ -666,11 +659,9 @@
       const card = document.getElementById("serviceProvidersCard");
       const grid = document.getElementById("serviceProvidersGrid");
       const zipSpan = document.getElementById("serviceProvidersZip");
-      const ctaBtn = document.getElementById("serviceProvidersCtaBtn");
       if (!card || !grid) return;
 
       zipSpan.textContent = zip || "—";
-      ctaBtn.href = `/local-service-providers.html?zip=${encodeURIComponent(zip)}`;
 
       grid.innerHTML = "";
 
@@ -679,7 +670,7 @@
         a.href = `/local-service-providers.html?zip=${encodeURIComponent(zip)}`;
         a.className = "block overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50 transition";
         const inner = document.createElement("div");
-        inner.className = "w-full h-40 flex flex-col items-center justify-center text-center p-3";
+        inner.className = "w-full aspect-[3/2] flex flex-col items-center justify-center text-center p-3";
         inner.innerHTML = `
           <div class="text-gray-500 text-sm font-medium">Your Service Here</div>
           <div class="text-xs text-gray-400 mt-1">Click to advertise</div>
@@ -699,17 +690,17 @@
           const img = document.createElement("img");
           img.src = photoSrc;
           img.alt = sp.company || sp.name || "Service Provider";
-          img.className = "w-full h-40 object-contain bg-white";
+          img.className = "w-full aspect-[3/2] object-contain bg-white";
           img.onerror = () => {
             const ph = document.createElement("div");
-            ph.className = "w-full h-40 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
+            ph.className = "w-full aspect-[3/2] bg-gray-200 flex items-center justify-center text-xs text-gray-600";
             ph.textContent = "No Image";
             img.replaceWith(ph);
           };
           tile.appendChild(img);
         } else {
           const ph = document.createElement("div");
-          ph.className = "w-full h-40 bg-gray-200 flex items-center justify-center text-xs text-gray-600";
+          ph.className = "w-full aspect-[3/2] bg-gray-200 flex items-center justify-center text-xs text-gray-600";
           ph.textContent = "No Image";
           tile.appendChild(ph);
         }
