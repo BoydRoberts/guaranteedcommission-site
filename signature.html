@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- signature.html - Build 2026-02-21 (Guard: only seed history arrays if empty) -->
+<!-- signature.html - Build 2026-03-05 (Standard header + nav strip + mobile title fix) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -10,23 +10,30 @@
 </head>
 <body class="bg-gray-100 text-gray-900">
 
-  <!-- Header -->
+  <!-- Standard Header -->
   <header class="bg-white shadow">
-    <div class="max-w-7xl mx-auto px-4 py-4">
-      <div class="text-center">
-        <div class="flex items-end justify-center gap-0">
-          <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
-          <h1 class="text-3xl font-bold tracking-tight text-gray-900">GuaranteedCommission.com</h1>
+    <div class="max-w-7xl mx-auto px-4 pt-3 pb-4">
+      <div class="text-center" id="headerTitleBlock">
+        <div class="flex items-end justify-center gap-0 md:gap-1 -translate-x-[2px] md:translate-x-0">
+          <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-7 w-7 md:h-10 md:w-10 object-contain mr-0 translate-y-0 md:-mr-1 md:-mb-1 md:translate-y-0">
+          <h1 class="text-lg sm:text-xl md:text-3xl font-bold tracking-tight text-gray-900">GuaranteedCommission.com&trade;</h1>
         </div>
-        <p class="text-sm text-red-600 font-semibold mt-1 whitespace-nowrap">
-          Guaranteeing buyer's agent commissions so your home will sell quicker at a higher price.
+        <p class="hidden md:block text-sm text-red-600 font-semibold mt-1 leading-snug whitespace-nowrap">
+          Guaranteeing the buyer's agent commissions so your home will sell quicker at a higher price.
         </p>
+        <div class="hidden md:block mt-1.5 text-[8px] font-semibold tracking-widest leading-none uppercase" style="color:#4DA6FF;">Boyd Roberts | California Real Estate Broker | DRE #01354788</div>
       </div>
     </div>
   </header>
 
+  <nav class="bg-gray-200 py-2">
+    <ul class="flex justify-center space-x-8 font-semibold text-sm md:text-base">
+      <li><a href="/index.html" class="hover:underline" style="color:#4DA6FF;">Home</a></li>
+    </ul>
+  </nav>
+
   <div class="max-w-3xl mx-auto mt-4 bg-white p-6 rounded shadow">
-    <h2 class="text-2xl font-bold text-center mb-6">Irrevocable Seller Communication</h2>
+    <h2 class="text-lg sm:text-xl md:text-2xl font-bold text-center mb-6 whitespace-nowrap tracking-tight">Irrevocable Seller Communication</h2>
 
     <!-- Friendly invalid message -->
     <div id="invalidBox" class="hidden bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-900 mb-4">
@@ -373,5 +380,7 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
     })();
   </script>
 
+  <!-- Global Nav Sync: smart login/logout/dashboard -->
+  <script src="/scripts/global-nav.js"></script>
 </body>
 </html>
