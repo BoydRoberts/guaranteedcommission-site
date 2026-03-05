@@ -51,9 +51,6 @@
     .tile-body > *:last-child,
     .isc-body > *:last-child { margin-bottom:0 !important; }
 
-    /* ISC embed */
-    .click-wrap { position: relative; width:100%; height:100%; }
-    .click-wrap a.overlay { position:absolute; inset:0; z-index:10; text-indent:-9999px; }
     .isc-iframe { width:100%; border:0; margin:0; display:block; background:transparent; }
 
     .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
@@ -91,10 +88,9 @@
   </header>
 
   <nav class="bg-gray-200 py-2">
-    <ul class="flex justify-center space-x-8 font-semibold text-sm md:text-base">
+    <ul class="flex justify-center space-x-6 md:space-x-8 font-semibold text-sm md:text-base">
       <li><a href="/index.html" class="hover:underline" style="color:#4DA6FF;">Home</a></li>
       <li><a href="/search.html" class="hover:underline" style="color:#4DA6FF;">Search</a></li>
-      <li><a href="/advertise.html" class="hover:underline" style="color:#4DA6FF;">Advertise</a></li>
       <li><a href="/login.html" id="authLink" class="hover:underline" style="color:#4DA6FF;">Log In</a></li>
     </ul>
   </nav>
@@ -150,11 +146,11 @@
       </aside>
 
       <!-- Right: ISC (iframe preview—auto fits content height, but clamped to tile) -->
-      <aside id="iscCard" class="lg:col-span-2 card p-0 m-0" style="height:auto;">
+      <aside id="iscCard" class="lg:col-span-2 card p-0 m-0">
         <div class="isc-body">
-          <div class="click-wrap">
-            <a id="iscOpenLink" class="overlay" href="/printable-isc.html" target="_blank" aria-label="Open full ISC">Open</a>
-            <iframe id="iscIframe" src="/printable-isc.html" class="isc-iframe" scrolling="no"></iframe>
+          <iframe id="iscIframe" src="/printable-isc.html" class="isc-iframe" scrolling="no"></iframe>
+          <div class="mt-4 pt-4 border-t border-gray-100">
+            <a id="iscPrintBtn" href="/printable-isc.html" target="_blank" class="block w-full text-center py-2 rounded border border-blue-600 text-blue-600 font-semibold hover:bg-blue-50 text-sm transition">View / Print Full Document</a>
           </div>
         </div>
       </aside>
@@ -223,29 +219,15 @@
     const $ = (id) => document.getElementById(id);
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
 
-    // Clamp ISC iframe to tile height (avoid "lip"); match map to tile
+    // Match map to tile (ISC now freely expands)
     function alignHeights(){
       const tile = $("tileCard");
       const mapCard = $("mapCard");
-      const iscCard = $("iscCard");
-      const iscIframe = $("iscIframe");
-      if (!tile || !mapCard || !iscCard) return;
+      if (!tile || !mapCard) return;
 
-      mapCard.style.height = iscCard.style.height = '';
-      if (iscIframe) iscIframe.style.height = '';
-
+      mapCard.style.height = '';
       const h = Math.max(0, tile.getBoundingClientRect().height);
-
       mapCard.style.height = h + "px";
-
-      iscCard.style.height = h + "px";
-      const PAD_FUDGE = 24;
-      if (iscIframe) {
-        const inner = Math.max(0, h - PAD_FUDGE);
-        iscIframe.style.height = inner + "px";
-      }
-
-      iscCard.style.overflow = "hidden";
     }
 
     // Heart wiring after we know the listing id
@@ -416,20 +398,15 @@
       return 'Sold';
     }
 
-    // --- ISC auto-fit ---
+    // --- ISC auto-fit (unclamped) ---
     window.addEventListener('message', (ev) => {
       try {
         const data = ev.data || {};
         if (data.type === 'gc-isc-embed-size') {
           const f = document.getElementById("iscIframe");
-          const tile = document.getElementById("tileCard");
-          if (f && tile) {
-            const tileH = Math.max(0, tile.getBoundingClientRect().height);
-            const PAD_FUDGE = 24;
+          if (f) {
             const desired = Math.max(0, Number(data.height || 0));
-            const clamped = Math.max(0, Math.min(desired, tileH - PAD_FUDGE));
-            f.style.height = clamped + 'px';
-            alignHeights();
+            f.style.height = desired + 'px';
           }
         }
       } catch {}
@@ -756,10 +733,10 @@
         if (!idParam)  idParam  = (localStorage.getItem('lastListingId') || '').trim();
         if (!addrParam) addrParam = (localStorage.getItem('lastListingAddress') || '').trim();
 
-        const openA = document.getElementById("iscOpenLink");
+        const printBtn = document.getElementById("iscPrintBtn");
         const iscIframe = document.getElementById("iscIframe");
         const base = "/printable-isc.html?embed=1";
-        if (openA) openA.href = idParam
+        if (printBtn) printBtn.href = idParam
           ? `/printable-isc.html?id=${encodeURIComponent(idParam)}`
           : (addrParam ? `/printable-isc.html?addr=${encodeURIComponent(addrParam)}` : `/printable-isc.html`);
         if (iscIframe) iscIframe.src = idParam
