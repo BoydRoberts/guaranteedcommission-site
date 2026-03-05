@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Build: 2026-03-05 (Standard header + ISC alignment fix) -->
+<!-- Build: 2026-02-15 (Sold: inline status with date/price, red price, removed sold banner box) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -74,29 +74,26 @@
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-  <!-- Standard Header -->
-  <header class="bg-white shadow">
-    <div class="max-w-7xl mx-auto px-4 pt-3 pb-4">
-      <div class="text-center" id="headerTitleBlock">
-        <div class="flex items-end justify-center gap-0 md:gap-1 -translate-x-[2px] md:translate-x-0">
-          <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-7 w-7 md:h-10 md:w-10 object-contain mr-0 translate-y-0 md:-mr-1 md:-mb-1 md:translate-y-0">
-          <h1 class="text-lg sm:text-xl md:text-3xl font-bold tracking-tight text-gray-900">GuaranteedCommission.com&trade;</h1>
+  <!-- Top bar (matches home/search header) -->
+  <header class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <div class="flex items-center justify-between">
+        <a href="/index.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Home</a>
+
+        <div class="text-center">
+          <div class="flex items-end justify-center gap-0">
+            <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
+            <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
+          </div>
         </div>
-        <p class="hidden md:block text-sm text-red-600 font-semibold mt-1 leading-snug whitespace-nowrap">
-          Guaranteeing the buyer's agent commissions so your home will sell quicker at a higher price.
-        </p>
-        <div class="hidden md:block mt-1.5 text-[8px] font-semibold tracking-widest leading-none uppercase" style="color:#4DA6FF;">Boyd Roberts | California Real Estate Broker | DRE #01354788</div>
+
+        <div class="flex items-center gap-4">
+          <a href="/advertise.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Advertise</a>
+          <a href="/login.html" id="authLink" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Log In</a>
+        </div>
       </div>
     </div>
   </header>
-
-  <nav class="bg-gray-200 py-2">
-    <ul class="flex justify-center space-x-6 md:space-x-8 font-semibold text-sm md:text-base">
-      <li><a href="/index.html" class="hover:underline" style="color:#4DA6FF;">Home</a></li>
-      <li><a href="/search.html" class="hover:underline" style="color:#4DA6FF;">Search</a></li>
-      <li><a href="/login.html" id="authLink" class="hover:underline" style="color:#4DA6FF;">Log In</a></li>
-    </ul>
-  </nav>
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
@@ -148,7 +145,7 @@
         <div id="mapCanvas" style="width:100%; height:100%;"></div>
       </aside>
 
-      <!-- Right: ISC (click overlay opens full printable-isc.html) -->
+      <!-- Right: ISC (iframe preview—auto fits content height, but clamped to tile) -->
       <aside id="iscCard" class="lg:col-span-2 card p-0 m-0" style="height:auto;">
         <div class="isc-body">
           <div class="click-wrap">
@@ -222,31 +219,29 @@
     const $ = (id) => document.getElementById(id);
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
 
-    // Force Map and ISC cards to perfectly match the height of the Listing Tile
+    // Clamp ISC iframe to tile height (avoid "lip"); match map to tile
     function alignHeights(){
       const tile = $("tileCard");
       const mapCard = $("mapCard");
       const iscCard = $("iscCard");
       const iscIframe = $("iscIframe");
-      if (!tile) return;
+      if (!tile || !mapCard || !iscCard) return;
 
-      if (mapCard) mapCard.style.height = '';
-      if (iscCard) iscCard.style.height = '';
+      mapCard.style.height = iscCard.style.height = '';
       if (iscIframe) iscIframe.style.height = '';
 
       const h = Math.max(0, tile.getBoundingClientRect().height);
 
-      if (mapCard) mapCard.style.height = h + "px";
-      
-      if (iscCard) {
-        iscCard.style.height = h + "px";
-        iscCard.style.overflowY = "auto"; // Allows scrolling inside the card if text is long
-      }
-      
-      // Iframe takes up 100% of the available space minus padding
+      mapCard.style.height = h + "px";
+
+      iscCard.style.height = h + "px";
+      const PAD_FUDGE = 24;
       if (iscIframe) {
-        iscIframe.style.height = "100%";
+        const inner = Math.max(0, h - PAD_FUDGE);
+        iscIframe.style.height = inner + "px";
       }
+
+      iscCard.style.overflow = "hidden";
     }
 
     // Heart wiring after we know the listing id
@@ -416,6 +411,25 @@
       if (formattedPrice) return `Sold for ${formattedPrice}`;
       return 'Sold';
     }
+
+    // --- ISC auto-fit ---
+    window.addEventListener('message', (ev) => {
+      try {
+        const data = ev.data || {};
+        if (data.type === 'gc-isc-embed-size') {
+          const f = document.getElementById("iscIframe");
+          const tile = document.getElementById("tileCard");
+          if (f && tile) {
+            const tileH = Math.max(0, tile.getBoundingClientRect().height);
+            const PAD_FUDGE = 24;
+            const desired = Math.max(0, Number(data.height || 0));
+            const clamped = Math.max(0, Math.min(desired, tileH - PAD_FUDGE));
+            f.style.height = clamped + 'px';
+            alignHeights();
+          }
+        }
+      } catch {}
+    });
 
     function parseZipFromAddress(addr="") {
       const m = String(addr).match(/\b(\d{5})(?:-\d{4})?\s*$/);
