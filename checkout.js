@@ -177,8 +177,8 @@ function runCheckoutApp() {
 
     // BULLETPROOF "ALREADY PAID" DEFINITION:
     // 1. Paid as an upgrade previously (pu.upgradeToPlus)
-    // 2. OR coming from the Seller Dashboard with an established Plus plan
-    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromDashboard && plan === "Listed Property Plus");
+    // 2. OR coming from the Seller Dashboard with an established Plus plan (and not actively buying it)
+    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromDashboard && plan === "Listed Property Plus" && !d.upgrades.upgradeToPlus);
     var activelyBuyingPlus = !!d.upgrades.upgradeToPlus && !plusAlreadyPaid;
 
     var base = 0;
@@ -263,7 +263,7 @@ function runCheckoutApp() {
     var sel = [];
 
     var isUpgradeFromDashboard = !!(data.meta && (data.meta.fromSellerDetail === true || data.meta.fromAgentDetail === true));
-    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromDashboard && data.plan === "Listed Property Plus");
+    var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromDashboard && data.plan === "Listed Property Plus" && !data.upgrades.upgradeToPlus);
 
     if (plusAlreadyPaid || data.upgrades.upgradeToPlus) {
       sel.push(plusAlreadyPaid ? "Listed Property Plus (Already paid)" : "Upgrade to Listed Property Plus (" + (promo ? "$0 - November promo" : "$" + (data.prices.plus || 20)) + ")");
@@ -324,7 +324,7 @@ function runCheckoutApp() {
     if (!isFSBO) {
       // Determine if checkbox should be disabled
       var isUpgradeFromDashboard = !!(data.meta && (data.meta.fromSellerDetail === true || data.meta.fromAgentDetail === true));
-      var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromDashboard && plan === "Listed Property Plus");
+      var plusAlreadyPaid = !!(pu && pu.upgradeToPlus) || (isUpgradeFromDashboard && plan === "Listed Property Plus" && !data.upgrades.upgradeToPlus);
       var plusDisabled = isCommissionChange || plusAlreadyPaid;
 
       // Determine note text
