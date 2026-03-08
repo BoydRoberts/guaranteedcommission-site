@@ -885,7 +885,8 @@
         container: 'mapCanvas',
         style: 'mapbox://styles/mapbox/streets-v12',
         center,
-        zoom
+        zoom,
+        cooperativeGestures: true
       });
       map.addControl(new mapboxgl.NavigationControl());
 
