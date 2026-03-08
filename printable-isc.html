@@ -39,10 +39,13 @@
     }
 
     .h1 {
-      font-size: 1.125rem;
+      font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
       font-weight: 700;
       text-align: center;
       margin: 0 0 0.5rem 0;
+      white-space: nowrap; /* Forces one line */
+      overflow: hidden;
+      text-overflow: ellipsis; /* Fallback if screen is extremely narrow */
     }
 
     .p {
