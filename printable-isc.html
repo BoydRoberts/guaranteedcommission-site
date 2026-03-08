@@ -65,15 +65,16 @@
     .sig-row {
       margin-top: 1rem;
       display: flex;
+      flex-wrap: wrap;
       align-items: baseline;
       justify-content: space-between;
-      gap: 1rem;
+      gap: 0.5rem;
       font-size: 0.95rem;
     }
-    .sig-left { padding-left: 5ch; }
-    .sig-name { font-family: "Brush Script MT", cursive; font-size: 1.1rem; color:#1d4ed8; }
+    .sig-left { padding-left: clamp(0px, 3vw, 5ch); }
+    .sig-name { font-family: "Brush Script MT", cursive; font-size: 1.1rem; color:#1d4ed8; white-space: nowrap; }
     .fine { font-size: 0.75rem; color: #6b7280; }
-    .sig-right { padding-right: 5ch; }
+    .sig-right { padding-right: clamp(0px, 3vw, 5ch); white-space: nowrap; }
 
     /* History section styling */
     .history-section {
