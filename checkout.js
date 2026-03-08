@@ -1,6 +1,6 @@
 // /checkout.js - build 2026-02-23b (Role-based payer identity, dashboard recognition for agents)
 
-document.addEventListener("DOMContentLoaded", function() {
+function runCheckoutApp() {
   console.log("[checkout.js] build 2026-02-23b - Role-based payer, dashboard recognition for agents");
 
   var $ = function(id) { return document.getElementById(id); };
@@ -531,4 +531,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
   renderSummary();
   renderLastChance();
-});
+}
+
+// Wait for checkout.html to finish fetching Firestore data before rendering
+if (window.__firebaseCheckoutSyncComplete) {
+  runCheckoutApp();
+} else {
+  window.addEventListener("firebaseCheckoutSyncComplete", runCheckoutApp);
+}
