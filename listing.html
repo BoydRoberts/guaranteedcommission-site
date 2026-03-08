@@ -222,7 +222,9 @@
     const $ = (id) => document.getElementById(id);
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
 
-    // Clamp ISC iframe to tile height (avoid "lip"); match map to tile
+    // Clamp ISC iframe to tile height on desktop; let it expand fully on mobile
+    let _iscDesiredHeight = 600; // default tall fallback
+
     function alignHeights(){
       const tile = $("tileCard");
       const mapCard = $("mapCard");
@@ -230,21 +232,20 @@
       const iscIframe = $("iscIframe");
       if (!tile || !mapCard || !iscCard) return;
 
-      mapCard.style.height = iscCard.style.height = '';
-      if (iscIframe) iscIframe.style.height = '';
+      const isDesktop = window.innerWidth >= 1024; // lg breakpoint
 
-      const h = Math.max(0, tile.getBoundingClientRect().height);
-
-      mapCard.style.height = h + "px";
-
-      iscCard.style.height = h + "px";
-      const PAD_FUDGE = 24;
-      if (iscIframe) {
-        const inner = Math.max(0, h - PAD_FUDGE);
-        iscIframe.style.height = inner + "px";
+      if (isDesktop) {
+        const h = Math.max(0, tile.getBoundingClientRect().height);
+        mapCard.style.height = h + "px";
+        iscCard.style.height = h + "px";
+        iscCard.style.overflow = "hidden";
+        if (iscIframe) iscIframe.style.height = Math.max(0, h - 24) + "px";
+      } else {
+        mapCard.style.height = "300px";
+        iscCard.style.height = "auto";
+        iscCard.style.overflow = "visible";
+        if (iscIframe) iscIframe.style.height = _iscDesiredHeight + "px";
       }
-
-      iscCard.style.overflow = "hidden";
     }
 
     // Heart wiring after we know the listing id
@@ -420,16 +421,8 @@
       try {
         const data = ev.data || {};
         if (data.type === 'gc-isc-embed-size') {
-          const f = document.getElementById("iscIframe");
-          const tile = document.getElementById("tileCard");
-          if (f && tile) {
-            const tileH = Math.max(0, tile.getBoundingClientRect().height);
-            const PAD_FUDGE = 24;
-            const desired = Math.max(0, Number(data.height || 0));
-            const clamped = Math.max(0, Math.min(desired, tileH - PAD_FUDGE));
-            f.style.height = clamped + 'px';
-            alignHeights();
-          }
+          _iscDesiredHeight = Math.max(0, Number(data.height || 0));
+          alignHeights();
         }
       } catch {}
     });
