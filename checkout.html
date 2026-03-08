@@ -131,6 +131,21 @@
         if (!snap.exists()) return;
 
         const listing = snap.data() || {};
+        
+        // FIX: Restore formData from server so checkout.js displays real data instead of placeholders
+        const fd = getJSON("formData", {});
+        fd.address = listing.address || fd.address;
+        fd.name = listing.ownerName || listing.name || fd.name;
+        fd.phone = listing.ownerPhone || listing.phone || fd.phone;
+        fd.fsboEmail = listing.ownerEmail || fd.fsboEmail;
+        fd.agent = listing.agentName || listing.agent || fd.agent;
+        fd.brokerage = listing.brokerage || fd.brokerage;
+        fd.agentPhone = listing.agentPhone || fd.agentPhone;
+        fd.agentEmail = listing.agentEmail || fd.agentEmail;
+        fd.commission = listing.commission || fd.commission;
+        fd.commissionType = listing.commissionType || fd.commissionType;
+        setJSON("formData", fd);
+
         const paid = (listing.paidUpgrades && typeof listing.paidUpgrades === "object") ? listing.paidUpgrades : null;
         if (!paid) return;
 
