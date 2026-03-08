@@ -314,16 +314,14 @@
 
         // Auto-select Advertiser role
         $('createRole').value = 'advertiser';
-
-        // Auto-switch to Create Account tab (they need an account)
-        showCreate();
-        return; // skip the tab logic below, we already showed Create
+        
+        // Removed aggressive showCreate() lock here to allow returning advertisers to log in.
       }
 
       // ----------------------------------------------------------
-      // 4. Tab selection (original logic, only if no ad draft)
+      // 4. Tab selection (fixed: do not force create just because nextAfterLogin exists)
       // ----------------------------------------------------------
-      if (localStorage.getItem('nextAfterLogin') || tabParam === 'create') {
+      if (tabParam === 'create') {
         showCreate();
       }
     })();
