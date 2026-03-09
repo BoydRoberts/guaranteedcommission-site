@@ -34,10 +34,11 @@
     .search-results #grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:1rem; }
 
     @media (max-width: 1023px) {
-      .search-body { flex-direction:column; }
-      .search-map { width:100%; height:300px; }
-      .search-results { width:100%; height:auto; flex:1; }
-      .search-results #grid { grid-template-columns:1fr; }
+      .search-layout { height: auto; display: block; }
+      .search-body { overflow: visible; display: block; }
+      .search-map { width: 100%; height: 350px; }
+      .search-results { width: 100%; height: auto; overflow-y: visible; flex: none; }
+      .search-results #grid { grid-template-columns: 1fr; }
     }
 
     /* ===== MARKER STYLES ===== */
