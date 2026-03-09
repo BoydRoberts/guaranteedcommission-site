@@ -597,7 +597,6 @@
 
     function openPressModal(){ document.getElementById('pressModal').classList.remove('hidden'); }
     function closePressModal(){ document.getElementById('pressModal').classList.add('hidden'); }
-    function submitPressForm(){ document.getElementById('pressConfirmation').classList.remove('hidden'); }
 
     function openSupportModal(){ document.getElementById('supportModal').classList.remove('hidden'); }
     function closeSupportModal(){ document.getElementById('supportModal').classList.add('hidden'); }
@@ -1272,6 +1271,41 @@
   <script type="module">
     import { db } from "/scripts/firebase-init.js";
     import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    window.submitPressForm = async function() {
+      var name = (document.getElementById("pressName")?.value || "").trim();
+      var org = (document.getElementById("pressOrg")?.value || "").trim();
+      var phone = (document.getElementById("pressPhone")?.value || "").trim();
+      var email = (document.getElementById("pressEmail")?.value || "").trim();
+
+      if (!name || !email) {
+        alert("Please fill in your name and email.");
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "pressInquiries"), {
+          name: name,
+          organization: org,
+          phone: phone,
+          email: email,
+          status: "new",
+          createdAt: serverTimestamp()
+        });
+
+        // Clear the fields
+        if (document.getElementById("pressName")) document.getElementById("pressName").value = "";
+        if (document.getElementById("pressOrg")) document.getElementById("pressOrg").value = "";
+        if (document.getElementById("pressPhone")) document.getElementById("pressPhone").value = "";
+        if (document.getElementById("pressEmail")) document.getElementById("pressEmail").value = "";
+
+        var confirm = document.getElementById("pressConfirmation");
+        if (confirm) confirm.classList.remove("hidden");
+      } catch (e) {
+        console.warn("[press] submission failed:", e);
+        alert("Something went wrong. Please try again.");
+      }
+    };
 
     window.submitSupportForm = async function() {
       var name = (document.getElementById("supportName")?.value || "").trim();
