@@ -254,7 +254,9 @@
         mapCard.style.height = "300px";
         iscCard.style.height = "auto";
         iscCard.style.overflow = "hidden";
-        if (iscIframe) iscIframe.style.height = "450px";
+        // Restore dynamic height to show signatures, but clamp it to prevent the white-space bug
+        const safeHeight = Math.min(Math.max(_iscDesiredHeight, 600), 1200);
+        if (iscIframe) iscIframe.style.height = safeHeight + "px";
       }
     }
 
