@@ -171,6 +171,19 @@
         <p id="dDescription" class="text-sm leading-relaxed whitespace-pre-line"></p>
       </div>
 
+      <!-- View on Portals strip -->
+      <section id="portalsCard" class="card px-4 py-3 hidden">
+        <div class="flex items-center justify-between gap-4 overflow-x-auto whitespace-nowrap scrollbar-hide">
+          <div class="text-sm font-semibold text-gray-700 shrink-0">View on Portals:</div>
+          <div class="flex items-center gap-6 shrink-0 pr-2">
+            <a id="linkZillow" href="#" target="_blank" class="hover:opacity-75 transition"><span class="text-[#006AFF] font-bold text-lg tracking-tighter">Zillow</span></a>
+            <a id="linkRedfin" href="#" target="_blank" class="hover:opacity-75 transition"><span class="text-[#C82021] font-bold text-lg tracking-tight">REDFIN</span></a>
+            <a id="linkRealtor" href="#" target="_blank" class="hover:opacity-75 transition"><span class="text-[#D92228] font-bold text-lg tracking-tighter">realtor.com<sup class="text-[10px]">&reg;</sup></span></a>
+            <a id="linkHomes" href="#" target="_blank" class="hover:opacity-75 transition"><span class="text-[#132241] font-bold text-lg tracking-tight">Homes<span class="text-[#00A453]">.com</span></span></a>
+          </div>
+        </div>
+      </section>
+
       <!-- START local-pros: Horizontal Local Professionals block under Description -->
       <section id="prosCard" class="card p-5">
         <div class="flex items-center justify-between mb-3">
@@ -785,7 +798,23 @@
         if (idParam) await incrementViewsOnce(idParam);
 
         const address = String(d.address || "").trim();
-        if (address) document.title = address + " | GuaranteedCommission.com";
+        if (address) {
+          document.title = address + " | GuaranteedCommission.com";
+          
+          // Populate Portal Links dynamically
+          const encodedAddr = encodeURIComponent(address);
+          const linkZ = document.getElementById("linkZillow");
+          const linkRed = document.getElementById("linkRedfin");
+          const linkReal = document.getElementById("linkRealtor");
+          const linkHomes = document.getElementById("linkHomes");
+          
+          if (linkZ) linkZ.href = `https://www.zillow.com/homes/${encodedAddr}_rb/`;
+          if (linkRed) linkRed.href = `https://www.redfin.com/search?searchLocation=${encodedAddr}`;
+          if (linkReal) linkReal.href = `https://www.realtor.com/realestateandhomes-search/${encodedAddr}`;
+          if (linkHomes) linkHomes.href = `https://www.homes.com/search/?q=${encodedAddr}`;
+          
+          document.getElementById("portalsCard").classList.remove("hidden");
+        }
         const plan = String(d.plan || "Listed Property Basic");
         const status = String(d.status || "Active");
 
