@@ -219,25 +219,28 @@
 
   <!-- ========== STRIP 1: BRANDED HEADER ========== -->
   <div class="search-header">
-    <header class="bg-white border-b">
-      <div class="max-w-7xl mx-auto px-4 py-3">
-        <div class="flex items-center justify-between">
-          <a href="/index.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Home</a>
-
-          <div class="text-center">
-            <div class="flex items-end justify-center gap-0">
-              <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-10 w-10 object-contain -mr-1 -mb-1">
-              <h1 class="text-3xl font-bold">GuaranteedCommission.com</h1>
-            </div>
+    <header class="bg-white shadow">
+      <div class="max-w-7xl mx-auto px-4 pt-3 pb-4">
+        <div class="text-center" id="headerTitleBlock">
+          <div class="flex items-end justify-center gap-0 md:gap-1 -translate-x-[2px] md:translate-x-0">
+            <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-7 w-7 md:h-10 md:w-10 object-contain mr-0 translate-y-0 md:-mr-1 md:-mb-1 md:translate-y-0">
+            <h1 class="text-lg sm:text-xl md:text-3xl font-bold tracking-tight text-gray-900">GuaranteedCommission.com&trade;</h1>
           </div>
-
-          <div class="flex items-center gap-4">
-            <a href="/advertise.html" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Advertise</a>
-            <a href="/login.html" id="authLink" class="text-sm font-medium hover:underline" style="color:#4DA6FF;">Log In</a>
-          </div>
+          <p class="hidden md:block text-sm text-red-600 font-semibold mt-1 leading-snug whitespace-nowrap">
+            Guaranteeing the buyer's agent commissions so your home will sell quicker at a higher price.
+          </p>
+          <div class="hidden md:block mt-1.5 text-[8px] font-semibold tracking-widest leading-none uppercase" style="color:#4DA6FF;">Boyd Roberts | California Real Estate Broker | DRE #01354788</div>
         </div>
       </div>
     </header>
+
+    <nav class="bg-gray-200 py-2">
+      <ul class="flex justify-center space-x-6 md:space-x-8 font-semibold text-sm md:text-base">
+        <li><a href="/index.html" class="hover:underline" style="color:#4DA6FF;">Home</a></li>
+        <li><a href="/search.html" class="hover:underline" style="color:#4DA6FF;">Search</a></li>
+        <li><a href="/login.html" id="authLink" class="hover:underline" style="color:#4DA6FF;">Log In</a></li>
+      </ul>
+    </nav>
 
     <!-- ========== STRIP 2: ZILLOW-STYLE FILTER BAR ========== -->
     <section class="bg-white border-b">
