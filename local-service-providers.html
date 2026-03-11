@@ -31,29 +31,16 @@
     </div>
   </header>
 
-  <main class="max-w-3xl mx-auto px-4 py-8">
-    <h2 class="text-2xl font-bold text-center mb-2" style="color:#4DA6FF;">Local Service Providers</h2>
-    <p id="pageSubtitle" class="text-center text-gray-600 mb-6">
-      Display your business card on every listing detail page and on every listed property intake page (seller and agent) in a specified ZIP code.
-    </p>
+  <main class="max-w-4xl mx-auto px-4 py-6">
+    <section class="bg-white rounded-2xl shadow p-6">
+      <h2 class="text-2xl font-bold text-center">Become a Local Service Provider</h2>
+      <p id="pageSubtitle" class="text-sm text-center text-gray-700 mt-1">
+        <strong>$5 per month per ZIP</strong>. Display your business card on every listing detail page and listed property intake page in your selected ZIPs.
+      </p>
 
-    <!-- Pricing Info -->
-    <div id="pricingInfo" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-900">
-      <p class="font-semibold">$5 per month per ZIP code</p>
-      <p class="text-blue-700 mt-1">Maximum 3 ZIP codes | Eight service providers per ZIP | First come first served</p>
-    </div>
+      <div id="status" class="hidden mt-4 text-sm rounded-lg p-3" role="alert"></div>
 
-    <!-- Status -->
-    <div id="status" class="hidden mb-4 text-sm rounded-lg p-3" role="alert"></div>
-
-    <!-- Success Message (shown after payment) -->
-    <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mb-6 text-emerald-800">
-      <h3 class="text-lg font-semibold">Thank you!</h3>
-      <p class="text-sm mt-1">Your Local Service Provider subscription checkout completed successfully.</p>
-    </section>
-
-    <!-- Signup Form -->
-    <form id="serviceProviderForm" class="bg-white rounded-xl shadow p-6 space-y-5" autocomplete="off">
+      <form id="serviceProviderForm" class="mt-6 space-y-5" autocomplete="off">
       <div>
         <label for="role" class="block text-sm font-semibold mb-1">Service Type <span class="text-red-600">*</span></label>
         <input id="role" type="text" required placeholder="e.g., Title, Escrow, Architect, Builder, Planner" class="w-full border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -115,7 +102,12 @@
       </div>
     </form>
 
-    <!-- Search Section -->
+      <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mt-6 text-emerald-800">
+        <h3 class="text-lg font-semibold">Thank you!</h3>
+        <p class="text-sm mt-1">Your Local Service Provider subscription checkout completed successfully.</p>
+      </section>
+    </section>
+
     <section id="searchSection" class="mt-10 bg-white rounded-xl shadow p-6">
       <h3 class="text-lg font-semibold mb-4" style="color:#4DA6FF;">Search Local Service Providers by ZIP</h3>
       <div class="flex gap-2 mb-4">
