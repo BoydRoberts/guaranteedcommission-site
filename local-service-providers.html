@@ -97,7 +97,7 @@
 
       <div class="pt-4">
         <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">
-          Continue to Payment ($5/month per ZIP)
+          Proceed to Payment
         </button>
       </div>
     </form>
@@ -106,16 +106,6 @@
         <h3 class="text-lg font-semibold">Thank you!</h3>
         <p class="text-sm mt-1">Your Local Service Provider subscription checkout completed successfully.</p>
       </section>
-    </section>
-
-    <section id="searchSection" class="mt-10 bg-white rounded-xl shadow p-6">
-      <h3 class="text-lg font-semibold mb-4" style="color:#4DA6FF;">Search Local Service Providers by ZIP</h3>
-      <div class="flex gap-2 mb-4">
-        <input id="searchZip" type="text" maxlength="5" placeholder="Enter ZIP code" class="flex-1 border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <button id="searchBtn" type="button" class="px-4 py-2 rounded text-white font-semibold hover:opacity-90" style="background-color:#4DA6FF;">Search</button>
-      </div>
-      <div id="searchResults" class="space-y-3"></div>
-      <p id="searchEmpty" class="hidden text-sm text-gray-500">No service providers found for this ZIP code.</p>
     </section>
   </main>
 
@@ -237,7 +227,7 @@
       } else {
         // All ZIPs available - normal checkout mode
         isWaitlistMode = false;
-        btn.textContent = `Continue to Payment (${fmtMoney(PRICE_PER_ZIP)}/month per ZIP)`;
+        btn.textContent = 'Proceed to Payment';
         btn.className = 'w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition';
         btn.style.backgroundColor = '';
         $("status").classList.add("hidden");
@@ -625,81 +615,6 @@
       }
     });
 
-    // Search functionality
-    $("searchBtn")?.addEventListener("click", async () => {
-      const zip = ($("searchZip")?.value || "").trim();
-      if (!zip || zip.length !== 5) {
-        setStatus("Please enter a valid 5-digit ZIP code.");
-        return;
-      }
-
-      const resultsDiv = $("searchResults");
-      const emptyMsg = $("searchEmpty");
-      resultsDiv.innerHTML = "<p class='text-sm text-gray-500'>Searching...</p>";
-      emptyMsg.classList.add("hidden");
-
-      try {
-        const q = query(
-          collection(db, COLLECTION),
-          where("status", "==", "active"),
-          where("zips", "array-contains", zip)
-        );
-        const snap = await getDocs(q);
-
-        if (snap.empty) {
-          resultsDiv.innerHTML = "";
-          emptyMsg.classList.remove("hidden");
-          return;
-        }
-
-        resultsDiv.innerHTML = "";
-        snap.forEach((doc) => {
-          const d = doc.data();
-          const card = document.createElement("div");
-          card.className = "flex items-center gap-4 p-3 border rounded-lg bg-gray-50";
-
-          const photoSrc = d.photoUrl || d.photo || "";
-          if (photoSrc) {
-            const img = document.createElement("img");
-            img.src = photoSrc;
-            img.alt = d.company || "Service Provider";
-            img.className = "thumb";
-            img.onerror = () => {
-              img.style.display = "none";
-            };
-            card.appendChild(img);
-          } else {
-            const placeholder = document.createElement("div");
-            placeholder.className = "thumb bg-gray-200 flex items-center justify-center text-xs text-gray-500";
-            placeholder.textContent = "No Image";
-            card.appendChild(placeholder);
-          }
-
-          const info = document.createElement("div");
-          info.className = "flex-1";
-          info.innerHTML = `
-            <p class="font-semibold">${d.company || d.name || "Service Provider"}</p>
-            <p class="text-sm text-gray-600">${d.role || "Service Provider"}</p>
-            <p class="text-xs text-gray-500">${d.name || ""} ${d.phone ? "• " + d.phone : ""}</p>
-          `;
-          card.appendChild(info);
-
-          resultsDiv.appendChild(card);
-        });
-
-      } catch (err) {
-        console.error("[search] failed:", err);
-        resultsDiv.innerHTML = "<p class='text-sm text-red-600'>Search failed. Please try again.</p>";
-      }
-    });
-
-    // Allow Enter key to trigger search
-    $("searchZip")?.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        $("searchBtn")?.click();
-      }
-    });
   </script>
 
   <!-- Global Nav Sync: smart login/logout/dashboard -->
