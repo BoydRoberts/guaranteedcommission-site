@@ -33,10 +33,18 @@
     </div>
   </header>
 
+  <nav id="globalNav" class="bg-gray-200 py-2 hidden">
+    <ul class="flex justify-center space-x-8 font-semibold text-sm md:text-base">
+      <li><a href="/index.html" class="hover:underline" style="color:#4DA6FF;">Home</a></li>
+      <li><a href="/advertise.html" class="hover:underline" style="color:#4DA6FF;">Advertise</a></li>
+      <li><a href="/login.html" id="authLink" class="hover:underline" style="color:#4DA6FF;">Log In</a></li>
+    </ul>
+  </nav>
+
   <main class="max-w-4xl mx-auto px-4 py-6">
     <section class="bg-white rounded-2xl shadow p-6">
-      <h2 class="text-2xl font-bold text-center">Reserve Your Broker Ad</h2>
-      <p class="text-sm text-center text-gray-700 mt-1">
+      <h2 id="pageTitle" class="text-2xl font-bold text-center">Reserve Your Broker Ad</h2>
+      <p id="pageSubtitle" class="text-sm text-center text-gray-700 mt-1">
         <strong>$100 per month per ZIP</strong> (1 broker per ZIP). Your brokerage ad displays on all listing detail pages in those ZIP codes.
       </p>
 
@@ -110,9 +118,9 @@
         </div>
       </form>
 
-      <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-5 mt-6 text-emerald-800">
-        <h3 class="text-lg font-semibold">Thank you!</h3>
-        <p class="text-sm mt-1">Your Local Broker subscription checkout completed successfully.</p>
+      <section id="thanks" class="hidden bg-emerald-50 rounded-2xl border border-emerald-200 p-8 mt-6 text-emerald-800 text-center">
+        <h3 class="text-2xl font-semibold mb-2">Thank you!</h3>
+        <p class="text-base">Your Local Broker subscription checkout completed successfully. Your brokerage advertisement is now live in the requested ZIP code.</p>
       </section>
     </section>
   </main>
@@ -381,6 +389,9 @@
       if (u.searchParams.get('status') === 'success') {
         $('thanks')?.classList.remove('hidden');
         $('brokerForm')?.classList.add('hidden');       // ← FIX: hide blank form on success
+        $('globalNav')?.classList.remove('hidden');
+        $('pageTitle')?.classList.add('hidden');
+        $('pageSubtitle')?.classList.add('hidden');
         
         // Fallback activation: If pendingBrokerId exists, activate immediately
         const pendingId = localStorage.getItem("pendingBrokerId");
@@ -402,8 +413,8 @@
             const thanksEl = $('thanks');
             if (thanksEl) {
               thanksEl.innerHTML = `
-                <h3 class="text-lg font-semibold">Thank you!</h3>
-                <p class="text-sm mt-1">Your Local Broker subscription checkout completed successfully. Your brokerage advertisement is now live in the requested ZIP code.</p>
+                <h3 class="text-2xl font-semibold mb-2">Thank you!</h3>
+                <p class="text-base">Your Local Broker subscription checkout completed successfully. Your brokerage advertisement is now live in the requested ZIP code.</p>
               `;
             }
           } catch (e) {
