@@ -102,8 +102,11 @@
 
   <div id="root" class="max-w-3xl mx-auto">
     <div id="card" class="isc-card">
-      <div id="printRow" class="flex justify-end mb-2">
-        <button id="printBtn" class="print-hidden px-3 py-1 border rounded text-sm bg-gray-50 hover:bg-gray-100">Print</button>
+      <div id="printRow" class="flex justify-between items-center mb-2">
+        <button onclick="if(document.referrer) { history.back(); } else { window.location.href = '/index.html'; }" class="print-hidden px-3 py-1 border rounded text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 transition">
+          &larr; Go Back
+        </button>
+        <button id="printBtn" class="print-hidden px-3 py-1 border rounded text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 transition">Print</button>
       </div>
 
       <div id="wrap">
