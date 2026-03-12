@@ -1339,6 +1339,54 @@
         alert("Something went wrong. Please try again.");
       }
     };
+
+    // ========== INVESTOR FORM LOGIC ==========
+    const invForm = document.getElementById("investorForm");
+    if (invForm) {
+      invForm.addEventListener("submit", async function(e) {
+        e.preventDefault(); // Prevent page reload
+        
+        var name = (document.getElementById("invName")?.value || "").trim();
+        var email = (document.getElementById("invEmail")?.value || "").trim();
+        var phone = (document.getElementById("invPhone")?.value || "").trim();
+        var signature = (document.getElementById("invSignature")?.value || "").trim();
+        var date = (document.getElementById("invDate")?.value || "").trim();
+
+        const submitBtn = document.getElementById("invSubmitBtn");
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Saving...";
+        }
+
+        try {
+          await addDoc(collection(db, "investorLeads"), {
+            name: name,
+            email: email,
+            phone: phone,
+            signature: signature,
+            date: date,
+            status: "new",
+            createdAt: serverTimestamp()
+          });
+
+          // Show confirmation
+          var confirm = document.getElementById("investorConfirmation");
+          if (confirm) confirm.classList.remove("hidden");
+
+          if (submitBtn) {
+            submitBtn.textContent = "Submitted";
+            submitBtn.classList.add("opacity-50", "cursor-not-allowed");
+          }
+        } catch (err) {
+          console.warn("[investor] submission failed:", err);
+          alert("Something went wrong saving your certification. Please try again.");
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Submit Certification";
+          }
+        }
+      });
+    }
   </script>
 
   <!-- Global Nav Sync: smart login/logout/dashboard -->
