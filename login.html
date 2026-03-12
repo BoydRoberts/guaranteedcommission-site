@@ -186,8 +186,11 @@
     </div>
   </main>
 
-  <script>
-    console.log('[login] secure access build 2026-02-28');
+  <script type="module">
+    import { auth } from "/scripts/firebase-init.js";
+    import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    console.log('[login] secure access build 2026-03-12 (Firebase Auth)');
 
     // ---------- Helpers ----------
     const $ = (id) => document.getElementById(id);
@@ -362,44 +365,63 @@
       el.selectionStart = el.selectionEnd = Math.min(cur + (el.value.length - before.length), el.value.length);
     });
 
-    // Local accounts (demo in-browser)
-    const ACC_KEY='accounts';
-    const getAccounts = ()=> safeJSON(localStorage.getItem(ACC_KEY)) || {};
-    const saveAccounts = (obj)=> localStorage.setItem(ACC_KEY, JSON.stringify(obj||{}));
-
-    // Sign In
-    $('loginForm').addEventListener('submit', (e) => {
+    // Sign In (Firebase Auth)
+    // Sign In (Firebase Auth)
+    $('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = $('email').value.trim().toLowerCase();
       const password = $('password').value;
-      const accounts = getAccounts();
-      const acct = accounts[email];
-      if (!acct) { setStatus(`No account found for ${email}. Please create an account first.`); showCreate(); return; }
-      if (acct.password !== password) { setStatus('Invalid email or password.'); return; }
-      localStorage.setItem('isLoggedIn','true');
-      localStorage.setItem('loggedInEmail', email);
-      if (acct.role) localStorage.setItem('userRole', acct.role);
 
-      // If no origin flag, assume header login (so verify → Welcome)
-      if (!localStorage.getItem('loginOrigin')) {
-        localStorage.setItem('loginOrigin','header');
-      }
+      if (!email || !password) { setStatus('Please enter your email and password.'); return; }
 
-      if (!localStorage.getItem('verificationCode')) {
-        const code = String(Math.floor(100000 + Math.random()*900000));
-        localStorage.setItem('verificationCode', code);
+      setStatus('Signing in…', true);
+
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Transitional: keep localStorage in sync for unmigrated pages
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('loggedInEmail', email);
         localStorage.setItem('verifyTarget', email);
+
+        // If no origin flag, assume header login
+        if (!localStorage.getItem('loginOrigin')) {
+          localStorage.setItem('loginOrigin', 'header');
+        }
+
+        // Check verification status
+        if (user.emailVerified) {
+          localStorage.setItem('isVerified', 'true');
+          const next = localStorage.getItem('nextAfterLogin');
+          if (next) { window.location.href = next; return; }
+          window.location.href = '/welcome.html';
+        } else {
+          // Not yet verified — send them to the waiting room
+          window.location.href = '/verify-code.html';
+        }
+
+      } catch (err) {
+        console.warn('[login] signIn failed:', err.code, err.message);
+        // User-friendly error messages
+        const code = err.code || '';
+        if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
+          setStatus('No account found for this email, or incorrect password. Please try again or create an account.');
+          showCreate();
+        } else if (code === 'auth/wrong-password') {
+          setStatus('Incorrect password. Please try again.');
+        } else if (code === 'auth/too-many-requests') {
+          setStatus('Too many failed attempts. Please wait a moment and try again.');
+        } else if (code === 'auth/invalid-email') {
+          setStatus('Please enter a valid email address.');
+        } else {
+          setStatus(err.message || 'Sign in failed. Please try again.');
+        }
       }
-
-      const next = localStorage.getItem('nextAfterLogin');
-      if (next) { window.location.href = next; return; }
-
-      // Default destination → verify
-      window.location.href = '/verify-code.html';
     });
 
-    // Create Account
-    $('createForm').addEventListener('submit', (e) => {
+    // Create Account (Firebase Auth)
+    $('createForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name  = $('c_name').value.trim();
       const email = $('c_email').value.trim().toLowerCase();
@@ -412,46 +434,72 @@
       if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
       if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
 
-      const accounts = getAccounts();
-      accounts[email] = { name, email, password: p1, phone, role };
-      saveAccounts(accounts);
+      setStatus('Creating your account…', true);
 
-      localStorage.setItem('isLoggedIn','true');
-      localStorage.setItem('loggedInEmail', email);
-      localStorage.setItem('userRole', role);
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, p1);
+        const user = userCredential.user;
 
-      // If no origin flag, assume header login (so verify → Welcome)
-      if (!localStorage.getItem('loginOrigin')) {
-        localStorage.setItem('loginOrigin','header');
+        // Set display name
+        await updateProfile(user, { displayName: name });
+
+        // Send real Firebase verification email
+        await sendEmailVerification(user);
+        console.log('[login] Verification email sent to:', email);
+
+        // Transitional: keep localStorage in sync for unmigrated pages
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('loggedInEmail', email);
+        localStorage.setItem('userRole', role);
+        localStorage.setItem('verifyTarget', email);
+
+        // If no origin flag, assume header login
+        if (!localStorage.getItem('loginOrigin')) {
+          localStorage.setItem('loginOrigin', 'header');
+        }
+
+        // Always route to verification waiting room for new accounts
+        window.location.href = '/verify-code.html';
+
+      } catch (err) {
+        console.warn('[login] createAccount failed:', err.code, err.message);
+        const code = err.code || '';
+        if (code === 'auth/email-already-in-use') {
+          setStatus('An account with this email already exists. Please sign in instead.');
+          showSignin();
+        } else if (code === 'auth/weak-password') {
+          setStatus('Password is too weak. Please use at least 6 characters with a mix of letters, numbers, and symbols.');
+        } else if (code === 'auth/invalid-email') {
+          setStatus('Please enter a valid email address.');
+        } else if (code === 'auth/too-many-requests') {
+          setStatus('Too many attempts. Please wait a moment and try again.');
+        } else {
+          setStatus(err.message || 'Account creation failed. Please try again.');
+        }
       }
-
-      // Send code (simulated) + verify handoff
-      const code = String(Math.floor(100000 + Math.random()*900000));
-      localStorage.setItem('verificationCode', code);
-      localStorage.setItem('verifyTarget', email);
-
-      const next = localStorage.getItem('nextAfterLogin');
-      if (next) { window.location.href = next; return; }
-
-      // Default destination → verify
-      window.location.href = '/verify-code.html';
     });
 
     // Debug panel
     $('dbgToggle').addEventListener('click', () => {
       const fd = safeJSON(localStorage.getItem('formData'));
+      const firebaseUser = auth.currentUser;
       const dump = {
         formData: fd,
         selectedPlan: localStorage.getItem('selectedPlan'),
         loggedInEmail: localStorage.getItem('loggedInEmail'),
         userRole: localStorage.getItem('userRole'),
-        verificationCode: localStorage.getItem('verificationCode'),
         verifyTarget: localStorage.getItem('verifyTarget'),
         nextAfterLogin: localStorage.getItem('nextAfterLogin'),
         loginOrigin: localStorage.getItem('loginOrigin'),
         localServiceFormDraft: localStorage.getItem('localServiceFormDraft'),
         localBrokerFormDraft: localStorage.getItem('localBrokerFormDraft'),
-        localProFormDraft: localStorage.getItem('localProFormDraft')
+        localProFormDraft: localStorage.getItem('localProFormDraft'),
+        firebaseAuth: firebaseUser ? {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          emailVerified: firebaseUser.emailVerified,
+          displayName: firebaseUser.displayName
+        } : null
       };
       const p = $('dbgPanel');
       p.classList.toggle('hidden');
