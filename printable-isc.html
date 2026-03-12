@@ -326,7 +326,7 @@
       let p1 = "", p2 = "";
 
       if (isFSBO) {
-        p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by owner (Me): ${phone}, ${email}.`;
+        p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, parcel # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email is ${email}.`;
         p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       } else {
         p1 = `I, ${name}, am the owner/seller of ${fullAddr}. ${short} is listed for sale. ${agent} with ${brokerage} is the listing agent: ${phone}, ${email}.`;
