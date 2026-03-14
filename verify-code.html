@@ -74,9 +74,9 @@
       <!-- Verified State (shown briefly before redirect) -->
       <div id="verifiedState" class="hidden">
         <div class="flex flex-col items-center text-center">
-          <div class="text-4xl mb-3">✓</div>
+          <div class="text-4xl mb-3">&#10003;</div>
           <h2 class="text-2xl font-bold text-green-700">Email Verified!</h2>
-          <p class="text-sm text-gray-600 mt-2">Redirecting you now…</p>
+          <p class="text-sm text-gray-600 mt-2">Redirecting you now...</p>
         </div>
       </div>
 
@@ -98,11 +98,11 @@
     import { auth } from "/scripts/firebase-init.js";
     import { sendEmailVerification, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    console.log('[verify] Firebase verification waiting room — build 2026-03-12');
+    console.log('[verify] Firebase verification waiting room - build 2026-03-14');
 
     const $ = (id) => document.getElementById(id);
 
-    function setStatus(msg, ok = false) {
+    function setStatus(msg, ok) {
       const box = $('status');
       if (!box) return;
       box.classList.remove('hidden');
@@ -114,13 +114,17 @@
 
     function maskEmail(e) {
       if (!e || !e.includes('@')) return e || '';
-      const [u, d] = e.split('@');
-      return u[0] + '•••@' + d;
+      var parts = e.split('@');
+      return parts[0][0] + '---@' + parts[1];
     }
 
     function getNextDestination() {
       const next = (localStorage.getItem('nextAfterLogin') || '').trim();
-      if (next) return next;
+
+      // Anti-Loop Guard: Ignore if it tries to route back to the auth flow
+      if (next && !next.includes('verify') && !next.includes('login')) {
+        return next;
+      }
 
       const origin = (localStorage.getItem('loginOrigin') || '').toLowerCase();
       if (origin === 'box2') return '/upsell.html';
@@ -129,18 +133,15 @@
     }
 
     function onVerified() {
-      // Update transitional localStorage
       localStorage.setItem('isVerified', 'true');
 
-      // Show success UI
       $('waitingState').classList.add('hidden');
       $('verifiedState').classList.remove('hidden');
 
-      const destination = getNextDestination();
+      var destination = getNextDestination();
       console.log('[verify] Email verified! Redirecting to:', destination);
 
-      // Clean up origin flags and redirect
-      setTimeout(() => {
+      setTimeout(function() {
         localStorage.removeItem('loginOrigin');
         window.location.href = destination;
       }, 1200);
@@ -149,58 +150,49 @@
     // =========================================================================
     // BOOT: Wait for Firebase Auth to initialize, then start polling
     // =========================================================================
-    let pollInterval = null;
-    let authInitTimeout = null;
+    var pollInterval = null;
+    var authInitTimeout = null;
 
-    onAuthStateChanged(auth, (user) => {
-      // Clear the init timeout since auth has responded
+    onAuthStateChanged(auth, function(user) {
       if (authInitTimeout) { clearTimeout(authInitTimeout); authInitTimeout = null; }
 
       if (!user) {
-        // No Firebase user — show the "no session" fallback
         console.log('[verify] No Firebase user detected');
         $('waitingState').classList.add('hidden');
         $('noUserState').classList.remove('hidden');
         return;
       }
 
-      // We have a user — check if already verified
       if (user.emailVerified) {
         console.log('[verify] User already verified on load');
         onVerified();
         return;
       }
 
-      // Show which email we sent to
-      const email = user.email || localStorage.getItem('verifyTarget') || '';
+      var email = user.email || localStorage.getItem('verifyTarget') || '';
       if (email) {
-        $('emailSentTo').textContent = `We sent a secure verification link to ${maskEmail(email)}.`;
+        $('emailSentTo').textContent = 'We sent a secure verification link to ' + maskEmail(email) + '.';
       }
 
-      // Start polling every 3 seconds
       console.log('[verify] Starting verification poll for:', email);
       startPolling(user);
     });
 
-    // Safety: if onAuthStateChanged hasn't fired after 4 seconds,
-    // fall back to localStorage to decide what to show
-    authInitTimeout = setTimeout(() => {
-      const localEmail = (localStorage.getItem('loggedInEmail') || '').trim();
+    authInitTimeout = setTimeout(function() {
+      var localEmail = (localStorage.getItem('loggedInEmail') || '').trim();
       if (!localEmail) {
         $('waitingState').classList.add('hidden');
         $('noUserState').classList.remove('hidden');
       }
-      // If localEmail exists but no Firebase user, keep showing waiting state
-      // (Firebase might still be loading on a slow connection)
     }, 4000);
 
     function startPolling(user) {
-      if (pollInterval) return; // Don't double-start
+      if (pollInterval) return;
 
-      pollInterval = setInterval(async () => {
+      pollInterval = setInterval(async function() {
         try {
           await user.reload();
-          console.log('[verify] Poll check — emailVerified:', user.emailVerified);
+          console.log('[verify] Poll check - emailVerified:', user.emailVerified);
 
           if (user.emailVerified) {
             clearInterval(pollInterval);
@@ -209,7 +201,6 @@
           }
         } catch (err) {
           console.warn('[verify] Reload failed:', err.message);
-          // Don't stop polling on transient errors — just log and retry
         }
       }, 3000);
     }
@@ -217,48 +208,49 @@
     // =========================================================================
     // RESEND BUTTON
     // =========================================================================
-    let resendCooldown = false;
+    var resendCooldown = false;
 
-    $('resendBtn')?.addEventListener('click', async () => {
-      if (resendCooldown) {
-        setStatus('Please wait before requesting another email.', false);
-        return;
-      }
-
-      const user = auth.currentUser;
-      if (!user) {
-        setStatus('No active session. Please go back and log in.', false);
-        return;
-      }
-
-      try {
-        await sendEmailVerification(user);
-        setStatus('Verification email resent! Check your inbox.', true);
-        console.log('[verify] Resent verification email to:', user.email);
-
-        // 30-second cooldown to prevent spam
-        resendCooldown = true;
-        const btn = $('resendBtn');
-        btn.disabled = true;
-        btn.textContent = 'Email Sent — Wait 30s';
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
-
-        setTimeout(() => {
-          resendCooldown = false;
-          btn.disabled = false;
-          btn.textContent = 'Resend Verification Email';
-          btn.classList.remove('opacity-50', 'cursor-not-allowed');
-        }, 30000);
-
-      } catch (err) {
-        console.warn('[verify] Resend failed:', err.code, err.message);
-        if (err.code === 'auth/too-many-requests') {
-          setStatus('Too many requests. Please wait a few minutes before trying again.', false);
-        } else {
-          setStatus('Could not resend email. Please try again shortly.', false);
+    var resendBtn = $('resendBtn');
+    if (resendBtn) {
+      resendBtn.addEventListener('click', async function() {
+        if (resendCooldown) {
+          setStatus('Please wait before requesting another email.', false);
+          return;
         }
-      }
-    });
+
+        var user = auth.currentUser;
+        if (!user) {
+          setStatus('No active session. Please go back and log in.', false);
+          return;
+        }
+
+        try {
+          await sendEmailVerification(user);
+          setStatus('Verification email resent! Check your inbox.', true);
+          console.log('[verify] Resent verification email to:', user.email);
+
+          resendCooldown = true;
+          resendBtn.disabled = true;
+          resendBtn.textContent = 'Email Sent - Wait 30s';
+          resendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+          setTimeout(function() {
+            resendCooldown = false;
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend Verification Email';
+            resendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          }, 30000);
+
+        } catch (err) {
+          console.warn('[verify] Resend failed:', err.code, err.message);
+          if (err.code === 'auth/too-many-requests') {
+            setStatus('Too many requests. Please wait a few minutes before trying again.', false);
+          } else {
+            setStatus('Could not resend email. Please try again shortly.', false);
+          }
+        }
+      });
+    }
   </script>
 
 </body>
