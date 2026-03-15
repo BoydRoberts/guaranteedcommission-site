@@ -357,8 +357,11 @@ export function renderTile(data, options = {}) {
       <div class="text-[12px] text-gray-600">
         ${contactLine}
       </div>
-      <div class="text-[12px] text-gray-500 text-center" data-stats>
-        Viewed ${views.toLocaleString()} time${views === 1 ? '' : 's'} | Liked ${likes.toLocaleString()} time${likes === 1 ? '' : 's'}
+      <div class="relative flex items-center justify-center mt-1">
+        <div class="text-[12px] text-gray-500 text-center" data-stats>
+          Viewed ${views.toLocaleString()} time${views === 1 ? '' : 's'} | Liked ${likes.toLocaleString()} time${likes === 1 ? '' : 's'}
+        </div>
+        ${id ? `<button type="button" data-report class="absolute right-0 text-[11px] text-red-600 hover:underline flex items-center gap-1" title="Report this listing"><svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>Report</button>` : ''}
       </div>
     </div>
   `;
@@ -424,6 +427,43 @@ export function renderTile(data, options = {}) {
       e.stopPropagation();
       if (!shareLimitOk()) return;
       openText(address, shareUrl);
+    });
+  }
+
+  // Wire up report button
+  const reportBtn = card.querySelector('[data-report]');
+  if (reportBtn) {
+    reportBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      e.stopPropagation(); // CRITICAL: Prevents tile click-through
+
+      const reason = prompt("Why are you reporting this listing? (e.g., Fake address, scam, wrong photos)");
+      if (!reason) return;
+
+      try {
+        const { addDoc, collection, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+        const db = window.gc && window.gc.db;
+        
+        if (!db) {
+          console.warn("[report] DB not ready");
+          return;
+        }
+
+        const email = (localStorage.getItem("loggedInEmail") || "anonymous").trim();
+        await addDoc(collection(db, "reportedListings"), {
+          listingId: id,
+          address: address || "Unknown",
+          reason: reason,
+          reportedBy: email,
+          createdAt: serverTimestamp(),
+          status: "pending_review"
+        });
+        
+        alert("Thank you. This listing has been flagged for admin review.");
+      } catch (err) {
+        console.warn("[report] failed", err);
+        alert("Error submitting report. Please try again.");
+      }
     });
   }
 
