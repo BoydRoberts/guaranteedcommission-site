@@ -890,8 +890,10 @@
         style: 'mapbox://styles/mapbox/streets-v12',
         center,
         zoom,
-        cooperativeGestures: true
+        cooperativeGestures: true,
+        dragRotate: false
       });
+      map.touchZoomRotate.disableRotation();
       map.addControl(new mapboxgl.NavigationControl());
 
       if (bbox && !hasMapState) {
