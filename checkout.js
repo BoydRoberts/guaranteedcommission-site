@@ -9,7 +9,7 @@ function runCheckoutApp() {
   // Stripe configuration
   var STRIPE_PUBLISHABLE_KEY =
     (window.GC_CONFIG && window.GC_CONFIG.STRIPE_PUBLISHABLE_KEY) ||
-    "pk_test_51RiGoUPTiT2zuxx0T2Jk2YSvCjeHeQLb8KJnNs8gPwLtGq3AxqydjA4wcHknoee1GMB9zlKLG093DIAIE61KLqyw00hEmYRmhD";
+    "pk_live_51RiGoLAH8kfFNlzof94a5jkZRckYTbGCSgUTOtpEUtFSfX4fTAuIy7cDybP4Xl1Vj008vm5SQ4tMTLE1mYUNkBNv00EAfIghTw";
 
   if (!window.GC_CONFIG || !window.GC_CONFIG.STRIPE_PUBLISHABLE_KEY) {
     console.warn("[checkout] Missing GC_CONFIG. Using fallback Stripe key.");
@@ -22,14 +22,14 @@ function runCheckoutApp() {
   var PRICE_IDS =
     (window.GC_CONFIG && window.GC_CONFIG.PRICE_IDS) ||
     {
-      PLUS:         "price_1RsQFlPTiT2zuxx0414nGtTu",
-      FSBO_PLUS:    "price_1RsQJbPTiT2zuxx0w3GUIdxJ",
-      BANNER:       "price_1RsQTOPTiT2zuxx0TLCwAthR",
-      PREMIUM:      "price_1RsQbjPTiT2zuxx0hA6p5H4h",
-      PIN:          "price_1RsQknPTiT2zuxx0Av9skJyW",
-      CONFIDENTIAL: "price_1RsRP4PTiT2zuxx0eoOGEDvm",
-      CHANGE_COMMISSION_LISTED: "price_1STqWzPTiT2zuxx0ZKLMFpuE",
-      CHANGE_COMMISSION_FSBO: "price_1STqakPTiT2zuxx0zS0nEjDT"
+      PLUS:         "price_1TCOCnAH8kfFNlzo3Ju4zELZ",
+      FSBO_PLUS:    "price_1TCOCiAH8kfFNlzoNlqchZ7t",
+      BANNER:       "price_1TCOCiAH8kfFNlzoO5MKn2ll",
+      PREMIUM:      "price_1TCOCjAH8kfFNlzo4dzDJADK",
+      PIN:          "price_1TCOCgAH8kfFNlzo6OJofLrO",
+      CONFIDENTIAL: "price_1TCOCkAH8kfFNlzoYUmTN4Ff",
+      CHANGE_COMMISSION_LISTED: "price_1TCOChAH8kfFNlzoaLe932mA",
+      CHANGE_COMMISSION_FSBO: "price_1TCOCiAH8kfFNlzoqYUwmeeP"
     };
 
   if (!window.GC_CONFIG || !window.GC_CONFIG.PRICE_IDS) {
