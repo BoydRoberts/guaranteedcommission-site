@@ -313,18 +313,36 @@
         if (draft.website && $('website')) $('website').value = draft.website;
         if (draft.zipBulk && $('zipBulk')) $('zipBulk').value = draft.zipBulk;
         
+        // Restore Base64 photo preview (survives the auth gate redirect)
+        if (draft.photoBase64) {
+          $('photoPreview').innerHTML = `<img src="${draft.photoBase64}" alt="Broker Ad Preview" class="card-preview">`;
+          window.restoredBase64 = draft.photoBase64;
+          $('photo').removeAttribute('required'); // Bypass since image is in memory
+          console.log('[local-brokers] Photo restored from Base64 cache');
+        }
+
         // Trigger total/chips update and availability check
         updateTotal(true);
-        
-        // Show status message
-        setStatus('Welcome back! Your form has been restored. Please click "Proceed to Checkout" to continue.', true);
         
         // Clear the draft (one-time restore)
         localStorage.removeItem('localBrokerFormDraft');
         
-        // Clear the return path if we're back
-        if (localStorage.getItem('nextAfterLogin') === window.location.href) {
+        // Clear the return path and auto-submit if photo survived
+        const nextUrl = localStorage.getItem('nextAfterLogin');
+        if (nextUrl && window.location.href.includes(nextUrl.split('?')[0])) {
           localStorage.removeItem('nextAfterLogin');
+
+          if (draft.photoBase64) {
+            setStatus('Welcome back! Resuming your checkout...', true);
+            setTimeout(() => {
+              const btn = $('checkoutBtn');
+              if (btn && !btn.disabled) btn.click();
+            }, 1500);
+          } else {
+            setStatus('Welcome back! For security, please re-attach your broker ad image, then click Proceed to Checkout.', true);
+          }
+        } else {
+          setStatus('Welcome back! Your form has been restored. Please click "Proceed to Checkout" to continue.', true);
         }
       } catch (e) {
         console.warn('[local-brokers] Draft restore failed:', e);
@@ -340,6 +358,14 @@
 
     // Helper to save form draft for auth gate
     function saveFormDraft() {
+      // Cache the Base64 preview image (if under ~3MB to avoid localStorage limits)
+      let photoBase64 = null;
+      const previewBox = $('photoPreview');
+      const previewImg = previewBox?.querySelector('img');
+      if (previewImg && previewImg.src && previewImg.src.startsWith('data:') && previewImg.src.length < 3_000_000) {
+        photoBase64 = previewImg.src;
+      }
+
       const draft = {
         name: $('name')?.value || '',
         contact: $('contact')?.value || '',
@@ -348,10 +374,11 @@
         license: $('license')?.value || '',
         website: $('website')?.value || '',
         zipBulk: $('zipBulk')?.value || '',
+        photoBase64: photoBase64,
         savedAt: Date.now()
       };
       localStorage.setItem('localBrokerFormDraft', JSON.stringify(draft));
-      console.log('[local-brokers] Form draft saved for auth gate');
+      console.log('[local-brokers] Form draft saved for auth gate', photoBase64 ? '(with photo)' : '(no photo)');
     }
 
     // Full ad preview (not cropped square)
@@ -364,7 +391,14 @@
 
     async function maybeUploadPhoto(draftId) {
       try {
-        const file = $('photo')?.files?.[0];
+        let file = $('photo')?.files?.[0];
+        
+        // Fallback: use restored Base64 from auth gate redirect
+        if (!file && window.restoredBase64) {
+          const fetchRes = await fetch(window.restoredBase64);
+          file = await fetchRes.blob();
+        }
+        
         if (!file) return "";
         const storage = getStorage(undefined, STORAGE_BUCKET_GS);
         const safe = String(file.name || "broker_ad").replace(/[^\w\-.]+/g,"_");
@@ -443,7 +477,7 @@
         if (!name || !contact || !email) { setStatus('Please complete brokerage name, contact, and email.', false); return; }
         
         const photoFile = $('photo')?.files?.[0];
-        if (!photoFile) { setStatus('Please upload a Broker Ad image (PNG or JPEG) to continue.', false); return; }
+        if (!photoFile && !window.restoredBase64) { setStatus('Please upload a Broker Ad image (PNG or JPEG) to continue.', false); return; }
 
         if (!/^\S+@\S+\.\S{2,}$/.test(email)) { setStatus('Please enter a valid email address.', false); return; }
         if (phoneDigits.length !== 10) { setStatus('Please enter a valid 10-digit phone number.', false); return; }
