@@ -322,18 +322,36 @@
         if (draft.license && $('license')) $('license').value = draft.license;
         if (draft.zipBulk && $('zipBulk')) $('zipBulk').value = draft.zipBulk;
         
+        // Restore Base64 photo preview (survives the auth gate redirect)
+        if (draft.photoBase64) {
+          $('photoPreview').innerHTML = `<img src="${draft.photoBase64}" alt="Business Card Preview" class="card-preview">`;
+          window.restoredBase64 = draft.photoBase64;
+          $('photo').removeAttribute('required'); // Bypass since image is in memory
+          console.log('[local-pros] Photo restored from Base64 cache');
+        }
+
         // Trigger total/chips update and availability check
         updateTotal(true);
-        
-        // Show status message
-        setStatus('Welcome back! Your form has been restored. Please click "Proceed to Checkout" to continue.', true);
         
         // Clear the draft (one-time restore)
         localStorage.removeItem('localProFormDraft');
         
-        // Clear the return path if we're back
-        if (localStorage.getItem('nextAfterLogin') === window.location.href) {
+        // Clear the return path and auto-submit if photo survived
+        const nextUrl = localStorage.getItem('nextAfterLogin');
+        if (nextUrl && window.location.href.includes(nextUrl.split('?')[0])) {
           localStorage.removeItem('nextAfterLogin');
+
+          if (draft.photoBase64) {
+            setStatus('Welcome back! Resuming your checkout...', true);
+            setTimeout(() => {
+              const btn = $('checkoutBtn');
+              if (btn && !btn.disabled) btn.click();
+            }, 1500);
+          } else {
+            setStatus('Welcome back! For security, please re-attach your business card image, then click Proceed to Checkout.', true);
+          }
+        } else {
+          setStatus('Welcome back! Your form has been restored. Please click "Proceed to Checkout" to continue.', true);
         }
       } catch (e) {
         console.warn('[local-pros] Draft restore failed:', e);
@@ -349,6 +367,14 @@
 
     // Helper to save form draft for auth gate
     function saveFormDraft() {
+      // Cache the Base64 preview image (if under ~3MB to avoid localStorage limits)
+      let photoBase64 = null;
+      const previewBox = $('photoPreview');
+      const previewImg = previewBox?.querySelector('img');
+      if (previewImg && previewImg.src && previewImg.src.startsWith('data:') && previewImg.src.length < 3_000_000) {
+        photoBase64 = previewImg.src;
+      }
+
       const draft = {
         role: $('role')?.value || '',
         personalName: $('personalName')?.value || '',
@@ -357,10 +383,11 @@
         phone: $('phone')?.value || '',
         license: $('license')?.value || '',
         zipBulk: $('zipBulk')?.value || '',
+        photoBase64: photoBase64,
         savedAt: Date.now()
       };
       localStorage.setItem('localProFormDraft', JSON.stringify(draft));
-      console.log('[local-pros] Form draft saved for auth gate');
+      console.log('[local-pros] Form draft saved for auth gate', photoBase64 ? '(with photo)' : '(no photo)');
     }
 
     $('photo')?.addEventListener('change', (e) => {
@@ -372,7 +399,14 @@
 
     async function maybeUploadPhoto(draftId) {
       try {
-        const file = $('photo')?.files?.[0];
+        let file = $('photo')?.files?.[0];
+        
+        // Fallback: use restored Base64 from auth gate redirect
+        if (!file && window.restoredBase64) {
+          const fetchRes = await fetch(window.restoredBase64);
+          file = await fetchRes.blob();
+        }
+        
         if (!file) return "";
         const storage = getStorage(undefined, STORAGE_BUCKET_GS);
         const safe = String(file.name || "local_pro_card").replace(/[^\w\-.]+/g,"_");
@@ -454,7 +488,7 @@
         }
         
         const photoFile = $('photo')?.files?.[0];
-        if (!photoFile) {
+        if (!photoFile && !window.restoredBase64) {
           setStatus('Please upload a Business Card image (PNG or JPEG) to continue.', false);
           return;
         }
