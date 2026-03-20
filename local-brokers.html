@@ -504,6 +504,31 @@
           return;
         }
 
+        // ========== STEP 2.5: BLACKLIST CHECK ==========
+        try {
+          const blacklistRef = collection(db, "blacklist");
+          
+          // Check email
+          const emailSnap = await getDocs(query(blacklistRef, where("email", "==", email)));
+          if (!emailSnap.empty) {
+            setStatus('Account suspended. Please contact support.', false);
+            return;
+          }
+          
+          // Check phone (digits only for consistent matching)
+          const phoneClean = phoneDigits;
+          if (phoneClean) {
+            const phoneSnap = await getDocs(query(blacklistRef, where("phone", "==", phoneClean)));
+            if (!phoneSnap.empty) {
+              setStatus('Account suspended. Please contact support.', false);
+              return;
+            }
+          }
+        } catch (e) {
+          // If blacklist check fails, allow checkout to proceed
+          console.warn("[blacklist] check failed:", e);
+        }
+
         // ========== STEP 3: WAITLIST MODE ==========
         if (isWaitlistMode) {
           const waitlistData = {
