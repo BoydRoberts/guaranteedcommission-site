@@ -894,6 +894,40 @@
         addressEl.classList.remove('border-red-500');
       }
 
+      // ========== STEP 1.5: BLACKLIST CHECK ==========
+      try {
+        const fbInit = await import("/scripts/firebase-init.js");
+        const firestore = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+        const blDb = fbInit.db;
+
+        if (blDb) {
+          var fsboEmailEl = document.getElementById('fsboEmailInput');
+          var checkEmail = isFSBO ? (fsboEmailEl ? fsboEmailEl.value.trim().toLowerCase() : '') : document.getElementById('agentEmail').value.trim().toLowerCase();
+          var checkPhone = document.getElementById('agentPhone').value.trim().replace(/\D/g, '');
+
+          var blacklistRef = firestore.collection(blDb, "blacklist");
+          var isBlocked = false;
+
+          if (checkEmail) {
+            var emailSnap = await firestore.getDocs(firestore.query(blacklistRef, firestore.where("email", "==", checkEmail)));
+            if (!emailSnap.empty) isBlocked = true;
+          }
+
+          if (!isBlocked && checkPhone) {
+            var phoneSnap = await firestore.getDocs(firestore.query(blacklistRef, firestore.where("phone", "==", checkPhone)));
+            if (!phoneSnap.empty) isBlocked = true;
+          }
+
+          if (isBlocked) {
+            alert("We are currently unable to process listings associated with this specific agent profile. Please contact founder@guaranteedcommission.com for assistance.");
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("[blacklist] check failed:", e);
+      }
+      // ===============================================
+
       try {
         var keysToRemove = ['agentListing','checkoutData','intakeFollowups','lastListingAddress','signature','signedISC'];
         for(var k=0;k<keysToRemove.length;k++){
@@ -941,7 +975,8 @@
       function normEmail(v){ return String(v || '').trim().toLowerCase(); }
 
       try {
-        var db = window.gc && window.gc.db;
+        const fbInit2 = await import("/scripts/firebase-init.js");
+        var db = fbInit2.db;
         if (db) {
           var firestore = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
           var addDoc = firestore.addDoc;
