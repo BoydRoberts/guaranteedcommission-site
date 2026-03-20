@@ -86,7 +86,7 @@
 
         <!-- ✅ BULK ZIP INPUT -->
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold">ZIP Codes (up to 99) <span class="text-red-600">*</span></label>
+          <label class="block text-sm font-semibold">ZIP Codes (up to 3) <span class="text-red-600">*</span></label>
           <input id="zipBulk" class="w-full border rounded px-3 py-2"
                  placeholder="Enter ZIPs separated by commas or spaces (e.g., 92651, 92657, 92660)" required>
           <p class="hint mt-1">We will validate and de-duplicate ZIPs. Example: "92651 92657 92660".</p>
@@ -134,7 +134,7 @@
 
     const PRICE_ID_LOCAL_BROKER = "price_1TCOCkAH8kfFNlzojMgOgJGD"; // $100/mo per ZIP
     const PRICE_PER_ZIP = 100;
-    const MAX_ZIPS = 99;
+    const MAX_ZIPS = 3;
     const MAX_BROKERS_PER_ZIP = 1; // Exclusive - only 1 broker per ZIP
 
     const $ = (id) => document.getElementById(id);
