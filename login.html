@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login / Create Account | GuaranteedCommission.com</title><link rel="icon" type="image/png" href="/Logo.png">
+  <title>Login / Create Account | GuaranteedCommission.com</title>
+  <link rel="icon" type="image/png" href="/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .badge { font-size:11px; background:#f3f4f6; color:#4b5563; padding:.1rem .5rem; border-radius:.375rem; }
@@ -252,25 +253,36 @@
 
       // ----------------------------------------------------------
       // 1. URL email param (sent by all 3 ad pages + seller flow)
+      //    If URL has ?email= with a value, use it.
+      //    If URL has ?email= with NO value, that means "leave blank on purpose."
+      //    Either way, URL takes priority — block all fallback prefills.
       // ----------------------------------------------------------
+      const urlHasEmailParam = url.searchParams.has('email');
       const urlEmail = (url.searchParams.get('email') || '').trim();
       if (urlEmail) {
         $('email').value = urlEmail;     // Sign-in tab
         $('c_email').value = urlEmail;   // Create Account tab
+      } else if (urlHasEmailParam) {
+        // Explicitly blank — clear both fields and prevent fallbacks
+        $('email').value = '';
+        $('c_email').value = '';
       }
 
       // ----------------------------------------------------------
-      // 2. Existing Seller draft logic (unchanged)
+      // 2. Existing Seller draft logic
+      //    Only attempt localStorage fallback if URL did NOT contain an email param
       // ----------------------------------------------------------
       if (fd.name && !$('c_name').value) $('c_name').value = fd.name;
 
-      if (plan.includes('FSBO') && fd.fsboEmail && !$('c_email').value) {
+      if (!urlHasEmailParam && plan.includes('FSBO') && fd.fsboEmail && !$('c_email').value) {
         $('c_email').value = fd.fsboEmail;
       }
 
-      // Sign-in convenience prefill (harmless) — only if URL didn't set it
-      const last = localStorage.getItem('loggedInEmail') || '';
-      if (last && !$('email').value) $('email').value = last;
+      // Sign-in convenience prefill — only if URL didn't explicitly set email
+      if (!urlHasEmailParam) {
+        const last = localStorage.getItem('loggedInEmail') || '';
+        if (last && !$('email').value) $('email').value = last;
+      }
 
       if (plan.includes('FSBO') && (fd.phone || fd.agentPhone) && !$('c_phone').value) {
         $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
@@ -292,12 +304,12 @@
         const draftName = (adDraft.name || adDraft.personalName || '').trim();
         if (draftName && !$('c_name').value) $('c_name').value = draftName;
 
-        // Email: draft might have it too
+        // Email: draft might have it too (only if URL didn't explicitly set email)
         const draftEmail = (adDraft.email || '').trim();
-        if (draftEmail && !$('c_email').value) $('c_email').value = draftEmail;
+        if (!urlHasEmailParam && draftEmail && !$('c_email').value) $('c_email').value = draftEmail;
 
-        // Also prefill Sign-in email for returning users
-        if (draftEmail && !$('email').value) $('email').value = draftEmail;
+        // Also prefill Sign-in email for returning users (only if URL didn't explicitly set email)
+        if (!urlHasEmailParam && draftEmail && !$('email').value) $('email').value = draftEmail;
 
         // Phone
         const draftPhone = (adDraft.phone || '').trim();
