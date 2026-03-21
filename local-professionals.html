@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Local Professionals | GuaranteedCommission.com</title><link rel="icon" type="image/png" href="/Logo.png">
+  <title>Local Professionals | GuaranteedCommission.com</title>
+  <link rel="icon" type="image/png" href="/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .hint { font-size: 11px; color:#6b7280; }
@@ -556,6 +557,33 @@
         } catch (e) {
           // If blacklist check fails (e.g., collection doesn't exist yet), allow checkout to proceed
           console.warn("[local-pros] Blacklist check failed:", e);
+        }
+
+        // ========== STEP 2.75: HISTORICAL ZIP LOOKBACK ==========
+        // Prevent users from accumulating >3 active ZIPs across multiple purchases
+        try {
+          const existingSnap = await getDocs(query(
+            collection(db, "localPros"),
+            where("email", "==", email),
+            where("status", "==", "active")
+          ));
+          const existingZips = new Set();
+          existingSnap.forEach(d => {
+            const zArr = d.data().zips;
+            if (Array.isArray(zArr)) zArr.forEach(z => existingZips.add(z));
+          });
+
+          // Count how many of the requested ZIPs are genuinely new
+          const newZips = zipCodes.filter(z => !existingZips.has(z));
+          const totalAfter = existingZips.size + newZips.length;
+
+          if (totalAfter > MAX_ZIPS) {
+            setStatus(`Account limit: You currently have ${existingZips.size} active ZIP code${existingZips.size === 1 ? '' : 's'}. You may only hold a maximum of ${MAX_ZIPS} across your account.`, false);
+            return;
+          }
+        } catch (e) {
+          // If lookback fails, allow checkout to proceed
+          console.warn("[local-pros] Historical ZIP lookback failed:", e);
         }
 
         // ========== STEP 3: WAITLIST MODE ==========
