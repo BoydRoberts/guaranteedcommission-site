@@ -6,7 +6,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GuaranteedCommission.com</title><link rel="icon" type="image/png" href="/Logo.png">
+  <title>GuaranteedCommission.com</title>
+  <link rel="icon" type="image/png" href="/Logo.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="GuaranteedComm">
@@ -865,6 +866,10 @@
       if (isFSBO) {
         requiredIds.push('apn');
         requiredIds.push('fsboEmailInput');
+      } else {
+        requiredIds.push('agent');
+        requiredIds.push('brokerage');
+        requiredIds.push('agentEmail');
       }
 
       var ok = true;
@@ -1048,7 +1053,9 @@
       }
 
       setTimeout(function() {
-        window.location.href = "/login.html?tab=create";
+        // If FSBO, pre-fill their email. If Listed, leave explicitly blank so it doesn't grab the agent's email.
+        var prefillEmail = isFSBO && formData.fsboEmail ? encodeURIComponent(formData.fsboEmail) : "";
+        window.location.href = "/login.html?tab=create&email=" + prefillEmail;
       }, 250);
     }
 
