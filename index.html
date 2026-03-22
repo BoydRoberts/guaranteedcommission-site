@@ -176,13 +176,13 @@
 
       <!-- VIDEO: Below title on mobile; absolute left on desktop (aligns with Box 1) -->
       <div id="headerVideoWrap"
-           class="mt-4 md:mt-0 md:absolute md:left-4 md:top-1/2 md:-translate-y-1/2"
+           class="mt-4 md:mt-0 relative md:absolute md:left-4 md:top-1/2 md:-translate-y-1/2 z-40"
            aria-label="Header video">
         <div>
           <iframe
             id="headerVideoFrame"
             title="GuaranteedCommission.com video"
-            src="https://www.youtube.com/embed/YIvm8wbM_N0?rel=0&modestbranding=1"
+            src="https://www.youtube-nocookie.com/embed/YIvm8wbM_N0?rel=0&modestbranding=1"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowfullscreen
           ></iframe>
@@ -194,7 +194,7 @@
 
       <!-- COUNTER: Below video on mobile; absolute right on desktop (aligns with Box 3) -->
       <div id="headerCounterWrap"
-           class="hidden md:block md:absolute md:right-4 md:top-1/2 md:-translate-y-1/2"
+           class="hidden md:block relative md:absolute md:right-4 md:top-1/2 md:-translate-y-1/2 z-40"
            aria-label="Guaranteed commissions counter">
         <div class="flex flex-col items-center">
           <div id="headerCounterBox">
