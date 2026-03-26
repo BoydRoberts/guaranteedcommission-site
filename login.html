@@ -270,22 +270,28 @@
 
       // ----------------------------------------------------------
       // 2. Existing Seller draft logic
-      //    Only attempt localStorage fallback if URL did NOT contain an email param
+      //    FSBO: prefill name, email, phone from Box 2 (it's the seller's own data)
+      //    Listed Property: ignore Box 2 data entirely (it contains the agent's info, not the seller's)
+      //    Only attempt localStorage email fallback if URL did NOT contain an email param
       // ----------------------------------------------------------
-      if (fd.name && !$('c_name').value) $('c_name').value = fd.name;
+      const isFSBO = plan.includes('FSBO');
 
-      if (!urlHasEmailParam && plan.includes('FSBO') && fd.fsboEmail && !$('c_email').value) {
-        $('c_email').value = fd.fsboEmail;
+      if (isFSBO) {
+        if (fd.name && !$('c_name').value) $('c_name').value = fd.name;
+
+        if (!urlHasEmailParam && fd.fsboEmail && !$('c_email').value) {
+          $('c_email').value = fd.fsboEmail;
+        }
+
+        if ((fd.phone || fd.agentPhone) && !$('c_phone').value) {
+          $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
+        }
       }
 
       // Sign-in convenience prefill — only if URL didn't explicitly set email
       if (!urlHasEmailParam) {
         const last = localStorage.getItem('loggedInEmail') || '';
         if (last && !$('email').value) $('email').value = last;
-      }
-
-      if (plan.includes('FSBO') && (fd.phone || fd.agentPhone) && !$('c_phone').value) {
-        $('c_phone').value = formatPhone(fd.phone || fd.agentPhone);
       }
 
       // ----------------------------------------------------------
