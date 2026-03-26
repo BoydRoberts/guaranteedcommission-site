@@ -55,7 +55,7 @@
       <form id="loginForm" class="space-y-4" autocomplete="off" aria-labelledby="tab-signin">
         <div>
           <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-          <input id="email" name="email" type="email" required
+          <input id="email" name="email" type="email" required autocomplete="off" data-lpignore="true"
                  class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                  placeholder="you@example.com" />
         </div>
@@ -99,7 +99,7 @@
 
         <div>
           <label for="c_email" class="block text-sm font-medium text-gray-700">Email</label>
-          <input id="c_email" type="email" required
+          <input id="c_email" type="email" required autocomplete="off" data-lpignore="true"
                  class="mt-1 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                  placeholder="you@example.com" />
         </div>
@@ -252,6 +252,19 @@
       const tabParam = (url.searchParams.get('tab') || '').toLowerCase();
 
       // ----------------------------------------------------------
+      // 0. STALE DATA CLEANUP — expire old redirect tickets on page load
+      //    Prevents previous sessions from hijacking the current login
+      // ----------------------------------------------------------
+      const nextTs = parseInt(localStorage.getItem('nextAfterLoginTs') || '0', 10);
+      const MAX_REDIRECT_AGE_MS = 10 * 60 * 1000; // 10 minutes
+      if (nextTs && (Date.now() - nextTs > MAX_REDIRECT_AGE_MS)) {
+        console.log('[login] Cleaning stale redirect ticket on page load');
+        localStorage.removeItem('nextAfterLogin');
+        localStorage.removeItem('nextAfterLoginTs');
+        localStorage.removeItem('loginOrigin');
+      }
+
+      // ----------------------------------------------------------
       // 1. URL email param (sent by all 3 ad pages + seller flow)
       //    If URL has ?email= with a value, use it.
       //    If URL has ?email= with NO value, that means "leave blank on purpose."
@@ -266,6 +279,16 @@
         // Explicitly blank — clear both fields and prevent fallbacks
         $('email').value = '';
         $('c_email').value = '';
+        // Defeat aggressive browser autofill: re-clear after 150ms
+        setTimeout(function() {
+          $('email').value = '';
+          $('c_email').value = '';
+        }, 150);
+        // And again at 500ms for extra-aggressive autofill managers
+        setTimeout(function() {
+          $('email').value = '';
+          $('c_email').value = '';
+        }, 500);
       }
 
       // ----------------------------------------------------------
@@ -410,7 +433,19 @@
         // Check verification status
         if (user.emailVerified) {
           localStorage.setItem('isVerified', 'true');
-          const next = localStorage.getItem('nextAfterLogin');
+          
+          // Only follow redirect if it's fresh (< 10 minutes old)
+          let next = localStorage.getItem('nextAfterLogin');
+          const nextTs = parseInt(localStorage.getItem('nextAfterLoginTs') || '0', 10);
+          const MAX_REDIRECT_AGE_MS = 10 * 60 * 1000; // 10 minutes
+          if (next && nextTs && (Date.now() - nextTs > MAX_REDIRECT_AGE_MS)) {
+            console.log('[login] Stale redirect ticket expired, clearing:', next);
+            localStorage.removeItem('nextAfterLogin');
+            localStorage.removeItem('nextAfterLoginTs');
+            localStorage.removeItem('loginOrigin');
+            next = null;
+          }
+          
           if (next) { window.location.href = next; return; }
           window.location.href = '/welcome.html';
         } else {
