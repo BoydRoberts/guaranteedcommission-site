@@ -160,7 +160,7 @@
 
   <!-- HEADER: Title truly centered; video left, counter right (absolute positioned) -->
   <header class="bg-white shadow">
-    <div class="max-w-7xl mx-auto px-4 pt-3 pb-4 md:relative">
+    <div class="max-w-7xl mx-auto px-4 pt-3 pb-4 md:relative md:min-h-[140px] flex flex-col justify-center">
 
       <!-- TITLE BLOCK: Always truly centered (determines header height) -->
       <div class="text-center" id="headerTitleBlock">
@@ -721,7 +721,8 @@
           return;
         }
         var h = Math.round(titleBlock.getBoundingClientRect().height);
-        if (!h || h < 40) return;
+        // Enforce minimum safe size to bypass YouTube's anti-clickjacking lock
+        if (h < 130) h = 130;
         var w = Math.round(h * (16 / 9));
         frame.style.height = h + 'px';
         frame.style.width = w + 'px';
