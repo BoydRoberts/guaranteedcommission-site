@@ -934,7 +934,8 @@
       // ===============================================
 
       try {
-        var keysToRemove = ['agentListing','checkoutData','intakeFollowups','lastListingAddress','signature','signedISC'];
+        var keysToRemove = ['agentListing','checkoutData','intakeFollowups','lastListingAddress','signature','signedISC',
+          'localProFormDraft','localBrokerFormDraft','localServiceFormDraft','pendingLocalProId','pendingBrokerId','pendingServiceProviderId'];
         for(var k=0;k<keysToRemove.length;k++){
           localStorage.removeItem(keysToRemove[k]);
         }
@@ -976,6 +977,7 @@
       localStorage.setItem('postSignatureOptions', plan.indexOf('FSBO') >= 0 ? 'fsbo' : 'listed');
       localStorage.setItem('loginOrigin', 'box2');
       localStorage.setItem('nextAfterLogin', '/verify-code.html');
+      localStorage.setItem('nextAfterLoginTs', String(Date.now()));
 
       function normEmail(v){ return String(v || '').trim().toLowerCase(); }
 
@@ -1053,7 +1055,17 @@
       }
 
       setTimeout(function() {
-        // If FSBO, pre-fill their email. If Listed, leave explicitly blank so it doesn't grab the agent's email.
+        // ========== CLEAN REDIRECT: Prevent agent email from leaking to login page ==========
+        // Remove ANY localStorage data that login.html's prefill could grab and misuse.
+        // Advertiser drafts from prior sessions:
+        localStorage.removeItem('localProFormDraft');
+        localStorage.removeItem('localBrokerFormDraft');
+        localStorage.removeItem('localServiceFormDraft');
+        // Previous session email (would auto-fill sign-in box with wrong identity):
+        localStorage.removeItem('loggedInEmail');
+        localStorage.removeItem('verifyTarget');
+
+        // If FSBO, pre-fill their email. If Listed, leave explicitly blank.
         var prefillEmail = isFSBO && formData.fsboEmail ? encodeURIComponent(formData.fsboEmail) : "";
         window.location.href = "/login.html?tab=create&email=" + prefillEmail;
       }, 250);
