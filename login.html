@@ -115,7 +115,7 @@
         <div>
           <label for="c_password" class="block text-sm font-medium text-gray-700">Create Password</label>
           <div class="relative mt-1">
-            <input id="c_password" type="password" required
+            <input id="c_password" type="password" required autocomplete="new-password" data-lpignore="true"
                    class="w-full border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
                    placeholder="At least 10 characters, letters, numbers, symbol" />
             <button type="button" id="togglePwdC1"
@@ -141,7 +141,7 @@
         <div>
           <label for="c_password2" class="block text-sm font-medium text-gray-700">Confirm Password</label>
           <div class="relative mt-1">
-            <input id="c_password2" type="password" required
+            <input id="c_password2" type="password" required autocomplete="new-password" data-lpignore="true"
                    class="w-full border rounded-lg px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
                    placeholder="Re-type your password" />
             <button type="button" id="togglePwdC2"
@@ -297,10 +297,11 @@
       //    Listed Property: ignore Box 2 data entirely (it contains the agent's info, not the seller's)
       //    Only attempt localStorage email fallback if URL did NOT contain an email param
       // ----------------------------------------------------------
+      if (fd.name && !$('c_name').value) $('c_name').value = fd.name;
+
       const isFSBO = plan.includes('FSBO');
 
       if (isFSBO) {
-        if (fd.name && !$('c_name').value) $('c_name').value = fd.name;
 
         if (!urlHasEmailParam && fd.fsboEmail && !$('c_email').value) {
           $('c_email').value = fd.fsboEmail;
