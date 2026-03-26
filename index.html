@@ -862,7 +862,7 @@
     async function submitForm(){
       var isFSBO = document.getElementById('formTitle').textContent.includes('FSBO');
 
-      var requiredIds = ['name','address','agentPhone'];
+      var requiredIds = ['name','address','agentPhone','commission'];
       if (isFSBO) {
         requiredIds.push('apn');
         requiredIds.push('fsboEmailInput');
