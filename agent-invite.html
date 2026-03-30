@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Who Will Complete the Listing?</title><link rel="icon" type="image/png" href="/Logo.png">
+  <title>Who Will Complete the Listing?</title>
+  <link rel="icon" type="image/png" href="/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .hint { font-size: 12px; color:#6b7280; }
@@ -236,17 +237,31 @@
         }
 
         localStorage.setItem("agentInviteEmail", email);
+        const fd = getJSON("formData", {});
         try {
-          const fd = getJSON("formData", {});
           fd.agentEmail = email;
           setJSON("formData", fd);
         } catch {}
 
         const ok = await writeAgentToFirestore(email);
         if (!ok) alert("Invite saved locally, but we could not update the server right now.");
-        else alert("Your agent has been invited. We will return you to your Welcome page.");
 
-        window.location.href = "/welcome.html";
+        // Construct the mailto email
+        const sellerName = fd.name || "your client";
+        const fullAddress = fd.address || localStorage.getItem("shortAddress") || "the property";
+        const shortAddress = (localStorage.getItem("shortAddress") || fullAddress.split(",")[0] || "the property").trim();
+
+        const subject = encodeURIComponent("Commission Guarantee Initiated for " + shortAddress);
+        const bodyText = "Hello,\n\nYour client, " + sellerName + ", has initiated a Guaranteed Commission for the property at " + fullAddress + ".\n\nThey have signed the Irrevocable Seller Communication to guarantee your buyer's agent commission, ensuring the home sells quicker and at a higher price.\n\nYour client has requested that you complete the listing profile on GuaranteedCommission.com.\n\nPlease click here to claim and complete the listing:\nhttps://guaranteedcommission.com/agent-detail.html\n\nBest regards,\n" + sellerName;
+        const body = encodeURIComponent(bodyText);
+
+        // 1. Trigger the native email app
+        window.location.href = "mailto:" + email + "?subject=" + subject + "&body=" + body;
+
+        // 2. Redirect to welcome page after a slight delay to ensure the mailto registers
+        setTimeout(function() {
+          window.location.href = "/welcome.html";
+        }, 800);
       });
     }
 
