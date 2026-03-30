@@ -248,11 +248,12 @@
 
         // Construct the mailto email
         const sellerName = fd.name || "your client";
+        const listingAgent = fd.agent || "Agent";
         const fullAddress = fd.address || localStorage.getItem("shortAddress") || "the property";
         const shortAddress = (localStorage.getItem("shortAddress") || fullAddress.split(",")[0] || "the property").trim();
 
         const subject = encodeURIComponent("Commission Guarantee Initiated for " + shortAddress);
-        const bodyText = "Hello,\n\nYour client, " + sellerName + ", has initiated a Guaranteed Commission for the property at " + fullAddress + ".\n\nThey have signed the Irrevocable Seller Communication to guarantee your buyer's agent commission, ensuring the home sells quicker and at a higher price.\n\nYour client has requested that you complete the listing profile on GuaranteedCommission.com.\n\nPlease click here to claim and complete the listing:\nhttps://guaranteedcommission.com/agent-detail.html\n\nBest regards,\n" + sellerName;
+        const bodyText = listingAgent + ",\n\nYour client, " + sellerName + ", has initiated a Guaranteed Commission for the property at " + fullAddress + ".\n\nThey have signed the Irrevocable Seller Communication to guarantee the buyer's agent's commission.\n\nYour client has requested that you complete the listing profile on GuaranteedCommission.com. Please click here to claim and complete the listing:\nhttps://guaranteedcommission.com/agent-detail.html\n\nBest regards,\nGuaranteedCommission.com";
         const body = encodeURIComponent(bodyText);
 
         // 1. Trigger the native email app
