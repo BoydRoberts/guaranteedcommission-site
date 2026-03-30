@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Search | GuaranteedCommission.com</title><link rel="icon" type="image/png" href="/Logo.png">
+  <title>Search | GuaranteedCommission.com</title>
+  <link rel="icon" type="image/png" href="/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Mapbox GL JS -->
@@ -1214,8 +1215,9 @@
         const label = document.createElement('div');
         label.className = 'gc-marker-label';
 
-        // Price label (clean — no status suffix)
-        const basePrice = formatPriceShort(it.price);
+        // Price label: show soldPrice for sold listings, otherwise listing price
+        const markerPrice = (isSold && it.soldPrice) ? it.soldPrice : it.price;
+        const basePrice = formatPriceShort(markerPrice);
         label.textContent = basePrice;
 
         const goListing = (e) => {
