@@ -29,15 +29,15 @@
       position: relative;
     }
 
-    .embed.embed { padding: 0 !important; }
+    .embed.embed { padding: 0 !important; overflow: hidden; }
     .embed .isc-card { box-shadow: none; border: 0; border-radius: 0; padding: 0; }
-    .embed .isc-wrap { padding: 0.25rem 0.75rem; }
+    .embed .isc-wrap { padding: 0 0.5rem; }
     .embed .embed-hidden { display: none !important; }
 
-    /* Lock to readable font size, but squish the line spacing and margins */
-    .embed .h1 { font-size: 1rem; margin-bottom: 0.25rem; }
-    .embed .p { font-size: 0.95rem; margin-top: 0.25rem; line-height: 1.25; }
-    .embed .sig-row { font-size: 0.95rem; margin-top: 0.5rem; }
+    /* Keep font size readable, but strip wasted space between lines */
+    .embed .h1 { font-size: 1rem; margin-top: 0; margin-bottom: 0.15rem; }
+    .embed .p { font-size: 0.95rem; margin-top: 0.15rem; line-height: 1.2; }
+    .embed .sig-row { font-size: 0.95rem; margin-top: 0.25rem; }
 
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
