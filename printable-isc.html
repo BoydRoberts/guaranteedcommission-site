@@ -39,6 +39,9 @@
       padding: var(--tile-pad);
     }
     .embed .embed-hidden { display: none !important; }
+    .embed .p { font-size: 0.8rem; margin-top: 0.35rem; line-height: 1.4; }
+    .embed .sig-row { margin-top: 0.75rem; font-size: 0.85rem; }
+    .embed .h1 { margin-bottom: 0.25rem; }
 
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
@@ -182,7 +185,8 @@
 
     function postHeight() {
       try {
-        const h = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
+        const card = document.getElementById('card');
+        const h = card ? card.getBoundingClientRect().height : document.body.scrollHeight;
         window.parent?.postMessage?.({ type:"gc-isc-embed-size", height: h }, "*");
       } catch {}
     }
