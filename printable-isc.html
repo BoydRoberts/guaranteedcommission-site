@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Irrevocable Seller Communication</title><link rel="icon" type="image/png" href="/Logo.png">
+  <title>Irrevocable Seller Communication</title>
+  <link rel="icon" type="image/png" href="/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
@@ -348,8 +349,8 @@
         p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, parcel # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email is ${email}.`;
         p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       } else {
-        p1 = `I, ${name}, am the owner/seller of ${fullAddr}. ${short} is listed for sale. ${agent} with ${brokerage} is the listing agent: ${phone}, ${email}.`;
-        p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
+        p1 = `I, ${name}, am the owner/seller of ${fullAddr}. ${short} is listed for sale. ${agent} with ${brokerage} is the listing agent: ${phone}, ${email}. I voluntarily and independently choose to offer buyer's agent compensation, acknowledging that commissions are negotiable and not required by my agent or brokerage.`;
+        p2 = `Accordingly, if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}. I direct that this instruction be carried out as written.`;
       }
 
       const signed = (d.signedISC && typeof d.signedISC === "object") ? d.signedISC : getJSON("signedISC", {});
