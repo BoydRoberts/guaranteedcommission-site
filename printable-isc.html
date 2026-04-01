@@ -29,8 +29,9 @@
       position: relative;
     }
 
+    .embed.embed { padding: 0 !important; }
     .embed .isc-card { box-shadow: none; border: 0; border-radius: 0; padding: 0; }
-    .embed .isc-wrap { padding: var(--tile-pad); }
+    .embed .isc-wrap { padding: 0.75rem 1rem 0.5rem 1rem; }
     .embed .embed-hidden { display: none !important; }
 
     /* Dynamic embed sizing tiers */
@@ -45,6 +46,10 @@
     .embed.compact3 * { line-height: 1.25; }
     .embed.compact3 .p { font-size: 0.8rem; margin-top: 0.3rem; }
     .embed.compact3 .sig-row { font-size: 0.8rem; margin-top: 0.5rem; }
+
+    .embed.compact4 * { line-height: 1.2; }
+    .embed.compact4 .p { font-size: 0.75rem; margin-top: 0.2rem; }
+    .embed.compact4 .sig-row { font-size: 0.75rem; margin-top: 0.4rem; }
 
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
@@ -189,7 +194,7 @@
     function fitEmbed() {
       if (!isEmbed()) return;
       document.body.classList.add("embed");
-      const tiers = ['compact', 'compact2', 'compact3'];
+      const tiers = ['compact', 'compact2', 'compact3', 'compact4'];
       for (let i = 0; i < tiers.length; i++) {
         if (document.documentElement.scrollHeight <= window.innerHeight + 2) break;
         document.body.classList.add(tiers[i]);
