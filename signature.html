@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Irrevocable Seller Communication — Review & Sign</title><link rel="icon" type="image/png" href="/Logo.png">
+  <title>Irrevocable Seller Communication — Review & Sign</title>
+  <link rel="icon" type="image/png" href="/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>.font-cursive{font-family:'Brush Script MT',cursive}</style>
 </head>
@@ -175,9 +176,9 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
         const email      = d.agentEmail || "[agent email]";
         return `To the escrow holder/closing agent,
 
-I, ${name}, am the owner/seller of ${addressFull}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by ${brokerage}, ${agentName}, listing agent, ${phone}, ${email}.
+I, ${name}, am the owner/seller of ${addressFull}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by ${brokerage}, ${agentName}, listing agent, ${phone}, ${email}. I voluntarily and independently choose to offer buyer's agent compensation, acknowledging that commissions are negotiable and not required by my agent or brokerage.
 
-Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission not to exceed ${commissionDisplay}${commissionDisplay ? suffix : ""}.`;
+Accordingly, if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commissionDisplay}${commissionDisplay ? suffix : ""}. I direct that this instruction be carried out as written.`;
       }
     }
 
