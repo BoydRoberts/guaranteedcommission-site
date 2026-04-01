@@ -4,8 +4,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Irrevocable Seller Communication</title>
-  <link rel="icon" type="image/png" href="/Logo.png">
+  <title>Irrevocable Seller Communication</title><link rel="icon" type="image/png" href="/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
@@ -29,15 +28,16 @@
       position: relative;
     }
 
-    .embed.embed { padding: 0 !important; overflow: hidden; }
-    .embed .isc-card { box-shadow: none; border: 0; border-radius: 0; padding: 0; }
-    .embed .isc-wrap { padding: 0 0.5rem; }
+    .embed .isc-card {
+      box-shadow: none;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+    }
+    .embed .isc-wrap {
+      padding: var(--tile-pad);
+    }
     .embed .embed-hidden { display: none !important; }
-
-    /* Keep font size readable, but strip wasted space between lines */
-    .embed .h1 { font-size: 1rem; margin-top: 0; margin-bottom: 0.15rem; }
-    .embed .p { font-size: 0.95rem; margin-top: 0.15rem; line-height: 1.2; }
-    .embed .sig-row { font-size: 0.95rem; margin-top: 0.25rem; }
 
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
@@ -56,7 +56,6 @@
       hyphens: none;
       overflow-wrap: break-word;
       word-break: break-word;
-      white-space: normal;
     }
 
     /* FSBO text wrapping fix - prevents commission from bleeding out of container */
@@ -349,8 +348,8 @@
         p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, parcel # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email is ${email}.`;
         p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       } else {
-        p1 = `I, ${name}, am the owner/seller of ${fullAddr}. ${short} is listed for sale. ${agent} with ${brokerage} is the listing agent: ${phone}, ${email}. I voluntarily and independently choose to offer buyer's agent compensation, acknowledging that commissions are negotiable and not required by my agent or brokerage.`;
-        p2 = `Accordingly, if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}. I direct that this instruction be carried out as written.`;
+        p1 = `I, ${name}, am the owner/seller of ${fullAddr}. ${short} is listed for sale. ${agent} with ${brokerage} is the listing agent: ${phone}, ${email}.`;
+        p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker – first, by debiting the listing brokerage (if there is an agreement for broker-to-broker compensation) and second by debiting me, the seller – a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       }
 
       const signed = (d.signedISC && typeof d.signedISC === "object") ? d.signedISC : getJSON("signedISC", {});
