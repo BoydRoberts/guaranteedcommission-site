@@ -31,25 +31,13 @@
 
     .embed.embed { padding: 0 !important; }
     .embed .isc-card { box-shadow: none; border: 0; border-radius: 0; padding: 0; }
-    .embed .isc-wrap { padding: 0.75rem 1rem 0.5rem 1rem; }
+    .embed .isc-wrap { padding: 0.25rem 0.75rem; }
     .embed .embed-hidden { display: none !important; }
 
-    /* Dynamic embed sizing tiers */
-    .embed.compact * { line-height: 1.35; }
-    .embed.compact .p { font-size: 0.9rem; margin-top: 0.4rem; }
-    .embed.compact .sig-row { font-size: 0.9rem; margin-top: 0.8rem; }
-
-    .embed.compact2 * { line-height: 1.3; }
-    .embed.compact2 .p { font-size: 0.85rem; margin-top: 0.35rem; }
-    .embed.compact2 .sig-row { font-size: 0.85rem; margin-top: 0.6rem; }
-
-    .embed.compact3 * { line-height: 1.25; }
-    .embed.compact3 .p { font-size: 0.8rem; margin-top: 0.3rem; }
-    .embed.compact3 .sig-row { font-size: 0.8rem; margin-top: 0.5rem; }
-
-    .embed.compact4 * { line-height: 1.2; }
-    .embed.compact4 .p { font-size: 0.75rem; margin-top: 0.2rem; }
-    .embed.compact4 .sig-row { font-size: 0.75rem; margin-top: 0.4rem; }
+    /* Lock to readable font size, but squish the line spacing and margins */
+    .embed .h1 { font-size: 1rem; margin-bottom: 0.25rem; }
+    .embed .p { font-size: 0.95rem; margin-top: 0.25rem; line-height: 1.25; }
+    .embed .sig-row { font-size: 0.95rem; margin-top: 0.5rem; }
 
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
@@ -191,19 +179,8 @@
       catch { return false; }
     }
 
-    function fitEmbed() {
-      if (!isEmbed()) return;
-      document.body.classList.add("embed");
-      const tiers = ['compact', 'compact2', 'compact3', 'compact4'];
-      for (let i = 0; i < tiers.length; i++) {
-        if (document.documentElement.scrollHeight <= window.innerHeight + 2) break;
-        document.body.classList.add(tiers[i]);
-      }
-    }
-
     function postHeight() {
       try {
-        fitEmbed();
         const h = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
         window.parent?.postMessage?.({ type:"gc-isc-embed-size", height: h }, "*");
       } catch {}
