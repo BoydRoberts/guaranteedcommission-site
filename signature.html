@@ -266,14 +266,17 @@ Accordingly, if a buyer's agent/broker facilitates the sale of ${short}, you (th
         } catch {}
 
         try {
-          // ===== Compute date/time for all history entries =====
+          // ===== THE GHOST MAKER: Secret backdoor for test listings =====
+          const isTestMode = new URLSearchParams(window.location.search).get("test") === "true";
+          const finalStatus = isTestMode ? "Test" : "Active";
+
           const dtNow = now();
           const dateStr = todayISO();
           const timeStr = time12(dtNow);
 
           const updates = {
             signedISC: { name: typed, date: dateStr, ts: serverTimestamp() },
-            status: "Active",
+            status: finalStatus,
             updatedAt: serverTimestamp()
           };
 
@@ -296,13 +299,13 @@ Accordingly, if a buyer's agent/broker facilitates the sale of ${short}, you (th
           }
           updates.commissionHistory = currentHistory;
 
-          // ===== SEED statusHistory with "Original: Active" (only if empty) =====
+          // ===== SEED statusHistory with Original Status (only if empty) =====
           if (!Array.isArray(d.statusHistory) || d.statusHistory.length === 0) {
             updates.statusHistory = [{
               date: dateStr,
               time: timeStr,
               label: "Original",
-              status: "Active"
+              status: finalStatus
             }];
           }
 
