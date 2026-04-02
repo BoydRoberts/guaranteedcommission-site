@@ -139,7 +139,9 @@
 
         <p class="p">To the escrow holder/closing agent,</p>
         <p id="p1" class="p">Loading…</p>
-        <p id="p2" class="p"></p>
+        <p id="p2" class="p" style="display: none;"></p>
+        <p id="p3" class="p" style="display: none;"></p>
+        <p id="p4" class="p" style="display: none;"></p>
 
         <div class="sig-row">
           <div class="sig-left">
@@ -348,35 +350,40 @@
       const commDisp = fmtCommission(cVal, cType);
       const commSfx  = (cVal && cType === "%") ? " of the total purchase price" : "";
 
-      let p1 = "", p2 = "";
+      let p1 = "", p2 = "", p3 = "", p4 = "";
 
       if (isFSBO) {
         p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, parcel # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email is ${email}.`;
         p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       } else {
-        p1 = `I, ${name}, am the owner/seller of ${fullAddr}. ${short} is listed for sale. ${agent} with ${brokerage} is the listing agent: ${phone}, ${email}. I voluntarily and independently choose to offer buyer's agent compensation, acknowledging that commissions are negotiable and not required by my agent or brokerage.`;
-        p2 = `Accordingly, if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}. I direct that this instruction be carried out as written.`;
+        p1 = `I, ${name}, am the owner/seller of ${fullAddr}. ${short} is listed for sale. ${agent} with ${brokerage} is the listing agent: ${phone}, ${email}.`;
+        p2 = `I voluntarily and independently choose to offer buyer's agent compensation, acknowledging that commissions are negotiable and not required by my agent or brokerage.`;
+        p3 = `Accordingly, if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
+        p4 = `I direct that this instruction be carried out as written.`;
       }
+
+      const updateP = (id, text, isFsbo) => {
+        const el = $(id);
+        if (!el) return;
+        if (text) {
+          el.textContent = text;
+          el.style.display = "block";
+          isFsbo ? el.classList.add("fsbo-wrap") : el.classList.remove("fsbo-wrap");
+        } else {
+          el.style.display = "none";
+        }
+      };
 
       const signed = (d.signedISC && typeof d.signedISC === "object") ? d.signedISC : getJSON("signedISC", {});
       const sigName = (signed.name || name || "[Name]");
       const sigDate = (signed.date || "[date]");
 
-      $("p1").textContent = p1;
-      $("p2").textContent = p2;
+      updateP("p1", p1, isFSBO);
+      updateP("p2", p2, isFSBO);
+      updateP("p3", p3, isFSBO);
+      updateP("p4", p4, isFSBO);
       $("sigName").textContent = sigName;
       $("sigDate").textContent = sigDate;
-
-      // ✅ FSBO text wrapping fix: Add class to prevent commission bleeding
-      const p1El = $("p1");
-      const p2El = $("p2");
-      if (isFSBO) {
-        if (p1El) p1El.classList.add("fsbo-wrap");
-        if (p2El) p2El.classList.add("fsbo-wrap");
-      } else {
-        if (p1El) p1El.classList.remove("fsbo-wrap");
-        if (p2El) p2El.classList.remove("fsbo-wrap");
-      }
 
       const embedded = isEmbed();
 
