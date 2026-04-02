@@ -1213,10 +1213,14 @@
           var d = docu.data() || {};
           if (d.archived === true) return;
 
-          var signed = !!(d.signedISC && typeof d.signedISC === 'object' && d.signedISC.date);
-          var isActive = String(d.status || '').toLowerCase() === 'active';
+          // ===== THE SHIELD: Block test listings =====
+          var statusLower = String(d.status || '').toLowerCase();
+          if (statusLower === 'test') return; // Never show test listings to the public
 
-          if (!signed && !isActive) return;
+          var signed = !!(d.signedISC && typeof d.signedISC === 'object' && d.signedISC.date);
+          var isPublicStatus = ['active', 'in contract', 'in_contract', 'pending', 'sold'].includes(statusLower);
+
+          if (!signed && !isPublicStatus) return;
 
           items.push({
             id: docu.id,
