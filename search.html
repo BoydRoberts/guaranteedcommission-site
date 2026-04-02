@@ -1382,9 +1382,15 @@
         const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt", "desc"), limit(200)));
         snap.forEach(d => {
           const data = d.data() || {};
+          
+          // ===== THE SHIELD: Block test listings =====
+          const statusLower = String(data.status || '').toLowerCase();
+          if (statusLower === 'test') return; // Never show test listings to the public
+
           const signed = !!(data.signedISC && typeof data.signedISC === 'object' && data.signedISC.date);
-          const isActive = String(data.status || '').toLowerCase() === 'active';
-          if (!signed && !isActive) return;
+          const isPublicStatus = ['active', 'in contract', 'in_contract', 'pending', 'sold'].includes(statusLower);
+
+          if (!signed && !isPublicStatus) return;
           
           // DEBUG: Log sold listings to verify data
           if (String(data.status || '').toLowerCase() === 'sold') {
