@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Welcome | GuaranteedCommission.com</title><link rel="icon" type="image/png" href="/Logo.png">
+  <title>Welcome | GuaranteedCommission.com</title>
+  <link rel="icon" type="image/png" href="/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
@@ -208,6 +209,22 @@
           </div>
           <p class="text-[11px] text-gray-500 mt-2">
             Use the Status dropdown to quickly mark as Sold (with date/price) or change status.
+          </p>
+        </div>
+
+        <!-- ======================
+             CANCEL A CURRENT LISTING (seller only, free)
+             ====================== -->
+        <div id="blkCancelListing" class="hidden border rounded-lg p-4 border-red-200 bg-red-50">
+          <h3 class="font-semibold mb-2 text-red-900">Cancel a current listing</h3>
+          <div class="flex flex-col gap-2 md:flex-row md:items-center">
+            <select id="cancelListings" class="border rounded px-2 py-2 text-sm grow border-red-300 bg-white">
+              <option value="">Select a listing to cancel…</option>
+            </select>
+            <button id="cancelListingBtn" class="px-4 py-2 rounded text-white text-sm font-semibold transition-colors bg-red-600 hover:bg-red-700">Cancel Listing</button>
+          </div>
+          <p class="text-[11px] text-red-700 mt-2">
+            This will permanently remove the listing from the public search feeds.
           </p>
         </div>
 
@@ -1220,6 +1237,90 @@
     // MAIN BOOT: Zero Trust - only show data user owns
     // STRICT ROLE-BASED VISIBILITY
     // ========================================
+    // ========================================
+    // CANCEL LISTING LOGIC
+    // ========================================
+    function wireCancelListing(allListings) {
+      const cancelSel = $('cancelListings');
+      const cancelBtn = $('cancelListingBtn');
+      const cancelBlk = $('blkCancelListing');
+
+      if (!cancelSel || !cancelBtn || !cancelBlk) return;
+
+      // Only show listings that are NOT already canceled
+      const activeListings = allListings.filter(x => {
+        const s = String(x.status || '').toLowerCase();
+        return s !== 'canceled' && s !== 'cancelled' && s !== 'test';
+      });
+
+      if (activeListings.length === 0) {
+        cancelBlk.classList.add('hidden');
+        return;
+      }
+
+      cancelBlk.classList.remove('hidden');
+      cancelSel.innerHTML = `<option value="">Select a listing to cancel…</option>`;
+      
+      activeListings.forEach(it => {
+        const opt = document.createElement('option');
+        opt.value = it.id;
+        opt.textContent = optionLabel(it);
+        cancelSel.appendChild(opt);
+      });
+
+      cancelBtn.addEventListener('click', async () => {
+        const listingId = cancelSel.value;
+        if (!listingId) {
+          showToast('Please select a listing to cancel.', 'error');
+          return;
+        }
+
+        const isSure = confirm("Are you sure you want to cancel this listing?\n\nIt will be permanently removed from the public search feeds. This action cannot be undone.");
+        if (!isSure) return;
+
+        const originalDoc = activeListings.find(x => x.id === listingId);
+        if (!originalDoc) return;
+
+        try {
+          cancelBtn.disabled = true;
+          cancelBtn.textContent = 'Canceling...';
+
+          const dtNow = new Date();
+          const dateStr = dtNow.toISOString().slice(0,10);
+          
+          const pad2 = (n) => String(n).padStart(2, "0");
+          let h = dtNow.getHours();
+          const m = pad2(dtNow.getMinutes());
+          const ampm = h >= 12 ? "PM" : "AM";
+          h = h % 12; if (h === 0) h = 12;
+          const timeStr = `${h}:${m} ${ampm}`;
+
+          const currentHistory = Array.isArray(originalDoc.statusHistory) ? originalDoc.statusHistory : [];
+          const newHistoryEntry = {
+            date: dateStr,
+            time: timeStr,
+            label: "Changed",
+            status: "Canceled"
+          };
+
+          await updateDoc(doc(db, "listings", listingId), {
+            status: "Canceled",
+            statusHistory: [...currentHistory, newHistoryEntry],
+            updatedAt: serverTimestamp()
+          });
+
+          showToast('Listing successfully canceled.', 'success');
+          setTimeout(() => { location.reload(); }, 1500);
+
+        } catch (e) {
+          console.error('[cancel] Failed to cancel listing:', e);
+          showToast('Failed to cancel listing. Please try again.', 'error');
+          cancelBtn.disabled = false;
+          cancelBtn.textContent = 'Cancel Listing';
+        }
+      });
+    }
+
     (async function boot(){
       // Fetch all data in parallel (strict email ownership)
       const [{ owner, agent, all }, pros, brokers, serviceProviders, savedDocs] = await Promise.all([
@@ -1423,6 +1524,7 @@
       // Shows listings with role-appropriate edit links
       if (hasListings) {
         renderListingsTable(all, canEditAsSeller, canEditAsAgent);
+        wireCancelListing(all);
       }
 
       // Debug role summary (hidden by default)
