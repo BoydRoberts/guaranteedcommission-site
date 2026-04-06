@@ -1250,7 +1250,7 @@
       // Only show listings that are NOT already canceled
       const activeListings = allListings.filter(x => {
         const s = String(x.status || '').toLowerCase();
-        return s !== 'canceled' && s !== 'cancelled' && s !== 'test';
+        return s !== 'canceled' && s !== 'cancelled';
       });
 
       if (activeListings.length === 0) {
