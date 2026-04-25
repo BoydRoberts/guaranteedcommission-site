@@ -330,7 +330,8 @@
       const isFSBO = plan.includes("FSBO");
 
       const fullAddr = String(d.address || "").trim() || "[full address]";
-      const short    = fullAddr.split(",")[0] || "[short address]";
+      const parts = fullAddr.split(',');
+      const short = parts.length > 2 ? parts.slice(0, parts.length - 2).join(',').trim() : (parts[0] || '[short address]').trim();
       const apn      = (d.apn || "").trim();
 
       const name     = (d.ownerName || d.name || "[name]");
@@ -356,10 +357,10 @@
         p1 = `I, ${name}, am the owner/seller of ${fullAddr}${apn ? `, parcel # ${apn}` : ""}. ${short} is listed for sale by owner (Me). My phone number is ${phone}. My email is ${email}.`;
         p2 = `Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
       } else {
-        p1 = `I, ${name}, am the owner/seller of ${fullAddr}. ${short} is listed for sale. ${agent} with ${brokerage} is the listing agent: ${phone}, ${email}.`;
-        p2 = `I voluntarily and independently choose to offer buyer's agent compensation, acknowledging that commissions are negotiable and not required by my agent or brokerage.`;
-        p3 = `Accordingly, if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}.`;
-        p4 = `I direct that this instruction be carried out as written.`;
+        p1 = `I, ${name}, am the owner/seller of ${fullAddr}. ${short} is listed for sale. ${agent} with ${brokerage} is the listing agent.`;
+        p2 = `Seller confirms this instruction is made voluntarily and independently, that broker compensation is negotiable and not required by the listing agent or brokerage, and that this is not a condition of representation.`;
+        p3 = `Accordingly, if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commDisp}${commDisp !== "[commission]" ? commSfx : ""}. I direct that this instruction be carried out as written.`;
+        p4 = ``;
       }
 
       const updateP = (id, text, isFsbo) => {
