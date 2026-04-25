@@ -147,7 +147,8 @@
 
     function buildIscTextFromDoc(d, overrideCommission, overrideCommissionType) {
       const addressFull = (d.address || "").trim();
-      const short = addressFull.split(",")[0] || "[short address]";
+      const parts = addressFull.split(',');
+      const short = parts.length > 2 ? parts.slice(0, parts.length - 2).join(',').trim() : (parts[0] || '[short address]').trim();
       const apn = (d.apn || "").trim();
       const name = (d.ownerName || "[name]");
       const plan = (d.plan || "");
@@ -176,9 +177,11 @@ Let it be known: if a buyer's agent/broker facilitates the sale of ${short}, you
         const email      = d.agentEmail || "[agent email]";
         return `To the escrow holder/closing agent,
 
-I, ${name}, am the owner/seller of ${addressFull}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale by ${brokerage}, ${agentName}, listing agent, ${phone}, ${email}. I voluntarily and independently choose to offer buyer's agent compensation, acknowledging that commissions are negotiable and not required by my agent or brokerage.
+I, ${name}, am the owner/seller of ${addressFull}${apn ? `, # ${apn}` : ""}. ${short} is listed for sale. ${agentName} with ${brokerage} is the listing agent.
 
-Accordingly, if a buyer's agent/broker facilitates the sale of ${short}, you (the escrow holder/closing agent) are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commissionDisplay}${commissionDisplay ? suffix : ""}. I direct that this instruction be carried out as written.`;
+Seller confirms this instruction is made voluntarily and independently, that broker compensation is negotiable and not required by the listing agent or brokerage, and that this is not a condition of representation.
+
+Accordingly, if a buyer's agent/broker facilitates the sale of ${short}, you are irrevocably instructed to credit/compensate the buyer's broker a commission equal to ${commissionDisplay}${commissionDisplay ? suffix : ""}. I direct that this instruction be carried out as written.`;
       }
     }
 
