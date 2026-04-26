@@ -787,6 +787,19 @@
         });
       }
 
+      // Commission sanitizer: strip everything except digits and one decimal point
+      var commInput = document.getElementById('commission');
+      if (commInput) {
+        commInput.addEventListener('input', function() {
+          var raw = this.value.replace(/[^0-9.]/g, '');
+          var dotIndex = raw.indexOf('.');
+          if (dotIndex >= 0) {
+            raw = raw.slice(0, dotIndex + 1) + raw.slice(dotIndex + 1).replace(/\./g, '');
+          }
+          this.value = raw;
+        });
+      }
+
       var syncFields = ['name','address','apn','brokerage','agent','agentPhone','agentEmail','commission','commissionType','fsboEmailInput'];
       for(var i=0;i<syncFields.length;i++){
         var el = document.getElementById(syncFields[i]);
