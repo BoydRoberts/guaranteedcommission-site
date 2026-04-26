@@ -134,7 +134,7 @@
 
   <script type="module">
     import { db, STORAGE_BUCKET_GS } from "/scripts/firebase-init.js";
-    import { addDoc, collection, doc, updateDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { addDoc, collection, doc, updateDoc, serverTimestamp, query, where, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
     const PRICE_ID_LOCAL_PRO = "price_1TCOCjAH8kfFNlzoxrv7EMRn"; // $5/mo per ZIP
@@ -638,6 +638,18 @@
         }
 
         // ========== STEP 4: NORMAL CHECKOUT MODE ==========
+        // Pre-generate the document reference to get the ID for the photo path
+        const newDocRef = doc(collection(db, "localPros"));
+        
+        // Store for activation on checkout-success.html
+        localStorage.setItem("pendingLocalProId", newDocRef.id);
+        localStorage.setItem("pendingLocalProEmail", email);
+        localStorage.setItem("localProDraftId", newDocRef.id); // Legacy key
+
+        // Upload photo FIRST using the pre-generated ID
+        const photoUrl = await maybeUploadPhoto(newDocRef.id);
+
+        // Build the draft with the photo URL included
         const draft = {
           role,
           personalName,
@@ -646,23 +658,14 @@
           phone,
           license,
           zips: zipCodes,
-          photoUrl: "",
+          photoUrl: photoUrl || "",
           status: "pending",
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         };
 
-        const refDoc = await addDoc(collection(db, "localPros"), draft);
-        
-        // Store for activation on checkout-success.html
-        localStorage.setItem("pendingLocalProId", refDoc.id);
-        localStorage.setItem("pendingLocalProEmail", email);
-        localStorage.setItem("localProDraftId", refDoc.id); // Legacy key
-
-        const photoUrl = await maybeUploadPhoto(refDoc.id);
-        if (photoUrl) {
-          await updateDoc(doc(db, "localPros", refDoc.id), { photoUrl, updatedAt: serverTimestamp() });
-        }
+        // Perform a single atomic write (bypasses update rules)
+        await setDoc(newDocRef, draft);
 
         const payload = {
           roleType: "local_pro",
@@ -675,7 +678,7 @@
             name: name,
             personalName: personalName,
             license: license,
-            draftId: refDoc.id
+            draftId: newDocRef.id
           }
         };
 
