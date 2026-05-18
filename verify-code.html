@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Verify Your Email | GuaranteedCommission.com</title><link rel="icon" type="image/png" href="/Logo.png">
+  <title>Verify Your Email | GuaranteedCommission.com</title>
+  <link rel="icon" type="image/png" href="/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .spinner {
@@ -23,16 +24,12 @@
 
   <!-- Standard Header (isolated funnel — no nav) -->
   <header class="bg-white shadow">
-    <div class="max-w-7xl mx-auto px-4 pt-3 pb-4">
+    <div class="max-w-7xl mx-auto px-4 pt-4 pb-4">
       <div class="text-center" id="headerTitleBlock">
-        <div class="flex items-end justify-center gap-0 -translate-x-[8px] md:-translate-x-[6px]">
-          <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-7 w-7 md:h-10 md:w-10 object-contain -mr-[2px] translate-y-0 md:-mr-[6px] md:-mb-1 md:translate-y-0">
-          <h1 class="text-lg sm:text-xl md:text-3xl font-bold tracking-tight text-gray-900 relative z-10">GuaranteedCommission.com&trade;</h1>
+        <div class="flex items-center justify-center gap-1">
+          <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-7 w-7 md:h-[32px] md:w-[32px] object-contain">
+          <h1 class="text-lg sm:text-xl md:text-3xl font-bold tracking-tight text-gray-900">GuaranteedCommission.com</h1>
         </div>
-        <p class="hidden md:block text-sm text-red-600 font-semibold mt-1 leading-snug whitespace-nowrap">
-          Guaranteeing the buyer's agent commissions so your home will sell quicker at a higher price.
-        </p>
-        <div class="hidden md:block mt-1.5 text-[8px] font-semibold tracking-widest leading-none uppercase" style="color:#4DA6FF;">Boyd Roberts | California Real Estate Broker | DRE #01354788</div>
       </div>
     </div>
   </header>
@@ -62,7 +59,7 @@
           </button>
 
           <p class="text-xs text-gray-500 text-center">
-            Don't see it? Check your spam folder. The email comes from <strong>noreply@guaranteedcommission-d4d91.firebaseapp.com</strong>.
+            Don't see it? Check your spam folder. The email comes from <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="503e3f2235203c291037253122313e24353534333f3d3d392323393f3e7d34643469617e36392235323123353120207e333f3d">[email&#160;protected]</a></strong>.
           </p>
 
           <div class="text-center">
@@ -94,7 +91,7 @@
     </div>
   </div>
 
-  <script type="module">
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
     import { auth } from "/scripts/firebase-init.js";
     import { sendEmailVerification, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
@@ -244,14 +241,3 @@
         } catch (err) {
           console.warn('[verify] Resend failed:', err.code, err.message);
           if (err.code === 'auth/too-many-requests') {
-            setStatus('Too many requests. Please wait a few minutes before trying again.', false);
-          } else {
-            setStatus('Could not resend email. Please try again shortly.', false);
-          }
-        }
-      });
-    }
-  </script>
-
-</body>
-</html>
