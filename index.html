@@ -20,6 +20,12 @@
       --box2-first-input-offset: 0.75rem;
     }
 
+    /* Subtitle: single line on mobile and desktop */
+    .gc-subtitle { font-size: 7pt; }
+    @media (min-width: 768px) {
+      .gc-subtitle { font-size: 10.5pt; }
+    }
+
     .font-cursive { font-family: 'Brush Script MT', cursive; }
 
     /* --- Strip 2 tile styles (shared with tile-renderer.js) --- */
@@ -121,7 +127,7 @@
           <img src="/Logo.png" alt="GuaranteedCommission Logo" class="h-7 w-7 md:h-[52px] md:w-[52px] object-contain">
           <h1 class="text-lg sm:text-xl md:text-[35pt] font-bold tracking-tight text-gray-900">GuaranteedCommission.com&trade;</h1>
         </div>
-        <div class="mt-3" style="font-family: Arial, sans-serif; font-size: 10.5pt; color: #4DA6FF; font-weight: 600; letter-spacing: 0.05em;">A REAL ESTATE COMMISSION COMMUNICATION PLATFORM</div>
+        <div class="mt-3 gc-subtitle" style="font-family: Arial, sans-serif; color: #4DA6FF; font-weight: 600; letter-spacing: 0.05em;">A REAL ESTATE COMMISSION COMMUNICATION PLATFORM</div>
       </div>
 
     </div>
