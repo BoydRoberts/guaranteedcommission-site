@@ -249,7 +249,11 @@
         if (iscIframe) {
           iscIframe.style.height = iframeH + "px";
           // Tell the embed how much space it has so it can auto-fit
-          try { iscIframe.contentWindow.postMessage({ type: 'gc-isc-fit', maxHeight: iframeH }, '*'); } catch {}
+          var fitMsg = { type: 'gc-isc-fit', maxHeight: iframeH };
+          try { iscIframe.contentWindow.postMessage(fitMsg, '*'); } catch {}
+          // Re-send after delay in case iframe wasn't ready
+          setTimeout(function() { try { iscIframe.contentWindow.postMessage(fitMsg, '*'); } catch {} }, 500);
+          setTimeout(function() { try { iscIframe.contentWindow.postMessage(fitMsg, '*'); } catch {} }, 1200);
         }
       } else {
         mapCard.style.height = "300px";
