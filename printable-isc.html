@@ -483,6 +483,7 @@
             if (msg.type !== 'gc-isc-fit' || !msg.maxHeight) return;
             const wrap = document.getElementById("wrap");
             if (!wrap) return;
+            const target = msg.maxHeight;
             const steps = [
               { p: '0.93rem', h1: '1.08rem', lh: '1.42', mt: '0.45rem', sig: '0.7rem' },
               { p: '0.90rem', h1: '1.05rem', lh: '1.38', mt: '0.4rem', sig: '0.6rem' },
@@ -490,14 +491,14 @@
               { p: '0.84rem', h1: '0.95rem', lh: '1.32', mt: '0.3rem', sig: '0.5rem' }
             ];
             for (const s of steps) {
-              if (document.documentElement.scrollHeight <= msg.maxHeight) break;
-              document.querySelectorAll('.embed .p').forEach(function(el) {
+              // Measure the actual content height via the wrap div
+              if (wrap.scrollHeight <= target) break;
+              wrap.querySelectorAll('.p').forEach(function(el) {
                 el.style.fontSize = s.p; el.style.lineHeight = s.lh; el.style.marginTop = s.mt;
               });
-              document.querySelectorAll('.embed .h1').forEach(function(el) { el.style.fontSize = s.h1; });
-              document.querySelectorAll('.embed .sig-row').forEach(function(el) { el.style.marginTop = s.sig; });
+              wrap.querySelectorAll('.h1').forEach(function(el) { el.style.fontSize = s.h1; });
+              wrap.querySelectorAll('.sig-row').forEach(function(el) { el.style.marginTop = s.sig; });
             }
-            // Re-post height after fitting
             postHeight();
           } catch (e) {}
         });
