@@ -228,8 +228,8 @@
     const $ = (id) => document.getElementById(id);
     const money = (n)=>{ const v=Number(n||0); return v?("$"+v.toLocaleString()):"$—"; };
 
-    // Dynamic height variable updated by the iframe via postMessage
-    let _iscDesiredHeight = 0; 
+    // Clamp ISC iframe to tile height on desktop; let it expand fully on mobile
+    let _iscDesiredHeight = 600; // default tall fallback
 
     function alignHeights(){
       const tile = $("tileCard");
@@ -240,35 +240,18 @@
 
       const isDesktop = window.innerWidth >= 1024; // lg breakpoint
 
-      // Step 1: Lock the Map height to match the Photo Tile exactly.
-      const tileH = Math.max(0, tile.getBoundingClientRect().height);
       if (isDesktop) {
-        mapCard.style.height = tileH + "px";
+        const h = Math.max(0, tile.getBoundingClientRect().height);
+        mapCard.style.height = h + "px";
+        iscCard.style.height = h + "px";
+        iscCard.style.overflow = "hidden";
+        if (iscIframe) iscIframe.style.height = Math.max(0, h - 24) + "px";
       } else {
         mapCard.style.height = "300px";
-      }
-
-      // Step 2: Flexibly size the ISC Card.
-      if (isDesktop) {
-        // If the iframe hasn't reported a height yet, default to the tile height.
-        // If it HAS reported a height, use the larger of the two.
-        // We add 20px of padding buffer to prevent scrollbars.
-        let targetIscHeight = tileH;
-        if (_iscDesiredHeight > 0) {
-           targetIscHeight = Math.max(tileH, _iscDesiredHeight + 20); 
-        }
-        
-        iscCard.style.height = targetIscHeight + "px";
-        iscCard.style.overflow = "hidden";
-        
-        if (iscIframe) {
-            iscIframe.style.height = "100%";
-        }
-      } else {
-        // Mobile behavior: let it expand naturally
         iscCard.style.height = "auto";
         iscCard.style.overflow = "hidden";
-        const safeHeight = Math.max(_iscDesiredHeight, 400); 
+        // Restore dynamic height to show signatures, but clamp it to prevent the white-space bug
+        const safeHeight = Math.min(Math.max(_iscDesiredHeight, 600), 650);
         if (iscIframe) iscIframe.style.height = safeHeight + "px";
       }
     }
