@@ -245,7 +245,12 @@
         mapCard.style.height = h + "px";
         iscCard.style.height = h + "px";
         iscCard.style.overflow = "hidden";
-        if (iscIframe) iscIframe.style.height = Math.max(0, h - 24) + "px";
+        const iframeH = Math.max(0, h - 24);
+        if (iscIframe) {
+          iscIframe.style.height = iframeH + "px";
+          // Tell the embed how much space it has so it can auto-fit
+          try { iscIframe.contentWindow.postMessage({ type: 'gc-isc-fit', maxHeight: iframeH }, '*'); } catch {}
+        }
       } else {
         mapCard.style.height = "300px";
         iscCard.style.height = "auto";
