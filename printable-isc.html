@@ -476,39 +476,42 @@
       } catch {}
 
       if (embedded) {
-        // Listen for parent telling us available height, then shrink to fit
-        window.addEventListener('message', function(ev) {
-          try {
-            const msg = ev.data || {};
-            if (msg.type !== 'gc-isc-fit' || !msg.maxHeight) return;
-            const wrap = document.getElementById("wrap");
-            if (!wrap) return;
-            const target = msg.maxHeight;
-            const steps = [
-              { p: '0.93rem', h1: '1.08rem', lh: '1.42', mt: '0.45rem', sig: '0.7rem' },
-              { p: '0.90rem', h1: '1.05rem', lh: '1.38', mt: '0.4rem', sig: '0.6rem' },
-              { p: '0.87rem', h1: '1.0rem',  lh: '1.35', mt: '0.35rem', sig: '0.55rem' },
-              { p: '0.84rem', h1: '0.95rem', lh: '1.32', mt: '0.3rem', sig: '0.5rem' },
-              { p: '0.81rem', h1: '0.92rem', lh: '1.28', mt: '0.25rem', sig: '0.4rem' },
-              { p: '0.78rem', h1: '0.88rem', lh: '1.25', mt: '0.2rem', sig: '0.35rem' }
-            ];
-            for (const s of steps) {
-              // Force reflow so scrollHeight is accurate
-              void wrap.offsetHeight;
-              if (wrap.scrollHeight <= target) break;
-              wrap.querySelectorAll('.p').forEach(function(el) {
-                el.style.fontSize = s.p; el.style.lineHeight = s.lh; el.style.marginTop = s.mt;
-              });
-              wrap.querySelectorAll('.h1').forEach(function(el) { el.style.fontSize = s.h1; });
-              wrap.querySelectorAll('.sig-row').forEach(function(el) { el.style.marginTop = s.sig; });
-            }
-            postHeight();
-          } catch (e) {}
-        });
+        // Auto-fit: compare content height vs iframe viewport height
+        // If content overflows, progressively shrink until it fits
+        // No cross-frame messaging needed — iframe knows its own viewport
+        function autoFit() {
+          var wrap = document.getElementById("wrap");
+          if (!wrap) return;
+          var available = window.innerHeight;
+          if (!available || available < 100) return;
+          var steps = [
+            { p: '0.93rem', h1: '1.08rem', lh: '1.42', mt: '0.45rem', sig: '0.7rem' },
+            { p: '0.90rem', h1: '1.05rem', lh: '1.38', mt: '0.4rem', sig: '0.6rem' },
+            { p: '0.87rem', h1: '1.0rem',  lh: '1.35', mt: '0.35rem', sig: '0.55rem' },
+            { p: '0.84rem', h1: '0.95rem', lh: '1.32', mt: '0.3rem', sig: '0.5rem' },
+            { p: '0.81rem', h1: '0.92rem', lh: '1.28', mt: '0.25rem', sig: '0.4rem' },
+            { p: '0.78rem', h1: '0.88rem', lh: '1.25', mt: '0.2rem', sig: '0.35rem' }
+          ];
+          for (var i = 0; i < steps.length; i++) {
+            void wrap.offsetHeight;
+            if (document.body.scrollHeight <= available) break;
+            var s = steps[i];
+            var ps = wrap.querySelectorAll('.p');
+            for (var j = 0; j < ps.length; j++) { ps[j].style.fontSize = s.p; ps[j].style.lineHeight = s.lh; ps[j].style.marginTop = s.mt; }
+            var h1s = wrap.querySelectorAll('.h1');
+            for (var k = 0; k < h1s.length; k++) { h1s[k].style.fontSize = s.h1; }
+            var sigs = wrap.querySelectorAll('.sig-row');
+            for (var m = 0; m < sigs.length; m++) { sigs[m].style.marginTop = s.sig; }
+          }
+          postHeight();
+        }
 
         requestAnimationFrame(postHeight);
         setTimeout(postHeight, 120);
-        window.addEventListener("load", postHeight);
+        setTimeout(autoFit, 300);
+        setTimeout(autoFit, 800);
+        setTimeout(autoFit, 1500);
+        window.addEventListener("load", function() { postHeight(); setTimeout(autoFit, 200); });
       }
     })();
   </script>
