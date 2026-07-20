@@ -40,9 +40,9 @@
     .embed .embed-hidden { display: none !important; }
 
     /* 4. March 20th readable font sizes and beautiful line-height */
-    .embed .h1 { font-size: 1.05rem; margin-top: 0; margin-bottom: 0.2rem; }
-    .embed .p { font-size: 0.92rem; margin-top: 0.45rem; line-height: 1.4; }
-    .embed .sig-row { font-size: 0.92rem; margin-top: 0.65rem; }
+    .embed .h1 { font-size: 1.1rem; margin-top: 0; margin-bottom: 0.25rem; }
+    .embed .p { font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.45; }
+    .embed .sig-row { font-size: 0.95rem; margin-top: 0.75rem; }
 
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
@@ -476,6 +476,28 @@
       } catch {}
 
       if (embedded) {
+        // Auto-fit: progressively shrink text only if content overflows the iframe
+        // This keeps short addresses at full size while fitting longer ones
+        (function autoFitEmbed() {
+          const wrap = document.getElementById("wrap");
+          if (!wrap) return;
+          const steps = [
+            { p: '0.93rem', h1: '1.08rem', lh: '1.42', mt: '0.45rem', sig: '0.7rem' },
+            { p: '0.90rem', h1: '1.05rem', lh: '1.38', mt: '0.4rem', sig: '0.6rem' },
+            { p: '0.87rem', h1: '1.0rem',  lh: '1.35', mt: '0.35rem', sig: '0.55rem' }
+          ];
+          for (const s of steps) {
+            if (wrap.scrollHeight <= wrap.clientHeight + 2) break;
+            document.querySelectorAll('.embed .p').forEach(el => {
+              el.style.fontSize = s.p;
+              el.style.lineHeight = s.lh;
+              el.style.marginTop = s.mt;
+            });
+            document.querySelectorAll('.embed .h1').forEach(el => { el.style.fontSize = s.h1; });
+            document.querySelectorAll('.embed .sig-row').forEach(el => { el.style.marginTop = s.sig; });
+          }
+        })();
+
         requestAnimationFrame(postHeight);
         setTimeout(postHeight, 120);
         window.addEventListener("load", postHeight);
