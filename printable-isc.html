@@ -30,11 +30,14 @@
     }
 
     /* 1. Nuke the invisible double-padding */
-    body.embed { padding: 0 !important; overflow: hidden; }
-    .embed .isc-card { box-shadow: none; border: 0; border-radius: 0; padding: 0; }
+    body.embed { padding: 0 !important; overflow: hidden; height: 100vh; }
+    .embed .isc-card { box-shadow: none; border: 0; border-radius: 0; padding: 0; height: 100%; }
+    .embed #root { height: 100%; }
 
     /* 2. Single, clean padding for the wrapper */
-    .embed .isc-wrap { padding: 0.5rem 1rem; }
+    .embed .isc-wrap { padding: 0.5rem 1rem; display: flex; flex-direction: column; height: 100%; }
+
+    /* Push signature row to bottom of container */
 
     /* 3. Hide header */
     .embed .embed-hidden { display: none !important; }
@@ -42,7 +45,7 @@
     /* 4. March 20th readable font sizes and beautiful line-height */
     .embed .h1 { font-size: 1.1rem; margin-top: 0; margin-bottom: 0.25rem; }
     .embed .p { font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.45; }
-    .embed .sig-row { font-size: 0.95rem; margin-top: 0.75rem; }
+    .embed .sig-row { font-size: 0.95rem; margin-top: auto !important; }
 
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
