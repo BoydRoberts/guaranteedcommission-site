@@ -241,14 +241,11 @@
       const isDesktop = window.innerWidth >= 1024; // lg breakpoint
 
       if (isDesktop) {
-        const tileH = Math.max(0, tile.getBoundingClientRect().height);
-        const iscNeeded = _iscDesiredHeight + 24; // iframe content + padding
-        const h = Math.max(tileH, iscNeeded);
+        const h = Math.max(0, tile.getBoundingClientRect().height);
         mapCard.style.height = h + "px";
         iscCard.style.height = h + "px";
         iscCard.style.overflow = "hidden";
         if (iscIframe) iscIframe.style.height = Math.max(0, h - 24) + "px";
-        tile.style.height = h + "px";
       } else {
         mapCard.style.height = "300px";
         iscCard.style.height = "auto";
