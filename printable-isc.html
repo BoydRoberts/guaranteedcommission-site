@@ -44,12 +44,6 @@
     .embed .p { font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.45; }
     .embed .sig-row { font-size: 0.95rem; margin-top: 0.75rem; }
 
-    /* Compact mode: auto-applied when content overflows iframe */
-    .embed.compact-mode .h1 { font-size: 1.0rem; margin-bottom: 0.1rem; }
-    .embed.compact-mode .p { font-size: 0.85rem; margin-top: 0.25rem; line-height: 1.3; }
-    .embed.compact-mode .sig-row { font-size: 0.85rem; margin-top: 0.4rem; }
-    .embed.compact-mode .isc-wrap { padding: 0.3rem 0.8rem; }
-
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
       font-weight: 700;
@@ -193,31 +187,6 @@
         const h = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
         window.parent?.postMessage?.({ type:"gc-isc-embed-size", height: h }, "*");
       } catch {}
-    }
-
-    function adjustAndPostHeight() {
-      if (!isEmbed()) return;
-      try {
-        const body = document.body;
-        const root = document.getElementById("root");
-        if (!root) { postHeight(); return; }
-
-        // Remove compact mode to get true baseline measurement
-        body.classList.remove("compact-mode");
-
-        // Measure raw content height against iframe viewport
-        var rawHeight = root.scrollHeight;
-        var available = window.innerHeight || 300;
-
-        if (rawHeight > available) {
-          body.classList.add("compact-mode");
-        }
-
-        // Post final height to parent
-        postHeight();
-      } catch (e) {
-        postHeight();
-      }
     }
 
     function fmtCommission(commission, type) {
@@ -507,10 +476,9 @@
       } catch {}
 
       if (embedded) {
-        requestAnimationFrame(adjustAndPostHeight);
-        setTimeout(adjustAndPostHeight, 150);
-        setTimeout(adjustAndPostHeight, 500);
-        window.addEventListener("load", adjustAndPostHeight);
+        requestAnimationFrame(postHeight);
+        setTimeout(postHeight, 120);
+        window.addEventListener("load", postHeight);
       }
     })();
   </script>
