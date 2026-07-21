@@ -30,14 +30,11 @@
     }
 
     /* 1. Nuke the invisible double-padding */
-    body.embed { padding: 0 !important; overflow: hidden; height: 100vh; }
-    .embed .isc-card { box-shadow: none; border: 0; border-radius: 0; padding: 0; height: 100%; }
-    .embed #root { height: 100%; }
+    body.embed { padding: 0 !important; overflow: hidden; }
+    .embed .isc-card { box-shadow: none; border: 0; border-radius: 0; padding: 0; }
 
     /* 2. Single, clean padding for the wrapper */
-    .embed .isc-wrap { padding: 0.5rem 1rem; display: flex; flex-direction: column; height: 100%; }
-
-    /* Push signature row to bottom of container */
+    .embed .isc-wrap { padding: 0.5rem 1rem; }
 
     /* 3. Hide header */
     .embed .embed-hidden { display: none !important; }
@@ -45,7 +42,7 @@
     /* 4. March 20th readable font sizes and beautiful line-height */
     .embed .h1 { font-size: 1.1rem; margin-top: 0; margin-bottom: 0.25rem; }
     .embed .p { font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.45; }
-    .embed .sig-row { font-size: 0.95rem; margin-top: auto !important; }
+    .embed .sig-row { font-size: 0.95rem; margin-top: 0.75rem; }
 
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
@@ -147,9 +144,10 @@
             <div id="sigName" class="sig-name">[Name]</div>
             <div id="sigLabel" class="fine">Electronic Signature</div>
           </div>
-          <div id="sigCounterBelow" class="fine text-center" style="flex:1;"></div>
           <div id="sigDate" class="sig-right">[date]</div>
         </div>
+
+        <div id="sigCounterBelow" class="fine text-center mt-1"></div>
 
         <!-- ✅ Commission History Section -->
         <div id="commissionHistorySection" class="history-section hidden">
