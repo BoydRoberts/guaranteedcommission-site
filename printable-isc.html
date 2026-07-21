@@ -44,16 +44,6 @@
     .embed .p { font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.45; }
     .embed .sig-row { font-size: 0.95rem; margin-top: 0.75rem; }
 
-    /* Pin view counter to bottom of iframe */
-    .embed #wrap { padding-bottom: 1.5rem !important; }
-    .embed #sigCounterBelow {
-      position: fixed;
-      bottom: 1rem;
-      left: 0;
-      width: 100%;
-      margin: 0 !important;
-    }
-
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
       font-weight: 700;
@@ -201,15 +191,21 @@
 
     function autoFitText() {
       if (!isEmbed()) return;
-      const pElements = document.querySelectorAll('.p');
-      let currentSize = 0.95; // Baseline font size for .p
 
-      // Shrink by 1% increments until the scroll height fits inside the window
-      while (document.documentElement.scrollHeight > window.innerHeight && currentSize > 0.65) {
+      const pElements = document.querySelectorAll('.p');
+      const counter = document.getElementById('sigCounterBelow');
+      if (!counter) return;
+
+      let currentSize = 0.95; // Baseline font size in rem
+
+      // Measures the exact pixel bottom of the counter.
+      // Shrinks text by 0.01rem only until the counter clears the window boundary.
+      while (counter.getBoundingClientRect().bottom > window.innerHeight && currentSize > 0.70) {
         currentSize -= 0.01;
         pElements.forEach(p => {
           p.style.fontSize = currentSize + 'rem';
           p.style.lineHeight = '1.35';
+          p.style.marginTop = '0.35rem';
         });
       }
       postHeight();
@@ -417,6 +413,7 @@
       if (embedded) {
         const n = Number(d.iscViews || 0);
         if (below) below.textContent = `Viewed ${n} time${n===1 ? "" : "s"}`;
+        setTimeout(function() { autoFitText(); }, 50);
       } else {
         if (below) below.style.display = "none";
         if (id) {
@@ -503,13 +500,8 @@
 
       if (embedded) {
         requestAnimationFrame(postHeight);
-        setTimeout(function() {
-          autoFitText();
-          postHeight();
-        }, 150);
-        window.addEventListener("load", function() {
-          autoFitText();
-        });
+        setTimeout(postHeight, 120);
+        window.addEventListener("load", postHeight);
       }
     })();
   </script>
