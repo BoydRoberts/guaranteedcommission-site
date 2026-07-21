@@ -30,33 +30,20 @@
     }
 
     /* 1. Nuke the invisible double-padding */
-    body.embed { padding: 0 !important; overflow: hidden; height: 100vh; }
-    .embed .isc-card { box-shadow: none; border: 0; border-radius: 0; padding: 0; height: 100%; }
-    .embed #root { height: 100%; }
+    body.embed { padding: 0 !important; overflow: hidden; }
+    .embed .isc-card { box-shadow: none; border: 0; border-radius: 0; padding: 0; }
 
-    /* 2. Flex column wrapper — pushes signature to bottom */
-    .embed .isc-wrap { padding: 0.5rem 1rem; display: flex; flex-direction: column; height: 100%; }
-
-    /* Push signature row to bottom of container */
+    /* 2. Single, clean padding for the wrapper + text-scale variable */
+    .embed .isc-wrap { padding: 0.5rem 1rem; --text-scale: 1; }
 
     /* 3. Hide header */
     .embed .embed-hidden { display: none !important; }
 
-    /* 4. March 20th readable font sizes and beautiful line-height */
-    .embed .h1 { font-size: 1.1rem; margin-top: 0; margin-bottom: 0.25rem; }
-    .embed .p { font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.45; }
-    .embed .sig-row { font-size: 0.95rem; margin-top: auto; }
-
-    /* Dynamic shrink-to-fit classes */
-    .embed .compact-text .h1 { font-size: 1rem; margin-bottom: 0.15rem; }
-    .embed .compact-text .p { font-size: 0.85rem; line-height: 1.35; margin-top: 0.35rem; }
-    .embed .compact-text .sig-row { margin-top: 0.75rem; font-size: 0.85rem; }
-    .embed .compact-text .fine { font-size: 0.7rem; }
-
-    .embed .super-compact .h1 { font-size: 0.9rem; margin-bottom: 0.1rem; }
-    .embed .super-compact .p { font-size: 0.75rem; line-height: 1.25; margin-top: 0.25rem; }
-    .embed .super-compact .sig-row { margin-top: 0.5rem; font-size: 0.75rem; }
-    .embed .super-compact .fine { font-size: 0.65rem; }
+    /* 4. Scalable font sizes via --text-scale custom property */
+    .embed .h1 { font-size: calc(1.1rem * var(--text-scale)); margin-top: 0; margin-bottom: 0.25rem; }
+    .embed .p { font-size: calc(0.95rem * var(--text-scale)); margin-top: 0.5rem; line-height: 1.45; }
+    .embed .sig-row { font-size: calc(0.95rem * var(--text-scale)); margin-top: 0.75rem; }
+    .embed .fine { font-size: calc(0.75rem * var(--text-scale)); }
 
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
@@ -205,29 +192,25 @@
 
     function autoFitText() {
       if (!isEmbed()) return;
-      const wrap = document.getElementById("wrap");
-      if (!wrap) return;
+      var wrap = document.getElementById("wrap");
+      var wrapStyle = document.querySelector(".isc-wrap");
+      if (!wrap || !wrapStyle) return;
 
-      // Reset classes first
-      wrap.classList.remove("compact-text", "super-compact");
+      var scale = 1.0;
+      var min = 0.75;
 
-      // Let the browser paint, then measure
-      requestAnimationFrame(function() {
-        if (wrap.scrollHeight > window.innerHeight) {
-          wrap.classList.add("compact-text");
-
-          // Measure again after paint — if still overflows, go to super-compact
-          requestAnimationFrame(function() {
-            if (wrap.scrollHeight > window.innerHeight) {
-              wrap.classList.remove("compact-text");
-              wrap.classList.add("super-compact");
-            }
-            postHeight();
-          });
+      function shrinkStep() {
+        // Measure the WRAPPER's scroll height, not the body's
+        if (wrap.scrollHeight > window.innerHeight && scale > min) {
+          scale -= 0.01;
+          wrapStyle.style.setProperty("--text-scale", scale.toFixed(2));
+          requestAnimationFrame(shrinkStep);
         } else {
           postHeight();
         }
-      });
+      }
+
+      requestAnimationFrame(shrinkStep);
     }
 
     function fmtCommission(commission, type) {
