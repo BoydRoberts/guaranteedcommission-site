@@ -39,7 +39,7 @@
     /* 3. Hide header */
     .embed .embed-hidden { display: none !important; }
 
-    /* 4. Standard readable font sizes */
+    /* 4. March 20th readable font sizes and beautiful line-height */
     .embed .h1 { font-size: 1.1rem; margin-top: 0; margin-bottom: 0.25rem; }
     .embed .p { font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.45; }
     .embed .sig-row { font-size: 0.95rem; margin-top: 0.75rem; }
@@ -187,28 +187,6 @@
         const h = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
         window.parent?.postMessage?.({ type:"gc-isc-embed-size", height: h }, "*");
       } catch {}
-    }
-
-    function autoFitText() {
-      if (!isEmbed()) return;
-
-      const pElements = document.querySelectorAll('.p');
-      const counter = document.getElementById('sigCounterBelow');
-      if (!counter) return;
-
-      let currentSize = 0.95; // Baseline font size in rem
-
-      // Measures the exact pixel bottom of the counter.
-      // Shrinks text by 0.01rem only until the counter clears the window boundary.
-      while (counter.getBoundingClientRect().bottom > window.innerHeight && currentSize > 0.70) {
-        currentSize -= 0.01;
-        pElements.forEach(p => {
-          p.style.fontSize = currentSize + 'rem';
-          p.style.lineHeight = '1.35';
-          p.style.marginTop = '0.35rem';
-        });
-      }
-      postHeight();
     }
 
     function fmtCommission(commission, type) {
@@ -413,7 +391,6 @@
       if (embedded) {
         const n = Number(d.iscViews || 0);
         if (below) below.textContent = `Viewed ${n} time${n===1 ? "" : "s"}`;
-        setTimeout(function() { autoFitText(); }, 50);
       } else {
         if (below) below.style.display = "none";
         if (id) {
