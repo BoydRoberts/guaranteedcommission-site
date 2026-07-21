@@ -33,17 +33,16 @@
     body.embed { padding: 0 !important; overflow: hidden; }
     .embed .isc-card { box-shadow: none; border: 0; border-radius: 0; padding: 0; }
 
-    /* 2. Single, clean padding for the wrapper + text-scale variable */
-    .embed .isc-wrap { padding: 0.5rem 1rem; --text-scale: 1; }
+    /* 2. Single, clean padding for the wrapper */
+    .embed .isc-wrap { padding: 0.5rem 1rem; }
 
     /* 3. Hide header */
     .embed .embed-hidden { display: none !important; }
 
-    /* 4. Scalable font sizes via --text-scale custom property */
-    .embed .h1 { font-size: calc(1.1rem * var(--text-scale)); margin-top: 0; margin-bottom: 0.25rem; }
-    .embed .p { font-size: calc(0.95rem * var(--text-scale)); margin-top: 0.5rem; line-height: 1.45; }
-    .embed .sig-row { font-size: calc(0.95rem * var(--text-scale)); margin-top: 0.75rem; }
-    .embed .fine { font-size: calc(0.75rem * var(--text-scale)); }
+    /* 4. Standard readable font sizes */
+    .embed .h1 { font-size: 1.1rem; margin-top: 0; margin-bottom: 0.25rem; }
+    .embed .p { font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.45; }
+    .embed .sig-row { font-size: 0.95rem; margin-top: 0.75rem; }
 
     .h1 {
       font-size: clamp(0.85rem, 4vw, 1.125rem); /* Allows title to fit on one line on narrow mobile screens */
@@ -192,25 +191,20 @@
 
     function autoFitText() {
       if (!isEmbed()) return;
-      var wrap = document.getElementById("wrap");
-      var wrapStyle = document.querySelector(".isc-wrap");
-      if (!wrap || !wrapStyle) return;
 
-      var scale = 1.0;
-      var min = 0.75;
+      const pElements = document.querySelectorAll('.p');
+      let currentSize = 0.95; // Matches baseline .p font-size in CSS
 
-      function shrinkStep() {
-        // Measure the WRAPPER's scroll height, not the body's
-        if (wrap.scrollHeight > window.innerHeight && scale > min) {
-          scale -= 0.01;
-          wrapStyle.style.setProperty("--text-scale", scale.toFixed(2));
-          requestAnimationFrame(shrinkStep);
-        } else {
-          postHeight();
-        }
+      // Microscopic reduction: shrinks only letter text by 0.01rem until overflow is gone
+      while (document.documentElement.scrollHeight > window.innerHeight && currentSize > 0.60) {
+        currentSize -= 0.01;
+        pElements.forEach(p => {
+          p.style.fontSize = currentSize + 'rem';
+          p.style.lineHeight = '1.35';
+          p.style.marginTop = '0.35rem';
+        });
       }
-
-      requestAnimationFrame(shrinkStep);
+      postHeight();
     }
 
     function fmtCommission(commission, type) {
