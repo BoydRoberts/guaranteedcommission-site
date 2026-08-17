@@ -7,6 +7,7 @@
   <title>Login / Create Account | GuaranteedCommission.com</title>
   <link rel="icon" type="image/png" href="/Logo.png">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
   <style>
     .badge { font-size:11px; background:#f3f4f6; color:#4b5563; padding:.1rem .5rem; border-radius:.375rem; }
   </style>
@@ -168,6 +169,10 @@
 
         <div class="flex items-center justify-between text-sm">
           <a href="#" id="goSignin" class="text-blue-600 hover:underline">Already have an account? Sign in</a>
+        </div>
+
+        <div class="flex justify-center mt-2 mb-4">
+          <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY"></div>
         </div>
 
         <button type="submit"
@@ -482,6 +487,12 @@
       if (!name || !email || !phone || !p1) { setStatus('Please complete all fields.'); return; }
       if (!isValidPhone(phone)) { setStatus('Please enter a valid 10-digit phone number.'); $('c_phone').focus(); return; }
       if (p1 !== p2) { setStatus('Passwords do not match.'); return; }
+
+      const recaptchaResponse = grecaptcha.getResponse();
+      if (!recaptchaResponse) {
+        setStatus('Please complete the reCAPTCHA to verify you are human.');
+        return;
+      }
 
       setStatus('Creating your account…', true);
 
