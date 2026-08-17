@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Build: 2026-08-17 (Fix: tab visibility listener + manual check button for verification detection) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -46,20 +47,25 @@
             We sent a secure verification link to your email.
           </p>
           <p class="text-sm text-gray-500 mt-1">
-            Click the link in the email to verify your account. This page will automatically detect it.
+            Click the link in the email to verify your account, then come back to this tab.
           </p>
         </div>
 
         <div id="status" class="hidden mb-4 text-sm rounded-lg p-3 mt-4"></div>
 
         <div class="mt-6 space-y-3">
+          <button id="checkNowBtn" type="button"
+                  class="w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-500 transition">
+            I've Verified — Check Now
+          </button>
+
           <button id="resendBtn" type="button"
                   class="w-full bg-[#4DA6FF] text-white py-2 rounded-lg font-semibold hover:bg-blue-500 transition">
             Resend Verification Email
           </button>
 
           <p class="text-xs text-gray-500 text-center">
-            Don't see it? Check your spam folder. The email comes from <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="503e3f2235203c291037253122313e24353534333f3d3d392323393f3e7d34643469617e36392235323123353120207e333f3d">[email&#160;protected]</a></strong>.
+            Don't see it? Check your spam folder. The email comes from <strong>noreply@guaranteedcommission.com</strong>.
           </p>
 
           <div class="text-center">
@@ -91,11 +97,11 @@
     </div>
   </div>
 
-  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
+  <script type="module">
     import { auth } from "/scripts/firebase-init.js";
     import { sendEmailVerification, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    console.log('[verify] Firebase verification waiting room - build 2026-03-14');
+    console.log('[verify] Firebase verification waiting room - build 2026-08-17');
 
     const $ = (id) => document.getElementById(id);
 
@@ -117,21 +123,16 @@
 
     function getNextDestination() {
       const next = (localStorage.getItem('nextAfterLogin') || '').trim();
-
-      // Anti-Loop Guard: Ignore if it tries to route back to the auth flow
       if (next && !next.includes('verify') && !next.includes('login')) {
         return next;
       }
-
       const origin = (localStorage.getItem('loginOrigin') || '').toLowerCase();
       if (origin === 'box2') return '/upsell.html';
-
       return '/welcome.html';
     }
 
     function onVerified() {
       localStorage.setItem('isVerified', 'true');
-
       $('waitingState').classList.add('hidden');
       $('verifiedState').classList.remove('hidden');
 
@@ -142,6 +143,32 @@
         localStorage.removeItem('loginOrigin');
         window.location.href = destination;
       }, 1200);
+    }
+
+    // =========================================================================
+    // FORCE CHECK — manually reload user and check verification
+    // =========================================================================
+    async function forceCheck() {
+      var user = auth.currentUser;
+      if (!user) {
+        setStatus('No active session. Please go back and log in.', false);
+        return;
+      }
+
+      try {
+        await user.reload();
+        console.log('[verify] Force check - emailVerified:', user.emailVerified);
+
+        if (user.emailVerified) {
+          if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+          onVerified();
+        } else {
+          setStatus('Not verified yet. Please click the link in your email first.', false);
+        }
+      } catch (err) {
+        console.warn('[verify] Force check failed:', err.message);
+        setStatus('Could not check status. Please try again.', false);
+      }
     }
 
     // =========================================================================
@@ -203,6 +230,34 @@
     }
 
     // =========================================================================
+    // VISIBILITY CHANGE — re-check when user switches back to this tab
+    // (Chrome throttles setInterval in background tabs)
+    // =========================================================================
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible') {
+        console.log('[verify] Tab became visible — forcing verification check');
+        forceCheck();
+      }
+    });
+
+    // Also check on window focus (belt and suspenders)
+    window.addEventListener('focus', function() {
+      console.log('[verify] Window focused — forcing verification check');
+      forceCheck();
+    });
+
+    // =========================================================================
+    // "I'VE VERIFIED" BUTTON — manual escape hatch
+    // =========================================================================
+    var checkNowBtn = $('checkNowBtn');
+    if (checkNowBtn) {
+      checkNowBtn.addEventListener('click', function() {
+        setStatus('Checking verification status...', true);
+        forceCheck();
+      });
+    }
+
+    // =========================================================================
     // RESEND BUTTON
     // =========================================================================
     var resendCooldown = false;
@@ -241,3 +296,13 @@
         } catch (err) {
           console.warn('[verify] Resend failed:', err.code, err.message);
           if (err.code === 'auth/too-many-requests') {
+            setStatus('Too many attempts. Please wait a few minutes.', false);
+          } else {
+            setStatus('Failed to resend. Please try again.', false);
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
