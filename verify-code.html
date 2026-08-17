@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- Build: 2026-08-17 (Fix: tab visibility listener + manual check button for verification detection) -->
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -47,7 +46,7 @@
             We sent a secure verification link to your email.
           </p>
           <p class="text-sm text-gray-500 mt-1">
-            Click the link in the email to verify your account, then come back to this tab.
+            Click the link in the email to verify your account. This page will automatically detect it.
           </p>
         </div>
 
@@ -97,11 +96,11 @@
     </div>
   </div>
 
-  <script type="module">
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="module">
     import { auth } from "/scripts/firebase-init.js";
     import { sendEmailVerification, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    console.log('[verify] Firebase verification waiting room - build 2026-08-17');
+    console.log('[verify] Firebase verification waiting room - build 2026-03-14');
 
     const $ = (id) => document.getElementById(id);
 
@@ -123,16 +122,21 @@
 
     function getNextDestination() {
       const next = (localStorage.getItem('nextAfterLogin') || '').trim();
+
+      // Anti-Loop Guard: Ignore if it tries to route back to the auth flow
       if (next && !next.includes('verify') && !next.includes('login')) {
         return next;
       }
+
       const origin = (localStorage.getItem('loginOrigin') || '').toLowerCase();
       if (origin === 'box2') return '/upsell.html';
+
       return '/welcome.html';
     }
 
     function onVerified() {
       localStorage.setItem('isVerified', 'true');
+
       $('waitingState').classList.add('hidden');
       $('verifiedState').classList.remove('hidden');
 
